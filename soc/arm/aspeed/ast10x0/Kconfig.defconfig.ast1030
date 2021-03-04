@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Copyright (c) 2021 ASPEED Technology Inc.
+
+if SOC_AST1030
+
+config NUM_IRQS
+	default 240
+
+endif # SOC_AST1030
