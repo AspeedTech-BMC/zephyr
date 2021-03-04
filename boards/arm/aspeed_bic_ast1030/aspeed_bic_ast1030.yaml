@@ -1,0 +1,10 @@
+identifier: aspeed_bic_ast1030
+name: ASPEED-BIC-AST1030
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+  - gnuarmemb
+  - xtools
+ram: 768
+flash: 512
