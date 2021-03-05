@@ -6,6 +6,9 @@
 #ifndef _AST10X0_IRQ_H_
 #define _AST10X0_IRQ_H_
 
+#define AST10X0_IRQ_DEFAULT_PRIORITY	1
+
+
 #define INTR_MMC			0
 #define INTR_RESV_1			1
 #define INTR_MAC			2
