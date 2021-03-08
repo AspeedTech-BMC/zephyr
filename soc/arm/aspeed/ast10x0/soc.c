@@ -23,15 +23,15 @@ struct sb_header sbh __attribute((used, section(".sboot"))) = {
         .img_size = (uint32_t)&_image_rom_end,
 };
 
-#define SCU_BASE 0x7e6e2000
 #define JTAG_PINMUX_REG	0x41c
 
 void z_platform_init(void)
 {
 	uint32_t jtag_pinmux;
+	uint32_t base = DT_REG_ADDR(DT_NODELABEL(syscon));
 
 	/* enable JTAG pins */
-	jtag_pinmux = *(uint32_t *)(SCU_BASE + JTAG_PINMUX_REG);
+	jtag_pinmux = sys_read32(base + JTAG_PINMUX_REG);
 	jtag_pinmux |= (0x1f << 25);
-	*(uint32_t *)(SCU_BASE + JTAG_PINMUX_REG) = jtag_pinmux;
+	sys_write32(jtag_pinmux, base + JTAG_PINMUX_REG);
 }
