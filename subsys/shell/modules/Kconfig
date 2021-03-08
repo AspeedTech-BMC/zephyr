@@ -26,3 +26,10 @@ config DATE_SHELL
 	default y
 	help
 	  This shell provides access to date and time based on Unix time.
+
+config MEM_SHELL
+	bool "Enable memory shell"
+	default y
+	help
+	  This shell provides access to memory
+

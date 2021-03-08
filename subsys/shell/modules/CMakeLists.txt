@@ -12,3 +12,7 @@ zephyr_sources_ifdef(
   CONFIG_DATE_SHELL
   date_service.c
   )
+zephyr_sources_ifdef(
+	CONFIG_MEM_SHELL
+  mem_service.c
+  )
