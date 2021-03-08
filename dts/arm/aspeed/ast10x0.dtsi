@@ -38,6 +38,13 @@
 	};
 
 	soc {
+		syscon: syscon@7e6e2000 {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			reg = <0x7e6e2000 0x1000>;
+			ranges = <0 0x7e6e2000 0x1000>;
+		};
+
 		uart0: serial@7e783000 {
 			compatible = "ns16550";
 			reg = <0x7e783000 0x1000>;
