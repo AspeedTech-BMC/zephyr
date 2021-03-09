@@ -43,6 +43,9 @@
 			#size-cells = <1>;
 			reg = <0x7e6e2000 0x1000>;
 			ranges = <0 0x7e6e2000 0x1000>;
+			pinmux: pinmux {
+				compatiable = "aspeed,ast1030-pinmux";
+			};
 		};
 
 		uart0: serial@7e783000 {
