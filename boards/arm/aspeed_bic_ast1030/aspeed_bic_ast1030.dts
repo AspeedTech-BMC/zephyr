@@ -14,7 +14,8 @@
 	chosen {
 		zephyr,console = &uart4;
 		zephyr,shell = &uart4;
-		zephyr,sram = &sram0;
+		zephyr,sram = &sram_c;
+		zephyr,sram_nc = &sram_nc;
 		zephyr,flash = &flash0;
 	};
 };
@@ -24,7 +25,17 @@
 };
 
 &sram0 {
-	reg = <0x00000000 DT_SIZE_K(768)>;
+	reg = <0 DT_SIZE_K(768)>;
+	#address-cells = <1>;
+	#size-cells = <1>;
+	sram_c:memory@0 {
+		compatible = "mmio-sram";
+		reg = <0 0x70000>;
+	};
+	sram_nc:memory@70000 {
+		compatible = "mmio-sram";
+		reg = <0x70000 0x50000>;
+	};
 };
 
 &uart4 {

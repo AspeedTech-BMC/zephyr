@@ -3,5 +3,8 @@
  *
  * Copyright (c) 2020 Linumiz
  */
-
+MEMORY
+{
+	SRAM_NC (wx) : ORIGIN = CONFIG_SRAM_NC_BASE_ADDRESS, LENGTH = CONFIG_SRAM_NC_SIZE
+}
 #include <arch/arm/aarch32/cortex_m/scripts/linker.ld>
