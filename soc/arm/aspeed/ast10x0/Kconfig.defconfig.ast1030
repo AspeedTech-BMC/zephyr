@@ -7,11 +7,11 @@ if SOC_AST1030
 config NUM_IRQS
 	default 240
 
-DT_CHOSEN_Z_SRAM_NC := zephyr,sram_nc
+DT_NODE_SRAM := /memory@0
 
 config SRAM_NC_SIZE
 	int "noncached SRAM Size in kB"
-	default $(dt_chosen_reg_size_int,$(DT_CHOSEN_Z_SRAM_NC),0,K)
+	default $(dt_node_reg_size_int,$(DT_NODE_SRAM),1,K)
 	help
 	  The non-cached SRAM size in kB. The default value comes from 
 	  /chosen/zephyr,sram_nc in devicetree. The user should generally avoid 
@@ -19,7 +19,7 @@ config SRAM_NC_SIZE
 
 config SRAM_NC_BASE_ADDRESS
 	hex "noncached SRAM Base Address"
-	default $(dt_chosen_reg_addr_hex,$(DT_CHOSEN_Z_SRAM_NC))
+	default $(dt_node_reg_addr_hex,$(DT_NODE_SRAM),1)
 	help
 	  The non-cached SRAM base address. The default value comes from from
 	  /chosen/zephyr,sram_nc in devicetree. The user should generally avoid

@@ -36,8 +36,8 @@
 void aspeed_cache_init(void)
 {
 	uint32_t base = DT_REG_ADDR(DT_NODELABEL(syscon));
-	uint32_t sram_c_start = DT_REG_ADDR(DT_NODELABEL(sram_c));
-	uint32_t sram_c_end = sram_c_start + DT_REG_SIZE(DT_NODELABEL(sram_c)) - 1;
+	uint32_t sram_c_start = DT_REG_ADDR_BY_IDX(DT_NODELABEL(sram0), 0);
+	uint32_t sram_c_end = sram_c_start + DT_REG_SIZE_BY_IDX(DT_NODELABEL(sram0), 0) - 1;
 	uint32_t start_bit, end_bit, config;
 
 	sys_write32(0, base + CACHE_FUNC_CTRL_REG);
