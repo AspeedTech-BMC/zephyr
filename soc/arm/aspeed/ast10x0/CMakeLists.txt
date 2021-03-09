@@ -3,6 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-zephyr_sources(soc.c)
+zephyr_sources(soc.c cache.c)
 zephyr_linker_sources(ROM_START SORT_KEY 0x1sboot sboot.ld)
 zephyr_linker_sources(RAM_SECTIONS nocache.ld)
