@@ -25,19 +25,18 @@ static int cmd_mem_wr(const struct shell *shell, size_t argc, char **argv)
 	return 0;
 }
 
-static int cmd_mem_display(const struct shell *shell, size_t argc, char **argv)
+static int cmd_mem_md(const struct shell *shell, size_t argc, char **argv)
 {
 	uint32_t addr, length = 16;
 	char *endptr;
-	int i, offset = 0;
+	int i;
 
-	if (argc > 1) {
-		addr = strtol(argv[1], &endptr, 16);
-		if (argc > 2)
-			length = strtol(argv[2], &endptr, 16);
-	} else {
+	if (argc < 2)
 		return -EINVAL;
-	}
+
+	addr = strtol(argv[1], &endptr, 16);
+	if (argc > 2)
+		length = strtol(argv[2], &endptr, 16);
 
 	for (i = 0; i < length; i++) {
 		if ((i & 0x3) == 0)
@@ -50,5 +49,5 @@ static int cmd_mem_display(const struct shell *shell, size_t argc, char **argv)
 	return 0;
 }
 
-SHELL_CMD_REGISTER(md, NULL, "Mem Display command", cmd_mem_display);
+SHELL_CMD_REGISTER(md, NULL, "Mem Display command", cmd_mem_md);
 SHELL_CMD_REGISTER(mw, NULL, "Mem Write command", cmd_mem_wr);
