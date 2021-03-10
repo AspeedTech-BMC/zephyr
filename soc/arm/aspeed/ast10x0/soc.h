@@ -15,7 +15,11 @@
 #define __MPU_PRESENT  CONFIG_CPU_HAS_ARM_MPU
 
 /* non-cached (DMA) memory */
+#if (CONFIG_SRAM_NC_SIZE > 0)
 #define NON_CACHED_BSS	__attribute__((section(".nocache.bss")))
 #define NON_CACHED_BSS_ALIGN16	__attribute__((aligned(16), section(".nocache.bss")))
-
+#else
+#define NON_CACHED_BSS
+#define NON_CACHED_BSS_ALIGN16	__attribute__((aligned(16)))
+#endif /* end of "#if (CONFIG_SRAM_NC_SIZE > 0)" */
 #endif /* ZEPHYR_SOC_ARM_ASPEED_AST10X0_SOC_H_*/
