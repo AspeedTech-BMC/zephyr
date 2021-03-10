@@ -25,7 +25,7 @@ static int cmd_mem_wr(const struct shell *shell, size_t argc, char **argv)
 	return 0;
 }
 
-static int cmd_mem_dump(const struct shell *shell, size_t argc, char **argv)
+static int cmd_mem_display(const struct shell *shell, size_t argc, char **argv)
 {
 	uint32_t addr, length = 16;
 	char *endptr;
@@ -39,18 +39,16 @@ static int cmd_mem_dump(const struct shell *shell, size_t argc, char **argv)
 		return -EINVAL;
 	}
 
-	endptr = malloc((length + 2) * 5);
 	for (i = 0; i < length; i++) {
 		if ((i & 0x3) == 0)
-			offset += sprintf(endptr + offset, "\n[%08x] ", addr + (i << 2));
-		offset += sprintf(endptr + offset, "%08x ", *(uint32_t *)(addr + (i << 2)));
+			printf("\n[%08x] ", addr + (i << 2));
+		printf("%08x ", *(uint32_t *)(addr + (i << 2)));
 	}
 
-	shell_print(shell, "%s\n", endptr);
-	free(endptr);
+	shell_print(shell, "\n");
 
 	return 0;
 }
 
-SHELL_CMD_REGISTER(md, NULL, "Mem Dump command", cmd_mem_dump);
+SHELL_CMD_REGISTER(md, NULL, "Mem Display command", cmd_mem_display);
 SHELL_CMD_REGISTER(mw, NULL, "Mem Write command", cmd_mem_wr);
