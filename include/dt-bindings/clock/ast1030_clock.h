@@ -1,0 +1,13 @@
+/*
+ * Copyright (c) 2020 ASPEED
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#ifndef ZEPHYR_INCLUDE_DT_BINDINGS_CLOCK_AST1030_H_
+#define ZEPHYR_INCLUDE_DT_BINDINGS_CLOCK_AST1030_H_
+
+#define ASPEED_CLK_PCLK 0
+#define ASPEED_CLK_HCLK 1
+
+#endif /* ZEPHYR_INCLUDE_DT_BINDINGS_CLOCK_AST1030_H_ */

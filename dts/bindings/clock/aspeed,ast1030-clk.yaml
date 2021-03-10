@@ -1,0 +1,18 @@
+# Copyright (c) 2021, ASPEED
+# SPDX-License-Identifier: Apache-2.0
+
+description: Aspeed Clock Controller
+
+compatible: "aspeed,ast1030-clk"
+
+include: [clock-controller.yaml, base.yaml]
+
+properties:
+    reg:
+      required: true
+
+    "#clock-cells":
+      const: 1
+
+clock-cells:
+  - clk_id

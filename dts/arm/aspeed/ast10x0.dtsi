@@ -7,6 +7,7 @@
 #include <arm/armv7-m.dtsi>
 #include <mem.h>
 #include <aspeed/ast10x0-irq.h>
+#include <dt-bindings/clock/ast1030_clock.h>
 
 / {
 	cpus {
@@ -39,12 +40,15 @@
 
 	soc {
 		syscon: syscon@7e6e2000 {
+			compatible = "aspeed,ast1030-clk";
+			#clock-cells = <1>;
 			#address-cells = <1>;
 			#size-cells = <1>;
 			reg = <0x7e6e2000 0x1000>;
 			ranges = <0 0x7e6e2000 0x1000>;
+			label = "SYSCON";
 			pinmux: pinmux {
-				compatiable = "aspeed,ast1030-pinmux";
+				compatible = "aspeed,ast1030-pinmux";
 			};
 		};
 
