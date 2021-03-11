@@ -8,8 +8,6 @@ compatible: "aspeed,ast1030-clk"
 include: [clock-controller.yaml, base.yaml]
 
 properties:
-    reg:
-      required: true
 
     "#clock-cells":
       const: 1

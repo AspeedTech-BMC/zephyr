@@ -32,21 +32,18 @@
 		write-block-size = <1>;
 	};
 
-	sysclk: system-clock {
-		compatible = "fixed-clock";
-		clock-frequency = <200000000>;
-		#clock-cells = <0>;
-	};
-
 	soc {
 		syscon: syscon@7e6e2000 {
-			compatible = "aspeed,ast1030-clk";
-			#clock-cells = <1>;
 			#address-cells = <1>;
 			#size-cells = <1>;
 			reg = <0x7e6e2000 0x1000>;
 			ranges = <0 0x7e6e2000 0x1000>;
-			label = "SYSCON";
+			sysclk: sysclk {
+				compatible = "aspeed,ast1030-clk";
+				#clock-cells = <1>;
+				label = "SYSCLK";
+			};
+
 			pinmux: pinmux {
 				compatible = "aspeed,ast1030-pinmux";
 			};
