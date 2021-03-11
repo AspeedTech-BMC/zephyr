@@ -44,6 +44,11 @@
 				label = "SYSCLK";
 			};
 
+			sysrst: sysrst {
+				compatible = "aspeed,ast1030-rst";
+				#reset-cells = <1>;
+				label = "SYSRST";
+			};
 			pinmux: pinmux {
 				compatible = "aspeed,ast1030-pinmux";
 			};
