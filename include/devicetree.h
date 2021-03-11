@@ -2200,6 +2200,7 @@
 
 /* have these last so they have access to all previously defined macros */
 #include <devicetree/io-channels.h>
+#include <devicetree/resets.h>
 #include <devicetree/clocks.h>
 #include <devicetree/gpio.h>
 #include <devicetree/spi.h>
