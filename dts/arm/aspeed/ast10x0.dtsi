@@ -8,6 +8,7 @@
 #include <mem.h>
 #include <aspeed/ast10x0-irq.h>
 #include <dt-bindings/clock/ast1030_clock.h>
+#include <dt-bindings/reset/ast1030_reset.h>
 
 / {
 	cpus {
