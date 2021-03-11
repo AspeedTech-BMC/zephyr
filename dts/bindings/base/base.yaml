@@ -66,6 +66,16 @@ properties:
         required: false
         description: name of each clock
 
+    resets:
+        type: phandle-array
+        required: false
+        description: Reset information
+
+    reset-names:
+        type: string-array
+        required: false
+        description: name of each reset
+
     "#address-cells":
         type: int
         required: false
