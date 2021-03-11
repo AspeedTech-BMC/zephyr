@@ -20,6 +20,7 @@ module = RESET_CONTROL
 module-str = reset control
 source "subsys/logging/Kconfig.template.log_config"
 
+source "drivers/reset_control/Kconfig.aspeed"
 
 
 endif # RESET_CONTROL
