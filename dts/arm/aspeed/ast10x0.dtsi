@@ -52,6 +52,18 @@
 			};
 		};
 
+		pwm_tach: pwm_tach@7e610000 {
+			reg = <0x7e610000 0x100>;
+			pwm: pwm {
+				compatible = "aspeed,ast1030-pwm";
+				#pwm-cells = <3>;
+				npwms = <16>;
+				clocks = <&sysclk ASPEED_CLK_HCLK>;
+				resets = <&sysrst ASPEED_RESET_PWM_TACH>;
+				label = "PWM";
+				status = "disabled";
+			};
+		};
 		uart0: serial@7e783000 {
 			compatible = "ns16550";
 			reg = <0x7e783000 0x1000>;

@@ -1,0 +1,12 @@
+# ASPEED PWM driver configuration options
+
+# Copyright (c) 2021 ASPEED
+# SPDX-License-Identifier: Apache-2.0
+
+config PWM_ASPEED
+	bool "ASPEED PWM driver"
+	depends on SOC_FAMILY_ASPEED
+	help
+	  This option enables the PWM driver for ASPEED family of
+	  processors.
+	  Say y if you wish to use PWM channels on ASPEED MCU.
