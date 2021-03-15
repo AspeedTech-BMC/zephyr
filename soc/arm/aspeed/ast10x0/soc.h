@@ -10,6 +10,8 @@
 #include <sys/util.h>
 #include <devicetree.h>
 
+#define DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
+
 /* Common clock control device name for all Ast10x0 series */
 #define ASPEED_CLK_CTRL_NAME DT_INST_CLOCKS_LABEL(0)
 /* Common reset control device name for all Ast10x0 series */
