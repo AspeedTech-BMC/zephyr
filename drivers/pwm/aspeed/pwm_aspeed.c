@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 PWM
+ * Copyright (c) 2021 ASPEED
  *
  * SPDX-License-Identifier: Apache-2.0
  */
