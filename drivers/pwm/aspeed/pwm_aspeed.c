@@ -177,7 +177,7 @@ static int pwm_aspeed_get_cycles_per_sec(const struct device *dev,
 					 uint64_t *cycles)
 {
 	struct pwm_aspeed_data *priv = DEV_DATA(dev);
-	*cycles = priv->freq[pwm];
+	*cycles = priv->clk_src;
 	return 0;
 }
 
