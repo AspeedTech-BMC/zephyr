@@ -191,7 +191,7 @@ static const struct pwm_driver_api pwm_aspeed_api = {
 #define PWM_ASPEED_INIT(n)	\
 	static struct pwm_aspeed_data pwm_aspeed_data_##n; \
 	static const struct pwm_aspeed_cfg pwm_aspeed_cfg_##n = {	\
-			.base = (pwm_register_t *)DT_REG_ADDR(DT_NODELABEL(pwm_tach)),	\
+			.base = (pwm_register_t *)DT_REG_ADDR(DT_PARENT(DT_DRV_INST(n))),	\
 			.clk_id = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(n, clk_id), \
 			.rst_id = (reset_control_subsys_t)DT_INST_RESETS_CELL(n, rst_id), \
 		};	\
