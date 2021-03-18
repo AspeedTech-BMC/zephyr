@@ -89,6 +89,10 @@ extern "C" {
  * @note Not all SoC I2C implementations support this feature. */
 #define I2C_MSG_ADDR_10_BITS		BIT(3)
 
+/* length will be first received byte */
+
+#define I2C_MSG_RECV_LEN		0x0400	
+
 /**
  * @brief One I2C Message.
  *
