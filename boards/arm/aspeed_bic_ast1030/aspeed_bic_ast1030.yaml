@@ -4,5 +4,10 @@ type: mcu
 arch: arm
 toolchain:
   - zephyr
+supported:
+  - pwm
+  - gpio
+testing:
+  default: true
 ram: 768
 flash: 512
