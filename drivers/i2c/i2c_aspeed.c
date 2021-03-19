@@ -298,7 +298,6 @@ struct i2c_aspeed_data {
 	int 				msgs_index; //cur xfer msgs index
 	int 				msgs_count; //total msgs
 
-	uint32_t			master_dma_addr;
 	int 				master_xfer_cnt;	//total xfer count
 
 
@@ -487,6 +486,64 @@ static struct ast_i2c_timing_table aspeed_old_i2c_timing_table[] = {
 	{3072, 	0x00000300 | (0x7) | (0xb << 20) | (0xb << 16) | (0xb << 12) },
 };
 
+/* cache size = 32B * 128 = 4KB */
+#define CACHE_LINE_SIZE_LOG2	5
+#define CACHE_LINE_SIZE		(1 << CACHE_LINE_SIZE_LOG2)
+#define N_CACHE_LINE		128
+#define CACHE_ALIGNED_ADDR(addr)                                               \
+	((addr >> CACHE_LINE_SIZE_LOG2) << CACHE_LINE_SIZE_LOG2)
+	
+#define SCU_BASE 0x7e6e2000
+
+#define CACHE_AREA_CTRL_REG		0xa50
+#define CACHE_AREA_SIZE_LOG2	15
+#define CACHE_AREA_SIZE			(1 << CACHE_AREA_SIZE_LOG2)
+
+#define CACHE_INVALID_REG		0xa54
+#define DCACHE_INVALID(addr)	(BIT(31) | ((addr & GENMASK(10, 0)) << 16))
+#define ICACHE_INVALID(addr)	(BIT(15) | ((addr & GENMASK(10, 0)) << 0))
+
+#define CACHE_FUNC_CTRL_REG		0xa58
+#define ICACHE_CLEAN			BIT(2)
+#define DCACHE_CLEAN			BIT(1)
+#define CACHE_EANABLE			BIT(0)
+
+static uint32_t get_n_cacheline(uint32_t addr, uint32_t size, uint32_t *p_head)
+{
+	uint32_t n = 0;
+	uint32_t tail;
+
+	/* head */
+	*p_head = CACHE_ALIGNED_ADDR(addr); 
+
+	/* roundup the tail address */
+	tail = addr + size + (CACHE_LINE_SIZE - 1);
+	tail = CACHE_ALIGNED_ADDR(tail);
+
+	n = (tail - *p_head) >> CACHE_LINE_SIZE_LOG2;
+
+	return n;
+}
+
+void aspeed_cache_invalid_data(uint32_t addr, uint32_t size)
+{
+	uint32_t aligned_addr, i, n;
+
+	n = get_n_cacheline(addr, size, &aligned_addr);
+
+//	LOG_DBG("addr %x, size %d n: %d\n", addr, size, n);
+
+	for (i = 0; i < n; i++) {
+		sys_write32(DCACHE_INVALID(aligned_addr), SCU_BASE + CACHE_INVALID_REG);
+		sys_write32(0, SCU_BASE + CACHE_INVALID_REG);
+		aligned_addr += CACHE_LINE_SIZE;
+	}
+
+	/* issue a non-cached data access to flush the prefetch buffer */
+	sys_read32((uint32_t)(addr - 32));
+	
+}
+
 static uint32_t i2c_aspeed_select_clock(const struct device *dev)
 {
 	const struct i2c_aspeed_config *config = DEV_CFG(dev);	
@@ -499,6 +556,8 @@ static uint32_t i2c_aspeed_select_clock(const struct device *dev)
 	int inc = 0;
 	unsigned long base_clk1, base_clk2, base_clk3, base_clk4;
 	uint32_t scl_low, scl_high;
+
+//	LOG_DBG("clk src %d, targe %d \n", config->clk_src, data->bus_frequency);
 	
 	if(config->clk_div_mode) {
 		clk_div_reg = sys_read32(config->global_reg + ASPEED_I2CG_CLK_DIV_CTRL);
@@ -542,9 +601,9 @@ static uint32_t i2c_aspeed_select_clock(const struct device *dev)
 				break;
 			}
 		}
-		i++;
+		i--;
 		ac_timing = aspeed_old_i2c_timing_table[i].timing;
-//		printf("divisor [%d], timing [%x] \n", aspeed_old_i2c_timing_table[i].divisor, aspeed_old_i2c_timing_table[i].timing);
+//		LOG_DBG("divisor [%d], timing [%x] \n",aspeed_old_i2c_timing_table[i].divisor, aspeed_old_i2c_timing_table[i].timing);
 	} 
 
 	return ac_timing;
@@ -613,9 +672,9 @@ aspeed_new_i2c_recover_bus(const struct device *dev)
 static int i2c_aspeed_configure(const struct device *dev,
 			     uint32_t dev_config_raw)
 {
-	const struct i2c_aspeed_config *config = DEV_CFG(dev);	
+	const struct i2c_aspeed_config *config = DEV_CFG(dev);
+	struct i2c_aspeed_data *data = DEV_DATA(dev);	
 	uint32_t i2c_base = DEV_BASE(dev);
-	uint32_t baudrate;
 	uint32_t fun_ctrl = AST_I2CC_BUS_AUTO_RELEASE;
 	
 	if (I2C_ADDR_10_BITS & dev_config_raw) {
@@ -631,19 +690,17 @@ static int i2c_aspeed_configure(const struct device *dev,
 
 	switch (I2C_SPEED_GET(dev_config_raw)) {
 	case I2C_SPEED_STANDARD:
-		baudrate = KHZ(100);
+		data->bus_frequency = KHZ(100);
 		break;
 	case I2C_SPEED_FAST:
-		baudrate = KHZ(400);
+		data->bus_frequency = KHZ(400);
 		break;
 	case I2C_SPEED_FAST_PLUS:
-		baudrate = MHZ(1);
+		data->bus_frequency = MHZ(1);
 		break;
 	default:
 		return -EINVAL;
 	}
-
-	LOG_DBG("baudrate %d \n", baudrate);
 
 	//I2C Reset
 	sys_write32(0, i2c_base + AST_I2CC_FUN_CTRL);
@@ -682,21 +739,19 @@ static void aspeed_new_i2c_do_start(const struct device *dev)
 	struct i2c_aspeed_data *data = DEV_DATA(dev);
 	uint32_t i2c_base = DEV_BASE(dev);
 
-///
 	int i = 0;
 	int	xfer_len;
 	struct i2c_msg *msg = &data->msgs[data->msgs_index];
 	uint32_t cmd = AST_I2CM_PKT_EN | AST_I2CM_PKT_ADDR(data->addr) | AST_I2CM_START_CMD;
 
-#if 0
 	//send start
-	LOG_DBG("[%d] %sing %d byte%s %s 0x%02x\n",
-		data->msgs_index,
+	LOG_DBG("[%s]: [%d/%d] %sing %d byte%s %s 0x%02x\n",
+		dev->name, data->msgs_index, data->msgs_count,
 		msg->flags & I2C_MSG_READ ? "read" : "write",
 		msg->len, msg->len > 1 ? "s" : "",
 		msg->flags & I2C_MSG_READ ? "from" : "to",
 		data->addr);
-#endif
+
 	data->master_xfer_cnt = 0;
 	data->buf_index = 0;
 
@@ -721,12 +776,7 @@ static void aspeed_new_i2c_do_start(const struct device *dev)
 				}
 			}
 			sys_write32(AST_I2CM_SET_RX_DMA_LEN(xfer_len - 1), i2c_base + AST_I2CM_DMA_LEN);
-			LOG_DBG("TODO ====== \n");
-#if 0			
-			data->master_dma_addr = dma_map_single(data->dev, msg->buf,
-							msg->len, DMA_FROM_DEVICE);
-#endif
-			sys_write32(data->master_dma_addr, i2c_base + AST_I2CM_RX_DMA);
+			sys_write32((uint32_t)msg->buf, i2c_base + AST_I2CM_RX_DMA);
 		} else if (config->mode == BUFF_MODE) {
 			//buff mode
 			cmd |= AST_I2CM_RX_BUFF_EN;
@@ -764,7 +814,7 @@ static void aspeed_new_i2c_do_start(const struct device *dev)
 				xfer_len = ASPEED_I2C_DMA_SIZE;
 			} else {
 				if(data->msgs_index + 1 == data->msgs_count) {
-					LOG_DBG("with stop \n");
+					LOG_DBG("with P \n");
 					cmd |= AST_I2CM_STOP_CMD;
 				}
 				xfer_len = msg->len;
@@ -773,12 +823,7 @@ static void aspeed_new_i2c_do_start(const struct device *dev)
 			if(xfer_len) {
 				cmd |= AST_I2CM_TX_DMA_EN | AST_I2CM_TX_CMD;
 				sys_write32(AST_I2CM_SET_TX_DMA_LEN(xfer_len - 1), i2c_base + AST_I2CM_DMA_LEN);
-				LOG_DBG("TODO ====== \n");			
-#if 0				
-				data->master_dma_addr = dma_map_single(data->dev, msg->buf,
-								msg->len, DMA_TO_DEVICE);
-#endif
-				sys_write32(data->master_dma_addr, i2c_base + AST_I2CM_TX_DMA);
+				sys_write32((uint32_t)msg->buf, i2c_base + AST_I2CM_TX_DMA);
 			}
 		} else if (config->mode == BUFF_MODE) {
 			uint8_t wbuf[4];
@@ -847,14 +892,13 @@ static int i2c_aspeed_transfer(const struct device *dev, struct i2c_msg *msgs,
 			return ret;
 	}
 
-	LOG_DBG("i2c_aspeed_transfer addr %x\n", addr);
-	
+	data->addr = addr;
 	data->cmd_err = 0;
 	data->msgs = msgs;
 	data->msgs_index = 0;
 	data->msgs_count = num_msgs;
-	LOG_DBG("aspeed_new_i2c_do_msgs_xfer msg cnt %d \n", num_msgs);
 	k_sem_reset(&data->sync_sem);
+
 	aspeed_new_i2c_do_start(dev);
 	if (i2c_wait_completion(dev)) {
 		/*
@@ -867,7 +911,7 @@ static int i2c_aspeed_transfer(const struct device *dev, struct i2c_msg *msgs,
 		return -ETIMEDOUT;
 	}
 
-	LOG_DBG("%d end \n", data->cmd_err);
+	LOG_DBG(" end %d \n", data->cmd_err);
 
 	return data->cmd_err;
 
@@ -970,14 +1014,12 @@ int aspeed_i2c_master_irq(const struct device *dev)
 				LOG_DBG("M clear isr: AST_I2CM_NORMAL_STOP = %x\n", sts);
 //				sys_write32(AST_I2CM_NORMAL_STOP, i2c_base + AST_I2CM_ISR);
 				data->msgs_index++;
-				data->cmd_err = data->msgs_index;
 				k_sem_give(&data->sync_sem);
 				break;
 			case AST_I2CM_TX_ACK:
 //				LOG_DBG("M : AST_I2CM_TX_ACK = %x\n", sts);
 			case AST_I2CM_TX_ACK | AST_I2CM_NORMAL_STOP:
-				LOG_DBG("M : AST_I2CM_TX_ACK | AST_I2CM_NORMAL_STOP= %x\n", sts);
-
+				LOG_DBG("M : AST_I2CM_TX_ACK | AST_I2CM_NORMAL_STOP = %x\n", sts);
 				if (config->mode == DMA_MODE) {
 					xfer_len = AST_I2C_GET_TX_DMA_LEN(sys_read32(i2c_base + AST_I2CM_DMA_LEN_STS));
 				} else if (config->mode == BUFF_MODE) {
@@ -988,12 +1030,8 @@ int aspeed_i2c_master_irq(const struct device *dev)
 				data->master_xfer_cnt += xfer_len;
 
 				if (data->master_xfer_cnt == msg->len) {
-//					if (config->mode == DMA_MODE)
-//						dma_unmap_single(data->dev, data->master_dma_addr, msg->len, DMA_TO_DEVICE);
-
 					data->msgs_index++;
 					if(data->msgs_index == data->msgs_count) {
-						data->cmd_err = data->msgs_index;
 						k_sem_give(&data->sync_sem);
 					} else
 						aspeed_new_i2c_do_start(dev);
@@ -1078,17 +1116,14 @@ int aspeed_i2c_master_irq(const struct device *dev)
 
 				if (data->master_xfer_cnt == msg->len) {
 					//TODO dam unmap
-					LOG_DBG("TODO ===== \n");
-#if 0					
-					if (config->mode == DMA_MODE)
-						dma_unmap_single(data->dev, data->master_dma_addr, msg->len, DMA_FROM_DEVICE);
-#endif
+					LOG_DBG("TODO ===== cache \n");
+					/* Assure cache coherency after DMA write operation */
+					aspeed_cache_invalid_data((uint32_t)msg->buf, (uint32_t)msg->len);
 					for (i = 0; i < msg->len; i++) {
 							 LOG_DBG("M: r %d:[%x] \n", i, msg->buf[i]);
 					}
 					data->msgs_index++;
 					if(data->msgs_index == data->msgs_count) {
-						data->cmd_err = data->msgs_index;
 						k_sem_give(&data->sync_sem);
 					} else
 						aspeed_new_i2c_do_start(dev);
@@ -1108,7 +1143,8 @@ int aspeed_i2c_master_irq(const struct device *dev)
 						}
 						LOG_DBG("M: next rx len [%d/%d] , cmd %x	\n", xfer_len, msg->len, cmd);
 						sys_write32(AST_I2CM_SET_RX_DMA_LEN(xfer_len - 1), i2c_base + AST_I2CM_DMA_LEN);
-						sys_write32(data->master_dma_addr + data->master_xfer_cnt, i2c_base + AST_I2CM_RX_DMA);
+						LOG_DBG("TODO check addr dma addr %x \n", (uint32_t)msg->buf);
+						sys_write32((uint32_t) (msg->buf + data->master_xfer_cnt), i2c_base + AST_I2CM_RX_DMA);
 					} else if (config->mode == BUFF_MODE) {
 						cmd |= AST_I2CM_RX_BUFF_EN;
 						xfer_len = msg->len - data->master_xfer_cnt;
@@ -1505,7 +1541,6 @@ static void i2c_aspeed_isr(const struct device *dev)
 {
 	uint32_t i2c_base = DEV_BASE(dev);
 
-	LOG_DBG("i2c_aspeed_isr \n");
 	if(sys_read32(i2c_base + AST_I2CC_FUN_CTRL) & AST_I2CC_SLAVE_EN) {
 		if(aspeed_i2c_slave_irq(dev)) {
 			return;
@@ -1535,6 +1570,9 @@ static int i2c_aspeed_init(const struct device *dev)
 	config->multi_master = 0;
 	config->mode = DMA_MODE;
 	clock_control_get_rate(clock_dev, config->clk_id, &config->clk_src);
+
+	LOG_DBG("clk src %d, div mode %d, multi-master %d, xfer mode %d\n", 
+			config->clk_src, config->clk_div_mode, config->multi_master, config->mode);
 
 	bitrate_cfg = i2c_map_dt_bitrate(config->bitrate);
 
