@@ -15,8 +15,8 @@ LOG_MODULE_REGISTER(pimux_aspeed, LOG_LEVEL_DBG);
 
 #ifdef CONFIG_PINCTRL_STRING_NAME
 
-#define PIN_DEFINE(pin) \
-    [pin] = # pin,
+#define PIN_DEFINE(pin)	\
+	[pin] = # pin,
 const char *aspeed_pin_name[] =
 {
     #include "pin_def_list.h"
@@ -24,7 +24,7 @@ const char *aspeed_pin_name[] =
 #undef PIN_DEFINE
 
 #define FUN_DEFINE(fun, ...) \
-    [GET_FUN_ID(fun)] = # fun,
+	[GET_FUN_ID(fun)] = # fun,
 const char *aspeed_fun_name[] =
 {
     #include "fun_def_list.h"
@@ -32,7 +32,7 @@ const char *aspeed_fun_name[] =
 #undef FUN_DEFINE
 
 #define SIG_DEFINE(sig, ...) \
-    [sig] = # sig,
+	[sig] = # sig,
 const char *aspeed_sig_name[] =
 {
     #include "sig_def_list.h"
@@ -45,12 +45,12 @@ const char *aspeed_sig_name[] =
 #include "sig_def_list.h"
 #undef SIG_DEFINE
 
-#define FUN_DEFINE(fun, ... ) FUN_DECL(fun, __VA_ARGS__);
+#define FUN_DEFINE(fun, ...) FUN_DECL(fun, __VA_ARGS__);
 #include "fun_def_list.h"
 #undef FUN_DEFINE
 
-#define PIN_DEFINE(pin) \
-    [pin] = 0xffffffff,
+#define PIN_DEFINE(pin)	\
+	[pin] = 0xffffffff,
 uint32_t aspeed_pin_desc_table[] =
 {
     #include "pin_def_list.h"
@@ -58,7 +58,7 @@ uint32_t aspeed_pin_desc_table[] =
 #undef PIN_DEFINE
 
 #define SIG_DEFINE(sig, ...) \
-    [sig] = SIG_SYM_PTR(sig),
+	[sig] = SIG_SYM_PTR(sig),
 const struct aspeed_sig_desc *aspeed_sig_desc_table[] =
 {
 	#include "sig_def_list.h"
@@ -66,7 +66,7 @@ const struct aspeed_sig_desc *aspeed_sig_desc_table[] =
 #undef SIG_DEFINE
 
 #define FUN_DEFINE(fun, ...) \
-    [GET_FUN_ID(fun)] = FUN_SYM_PTR(fun),
+	[GET_FUN_ID(fun)] = FUN_SYM_PTR(fun),
 const struct aspeed_fun_desc *aspeed_fun_desc_table[] =
 {
 	#include "fun_def_list.h"
@@ -77,14 +77,16 @@ struct pinmux_aspeed_config {
 	uintptr_t base;
 };
 
-#define DEV_CFG(dev)					\
-	((const struct pinmux_aspeed_config * const)	\
+#define DEV_CFG(dev)				    \
+	((const struct pinmux_aspeed_config *const) \
 	 (dev)->config)
 
 /**
- * aspeed_pinctrl_pin_status() - get the signal id of the occupied pin
- * @pin_id: the pin id from pin_id.h
- * @return  if > 0 :signal id, -1: the pin is free, -2: pin id Invalid
+ * @brief Get the signal id of the occupied pin
+ * @param pin: Pin number.
+ * @param func: Pointer to a variable where signal id will be stored.
+ * @retval 0 If successful.
+ * @retval -EINVAL  Invalid pin.
  */
 static int pinmux_aspeed_get(const struct device *dev, uint32_t pin,
 			     uint32_t *func)
@@ -96,11 +98,13 @@ static int pinmux_aspeed_get(const struct device *dev, uint32_t pin,
 	*func = aspeed_pin_desc_table[pin];
 	return 0;
 }
+
 /**
- * aspeed_pinctrl_sig_request() - request the signal. If the pin of the signal
- * is free occupied it.
- * @sig_id: the signal id from sig_id.h
- * @return  hal status
+ * @brief Request the signal.
+ * @param pin: Pin number.
+ * @param func: Signal id which want to apply to the pin
+ * @retval 0 If successful.
+ * @retval -EINVAL  Invalid pin.
  */
 static int pinmux_aspeed_set(const struct device *dev, uint32_t pin,
 			     uint32_t func)
@@ -111,6 +115,7 @@ static int pinmux_aspeed_set(const struct device *dev, uint32_t pin,
 	uint32_t ret_sig_id;
 	int sig_en_number;
 	int sig_en_idx;
+
 	if (func >=
 	    sizeof(aspeed_sig_desc_table) / sizeof(aspeed_sig_desc_table[0])) {
 		return -EINVAL;
@@ -129,7 +134,7 @@ static int pinmux_aspeed_set(const struct device *dev, uint32_t pin,
 		aspeed_pin_desc_table[pin] = func;
 #ifdef CONFIG_PINCTRL_STRING_NAME
 		LOG_DBG("The pin %s is being occupied by signal %s\n",
-				 aspeed_pin_name[pin], aspeed_sig_name[func]);
+			aspeed_pin_name[pin], aspeed_sig_name[func]);
 #else
 		LOG_DBG("The pin %d is being occupied by signal %d\n", pin, func);
 #endif
@@ -152,32 +157,33 @@ static int pinmux_aspeed_set(const struct device *dev, uint32_t pin,
 	} else {
 #ifdef CONFIG_PINCTRL_STRING_NAME
 		LOG_ERR("Request %s to pin %s error: already occupied by signal %s\n",
-				  aspeed_sig_name[func], aspeed_pin_name[pin],
-				  aspeed_sig_name[ret_sig_id]);
+			aspeed_sig_name[func], aspeed_pin_name[pin],
+			aspeed_sig_name[ret_sig_id]);
 #else
 		LOG_ERR("Request %d to pin %d error: already occupied by signal %d\n",
-				  func, pin, ret_sig_id);
+			func, pin, ret_sig_id);
 #endif
 		return -EBUSY;
 	}
 }
 
 static int pinmux_aspeed_pullup(const struct device *dev,
-		uint32_t pin, uint8_t func)
+				uint32_t pin, uint8_t func)
 {
 	return -ENOTSUP;
 }
 
 static int pinmux_aspeed_input(const struct device *dev,
-		uint32_t pin, uint8_t func)
+			       uint32_t pin, uint8_t func)
 {
 	return -ENOTSUP;
 }
 
 /**
- * aspeed_pinctrl_fn_group_request() - request all of the signal in the function group.
- * @fun_id: the function group id from fun_id.h
- * @return  hal status
+ * @brief Request all of the signal in the function group.
+ * @param fun_id: Function group id.
+ * @retval 0 If successful.
+ * @retval -EINVAL  Invalid fun_id.
  */
 static int aspeed_pinctrl_fn_group_request(const struct device *dev, uint32_t fun_id)
 {
@@ -199,12 +205,13 @@ static int aspeed_pinctrl_fn_group_request(const struct device *dev, uint32_t fu
 		sig_desc = aspeed_sig_desc_table[sig_id];
 		ret |= pinmux_aspeed_set(dev, sig_desc->pin, sig_id);
 	}
-	return ret;
+	return 0;
 }
 
 static int pinmux_aspeed_init(const struct device *dev)
 {
 	uint32_t fun_id;
+
 	for (fun_id = 0; fun_id < MAX_FUN_ID; fun_id++) {
 		aspeed_pinctrl_fn_group_request(dev, fun_id);
 	}
@@ -224,6 +231,6 @@ static const struct pinmux_aspeed_config pinmux_aspeed_config = {
 
 
 DEVICE_DT_INST_DEFINE(0, &pinmux_aspeed_init, device_pm_control_nop,
-		    NULL, &pinmux_aspeed_config,
-		    PRE_KERNEL_1, CONFIG_PINMUX_INIT_PRIORITY,
-		    &pinmux_aspeed_driver_api);
+		      NULL, &pinmux_aspeed_config,
+		      PRE_KERNEL_1, CONFIG_PINMUX_INIT_PRIORITY,
+		      &pinmux_aspeed_driver_api);
