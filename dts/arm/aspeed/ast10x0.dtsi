@@ -6,6 +6,7 @@
 
 #include <arm/armv7-m.dtsi>
 #include <mem.h>
+#include <dt-bindings/i2c/i2c.h>
 #include <aspeed/ast10x0-irq.h>
 #include <dt-bindings/clock/ast1030_clock.h>
 #include <dt-bindings/reset/ast1030_reset.h>
@@ -166,6 +167,208 @@
 			interrupts = <INTR_UART13 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			status = "disabled";
 			label = "UART_12";
+		};
+
+		i2c_gr: i2c-global-regs@7e7b0000 {
+                	compatible = "aspeed,i2c-global";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x7e7b0000 0x20>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			resets = <&sysrst ASPEED_RESET_I2C>;
+			label = "I2C_GLOBAL";
+		};
+
+		i2c0: i2c@7e7b0080 {
+			compatible = "aspeed,i2c";
+			clock-frequency = <I2C_BITRATE_FAST>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x7e7b0080 0x80>;
+			interrupts = <110 0>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			status = "disabled";
+			label = "I2C_0";
+		};
+
+		i2c1: i2c@7e7b0100 {
+			compatible = "aspeed,i2c";
+			clock-frequency = <I2C_BITRATE_FAST>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x7e7b0100 0x80>;
+			interrupts = <111 0>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			status = "disabled";
+			label = "I2C_1";
+		};
+
+		i2c2: i2c@7e7b0180 {
+			compatible = "aspeed,i2c";
+			clock-frequency = <I2C_BITRATE_FAST>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x7e7b0180 0x80>;
+			interrupts = <112 0>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			status = "disabled";
+			label = "I2C_2";
+		};
+
+		i2c3: i2c@7e7b0200 {
+			compatible = "aspeed,i2c";
+			clock-frequency = <I2C_BITRATE_FAST>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x7e7b0200 0x80>;
+			interrupts = <113 0>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			status = "disabled";
+			label = "I2C_3";
+		};
+
+		i2c4: i2c@7e7b0280 {
+			compatible = "aspeed,i2c";
+			clock-frequency = <I2C_BITRATE_FAST>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x7e7b0280 0x80>;
+			interrupts = <114 0>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			status = "disabled";
+			label = "I2C_4";
+		};
+
+		i2c5: i2c@7e7b0300 {
+			compatible = "aspeed,i2c";
+			clock-frequency = <I2C_BITRATE_FAST>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x7e7b0300 0x80>;
+			interrupts = <115 0>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			status = "disabled";
+			label = "I2C_5";
+		};
+
+		i2c6: i2c@7e7b0380 {
+			compatible = "aspeed,i2c";
+			clock-frequency = <I2C_BITRATE_FAST>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x7e7b0380 0x80>;
+			interrupts = <116 0>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			status = "disabled";
+			label = "I2C_6";
+		};
+
+		i2c7: i2c@7e7b0400 {
+			compatible = "aspeed,i2c";
+			clock-frequency = <I2C_BITRATE_FAST>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x7e7b0400 0x80>;
+			interrupts = <117 0>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			status = "disabled";
+			label = "I2C_7";
+		};
+
+		i2c8: i2c@7e7b0480 {
+			compatible = "aspeed,i2c";
+			clock-frequency = <I2C_BITRATE_FAST>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x7e7b0480 0x80>;
+			interrupts = <118 0>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			status = "disabled";
+			label = "I2C_8";
+		};
+
+		i2c9: i2c@7e7b0500 {
+			compatible = "aspeed,i2c";
+			clock-frequency = <I2C_BITRATE_FAST>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x7e7b0500 0x80>;
+			interrupts = <119 0>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			status = "disabled";
+			label = "I2C_9";
+		};
+
+		i2c10: i2c@7e7b0580 {
+			compatible = "aspeed,i2c";
+			clock-frequency = <I2C_BITRATE_FAST>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x7e7b0580 0x80>;
+			interrupts = <120 0>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			status = "disabled";
+			label = "I2C_10";
+		};
+
+		i2c11: i2c@7e7b0600 {
+			compatible = "aspeed,i2c";
+			clock-frequency = <I2C_BITRATE_FAST>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x7e7b0600 0x80>;
+			interrupts = <121 0>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			status = "disabled";
+			label = "I2C_11";
+		};
+
+		i2c12: i2c@7e7b0680 {
+			compatible = "aspeed,i2c";
+			clock-frequency = <I2C_BITRATE_FAST>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x7e7b0680 0x80>;
+			interrupts = <122 0>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			status = "disabled";
+			label = "I2C_12";
+		};
+
+		i2c13: i2c@7e7b0700 {
+			compatible = "aspeed,i2c";
+			clock-frequency = <I2C_BITRATE_FAST>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x7e7b0700 0x80>;
+			interrupts = <123 0>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			status = "disabled";
+			label = "I2C_13";
+		};
+
+		i2c14: i2c@7e7b0780 {
+			compatible = "aspeed,i2c";
+			clock-frequency = <I2C_BITRATE_FAST>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x7e7b0780 0x80>;
+			interrupts = <124 0>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			status = "disabled";
+			label = "I2C_14";
+		};
+
+		i2c15: i2c@7e7b0800 {
+			compatible = "aspeed,i2c";
+			clock-frequency = <I2C_BITRATE_FAST>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x7e7b0800 0x80>;
+			interrupts = <125 0>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			status = "disabled";
+			label = "I2C_15";
 		};
 	};
 };
