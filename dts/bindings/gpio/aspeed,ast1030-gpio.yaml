@@ -1,0 +1,34 @@
+# Copyright (c) 2021 ASPEED
+# SPDX-License-Identifier: Apache-2.0
+
+description: ASPEED GPIO node
+
+compatible: "aspeed,ast1030-gpio"
+
+include: [gpio-controller.yaml, base.yaml]
+
+properties:
+    label:
+      required: true
+
+    ngpios:
+      required: true
+
+    gpio-reserved:
+      type: int
+      required: true
+      description: |
+          specify which GPIOs are unusable. 
+          If gpio 3, 4, 10 are reserved the value will be 0x418
+    
+    pin-offset:
+      type: int
+      required: true
+      description: Pin offset of this GPIO entry
+
+    "#gpio-cells":
+      const: 2
+
+gpio-cells:
+  - pin
+  - flags
