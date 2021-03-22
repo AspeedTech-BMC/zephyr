@@ -7,6 +7,7 @@
 #include <shell/shell.h>
 #include <stdlib.h>
 #include <drivers/i2c.h>
+#include <drivers/i2c/slave/eeprom.h>
 #include <string.h>
 #include <sys/util.h>
 #include <stdlib.h>
@@ -228,6 +229,44 @@ static int cmd_i2c_read(const struct shell *shell, size_t argc, char **argv)
 	return 0;
 }
 
+#ifdef CONFIG_I2C_EEPROM_SLAVE
+#define TEST_DATA_SIZE	20
+static const uint8_t eeprom_0_data[TEST_DATA_SIZE] = "0123456789abcdefghij";
+
+static int cmd_i2c_slave_attach(const struct shell *shell,
+			      size_t argc, char **argv)
+{
+	const struct device *dev, *slave_dev;
+
+	dev = device_get_binding(argv[1]);
+	if (!dev) {
+		shell_error(shell, "I2C: Device driver %s not found.",
+			    argv[1]);
+		return -ENODEV;
+	}
+
+	slave_dev = device_get_binding(argv[2]);
+	if (!slave_dev) {
+		shell_error(shell, "xx I2C: Slave Device driver %s not found.",
+			    argv[2]);
+		return -ENODEV;
+	}
+	
+	/* Program differentiable data into the two devices through a back door
+	 * that doesn't use I2C.
+	 */
+	if(eeprom_slave_program(slave_dev, eeprom_0_data, TEST_DATA_SIZE))
+		shell_error(shell, "I2C: Slave Device driver %s found.",slave_dev->name);
+
+	/* Attach each EEPROM to its owning bus as a slave device. */
+	if(i2c_slave_driver_register(slave_dev))
+		shell_error(shell, "I2C: Slave Device driver %s not found.",slave_dev->name);
+
+
+	return 0;
+}
+#endif
+
 static void device_name_get(size_t idx, struct shell_static_entry *entry);
 
 SHELL_DYNAMIC_CMD_CREATE(dsub_device_name, device_name_get);
@@ -259,6 +298,11 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_i2c_cmds,
 			       SHELL_CMD_ARG(write_byte, &dsub_device_name,
 					     "Write a byte to an I2C device",
 					     cmd_i2c_write_byte, 4, 1),
+#ifdef CONFIG_I2C_EEPROM_SLAVE					     
+			       SHELL_CMD_ARG(slave_attach, &dsub_device_name,
+					     "Attach slave device",
+					     cmd_i2c_slave_attach, 2, 1),
+#endif
 			       SHELL_SUBCMD_SET_END     /* Array terminated. */
 			       );
 
