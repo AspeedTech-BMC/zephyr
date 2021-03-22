@@ -269,6 +269,21 @@ static int gpio_aspeed_config(const struct device *dev,
 			      gpio_pin_t pin, gpio_flags_t flags)
 {
 	int ret;
+	uint32_t io_flags;
+
+	/* Does not support disconnected pin, and
+	 * not supporting both input/output at same time.
+	 */
+	io_flags = flags & (GPIO_INPUT | GPIO_OUTPUT);
+	if ((io_flags == GPIO_DISCONNECTED)
+	    || (io_flags == (GPIO_INPUT | GPIO_OUTPUT))) {
+		return -ENOTSUP;
+	}
+
+	/* Does not support pull-up/pull-down */
+	if ((flags & (GPIO_PULL_UP | GPIO_PULL_DOWN)) != 0U) {
+		return -ENOTSUP;
+	}
 
 	if (flags & GPIO_OUTPUT) {
 
