@@ -13,18 +13,11 @@ static int cb_cnt;
 static void callback(const struct device *dev,
 		     struct gpio_callback *gpio_cb, uint32_t pins)
 {
-	const struct drv_data *dd = CONTAINER_OF(gpio_cb,
-						 struct drv_data, gpio_cb);
-
 	/*= checkpoint: pins should be marked with correct pin number bit =*/
 	zassert_equal(pins, BIT(PIN_IN),
 		      "unexpected pins %x", pins);
 	++cb_cnt;
 	TC_PRINT("callback triggered: %d\n", cb_cnt);
-	if ((cb_cnt == 1)
-	    && (dd->mode == GPIO_INT_EDGE_BOTH)) {
-		gpio_pin_toggle(dev, PIN_OUT);
-	}
 	if (cb_cnt >= MAX_INT_CNT) {
 		gpio_pin_set(dev, PIN_OUT, 0);
 		gpio_pin_interrupt_configure(dev, PIN_IN, GPIO_INT_DISABLE);
@@ -84,6 +77,10 @@ static int test_callback(int mode)
 	k_sleep(K_MSEC(100));
 	gpio_pin_set(dev, PIN_OUT, 1);
 	k_sleep(K_MSEC(1000));
+	if (mode == GPIO_INT_EDGE_BOTH) {
+		gpio_pin_toggle(dev, PIN_OUT);
+		k_sleep(K_MSEC(1000));
+	}
 	(void)gpio_pin_interrupt_configure(dev, PIN_IN, GPIO_INT_DISABLE);
 
 	/*= checkpoint: check callback is triggered =*/
