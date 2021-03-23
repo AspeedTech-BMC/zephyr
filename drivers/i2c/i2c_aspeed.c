@@ -507,6 +507,7 @@ static struct ast_i2c_timing_table aspeed_old_i2c_timing_table[] = {
 #define ICACHE_CLEAN			BIT(2)
 #define DCACHE_CLEAN			BIT(1)
 #define CACHE_EANABLE			BIT(0)
+#if 0
 
 static uint32_t get_n_cacheline(uint32_t addr, uint32_t size, uint32_t *p_head)
 {
@@ -524,14 +525,16 @@ static uint32_t get_n_cacheline(uint32_t addr, uint32_t size, uint32_t *p_head)
 
 	return n;
 }
-
+#endif
 void aspeed_cache_invalid_data(uint32_t addr, uint32_t size)
 {
+#if 0
 	uint32_t aligned_addr, i, n;
 
 	n = get_n_cacheline(addr, size, &aligned_addr);
 
 	LOG_DBG("addr %x, size %d n: %d\n", addr, size, n);
+	sys_read32((uint32_t)(0x70000));
 
 	for (i = 0; i < n; i++) {
 		sys_write32(DCACHE_INVALID(aligned_addr), SCU_BASE + CACHE_INVALID_REG);
@@ -541,6 +544,12 @@ void aspeed_cache_invalid_data(uint32_t addr, uint32_t size)
 
 	/* issue a non-cached data access to flush the prefetch buffer */
 	sys_read32((uint32_t)(0x70000));
+	sys_read32((uint32_t)(addr | 0x10000));
+#else
+	sys_write32(sys_read32(SCU_BASE + 0xa58) & ~0x2, SCU_BASE + 0xa58);
+	sys_write32(sys_read32(SCU_BASE + 0xa58) | 0x2, SCU_BASE + 0xa58);
+#endif
+
 }
 
 static uint32_t i2c_aspeed_select_clock(const struct device *dev)
@@ -1118,7 +1127,6 @@ int aspeed_i2c_master_irq(const struct device *dev)
 
 				if (data->master_xfer_cnt == msg->len) {
 					//TODO dma unmap
-					LOG_DBG("TODO ===== cache \n");
 					/* Assure cache coherency after DMA write operation */
 					aspeed_cache_invalid_data((uint32_t)msg->buf, (uint32_t)msg->len);
 					for (i = 0; i < msg->len; i++) {
