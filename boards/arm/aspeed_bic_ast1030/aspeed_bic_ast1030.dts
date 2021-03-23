@@ -39,6 +39,18 @@
 
 &i2c0 {
 	status = "okay";
+
+	eeprom@40 {
+		compatible = "atmel,at24";
+		reg = <0x40>;
+		label = "EEPROM_SLAVE_0";
+		size = <256>;
+		pagesize = <16>;
+		address-width = <8>;
+		timeout = <5>;
+		status = "okay";
+	};
+
 };
 
 &i2c1 {
