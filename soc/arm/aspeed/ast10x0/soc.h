@@ -30,3 +30,7 @@
 #define NON_CACHED_BSS_ALIGN16	__attribute__((aligned(16)))
 #endif /* end of "#if (CONFIG_SRAM_NC_SIZE > 0)" */
 #endif /* ZEPHYR_SOC_ARM_ASPEED_AST10X0_SOC_H_*/
+
+#define PHY_SRAM_ADDR		0x80000000UL
+#define TO_PHY_ADDR(addr)	(PHY_SRAM_ADDR + (uint32_t)(addr))
+#define TO_VIR_ADDR(addr)	((uint32_t)(addr) - PHY_SRAM_ADDR)
