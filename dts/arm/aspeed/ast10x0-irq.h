@@ -19,6 +19,8 @@
 #define INTR_GPIO			11
 #define INTR_SCU			12
 
+#define INTR_ESPI			42
+
 #define INTR_UART1			47
 #define INTR_UART2			48
 #define INTR_UART3			49

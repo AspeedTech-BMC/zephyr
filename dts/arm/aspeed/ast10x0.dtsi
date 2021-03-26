@@ -248,7 +248,7 @@
 		};
 
 		i2c_gr: i2c-global-regs@7e7b0000 {
-                	compatible = "aspeed,i2c-global";
+			compatible = "aspeed,i2c-global";
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0x7e7b0000 0x20>;
@@ -447,6 +447,14 @@
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			status = "disabled";
 			label = "I2C_15";
+		};
+
+		espi: espi@7e6ee000 {
+			compatible = "aspeed,espi";
+			reg = <0x7e6ee000 0x800>;
+			interrupts = <INTR_ESPI AST10X0_IRQ_DEFAULT_PRIORITY>;
+			status = "disabled";
+			label = "ESPI";
 		};
 	};
 };

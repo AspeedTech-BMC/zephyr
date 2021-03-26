@@ -76,3 +76,16 @@
 &i2c6 {
 	status = "okay";
 };
+
+&espi {
+	status = "okay";
+
+	perif,dma-mode;
+	perif,memcyc-src-addr = <0x98000000>;
+	perif,memcyc-size = <0x10000>;
+
+	oob,dma-mode;
+
+	flash,dma-mode;
+	flash,safs-mode = <0x1>;
+};
