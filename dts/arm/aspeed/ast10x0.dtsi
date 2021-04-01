@@ -143,6 +143,16 @@
 					pin-offset = <160>;
 			};
 		};
+		peci: peci@7e78b000 {
+			compatible = "aspeed,ast1030-peci";
+			reg = <0x7e78b000 0x100>;
+			interrupts = <38 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_HCLK>;
+			resets = <&sysrst ASPEED_RESET_PECI>;
+			label = "PECI";
+			#address-cells = <1>;
+			#size-cells = <0>;
+		};
 		uart0: serial@7e783000 {
 			compatible = "ns16550";
 			reg = <0x7e783000 0x1000>;
