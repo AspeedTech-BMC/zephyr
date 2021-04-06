@@ -363,7 +363,7 @@ int gpio_aspeed_init(const struct device *dev)
 	DEVICE_DT_INST_DEFINE(inst, gpio_aspeed_init, device_pm_control_nop,				      \
 			      &gpio_aspeed_data_##inst,							      \
 			      &gpio_aspeed_cfg_##inst, POST_KERNEL,					      \
-			      CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,					      \
+			      CONFIG_GPIO_ASPEED_INIT_PRIORITY,						      \
 			      &gpio_aspeed_driver);
 
 DT_INST_FOREACH_STATUS_OKAY(ASPEED_GPIO_DEVICE_INIT)

@@ -6,3 +6,10 @@ config GPIO_ASPEED
 	depends on SOC_FAMILY_ASPEED
 	help
 	  Enable config options to support the ASPEED GPIO controllers.
+
+config GPIO_ASPEED_INIT_PRIORITY
+	int "Init priority"
+	depends on GPIO_ASPEED
+	default 60
+	help
+	  Device driver initialization priority.
