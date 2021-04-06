@@ -270,6 +270,7 @@ static int peci_aspeed_transfer(const struct device *dev, struct peci_msg *msg)
 	if (ret != BIT(PECI_INT_CMD_DONE)) {
 		if (ret < 0) {
 			if (ret == osFlagsErrorTimeout) {
+				osEventFlagsDelete(peci_data->evt_id);
 				peci_aspeed_init(dev);
 				peci_aspeed_configure(dev,
 						      DEV_DATA(dev)->freq);
