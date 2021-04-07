@@ -159,8 +159,8 @@ static int peci_aspeed_configure(const struct device *dev, uint32_t bitrate)
 	 * After that all of the signal will follow this rate tbit-a == tbit-m.
 	 */
 	timing_negotiation.value = peci_register->timing_negotiation.value;
-	timing_negotiation.fields.message_timing_negotiation = msg_timing;
-	timing_negotiation.fields.address_timing_negotiation = addr_timing;
+	timing_negotiation.fields.tbit_a_2_and_tbit_m = msg_timing;
+	timing_negotiation.fields.tbit_a_1 = addr_timing;
 	peci_register->timing_negotiation.value = timing_negotiation.value;
 
 	control.value = peci_register->control.value;
@@ -282,9 +282,12 @@ static int peci_aspeed_transfer(const struct device *dev, struct peci_msg *msg)
 			if (ret & BIT(PECI_INT_W_FCS_ABORT)) {
 				LOG_ERR("FCS Abort\n");
 				return -EOPNOTSUPP;
+			} else if (ret & BIT(PECI_INT_W_FCS_BAD)) {
+				LOG_ERR("FCS Bad\n");
+				return -EILSEQ;
 			}
-			LOG_ERR("No valid response: 0x%08x!\n", ret);
 		}
+		LOG_ERR("No valid response: 0x%08x!\n", ret);
 		return -EIO;
 	}
 #else
@@ -345,7 +348,7 @@ static const struct peci_driver_api peci_aspeed_driver = {
 	DEVICE_DT_INST_DEFINE(inst, peci_aspeed_init, device_pm_control_nop,	     \
 			      &peci_aspeed_data_##inst,				     \
 			      &peci_aspeed_cfg_##inst, POST_KERNEL,		     \
-			      CONFIG_PECI_INIT_PRIORITY,		     \
+			      CONFIG_PECI_INIT_PRIORITY,			     \
 			      &peci_aspeed_driver);
 
 DT_INST_FOREACH_STATUS_OKAY(ASPEED_PECI_DEVICE_INIT)

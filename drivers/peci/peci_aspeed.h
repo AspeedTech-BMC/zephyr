@@ -33,9 +33,9 @@ typedef union {
 typedef union {
 	volatile uint32_t value;
 	struct {
-		volatile uint32_t address_timing_negotiation : 8;       /*[0-7]*/
-		volatile uint32_t message_timing_negotiation : 8;       /*[8-15]*/
-		volatile uint32_t : 16;                                 /*[16-31]*/
+		volatile uint32_t tbit_a_1 : 8;                 /*[0-7]*/
+		volatile uint32_t tbit_a_2_and_tbit_m : 8;      /*[8-15]*/
+		volatile uint32_t : 16;                         /*[16-31]*/
 
 	} fields;
 } timing_negotiation_register_t; /* 0x00000004 */
