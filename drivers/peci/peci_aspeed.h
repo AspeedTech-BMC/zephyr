@@ -147,24 +147,24 @@ typedef struct {
  * PECI macro
  *********************************************************/
 /* ASPEED_PECI_INT_CTRL/STS - 0x18/0x1c : Interrupt Register */
-typedef enum {
+enum {
 	PECI_INT_CMD_DONE = 0,
 	PECI_INT_W_FCS_ABORT,
 	PECI_INT_W_FCS_BAD,
 	PECI_INT_CONNECT,
 	PECI_INT_TIMEOUT,
 	PECI_INT_TYPE_NUM,
-} peci_int_id_t;
+};
 
-typedef enum {
+enum {
 	PECI_WFCS = 0,
 	PECI_RFCS,
-} peci_fcs_t;
+};
 
-typedef enum {
+enum {
 	ASPEED_PECI_CLK_SOURCE_OSC_25M = 0,
 	ASPEED_PECI_CLK_SOURCE_HCLK,
-} peci_clk_sel_t;
+};
 
 /* Bus Frequency */
 #define ASPEED_PECI_BUS_FREQ_MAX        2000000
