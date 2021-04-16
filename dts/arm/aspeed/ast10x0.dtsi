@@ -143,6 +143,7 @@
 					pin-offset = <160>;
 			};
 		};
+
 		peci: peci@7e78b000 {
 			compatible = "aspeed,ast1030-peci";
 			reg = <0x7e78b000 0x100>;
@@ -153,106 +154,198 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 		};
+
 		uart0: serial@7e783000 {
-			compatible = "ns16550";
+			compatible = "aspeed,uart";
 			reg = <0x7e783000 0x1000>;
 			interrupts = <INTR_UART1 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_UART1>;
+			dma = <0>;
+			dma,channel = <2>;
+			virtual = <0>;
+			virtual,port = <0>;
+			virtual,sirq = <0>;
+			virtual,sirq-polarity = <0>;
 			status = "disabled";
 			label = "UART_0";
 		};
 
 		uart1: serial@7e78d000 {
-			compatible = "ns16550";
+			compatible = "aspeed,uart";
 			reg = <0x7e78d000 0x100>;
 			interrupts = <INTR_UART2 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_UART2>;
+			dma = <0>;
+			dma,channel = <2>;
+			virtual = <0>;
+			virtual,port = <0>;
+			virtual,sirq = <0>;
+			virtual,sirq-polarity = <0>;
 			status = "disabled";
 			label = "UART_1";
 		};
 
 		uart2: serial@7e78e000 {
-			compatible = "ns16550";
+			compatible = "aspeed,uart";
 			reg = <0x7e78e000 0x100>;
 			interrupts = <INTR_UART3 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_UART3>;
+			dma = <0>;
+			dma,channel = <2>;
+			virtual = <0>;
+			virtual,port = <0>;
+			virtual,sirq = <0>;
+			virtual,sirq-polarity = <0>;
 			status = "disabled";
 			label = "UART_2";
 		};
 
 		uart3: serial@7e78f000 {
-			compatible = "ns16550";
+			compatible = "aspeed,uart";
 			reg = <0x7e78f000 0x100>;
 			interrupts = <INTR_UART4 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_UART4>;
+			dma = <0>;
+			dma,channel = <0>;
+			virtual = <0>;
+			virtual,port = <0>;
+			virtual,sirq = <0>;
+			virtual,sirq-polarity = <0>;
 			status = "disabled";
 			label = "UART_3";
 		};
 
 		uart4: serial@7e784000 {
-			compatible = "ns16550";
+			compatible = "aspeed,uart";
 			reg = <0x7e784000 0x1000>;
 			interrupts = <INTR_UART5 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_UART5>;
+			dma = <0>;
+			dma,channel = <0>;
+			virtual = <0>;
+			virtual,port = <0>;
+			virtual,sirq = <0>;
+			virtual,sirq-polarity = <0>;
 			status = "disabled";
 			label = "UART_4";
 		};
 
 		uart5: serial@7e790000 {
-			compatible = "ns16550";
+			compatible = "aspeed,uart";
 			reg = <0x7e790000 0x100>;
 			interrupts = <INTR_UART6 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_UART6>;
+			dma = <0>;
+			dma,channel = <0>;
+			virtual = <0>;
+			virtual,port = <0>;
+			virtual,sirq = <0>;
+			virtual,sirq-polarity = <0>;
 			status = "disabled";
 			label = "UART_5";
 		};
 
 		uart6: serial@7e790100 {
-			compatible = "ns16550";
+			compatible = "aspeed,uart";
 			reg = <0x7e790100 0x100>;
 			interrupts = <INTR_UART7 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_UART7>;
+			dma = <0>;
+			dma,channel = <0>;
+			virtual = <0>;
+			virtual,port = <0>;
+			virtual,sirq = <0>;
+			virtual,sirq-polarity = <0>;
 			status = "disabled";
 			label = "UART_6";
 		};
 
 		uart7: serial@7e790200 {
-			compatible = "ns16550";
+			compatible = "aspeed,uart";
 			reg = <0x7e790200 0x100>;
 			interrupts = <INTR_UART8 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_UART8>;
+			dma = <0>;
+			dma,channel = <0>;
+			virtual = <0>;
+			virtual,port = <0>;
+			virtual,sirq = <0>;
+			virtual,sirq-polarity = <0>;
 			status = "disabled";
 			label = "UART_7";
 		};
 
 		uart8: serial@7e790300 {
-			compatible = "ns16550";
+			compatible = "aspeed,uart";
 			reg = <0x7e790300 0x100>;
 			interrupts = <INTR_UART9 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_UART9>;
+			dma = <0>;
+			dma,channel = <0>;
+			virtual = <0>;
+			virtual,port = <0>;
+			virtual,sirq = <0>;
+			virtual,sirq-polarity = <0>;
 			status = "disabled";
 			label = "UART_8";
 		};
 
 		uart9: serial@7e790400 {
-			compatible = "ns16550";
+			compatible = "aspeed,uart";
 			reg = <0x7e790400 0x100>;
 			interrupts = <INTR_UART10 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_UART10>;
+			dma = <0>;
+			dma,channel = <0>;
+			virtual = <0>;
+			virtual,port = <0>;
+			virtual,sirq = <0>;
+			virtual,sirq-polarity = <0>;
 			status = "disabled";
 			label = "UART_9";
 		};
 
 		uart10: serial@7e790500 {
-			compatible = "ns16550";
+			compatible = "aspeed,uart";
 			reg = <0x7e790500 0x100>;
 			interrupts = <INTR_UART11 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_UART11>;
+			dma = <0>;
+			dma,channel = <0>;
+			virtual = <0>;
+			virtual,port = <0>;
+			virtual,sirq = <0>;
+			virtual,sirq-polarity = <0>;
 			status = "disabled";
 			label = "UART_10";
 		};
 
 		uart11: serial@7e790600 {
-			compatible = "ns16550";
+			compatible = "aspeed,uart";
 			reg = <0x7e790600 0x100>;
 			interrupts = <INTR_UART12 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_UART12>;
+			dma = <0>;
+			dma,channel = <0>;
+			virtual = <0>;
+			virtual,port = <0>;
+			virtual,sirq = <0>;
+			virtual,sirq-polarity = <0>;
 			status = "disabled";
 			label = "UART_11";
 		};
 
 		uart12: serial@7e790700 {
-			compatible = "ns16550";
+			compatible = "aspeed,uart";
 			reg = <0x7e790700 0x100>;
 			interrupts = <INTR_UART13 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_UART13>;
+			dma = <0>;
+			dma,channel = <0>;
+			virtual = <0>;
+			virtual,port = <0>;
+			virtual,sirq = <0>;
+			virtual,sirq-polarity = <0>;
 			status = "disabled";
 			label = "UART_12";
 		};
