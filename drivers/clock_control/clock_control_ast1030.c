@@ -57,6 +57,9 @@ static int aspeed_clock_control_get_rate(
 	case ASPEED_CLK_UART13:
 		*rate = 24000000 / 13;
 		break;
+	case ASPEED_CLK_APB1:
+		*rate = 50000000;
+		break;
 	default:
 		LOG_ERR("Missing feature define for %d!", clk_id);
 		break;
