@@ -42,6 +42,21 @@ static int aspeed_clock_control_get_rate(
 	case ASPEED_CLK_PCLK:
 		*rate = 50000000;
 		break;
+	case ASPEED_CLK_UART1:
+	case ASPEED_CLK_UART2:
+	case ASPEED_CLK_UART3:
+	case ASPEED_CLK_UART4:
+	case ASPEED_CLK_UART5:
+	case ASPEED_CLK_UART6:
+	case ASPEED_CLK_UART7:
+	case ASPEED_CLK_UART8:
+	case ASPEED_CLK_UART9:
+	case ASPEED_CLK_UART10:
+	case ASPEED_CLK_UART11:
+	case ASPEED_CLK_UART12:
+	case ASPEED_CLK_UART13:
+		*rate = 24000000 / 13;
+		break;
 	default:
 		LOG_ERR("Missing feature define for %d!", clk_id);
 		break;
