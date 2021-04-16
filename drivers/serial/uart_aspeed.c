@@ -269,17 +269,18 @@ static int uart_aspeed_init(const struct device *dev)
 
 	uart_dma_init(dev);
 
-	uart_cfg->baudrate = 115200;
-	uart_cfg->parity = UART_CFG_PARITY_NONE;
-	uart_cfg->stop_bits = UART_CFG_STOP_BITS_1;
-	uart_cfg->data_bits = UART_CFG_DATA_BITS_8;
-	uart_cfg->flow_ctrl = UART_CFG_FLOW_CTRL_NONE;
+	if (!dev_cfg->virt) {
+		uart_cfg->baudrate = 115200;
+		uart_cfg->parity = UART_CFG_PARITY_NONE;
+		uart_cfg->stop_bits = UART_CFG_STOP_BITS_1;
+		uart_cfg->data_bits = UART_CFG_DATA_BITS_8;
+		uart_cfg->flow_ctrl = UART_CFG_FLOW_CTRL_NONE;
 
-	if (!dev_cfg->virt)
 		return uart_aspeed_configure(dev, uart_cfg);
+	}
 
 	sys_write32((dev_cfg->virt_port >> 0), dev_cfg->base + VUART_ADDRL);
-	sys_write32((dev_cfg->virt_port >> 0), dev_cfg->base + VUART_ADDRH);
+	sys_write32((dev_cfg->virt_port >> 8), dev_cfg->base + VUART_ADDRH);
 
 	reg = sys_read32(dev_cfg->base + VUART_GCRB);
 	reg &= ~VUART_GCRB_HOST_SIRQ_MASK;
@@ -289,7 +290,7 @@ static int uart_aspeed_init(const struct device *dev)
 	reg = sys_read32(dev_cfg->base + VUART_GCRA) |
 	      VUART_GCRA_DISABLE_HOST_TX_DISCARD |
 	      VUART_GCRA_VUART_EN |
-	      (dev_cfg->virt_sirq_pol) ? VUART_GCRA_SIRQ_POLARITY : 0;
+	      ((dev_cfg->virt_sirq_pol) ? VUART_GCRA_SIRQ_POLARITY : 0);
 	sys_write32(reg, dev_cfg->base + VUART_GCRA);
 
 	return 0;
