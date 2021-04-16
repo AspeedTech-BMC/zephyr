@@ -36,4 +36,7 @@
 #define INTR_UART12			63
 #define INTR_UART13			64
 
+#define INTR_VUART1			147
+#define INTR_VUART2			148
+
 #endif /* #ifndef _AST10X0_IRQ_H_ */

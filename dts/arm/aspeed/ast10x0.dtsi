@@ -350,6 +350,36 @@
 			label = "UART_12";
 		};
 
+		vuart0: serial@7e787000 {
+			compatible = "aspeed,uart";
+			reg = <0x7e787000 0x100>;
+			interrupts = <INTR_VUART1 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_APB1>;
+			dma = <0>;
+			dma,channel = <12>;
+			virtual = <1>;
+			virtual,port = <0x3f8>;
+			virtual,sirq = <4>;
+			virtual,sirq-polarity = <0>;
+			status = "disabled";
+			label = "VUART_0";
+		};
+
+		vuart1: serial@7e788000 {
+			compatible = "aspeed,uart";
+			reg = <0x7e788000 0x100>;
+			interrupts = <INTR_VUART2 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_APB1>;
+			dma = <0>;
+			dma,channel = <13>;
+			virtual = <1>;
+			virtual,port = <0x2f8>;
+			virtual,sirq = <3>;
+			virtual,sirq-polarity = <0>;
+			status = "disabled";
+			label = "VUART_1";
+		};
+
 		i2c_gr: i2c-global-regs@7e7b0000 {
 			compatible = "aspeed,i2c-global";
 			#address-cells = <1>;
