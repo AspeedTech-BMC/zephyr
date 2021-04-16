@@ -1,0 +1,330 @@
+/*
+ * Copyright (c) 2021 ASPEED
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+#define DT_DRV_COMPAT aspeed_uart
+
+#include <device.h>
+#include <kernel.h>
+#include <soc.h>
+#include <errno.h>
+#include <string.h>
+#include <logging/log.h>
+#include <drivers/uart.h>
+#include <drivers/clock_control.h>
+LOG_MODULE_REGISTER(uart, LOG_LEVEL_ERR);
+
+/* UART registers */
+#define UART_THR 0x00  /* Transmitter holding reg.       */
+#define UART_RDR 0x00  /* Receiver data reg.             */
+#define UART_DLL 0x00  /* Baud rate divisor (LSB)        */
+#define UART_DLH 0x04  /* Baud rate divisor (MSB)        */
+#define UART_IER 0x04  /* Interrupt enable reg.          */
+#define UART_IIR 0x08  /* Interrupt ID reg.              */
+#define UART_FCR 0x08  /* FIFO control reg.              */
+#define UART_LCR 0x0c  /* Line control reg.              */
+#define UART_MDC 0x10  /* Modem control reg.             */
+#define UART_LSR 0x14  /* Line status reg.               */
+#define UART_MSR 0x18  /* Modem status reg.              */
+
+/* UART_FCR */
+#define UART_FCR_TRIG_MASK	GENMASK(7, 6)
+#define UART_FCR_TRIG_SHIFT	6
+#define UART_FCR_TX_RST		BIT(2)
+#define UART_FCR_RX_RST		BIT(1)
+#define UART_FCR_EN		BIT(0)
+
+/* UART_LCR */
+#define UART_LCR_DLAB		BIT(7)
+#define UART_LCR_PARITY_MODE	BIT(4)
+#define UART_LCR_PARITY_EN	BIT(3)
+#define UART_LCR_STOP		BIT(2)
+#define UART_LCR_CLS_MASK	GENMASK(1, 0)
+#define UART_LCR_CLS_SHIFT	0
+
+/* UART_LSR */
+#define UART_LSR_TEMT	BIT(6)
+#define UART_LSR_THRE	BIT(5)
+#define UART_LSR_BI	BIT(4)
+#define UART_LSR_FE	BIT(3)
+#define UART_LSR_PE	BIT(2)
+#define UART_LSR_OE	BIT(1)
+#define UART_LSR_DR	BIT(0)
+
+/* VUART registers */
+#define VUART_GCRA	0x20
+#define VUART_GCRB	0x24
+#define VUART_ADDRL	0x28
+#define VUART_ADDRH	0x2c
+
+/* VUART_GCRA */
+#define VUART_GCRA_DISABLE_HOST_TX_DISCARD	BIT(5)
+#define VUART_GCRA_SIRQ_POLARITY		BIT(1)
+#define VUART_GCRA_VUART_EN			BIT(0)
+
+/* VUART_GCRB */
+#define VUART_GCRB_HOST_SIRQ_MASK		GENMASK(7, 4)
+#define VUART_GCRB_HOST_SIRQ_SHIFT		4
+
+struct uart_aspeed_config {
+	uint32_t dev_idx;
+
+	uintptr_t base;
+	const clock_control_subsys_t clk_id;
+
+	bool virt;
+	uint32_t virt_port;
+	uint32_t virt_sirq;
+	uint32_t virt_sirq_pol;
+
+	bool dma;
+	uint32_t dma_ch;
+};
+
+struct uart_aspeed_data {
+	struct k_spinlock lock;
+
+	struct uart_config uart_cfg;
+
+	uint8_t *tx_rb;
+	uintptr_t tx_rb_addr;
+	uint8_t *rx_rb;
+	uintptr_t rx_rb_addr;
+};
+
+static int uart_aspeed_poll_in(const struct device *dev, unsigned char *c)
+{
+	int rc = -1;
+	struct uart_aspeed_data *data = (struct uart_aspeed_data *)dev->data;
+	struct uart_aspeed_config *dev_cfg = (struct uart_aspeed_config *)dev->config;
+
+	k_spinlock_key_t key = k_spin_lock(&data->lock);
+
+	if (sys_read32(dev_cfg->base + UART_LSR) & UART_LSR_DR) {
+		*c = (unsigned char)sys_read32(dev_cfg->base + UART_RDR);
+		rc = 0;
+	}
+
+	k_spin_unlock(&data->lock, key);
+
+	return rc;
+}
+
+static void uart_aspeed_poll_out(const struct device *dev,
+					   unsigned char c)
+{
+	struct uart_aspeed_data *data = (struct uart_aspeed_data *)dev->data;
+	struct uart_aspeed_config *dev_cfg = (struct uart_aspeed_config *)dev->config;
+
+	k_spinlock_key_t key = k_spin_lock(&data->lock);
+
+	while (!(sys_read32(dev_cfg->base + UART_LSR) & UART_LSR_TEMT));
+
+	sys_write32(c, dev_cfg->base + UART_THR);
+
+	k_spin_unlock(&data->lock, key);
+}
+
+static int uart_aspeed_err_check(const struct device *dev)
+{
+	int check;
+	struct uart_aspeed_data *data = (struct uart_aspeed_data *)dev->data;
+	struct uart_aspeed_config *dev_cfg = (struct uart_aspeed_config *)dev->config;
+
+	k_spinlock_key_t key = k_spin_lock(&data->lock);
+
+	check = sys_read32(dev_cfg->base + UART_LSR) &
+		(UART_LSR_BI | UART_LSR_FE | UART_LSR_PE | UART_LSR_OE | UART_LSR_DR);
+
+	k_spin_unlock(&data->lock, key);
+
+	return (check >> 1);
+}
+
+static int uart_aspeed_configure(const struct device *dev,
+				  const struct uart_config *uart_cfg)
+{
+	int rc = 0;
+	uint32_t reg;
+	uint32_t clk_rate, divisor;
+	k_spinlock_key_t key;
+	struct uart_aspeed_data *data = (struct uart_aspeed_data *)dev->data;
+	struct uart_aspeed_config *dev_cfg = (struct uart_aspeed_config *)dev->config;
+
+	if (dev_cfg->virt)
+		return 0;
+
+	key = k_spin_lock(&data->lock);
+
+	/* set divisor for baudrate */
+	clock_control_get_rate(device_get_binding(ASPEED_CLK_CTRL_NAME),
+			dev_cfg->clk_id, &clk_rate);
+	divisor = clk_rate / (16 * uart_cfg->baudrate);
+
+	reg = sys_read32(dev_cfg->base + UART_LCR);
+	reg |= UART_LCR_DLAB;
+	sys_write32(reg, dev_cfg->base + UART_LCR);
+
+	sys_write32(divisor & 0xf, dev_cfg->base + UART_DLL);
+	sys_write32(divisor >> 8, dev_cfg->base + UART_DLH);
+
+	reg &= ~(UART_LCR_DLAB | UART_LCR_CLS_MASK | UART_LCR_STOP);
+
+	switch (uart_cfg->data_bits) {
+	case UART_CFG_DATA_BITS_5:
+		reg |= ((0x0 << UART_LCR_CLS_SHIFT) & UART_LCR_CLS_MASK);
+		break;
+	case UART_CFG_DATA_BITS_6:
+		reg |= ((0x1 << UART_LCR_CLS_SHIFT) & UART_LCR_CLS_MASK);
+		break;
+	case UART_CFG_DATA_BITS_7:
+		reg |= ((0x2 << UART_LCR_CLS_SHIFT) & UART_LCR_CLS_MASK);
+		break;
+	case UART_CFG_DATA_BITS_8:
+		reg |= ((0x3 << UART_LCR_CLS_SHIFT) & UART_LCR_CLS_MASK);
+		break;
+	default:
+		rc = -ENOTSUP;
+		goto out;
+	}
+
+	switch (uart_cfg->stop_bits) {
+	case UART_CFG_STOP_BITS_1:
+		reg &= ~(UART_LCR_STOP);
+		break;
+	case UART_CFG_STOP_BITS_2:
+		reg |= UART_LCR_STOP;
+		break;
+	default:
+		rc = -ENOTSUP;
+		goto out;
+	}
+
+	switch (uart_cfg->parity) {
+	case UART_CFG_PARITY_NONE:
+		reg &= ~(UART_LCR_PARITY_EN);
+		break;
+	case UART_CFG_PARITY_ODD:
+		reg |= UART_LCR_PARITY_EN;
+		break;
+	case UART_CFG_PARITY_EVEN:
+		reg |= (UART_LCR_PARITY_EN | UART_LCR_PARITY_MODE);
+		break;
+	default:
+		rc = -ENOTSUP;
+		goto out;
+	}
+
+	sys_write32(reg, dev_cfg->base + UART_LCR);
+
+	/*
+	 * enable FIFO
+	 */
+	reg = ((0x2 << UART_FCR_TRIG_SHIFT) & UART_FCR_TRIG_MASK) |
+	      UART_FCR_TX_RST |
+	      UART_FCR_RX_RST |
+	      UART_FCR_EN;
+	sys_write32(reg, dev_cfg->base + UART_FCR);
+
+	data->uart_cfg = *uart_cfg;
+out:
+	k_spin_unlock(&data->lock, key);
+
+	return rc;
+};
+
+static int uart_aspeed_config_get(const struct device *dev,
+		struct uart_config *uart_cfg)
+{
+	struct uart_aspeed_data *data = (struct uart_aspeed_data *)dev->data;
+
+	uart_cfg->baudrate = data->uart_cfg.baudrate;
+	uart_cfg->parity = data->uart_cfg.parity;
+	uart_cfg->stop_bits = data->uart_cfg.stop_bits;
+	uart_cfg->data_bits = data->uart_cfg.data_bits;
+	uart_cfg->flow_ctrl = data->uart_cfg.flow_ctrl;
+
+	return 0;
+}
+
+static int uart_dma_init(const struct device *dev)
+{
+	static bool udma_init = false;
+
+	if (udma_init)
+		return 0;
+
+	udma_init = true;
+
+	return 0;
+}
+
+static int uart_aspeed_init(const struct device *dev)
+{
+	uint32_t reg;
+	struct uart_aspeed_data *data = (struct uart_aspeed_data *)dev->data;
+	struct uart_aspeed_config *dev_cfg = (struct uart_aspeed_config *)dev->config;
+	struct uart_config *uart_cfg = &data->uart_cfg;
+
+	uart_dma_init(dev);
+
+	uart_cfg->baudrate = 115200;
+	uart_cfg->parity = UART_CFG_PARITY_NONE;
+	uart_cfg->stop_bits = UART_CFG_STOP_BITS_1;
+	uart_cfg->data_bits = UART_CFG_DATA_BITS_8;
+	uart_cfg->flow_ctrl = UART_CFG_FLOW_CTRL_NONE;
+
+	if (!dev_cfg->virt)
+		return uart_aspeed_configure(dev, uart_cfg);
+
+	sys_write32((dev_cfg->virt_port >> 0), dev_cfg->base + VUART_ADDRL);
+	sys_write32((dev_cfg->virt_port >> 0), dev_cfg->base + VUART_ADDRH);
+
+	reg = sys_read32(dev_cfg->base + VUART_GCRB);
+	reg &= ~VUART_GCRB_HOST_SIRQ_MASK;
+	reg |= ((dev_cfg->virt_sirq << VUART_GCRB_HOST_SIRQ_SHIFT) & VUART_GCRB_HOST_SIRQ_MASK);
+	sys_write32(reg, dev_cfg->base + VUART_GCRB);
+
+	reg = sys_read32(dev_cfg->base + VUART_GCRA) |
+	      VUART_GCRA_DISABLE_HOST_TX_DISCARD |
+	      VUART_GCRA_VUART_EN |
+	      (dev_cfg->virt_sirq_pol) ? VUART_GCRA_SIRQ_POLARITY : 0;
+	sys_write32(reg, dev_cfg->base + VUART_GCRA);
+
+	return 0;
+}
+
+static const struct uart_driver_api uart_aspeed_driver_api = {
+	.poll_in = uart_aspeed_poll_in,
+	.poll_out = uart_aspeed_poll_out,
+	.err_check = uart_aspeed_err_check,
+	.configure = uart_aspeed_configure,
+	.config_get = uart_aspeed_config_get,
+};
+
+#define UART_ASPEED_INIT(n)								\
+											\
+	static struct uart_aspeed_data uart_aspeed_data_##n;				\
+											\
+	static const struct uart_aspeed_config uart_aspeed_config_##n = {		\
+		.dev_idx = n,								\
+		.base = DT_INST_REG_ADDR(n),						\
+		.clk_id = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(n, clk_id),	\
+		.virt = DT_INST_PROP(n, virtual),					\
+		.virt_port = DT_INST_PROP(n, virtual_port),				\
+		.virt_sirq = DT_INST_PROP(n, virtual_sirq),				\
+		.virt_sirq_pol = DT_INST_PROP(n, virtual_sirq_polarity),		\
+		.dma = DT_INST_PROP(n, dma),						\
+		.dma_ch = DT_INST_PROP(n, dma_channel),					\
+	};										\
+											\
+	DEVICE_DT_INST_DEFINE(n,							\
+			      &uart_aspeed_init,					\
+			      device_pm_control_nop,					\
+			      &uart_aspeed_data_##n, &uart_aspeed_config_##n,		\
+			      POST_KERNEL,						\
+			      CONFIG_KERNEL_INIT_PRIORITY_DEVICE,			\
+			      &uart_aspeed_driver_api);
+
+DT_INST_FOREACH_STATUS_OKAY(UART_ASPEED_INIT)
