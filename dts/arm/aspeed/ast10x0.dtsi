@@ -380,6 +380,11 @@
 			label = "VUART_1";
 		};
 
+		udma: udma@7e79e000 {
+			compatible = "aspeed,udma";
+			reg = <0x7e79e000 0x1000>;
+		};
+
 		i2c_gr: i2c-global-regs@7e7b0000 {
 			compatible = "aspeed,i2c-global";
 			#address-cells = <1>;
