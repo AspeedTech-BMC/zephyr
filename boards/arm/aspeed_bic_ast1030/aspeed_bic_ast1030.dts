@@ -35,6 +35,19 @@
 	status = "okay";
 };
 
+&tach {
+	status = "okay";
+
+	fan@0 {
+		reg = <0x0>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+		label = "FAN0";
+	};
+
+};
+
 &i2c0 {
 	status = "okay";
 

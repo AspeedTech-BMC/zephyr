@@ -65,6 +65,16 @@
 				label = "PWM";
 				status = "disabled";
 			};
+			tach: tach {
+				compatible = "aspeed,ast1030-tach";
+				#address-cells = <1>;
+				#size-cells = <0>;
+				clocks = <&sysclk ASPEED_CLK_HCLK>;
+				resets = <&sysrst ASPEED_RESET_PWM_TACH>;
+				interrupts = <44 AST10X0_IRQ_DEFAULT_PRIORITY>;
+				label = "TACH";
+				status = "disabled";
+			};
 		};
 		gpio0: gpio@7e780000 {
 			reg = <0x7e780000 0x400>;
