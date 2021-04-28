@@ -9,4 +9,26 @@ if BOARD_ASPEED_BIC_AST1030
 config BOARD
 	default "aspeed_bic_ast1030"
 
+if USB
+
+config USB_ASPEED
+	default y
+
+config USB_DEVICE_STACK
+	default y
+
+config USB_DEVICE_VID
+	default "0x1234"
+
+config USB_DEVICE_PID
+	default "0x5678"
+
+config USB_DEVICE_MANUFACTURER
+	default "Aspeed Tech Inc."
+
+config USB_DEVICE_PRODUCT
+	default "Test Gadget"
+
+endif # USB
+
 endif # BOARD_ASPEED_BIC_AST1030
