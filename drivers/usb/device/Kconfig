@@ -106,4 +106,9 @@ config USB_NATIVE_POSIX
 	help
 	  Native Posix USB Device Controller Driver.
 
+config USB_ASPEED
+	bool "ASPEED USB Device Controller Driver"
+	help
+	  ASPEED USB Device Controller Driver
+
 endif # USB
