@@ -121,14 +121,25 @@ LOG_MODULE_REGISTER(usb_dc_aspeed);
 
 /*************************************************************************************/
 
+#define RX_DMA_BUFF_SIZE	1024
+
+enum ep_state {
+	ep_state_token = 0,
+	ep_state_data,
+	ep_state_status,
+	ep_state_stall,
+};
+
 struct usb_device_ep_data {
 	int is_out;
 	int tx_len;
 	int tx_last;
 	int rx_len;
+	int rx_last;
 	int mps;
 	uint8_t *tx_dma;
-	uint8_t rx_dma[1024];
+	uint8_t *rx_dma;
+	enum ep_state state;
 	usb_dc_ep_callback cb_in;
 	usb_dc_ep_callback cb_out;
 };
@@ -141,6 +152,7 @@ struct usb_device_data {
 };
 
 static struct usb_device_data dev_data;
+static uint8_t ep_rx_dma[NUM_OF_EP_MAX][RX_DMA_BUFF_SIZE] NON_CACHED_BSS;
 
 static void aspeed_usb_ep_handle(int ep_num)
 {
@@ -152,7 +164,71 @@ static void aspeed_usb_ep_handle(int ep_num)
 		dev_data.ep_data[ep_num].cb_in(USB_EP_DIR_IN | ep_num, USB_DC_EP_DATA_IN);
 }
 
-static void aspeed_usb_setup_handle(void)
+static void aspeed_usb_ep0_handle_ack(bool in_ack)
+{
+	uint32_t ep0_stat;
+
+	LOG_DBG("DIR: %s, ep_state: 0x%x", in_ack ? "IN" : "OUT", dev_data.ep_data[0].state);
+
+	ep0_stat = sys_read32(REG_BASE + ASPEED_USB_EP0_CTRL);
+
+	switch(dev_data.ep_data[0].state) {
+	case ep_state_token:
+		LOG_ERR("ep_state_token: Wrong state");
+		break;
+
+	case ep_state_data:
+		if (in_ack) {
+			// do tx if necessary
+			LOG_DBG("tx_last:0x%x, tx_len:0x%x", dev_data.ep_data[0].tx_last, dev_data.ep_data[0].tx_len);
+			if (dev_data.ep_data[0].tx_last != dev_data.ep_data[0].tx_len) {
+				int tx_len = dev_data.ep_data[0].tx_len - dev_data.ep_data[0].tx_last;
+				if (tx_len > USB_MAX_CTRL_MPS)
+					tx_len = USB_MAX_CTRL_MPS;
+
+				sys_write32(TO_PHY_ADDR(dev_data.ep_data[0].tx_dma + dev_data.ep_data[0].tx_last),
+						REG_BASE + ASPEED_USB_EP0_DATA_BUFF);
+				sys_write32(EP0_TX_LEN(tx_len), REG_BASE + ASPEED_USB_EP0_CTRL);
+				sys_write32(EP0_TX_LEN(tx_len) | EP0_TX_BUFF_RDY, REG_BASE + ASPEED_USB_EP0_CTRL);
+
+				LOG_DBG("next tx trigger: [%d/%d]", tx_len, dev_data.ep_data[0].tx_len);
+				dev_data.ep_data[0].tx_last += tx_len;
+
+			} else {
+				dev_data.ep_data[0].state = ep_state_status;
+
+				// rx ready
+				LOG_DBG("rx buff ready");
+				sys_write32(TO_PHY_ADDR(dev_data.ep_data[0].rx_dma), REG_BASE + ASPEED_USB_EP0_DATA_BUFF);
+				sys_write32(EP0_RX_BUFF_RDY, REG_BASE + ASPEED_USB_EP0_CTRL);
+			}
+
+		} else {
+			// do rx
+			if (dev_data.ep_data[0].rx_last == dev_data.ep_data[0].rx_len) {
+				LOG_DBG("OUT ACK, tx buff ready");
+				dev_data.ep_data[0].state = ep_state_status;
+				sys_write32(EP0_TX_BUFF_RDY, REG_BASE + ASPEED_USB_EP0_CTRL);
+			}
+		}
+		return;
+
+	case ep_state_status:
+		LOG_DBG("ep_sate_status: do nothing");
+		break;
+
+	case ep_state_stall:
+		LOG_DBG("ep_sate_stall: do nothing");
+		break;
+
+	default:
+		break;
+	}
+
+	dev_data.ep_data[0].state = ep_state_token;
+}
+
+static void aspeed_usb_ep0_handle_setup(void)
 {
 	struct usb_setup_packet *setup = (void *)(REG_BASE + ASPEED_USB_SETUP_DATA0);
 
@@ -165,8 +241,18 @@ static void aspeed_usb_setup_handle(void)
 		LOG_DBG("Device -> Host");
 	} else {
 		dev_data.ep_data[0].is_out = 1;
+		dev_data.ep_data[0].rx_len = 0;
+		dev_data.ep_data[0].rx_last = 0;
 		LOG_DBG("Host -> Device");
 	}
+
+	/* Check ep0 state */
+	if (dev_data.ep_data[0].state != ep_state_token) {
+		LOG_ERR("Wrong state: 0x%x", dev_data.ep_data[0].state);
+		return;
+	}
+
+	dev_data.ep_data[0].state = ep_state_data;
 
 	if (dev_data.ep_data[0].cb_out)
 		dev_data.ep_data[0].cb_out(USB_EP_DIR_OUT, USB_DC_EP_SETUP);
@@ -206,30 +292,7 @@ static void usb_aspeed_isr(void)
 	if (isr & ISR_EP0_IN_ACK_STALL) {
 		LOG_DBG("EP0_IN_ACK_STALL");
 		sys_write32(ISR_EP0_IN_ACK_STALL, isr_reg);
-
-		LOG_DBG("tx_last:0x%x, tx_len:0x%x", dev_data.ep_data[0].tx_last, dev_data.ep_data[0].tx_len);
-		if (dev_data.ep_data[0].tx_last != dev_data.ep_data[0].tx_len) {
-			int tx_len = dev_data.ep_data[0].tx_len - dev_data.ep_data[0].tx_last;
-			if (tx_len > USB_MAX_CTRL_MPS)
-				tx_len = USB_MAX_CTRL_MPS;
-
-			sys_write32(TO_PHY_ADDR(dev_data.ep_data[0].tx_dma + dev_data.ep_data[0].tx_last),
-				    REG_BASE + ASPEED_USB_EP0_DATA_BUFF);
-			sys_write32(EP0_TX_LEN(tx_len), REG_BASE + ASPEED_USB_EP0_CTRL);
-			sys_write32(EP0_TX_LEN(tx_len) | EP0_TX_BUFF_RDY, REG_BASE + ASPEED_USB_EP0_CTRL);
-
-			LOG_DBG("next tx trigger: [%d/%d]", tx_len, dev_data.ep_data[0].tx_len);
-			dev_data.ep_data[0].tx_last += tx_len;
-
-		} else if (!dev_data.ep_data[0].is_out) {
-			// tx ready
-			sys_write32(EP0_TX_BUFF_RDY, REG_BASE + ASPEED_USB_EP0_CTRL);
-
-			// rx ready
-			sys_write32(TO_PHY_ADDR(dev_data.ep_data[0].rx_dma), REG_BASE + ASPEED_USB_EP0_DATA_BUFF);
-			sys_write32(EP0_RX_BUFF_RDY, REG_BASE + ASPEED_USB_EP0_CTRL);
-		}
-
+		aspeed_usb_ep0_handle_ack(true);
 	}
 
 	if (isr & ISR_EP0_OUT_NAK) {
@@ -240,10 +303,7 @@ static void usb_aspeed_isr(void)
 	if (isr & ISR_EP0_OUT_ACK_STALL) {
 		LOG_DBG("ISR_EP0_OUT_ACK_STALL");
 		sys_write32(ISR_EP0_OUT_ACK_STALL, isr_reg);
-		sys_write32(EP0_TX_BUFF_RDY, REG_BASE + ASPEED_USB_EP0_CTRL);
-
-		if (dev_data.ep_data[0].cb_out)
-			dev_data.ep_data[0].cb_out(USB_EP_DIR_OUT, USB_DC_EP_DATA_OUT);
+		aspeed_usb_ep0_handle_ack(false);
 	}
 
 	if (isr & ISR_EP0_IN_DATA_NAK) {
@@ -254,7 +314,7 @@ static void usb_aspeed_isr(void)
 	if (isr & ISR_EP0_SETUP) {
 		LOG_DBG("ISR_EP0_SETUP");
 		sys_write32(ISR_EP0_SETUP, isr_reg);
-		aspeed_usb_setup_handle();
+		aspeed_usb_ep0_handle_setup();
 	}
 
 	if (isr & ISR_EP_ACK_STALL) {
@@ -285,6 +345,7 @@ static void usb_aspeed_init(void)
 	rst_id = (reset_control_subsys_t)DT_RESETS_CELL(DT_NODELABEL(udc), rst_id);
 
 	reset_control_deassert(reset_dev, rst_id);
+	k_busy_wait(1000);
 
 	LOG_DBG("udc base addr:0x%x\n", REG_BASE);
 
@@ -323,7 +384,6 @@ int usb_dc_attach(void)
 
 	if (dev_data.attached) {
 		LOG_WRN("already attached");
-
 		return 0;
 	}
 
@@ -367,9 +427,7 @@ int usb_dc_set_address(const uint8_t addr)
 	LOG_DBG("addr: 0x%x", addr);
 
 	sys_write32(addr & 0x7f, REG_BASE + ASPEED_USB_CONF);
-
-	/* IN data packet, status phase with zero byte data returned */
-	sys_write32(EP0_TX_BUFF_RDY, REG_BASE + ASPEED_USB_EP0_CTRL);
+	dev_data.ep_data[0].state = ep_state_status;
 
 	return 0;
 }
@@ -444,13 +502,13 @@ int usb_dc_ep_check_cap(const struct usb_dc_ep_cfg_data * const cfg)
 
 	} else if (dev_data.ep_data[ep_idx].is_out == 0) {
 		if (USB_EP_GET_DIR(cfg->ep_addr) != USB_EP_DIR_IN) {
-			LOG_ERR("pre-selected ep[0x%x] as IN endpoint", cfg->ep_addr);
+			LOG_WRN("pre-selected ep[0x%x] as IN endpoint", cfg->ep_addr);
 			return -EINVAL;
 		}
 
 	} else if (dev_data.ep_data[ep_idx].is_out == 1) {
 		if (USB_EP_GET_DIR(cfg->ep_addr) != USB_EP_DIR_OUT) {
-			LOG_ERR("pre-selected ep[0x%x] as OUT endpoint", cfg->ep_addr);
+			LOG_WRN("pre-selected ep[0x%x] as OUT endpoint", cfg->ep_addr);
 			return -EINVAL;
 		}
 	}
@@ -615,13 +673,17 @@ int usb_dc_ep_enable(const uint8_t ep)
 
 	LOG_DBG("enable ep[0x%x]", ep);
 
-	if (ep_num == 0)
+	if (ep_num == 0) {
+		dev_data.ep_data[0].state = ep_state_token;
+		dev_data.ep_data[0].rx_dma = ep_rx_dma[0];
 		sys_write32(sys_read32(REG_BASE + ASPEED_USB_CTRL) | ROOT_UPSTREAM_EN, REG_BASE + ASPEED_USB_CTRL);
-	else {
+
+	} else {
 		ep_reg = REG_BASE + ASPEED_EP_OFFSET + (0x10 * (ep_num - 1));
 		sys_write32(sys_read32(ep_reg + ASPEED_EP_CONFIG) | EP_ENABLE, ep_reg + ASPEED_EP_CONFIG);
 
 		if (dev_data.ep_data[ep_num].is_out) {
+			dev_data.ep_data[ep_num].rx_dma = ep_rx_dma[ep_num];
 			sys_write32(TO_PHY_ADDR(dev_data.ep_data[ep_num].rx_dma), ep_reg + ASPEED_EP_DMA_BUFF);
 			sys_write32(0x1, ep_reg + ASPEED_EP_DMA_STS);
 		}
@@ -686,8 +748,8 @@ int usb_dc_ep_write(const uint8_t ep, const uint8_t *const data,
 	int ep_num;
 	int tx_len;
 
-	LOG_INF("[Write] ep:0x%x, data:0x%x, data_len:0x%x, ret_bytes:0x%x",
-		(uint32_t)ep, (uint32_t)data, data_len, (uint32_t)ret_bytes);
+//	LOG_INF("[Write] ep:0x%x, data:0x%x, data_len:0x%x, ret_bytes:0x%x",
+//		ep, *data, data_len, *ret_bytes);
 
 	if (!data)
 		return -EINVAL;
@@ -710,6 +772,8 @@ int usb_dc_ep_write(const uint8_t ep, const uint8_t *const data,
 		sys_write32(TO_PHY_ADDR(data), REG_BASE + ASPEED_USB_EP0_DATA_BUFF);
 		sys_write32(EP0_TX_LEN(tx_len), REG_BASE + ASPEED_USB_EP0_CTRL);
 		sys_write32(EP0_TX_LEN(tx_len) | EP0_TX_BUFF_RDY, REG_BASE + ASPEED_USB_EP0_CTRL);
+
+		*ret_bytes = tx_len;
 
 	} else {
 		LOG_DBG("trigger ep tx");
@@ -769,22 +833,28 @@ int usb_dc_ep_read(const uint8_t ep, uint8_t *const data,
 			setup->bmRequestType, setup->bRequest, setup->wValue, setup->wIndex, setup->wLength);
 		memcpy(data, setup, max_data_len);
 
-		if (dev_data.ep_data[0].is_out && setup->wLength) {
-			sys_write32(TO_PHY_ADDR(data), REG_BASE + ASPEED_USB_EP0_DATA_BUFF);
+		dev_data.ep_data[0].rx_last = dev_data.ep_data[0].rx_len = max_data_len;
+
+		if (setup->wLength) {
+			LOG_DBG("rx buff ready");
 			sys_write32(EP0_RX_BUFF_RDY, REG_BASE + ASPEED_USB_EP0_CTRL);
+
+		} else {
+			LOG_DBG("ep0 send IN status with no data");
+			/* IN data packet, status phase with zero byte data returned */
+			sys_write32(EP0_TX_BUFF_RDY, REG_BASE + ASPEED_USB_EP0_CTRL);
+			dev_data.ep_data[0].state = ep_state_status;
 		}
 
 	} else {
-		LOG_DBG("trigger ep rx");
-
 		ep_reg = REG_BASE + ASPEED_EP_OFFSET + (0x10 * (ep_num - 1));
 		ep_dma_sts = sys_read32(ep_reg + ASPEED_EP_DMA_STS);
 
 		*read_bytes = (ep_dma_sts >> 16) & 0x7ff;
-		LOG_INF("ep[%d] read 0x%x bytes", ep_num, (uint32_t)*read_bytes);
+		LOG_DBG("ep[%d] read 0x%x bytes", ep_num, (uint32_t)*read_bytes);
 
 		for (i = 0; i < *read_bytes; i++)
-			LOG_INF("char: %c", dev_data.ep_data[ep_num].rx_dma[i]);
+			LOG_INF("ep[%d] char: %c", ep_num, dev_data.ep_data[ep_num].rx_dma[i]);
 
 		if (*read_bytes < 1024)
 			memcpy(data, dev_data.ep_data[ep_num].rx_dma, *read_bytes);
