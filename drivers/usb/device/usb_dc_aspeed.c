@@ -82,6 +82,11 @@ LOG_MODULE_REGISTER(usb_dc_aspeed);
 #define ISR_EP0_OUT_ACK_STALL		BIT(1)
 #define ISR_EP0_SETUP			BIT(0)
 
+/* ASPEED_USB_DEV_RESET 		0x20 */
+#define EP_POOL_RESET			BIT(9)
+#define DMA_CTRL_RESET			BIT(8)
+#define ROOT_UBD_RESET			BIT(0)
+
 /*************************************************************************************/
 /* ASPEED_USB_EP0_CTRL			0x30 */
 #define EP0_GET_RX_LEN(x)		((x >> 16) & 0x7f)
@@ -288,6 +293,7 @@ static void usb_aspeed_isr(void)
 	if (isr & ISR_BUS_RESET) {
 		LOG_DBG("ISR_BUS_RESET");
 		sys_write32(ISR_BUS_RESET, isr_reg);
+		dev_data.ep_data[0].state = ep_state_token;
 	}
 
 	if (isr & ISR_BUS_SUSPEND) {
@@ -414,7 +420,20 @@ int usb_dc_attach(void)
  *
  * @return 0 on success, negative errno code on fail.
  */
-int usb_dc_detach(void);
+int usb_dc_detach(void)
+{
+	LOG_DBG("detach");
+
+	if (!dev_data.attached) {
+		LOG_WRN("already detached");
+		return 0;
+	}
+
+	dev_data.attached = false;
+	LOG_DBG("detached");
+
+	return 0;
+}
 
 /**
  * @brief Reset the USB device
@@ -424,7 +443,17 @@ int usb_dc_detach(void);
  *
  * @return 0 on success, negative errno code on fail.
  */
-int usb_dc_reset(void);
+int usb_dc_reset(void)
+{
+	uint32_t setting = 0;
+
+	LOG_DBG("device reset");
+
+	setting = EP_POOL_RESET | DMA_CTRL_RESET | ROOT_UBD_RESET;
+	sys_write32(setting , REG_BASE + ASPEED_USB_DEV_RESET);
+
+	return 0;
+}
 
 /**
  * @brief Set USB device address
@@ -619,7 +648,20 @@ int usb_dc_ep_configure(const struct usb_dc_ep_cfg_data * const cfg)
  */
 int usb_dc_ep_set_stall(const uint8_t ep)
 {
-	LOG_DBG("%s...", __func__);
+	uint8_t ep_num = USB_EP_GET_IDX(ep);
+	uint32_t ep_reg;
+
+	LOG_DBG("set ep[0x%x] stall", ep);
+
+	if (ep_num >= NUM_OF_EP_MAX)
+		return -EINVAL;
+
+	if (ep_num == 0)
+		sys_write32(EP0_STALL, REG_BASE + ASPEED_USB_EP0_CTRL);
+	else {
+		ep_reg = REG_BASE + ASPEED_EP_OFFSET + (0x10 * (ep_num - 1));
+		sys_write32(EP_SET_EP_STALL, ep_reg);
+	}
 
 	return 0;
 }
@@ -634,7 +676,21 @@ int usb_dc_ep_set_stall(const uint8_t ep)
  */
 int usb_dc_ep_clear_stall(const uint8_t ep)
 {
-	LOG_DBG("%s...", __func__);
+	uint8_t ep_num = USB_EP_GET_IDX(ep);
+	uint32_t ep_reg;
+
+	LOG_DBG("clear stall ep[0x%x]", ep);
+
+	if (ep_num >= NUM_OF_EP_MAX)
+		return -EINVAL;
+
+	if (ep_num == 0) {
+		ep_reg = REG_BASE + ASPEED_USB_EP0_CTRL;
+		sys_write32(sys_read32(ep_reg) & (~EP0_STALL), ep_reg);
+	} else {
+		ep_reg = REG_BASE + ASPEED_EP_OFFSET + (0x10 * (ep_num - 1));
+		sys_write32(sys_read32(ep_reg) & (~EP_SET_EP_STALL), ep_reg);
+	}
 
 	return 0;
 }
@@ -650,7 +706,25 @@ int usb_dc_ep_clear_stall(const uint8_t ep)
  */
 int usb_dc_ep_is_stalled(const uint8_t ep, uint8_t *const stalled)
 {
-	LOG_DBG("%s...", __func__);
+	uint32_t ep_num = USB_EP_GET_IDX(ep);
+	uint32_t ep_reg;
+
+	LOG_DBG("check ep[0x%x] is stalled", ep_num);
+
+	if (ep_num >= NUM_OF_EP_MAX || !stalled)
+		return -EINVAL;
+
+	*stalled = 0;
+
+	if (ep_num == 0) {
+		ep_reg = REG_BASE + ASPEED_USB_EP0_CTRL;
+		if (sys_read32(ep_reg) & EP0_STALL)
+			*stalled = 1;
+	} else {
+		ep_reg = REG_BASE + ASPEED_EP_OFFSET + (0x10 * (ep_num - 1));
+		if (sys_read32(ep_reg) & EP_SET_EP_STALL)
+			*stalled = 1;
+	}
 
 	return 0;
 }
@@ -663,7 +737,10 @@ int usb_dc_ep_is_stalled(const uint8_t ep, uint8_t *const stalled)
  *
  * @return 0 on success, negative errno code on fail.
  */
-int usb_dc_ep_halt(const uint8_t ep);
+int usb_dc_ep_halt(const uint8_t ep)
+{
+	return usb_dc_ep_set_stall(ep);
+}
 
 /**
  * @brief Enable the selected endpoint
@@ -683,6 +760,9 @@ int usb_dc_ep_enable(const uint8_t ep)
 	uint32_t ep_reg;
 
 	LOG_DBG("enable ep[0x%x]", ep);
+
+	if (ep_num >= NUM_OF_EP_MAX)
+		return -EINVAL;
 
 	if (ep_num == 0) {
 		dev_data.ep_data[0].state = ep_state_token;
@@ -715,7 +795,12 @@ int usb_dc_ep_enable(const uint8_t ep)
  */
 int usb_dc_ep_disable(const uint8_t ep)
 {
-	LOG_DBG("%s...", __func__);
+	uint8_t ep_num = USB_EP_GET_IDX(ep);
+
+	LOG_DBG("disable ep[0x%x]", ep);
+
+	if (ep_num >= NUM_OF_EP_MAX)
+		return -EINVAL;
 
 	return 0;
 }
@@ -730,7 +815,17 @@ int usb_dc_ep_disable(const uint8_t ep)
  *
  * @return 0 on success, negative errno code on fail.
  */
-int usb_dc_ep_flush(const uint8_t ep);
+int usb_dc_ep_flush(const uint8_t ep)
+{
+	uint32_t ep_num = USB_EP_GET_IDX(ep);
+
+	LOG_DBG("flush ep[0x%x]", ep_num);
+
+	if (ep_num >= NUM_OF_EP_MAX)
+		return -EINVAL;
+
+	return 0;
+}
 
 /**
  * @brief Write data to the specified endpoint
@@ -767,6 +862,9 @@ int usb_dc_ep_write(const uint8_t ep, const uint8_t *const data,
 		return -EINVAL;
 
 	ep_num = USB_EP_GET_IDX(ep);
+
+	if (ep_num >= NUM_OF_EP_MAX)
+		return -EINVAL;
 
 	if (ep_num == 0) {
 		LOG_DBG("trigger setup tx");
@@ -839,6 +937,9 @@ int usb_dc_ep_read(const uint8_t ep, uint8_t *const data,
 
 	ep_num = USB_EP_GET_IDX(ep);
 
+	if (ep_num >= NUM_OF_EP_MAX)
+		return -EINVAL;
+
 	if (ep_num == 0) {
 		LOG_DBG("trigger setup rx");
 		LOG_DBG("setup: bmRequestType:0x%x, bRequest:0x%x, wValue:0x%x, wIndex:0x%x, wLength:0x%x",
@@ -871,9 +972,10 @@ int usb_dc_ep_read(const uint8_t ep, uint8_t *const data,
 			LOG_INF("ep[%d] char: %c", ep_num, dev_data.ep_data[ep_num].rx_dma[i]);
 
 		DCACHE_INVALID();
-		if (*read_bytes < 1024)
+		if (*read_bytes < 1024) {
 			memcpy(data, dev_data.ep_data[ep_num].rx_dma, *read_bytes);
-		else
+			memset(dev_data.ep_data[ep_num].rx_dma, 0, *read_bytes);
+		} else
 			return -EINVAL;
 
 		sys_write32(0x1, ep_reg + ASPEED_EP_DMA_STS);
@@ -898,12 +1000,12 @@ int usb_dc_ep_read(const uint8_t ep, uint8_t *const data,
  */
 int usb_dc_ep_set_callback(const uint8_t ep, const usb_dc_ep_callback cb)
 {
-	uint8_t ep_idx = USB_EP_GET_IDX(ep);
+	uint8_t ep_num = USB_EP_GET_IDX(ep);
 
 	LOG_DBG("ep[0x%x] set callback", ep);
 
-	if (ep_idx >= NUM_OF_EP_MAX) {
-		LOG_ERR("Wrong endpoint addr:0x%x", ep_idx);
+	if (ep_num >= NUM_OF_EP_MAX) {
+		LOG_ERR("Wrong endpoint addr:0x%x", ep_num);
 		return -EINVAL;
 	}
 
@@ -911,9 +1013,9 @@ int usb_dc_ep_set_callback(const uint8_t ep, const usb_dc_ep_callback cb)
 		return -ENODEV;
 
 	if (ep & USB_EP_DIR_IN)
-		dev_data.ep_data[ep_idx].cb_in = cb;
+		dev_data.ep_data[ep_num].cb_in = cb;
 	else
-		dev_data.ep_data[ep_idx].cb_out = cb;
+		dev_data.ep_data[ep_num].cb_out = cb;
 
 	return 0;
 }
@@ -957,7 +1059,12 @@ int usb_dc_ep_read_wait(uint8_t ep, uint8_t *data, uint32_t max_data_len,
  */
 int usb_dc_ep_read_continue(uint8_t ep)
 {
+	uint32_t ep_num = USB_EP_GET_IDX(ep);
+
 	LOG_DBG("do nothing");
+
+	if (ep_num >= NUM_OF_EP_MAX)
+		return -EINVAL;
 
 	return 0;
 }
@@ -972,9 +1079,11 @@ int usb_dc_ep_read_continue(uint8_t ep)
  */
 int usb_dc_ep_mps(uint8_t ep)
 {
-	LOG_DBG("ep[%d] mps: 0x%x", ep, dev_data.ep_data[ep].mps);
+	uint32_t ep_num = USB_EP_GET_IDX(ep);
 
-	return dev_data.ep_data[ep].mps;
+	LOG_DBG("ep[%d] mps: 0x%x", ep, dev_data.ep_data[ep_num].mps);
+
+	return dev_data.ep_data[ep_num].mps;
 }
 
 /**

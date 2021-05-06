@@ -17,17 +17,8 @@ config USB_ASPEED
 config USB_DEVICE_STACK
 	default y
 
-config USB_DEVICE_VID
-	default "0x1234"
-
-config USB_DEVICE_PID
-	default "0x5678"
-
 config USB_DEVICE_MANUFACTURER
-	default "Aspeed Tech Inc."
-
-config USB_DEVICE_PRODUCT
-	default "Test Gadget"
+	default "Aspeed"
 
 endif # USB
 
