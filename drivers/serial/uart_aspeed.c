@@ -408,8 +408,6 @@ static int uart_aspeed_init(const struct device *dev)
 	if (!dev_cfg->dma)
 	    return rc;
 
-	printk("[CHIAWEI]: %s:%d\n", __func__, __LINE__);
-
 	data->tx_rb = udma_tx_rb[dev_cfg->dma_ch];
 	data->tx_rb_addr = TO_PHY_ADDR(data->tx_rb);
 
