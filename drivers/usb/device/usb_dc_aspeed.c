@@ -1083,7 +1083,11 @@ int usb_dc_ep_mps(uint8_t ep)
 
 	LOG_DBG("ep[%d] mps: 0x%x", ep, dev_data.ep_data[ep_num].mps);
 
-	return dev_data.ep_data[ep_num].mps;
+	// test
+	if (ep)
+		return 0;
+
+	return dev_data.ep_data[ep].mps;
 }
 
 /**
