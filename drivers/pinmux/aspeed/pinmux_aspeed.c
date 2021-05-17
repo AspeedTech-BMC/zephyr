@@ -9,8 +9,9 @@
 #include <drivers/pinmux.h>
 #include <kernel.h>
 
+#define LOG_LEVEL CONFIG_PINMUX_LOG_LEVEL
 #include <logging/log.h>
-LOG_MODULE_REGISTER(pimux_aspeed, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(pimux_aspeed);
 #include "pinmux_aspeed.h"
 
 #ifdef CONFIG_PINCTRL_STRING_NAME
