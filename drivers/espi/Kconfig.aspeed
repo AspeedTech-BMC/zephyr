@@ -1,4 +1,4 @@
-# ASPEED PWM driver configuration options
+# ASPEED eSPI driver configuration options
 
 # Copyright (c) 2021 ASPEED
 # SPDX-License-Identifier: Apache-2.0
