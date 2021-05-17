@@ -121,7 +121,6 @@
 					#gpio-cells = <2>;
 					gpio-controller;
 					ngpios = <32>;
-					gpio-reserved-ranges = <7 2>;
 					interrupt-controller;
 					#interrupt-cells = <2>;
 					gpio-reserved = <0>;
