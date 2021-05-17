@@ -475,6 +475,11 @@ static void espi_aspeed_oob_isr(uint32_t sts, struct espi_aspeed_oob *oob)
 
 	if (sts & ESPI_INT_STS_HW_RST_DEASSERT) {
 		if (oob->dma_mode) {
+			reg = ESPI_RD(ESPI_CTRL) |
+			      ESPI_CTRL_OOB_TX_DMA_EN |
+			      ESPI_CTRL_OOB_RX_DMA_EN;
+			ESPI_WR(reg, ESPI_CTRL);
+
 			for (i = 0; i < OOB_RX_DMA_DESC_NUM; ++i)
 				oob->rx_desc[i].dirty = 0;
 
@@ -487,11 +492,6 @@ static void espi_aspeed_oob_isr(uint32_t sts, struct espi_aspeed_oob *oob)
 			ESPI_WR(OOB_RX_DMA_DESC_NUM, ESPI_OOB_RX_DMA_RB_SIZE);
 			ESPI_WR(OOB_DMA_UNLOCK, ESPI_OOB_RX_DMA_RD_PTR);
 			ESPI_WR(0, ESPI_OOB_RX_DMA_WS_PTR);
-
-			reg = ESPI_RD(ESPI_CTRL) |
-			      ESPI_CTRL_OOB_TX_DMA_EN |
-			      ESPI_CTRL_OOB_RX_DMA_EN;
-			ESPI_WR(reg, ESPI_CTRL);
 
 			ESPI_WR(ESPI_OOB_RX_DMA_WS_PTR_RECV_EN, ESPI_OOB_RX_DMA_WS_PTR);
 		}
@@ -515,6 +515,11 @@ static void espi_aspeed_oob_init(struct espi_aspeed_oob *oob)
 	uint32_t reg;
 
 	if (oob->dma_mode) {
+		reg = ESPI_RD(ESPI_CTRL) |
+		      ESPI_CTRL_OOB_TX_DMA_EN |
+		      ESPI_CTRL_OOB_RX_DMA_EN;
+		ESPI_WR(reg, ESPI_CTRL);
+
 		for (i = 0; i < OOB_TX_DMA_DESC_NUM; ++i)
 			oob->tx_desc[i].data_addr = (uint32_t)(oob->tx_addr + (i * ESPI_PLD_LEN_MAX));
 
@@ -532,11 +537,6 @@ static void espi_aspeed_oob_init(struct espi_aspeed_oob *oob)
 		ESPI_WR(OOB_RX_DMA_DESC_NUM, ESPI_OOB_RX_DMA_RB_SIZE);
 		ESPI_WR(OOB_DMA_UNLOCK, ESPI_OOB_RX_DMA_RD_PTR);
 		ESPI_WR(0, ESPI_OOB_RX_DMA_WS_PTR);
-
-		reg = ESPI_RD(ESPI_CTRL) |
-		      ESPI_CTRL_OOB_TX_DMA_EN |
-		      ESPI_CTRL_OOB_RX_DMA_EN;
-		ESPI_WR(reg, ESPI_CTRL);
 
 		ESPI_WR(ESPI_OOB_RX_DMA_WS_PTR_RECV_EN, ESPI_OOB_RX_DMA_WS_PTR);
 	}
