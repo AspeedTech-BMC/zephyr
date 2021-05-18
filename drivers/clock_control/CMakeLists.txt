@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-
+zephyr_sources(clock_fixed_factor.c)
 zephyr_sources_ifdef(CONFIG_CLOCK_CONTROL_BEETLE              beetle_clock_control.c)
 zephyr_sources_ifdef(CONFIG_CLOCK_CONTROL_LPC11U6X            clock_control_lpc11u6x.c)
 zephyr_sources_ifdef(CONFIG_CLOCK_CONTROL_MCUX_CCM            clock_control_mcux_ccm.c)
