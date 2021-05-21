@@ -244,6 +244,15 @@
 #define ADC_1ST_CHANNEL_ID	0
 #define ADC_2ND_CHANNEL_ID	2
 
+#elif defined(CONFIG_BOARD_ASPEED_BIC_AST1030)
+#define ADC_DEVICE_NAME		DT_LABEL(DT_INST(0, aspeed_ast1030_adc))
+#define ADC_RESOLUTION		10
+#define ADC_GAIN		ADC_GAIN_1
+#define ADC_REFERENCE		ADC_REF_INTERNAL
+#define ADC_ACQUISITION_TIME	ADC_ACQ_TIME_DEFAULT
+#define ADC_1ST_CHANNEL_ID	0
+#define ADC_2ND_CHANNEL_ID	1
+
 #else
 #error "Unsupported board."
 #endif
