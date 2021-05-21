@@ -334,6 +334,10 @@ static int cmd_adc_read(const struct shell *shell, size_t argc, char **argv)
 		.resolution	= adc->resolution,
 	};
 
+	retval = adc_channel_setup(adc_dev, &adc->channel_config);
+	if (retval)
+		return retval;
+
 	retval = adc_read(adc_dev, &sequence);
 	if (retval >= 0) {
 		shell_print(shell, "read: %i", m_sample_buffer[0]);
