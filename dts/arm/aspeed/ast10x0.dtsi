@@ -54,6 +54,37 @@
 			};
 		};
 
+		adc_clk: adc_clk {
+			#clock-cells = <0>;
+			compatible = "fixed-factor-clock";
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			clock-mult = <1>;
+			clock-div = <2>;
+			label = "ADC_CLK";
+		};
+
+		adc0: adc@7e6e9000 {
+			compatible = "aspeed,ast1030-adc";
+			reg = <0x7e6e9000 0x100>;
+			clocks = <&adc_clk>;
+			resets = <&sysrst ASPEED_RESET_ADC>;
+			interrupts = <46 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			#io-channel-cells = <1>;
+			label = "ADC0";
+			status = "disabled";
+		};
+
+		adc1: adc@7e6e9100 {
+			compatible = "aspeed,ast1030-adc";
+			reg = <0x7e6e9100 0x100>;
+			clocks = <&adc_clk>;
+			resets = <&sysrst ASPEED_RESET_ADC>;
+			interrupts = <46 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			#io-channel-cells = <1>;
+			label = "ADC1";
+			status = "disabled";
+		};
+
 		pwm_tach: pwm_tach@7e610000 {
 			reg = <0x7e610000 0x100>;
 			pwm: pwm {
