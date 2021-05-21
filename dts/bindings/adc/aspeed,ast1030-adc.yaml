@@ -1,0 +1,23 @@
+description: ASPEED family ADC
+
+compatible: "aspeed,ast1030-adc"
+
+include: adc-controller.yaml
+
+properties:
+    reg:
+      required: true
+
+    interrupts:
+      required: true
+
+    ref-voltage-mv:
+          type: int
+          description: |
+            Reference voltage in millivolts for the conversions
+
+    "#io-channel-cells":
+      const: 1
+
+io-channel-cells:
+    - input
