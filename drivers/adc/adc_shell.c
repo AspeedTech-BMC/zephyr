@@ -67,6 +67,11 @@ LOG_MODULE_REGISTER(adc_shell);
 	"Configure resolution\n"		\
 	"Usage: resolution <resolution>\n"
 
+#define CMD_HELP_CAL				\
+	"Configure calibrate\n"			\
+	"Usage: calibrate <1/0>\n"
+
+
 #define CMD_HELP_REF	"Configure reference\n"
 #define CMD_HELP_GAIN	"Configure gain.\n"
 #define CMD_HELP_PRINT	"Print current configuration"
@@ -95,6 +100,7 @@ static struct adc_hdl {
 	char *device_label;
 	struct adc_channel_cfg channel_config;
 	uint8_t resolution;
+	bool calibrate;
 } adc_list[] = {
 	FOR_EACH(ADC_HDL_LIST_ENTRY, (,), INIT_MACRO())
 };
@@ -282,6 +288,28 @@ static int cmd_adc_reso(const struct shell *shell, size_t argc, char **argv)
 
 	return retval;
 }
+static int cmd_adc_cal(const struct shell *shell, size_t argc, char **argv)
+{
+	/* -1 index of ADC label name */
+	struct adc_hdl *adc = get_adc(argv[-1]);
+	const struct device *adc_dev;
+
+	adc_dev = device_get_binding(adc->device_label);
+	if (adc_dev == NULL) {
+		shell_error(shell, "ADC device not found");
+		return -ENODEV;
+	}
+
+	if (!isdigit((unsigned char)argv[1][0])) {
+		shell_error(shell, "<calibrate> must be digits");
+		return -EINVAL;
+	}
+
+	adc->calibrate = (uint8_t)strtol(argv[1], NULL, 10);
+
+	return 0;
+}
+
 
 static int cmd_adc_ref(const struct shell *shell, size_t argc, char **argv,
 		       void *data)
@@ -332,6 +360,7 @@ static int cmd_adc_read(const struct shell *shell, size_t argc, char **argv)
 		.buffer		= m_sample_buffer,
 		.buffer_size	= sizeof(m_sample_buffer),
 		.resolution	= adc->resolution,
+		.calibrate	= adc->calibrate,
 	};
 
 	retval = adc_channel_setup(adc_dev, &adc->channel_config);
@@ -356,13 +385,15 @@ static int cmd_adc_print(const struct shell *shell, size_t argc, char **argv)
 			   "Reference: %s\n"
 			   "Acquisition Time: %u\n"
 			   "Channel ID: %u\n"
-			   "Resolution: %u",
+			   "Resolution: %u\n"
+			   "Calibrate: %u\n",
 			   adc->device_label,
 			   chosen_gain,
 			   chosen_reference,
 			   adc->channel_config.acquisition_time,
 			   adc->channel_config.channel_id,
-			   adc->resolution);
+			   adc->resolution,
+			   adc->calibrate);
 	return 0;
 }
 
@@ -411,6 +442,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_adc_cmds,
 	SHELL_CMD_ARG(read, NULL, CMD_HELP_READ, cmd_adc_read, 2, 0),
 	SHELL_CMD(reference, &sub_ref_cmds, CMD_HELP_REF, NULL),
 	SHELL_CMD_ARG(resolution, NULL, CMD_HELP_RES, cmd_adc_reso, 2, 0),
+	SHELL_CMD_ARG(calibrate, NULL, CMD_HELP_CAL, cmd_adc_cal, 2, 0),
 	SHELL_SUBCMD_SET_END /* Array terminated. */
 );
 
