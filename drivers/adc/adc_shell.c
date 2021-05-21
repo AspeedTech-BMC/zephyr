@@ -71,6 +71,9 @@ LOG_MODULE_REGISTER(adc_shell);
 	"Configure calibrate\n"			\
 	"Usage: calibrate <1/0>\n"
 
+#define CMD_HELP_FORMATE			\
+	"Configure read format\n"		\
+	"Usage: read_format <0:raw, 1:mv>\n"
 
 #define CMD_HELP_REF	"Configure reference\n"
 #define CMD_HELP_GAIN	"Configure gain.\n"
@@ -101,6 +104,7 @@ static struct adc_hdl {
 	struct adc_channel_cfg channel_config;
 	uint8_t resolution;
 	bool calibrate;
+	bool read_format;
 } adc_list[] = {
 	FOR_EACH(ADC_HDL_LIST_ENTRY, (,), INIT_MACRO())
 };
@@ -310,6 +314,27 @@ static int cmd_adc_cal(const struct shell *shell, size_t argc, char **argv)
 	return 0;
 }
 
+static int cmd_adc_read_format(const struct shell *shell, size_t argc, char **argv)
+{
+	/* -1 index of ADC label name */
+	struct adc_hdl *adc = get_adc(argv[-1]);
+	const struct device *adc_dev;
+
+	adc_dev = device_get_binding(adc->device_label);
+	if (adc_dev == NULL) {
+		shell_error(shell, "ADC device not found");
+		return -ENODEV;
+	}
+
+	if (!isdigit((unsigned char)argv[1][0])) {
+		shell_error(shell, "<read_format> must be digits");
+		return -EINVAL;
+	}
+
+	adc->read_format = (uint8_t)strtol(argv[1], NULL, 10);
+
+	return 0;
+}
 
 static int cmd_adc_ref(const struct shell *shell, size_t argc, char **argv,
 		       void *data)
@@ -346,6 +371,7 @@ static int cmd_adc_read(const struct shell *shell, size_t argc, char **argv)
 	struct adc_hdl *adc = get_adc(argv[-1]);
 	uint16_t m_sample_buffer[BUFFER_SIZE];
 	const struct device *adc_dev;
+	int32_t val;
 	int retval;
 
 	adc_dev = device_get_binding(adc->device_label);
@@ -369,9 +395,15 @@ static int cmd_adc_read(const struct shell *shell, size_t argc, char **argv)
 
 	retval = adc_read(adc_dev, &sequence);
 	if (retval >= 0) {
-		shell_print(shell, "read: %i", m_sample_buffer[0]);
+		val = m_sample_buffer[0];
+		if (adc->read_format) {
+			adc_raw_to_millivolts(adc_get_ref(adc_dev),
+					      adc->channel_config.gain,
+					      adc->resolution,
+					      &val);
+		}
+		shell_print(shell, "read: %d%s", val, adc->read_format ? "mv" : "raw");
 	}
-
 	return retval;
 }
 
@@ -386,14 +418,16 @@ static int cmd_adc_print(const struct shell *shell, size_t argc, char **argv)
 			   "Acquisition Time: %u\n"
 			   "Channel ID: %u\n"
 			   "Resolution: %u\n"
-			   "Calibrate: %u\n",
+			   "Calibrate: %u\n"
+			   "Read Format: %u",
 			   adc->device_label,
 			   chosen_gain,
 			   chosen_reference,
 			   adc->channel_config.acquisition_time,
 			   adc->channel_config.channel_id,
 			   adc->resolution,
-			   adc->calibrate);
+			   adc->calibrate,
+			   adc->read_format);
 	return 0;
 }
 
@@ -443,6 +477,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_adc_cmds,
 	SHELL_CMD(reference, &sub_ref_cmds, CMD_HELP_REF, NULL),
 	SHELL_CMD_ARG(resolution, NULL, CMD_HELP_RES, cmd_adc_reso, 2, 0),
 	SHELL_CMD_ARG(calibrate, NULL, CMD_HELP_CAL, cmd_adc_cal, 2, 0),
+	SHELL_CMD_ARG(read_format, NULL, CMD_HELP_FORMATE, cmd_adc_read_format, 2, 0),
 	SHELL_SUBCMD_SET_END /* Array terminated. */
 );
 
