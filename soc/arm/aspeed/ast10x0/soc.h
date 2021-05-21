@@ -22,7 +22,7 @@
 			if (cond)					     \
 			break;						     \
 			if ((z_tick_get_32() - __start) > __timeout_tick) {  \
-				__ret = -ETIMEDOUT;				     \
+				__ret = -ETIMEDOUT;			     \
 				break;					     \
 			}						     \
 			if (sleep_tick)					     \
