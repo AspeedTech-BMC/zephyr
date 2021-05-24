@@ -21,12 +21,12 @@ LOG_MODULE_REGISTER(pwm_aspeed);
 
 #define NUM_OF_CHANNELS DT_INST_PROP(0, npwms)
 
+#define PWM_ASPEED_FIXED_PERIOD 0xff
 
 /* Structure Declarations */
 
 struct pwm_aspeed_data {
 	uint32_t clk_src;
-	uint32_t freq[NUM_OF_CHANNELS];
 };
 
 struct pwm_aspeed_cfg {
@@ -42,18 +42,25 @@ struct pwm_aspeed_cfg {
 
 static int pwm_aspeed_init(const struct device *dev)
 {
-	const struct device *clock_dev = device_get_binding(ASPEED_CLK_CTRL_NAME);
-	const struct device *reset_dev = device_get_binding(ASPEED_RST_CTRL_NAME);
+	struct pwm_aspeed_data *priv = DEV_DATA(dev);
+	const struct pwm_aspeed_cfg *config = DEV_CFG(dev);
+	const struct device *clock_dev =
+		device_get_binding(ASPEED_CLK_CTRL_NAME);
+	const struct device *reset_dev =
+		device_get_binding(ASPEED_RST_CTRL_NAME);
 
-	clock_control_get_rate(clock_dev, DEV_CFG(dev)->clk_id, &DEV_DATA(dev)->clk_src);
-	reset_control_deassert(reset_dev, DEV_CFG(dev)->rst_id);
+	clock_control_get_rate(clock_dev, config->clk_id,
+			       &priv->clk_src);
+	/* Fixed period divisor = 256 */
+	priv->clk_src /= (PWM_ASPEED_FIXED_PERIOD + 1);
+	reset_control_deassert(reset_dev, config->rst_id);
 	return 0;
 }
 
-static void aspeed_set_pwm_channel_enable(const struct device *dev, uint32_t pwm,
-					  bool enable)
+static void aspeed_set_pwm_channel_enable(const struct device *dev,
+					  uint32_t pwm, bool enable)
 {
-	volatile pwm_register_t *pwm_reg = DEV_CFG(dev)->base;
+	pwm_register_t *pwm_reg = DEV_CFG(dev)->base;
 	pwm_general_register_t general_reg;
 
 	general_reg.value = pwm_reg->pwm_gather[pwm].pwm_general.value;
@@ -62,63 +69,71 @@ static void aspeed_set_pwm_channel_enable(const struct device *dev, uint32_t pwm
 	pwm_reg->pwm_gather[pwm].pwm_general.value = general_reg.value;
 }
 
-static void aspeed_set_pwm_freq(const struct device *dev,
-				uint32_t pwm, uint32_t period_cycles)
+static uint32_t aspeed_pwm_get_period(const struct device *dev, uint32_t pwm)
 {
-	volatile pwm_register_t *pwm_reg = DEV_CFG(dev)->base;
-	struct pwm_aspeed_data *priv = DEV_DATA(dev);
-	pwm_duty_cycle_register_t duty_reg;
+	pwm_register_t *pwm_reg = DEV_CFG(dev)->base;
+	uint32_t period, div_h, div_l;
+
+	div_h = pwm_reg->pwm_gather[pwm].pwm_general.fields.pwm_clock_division_h;
+	div_l = pwm_reg->pwm_gather[pwm].pwm_general.fields.pwm_clock_division_l;
+	period = (div_l + 1) << div_h;
+
+	return period;
+}
+
+static int aspeed_set_pwm_period(const struct device *dev, uint32_t pwm,
+				 uint32_t period_cycles)
+{
+	pwm_register_t *pwm_reg = DEV_CFG(dev)->base;
 	pwm_general_register_t general_reg;
-	uint32_t target_div;
-	int diff, min_diff = INT_MAX;
-	uint32_t tmp_div_h, tmp_div_l;
-	uint32_t div_h = BIT(5) - 1, div_l = BIT(8) - 1;
+	uint32_t div_h, div_l, divisor;
 
-	target_div = period_cycles >> 8;
-	/* calculate for target frequence */
-	for (tmp_div_h = 0; tmp_div_h < 0x10; tmp_div_h++) {
-		tmp_div_l = target_div / BIT(tmp_div_h) - 1;
-
-		if (tmp_div_l < 0 || tmp_div_l > 255) {
-			continue;
-		}
-
-		diff = target_div - (BIT(tmp_div_h) * (tmp_div_l + 1));
-		if (abs(diff) < abs(min_diff)) {
-			min_diff = diff;
-			div_l = tmp_div_l;
-			div_h = tmp_div_h;
-			if (diff == 0) {
-				break;
-			}
-		}
+	/*
+	 * Pick the smallest value for div_h so that div_l can be the biggest
+	 * which results in a finer resolution near the target period value.
+	 */
+	divisor = 256;
+	div_h = BIT(find_msb_set(period_cycles / divisor) - 1);
+	if (div_h > 0xf) {
+		div_h = 0xf;
 	}
+
+	divisor = BIT(div_h);
+	div_l = period_cycles / divisor;
+
+	if (div_l == 0) {
+		return -ERANGE;
+	}
+
+	div_l -= 1;
+
+	if (div_l > 255) {
+		div_l = 255;
+	}
+
 	/*
 	 * The PWM frequency = PCLK(200Mhz) / (clock division L bit *
 	 * clock division H bit * (period bit(0xff) + 1))
 	 */
-	priv->freq[pwm] = (priv->clk_src >> 8) / (BIT(div_h) * (div_l + 1));
-	LOG_DBG("div h %x, l : %x pwm out clk %d\n", div_h, div_l,
-		priv->freq[pwm]);
-	duty_reg.value = pwm_reg->pwm_gather[pwm].pwm_duty_cycle.value;
-	duty_reg.fields.pwm_period = 0xff;
-	pwm_reg->pwm_gather[pwm].pwm_duty_cycle.value = duty_reg.value;
+	LOG_DBG("div_h %x, div_l : %x\n", div_h, div_l);
 
 	general_reg.value = pwm_reg->pwm_gather[pwm].pwm_general.value;
 	general_reg.fields.pwm_clock_division_h = div_h;
 	general_reg.fields.pwm_clock_division_l = div_l;
 	pwm_reg->pwm_gather[pwm].pwm_general.value = general_reg.value;
-	LOG_DBG("pwm general 0x%08x pwm_duty 0x%08x",
-		pwm_reg->pwm_gather[pwm].pwm_general.value,
-		pwm_reg->pwm_gather[pwm].pwm_duty_cycle.value);
+	return 0;
 }
 
-static void aspeed_set_pwm_duty(const struct device *dev,
-				uint32_t pwm, uint32_t duty_pt)
+static void aspeed_set_pwm_duty(const struct device *dev, uint32_t pwm,
+				uint32_t pulse_cycles)
 {
-	volatile pwm_register_t *pwm_reg = DEV_CFG(dev)->base;
+	pwm_register_t *pwm_reg = DEV_CFG(dev)->base;
 	pwm_duty_cycle_register_t duty_reg;
+	uint32_t period_cycles = aspeed_pwm_get_period(dev, pwm);
+	uint32_t duty_pt = (pulse_cycles * 256) / period_cycles;
 
+	LOG_DBG("cur_period = %d, duty_cycle = %d, duty_pt = %d\n",
+		period_cycles, pulse_cycles, duty_pt);
 	if (duty_pt == 0) {
 		aspeed_set_pwm_channel_enable(dev, pwm, false);
 	} else {
@@ -127,15 +142,12 @@ static void aspeed_set_pwm_duty(const struct device *dev,
 		pwm_reg->pwm_gather[pwm].pwm_duty_cycle.value = duty_reg.value;
 		aspeed_set_pwm_channel_enable(dev, pwm, true);
 	}
-	LOG_DBG("pwm general 0x%08x pwm_duty 0x%08x",
-		pwm_reg->pwm_gather[pwm].pwm_general.value,
-		pwm_reg->pwm_gather[pwm].pwm_duty_cycle.value);
 }
 
-static void aspeed_set_pwm_polarity(const struct device *dev,
-				    uint32_t pwm, uint8_t polarity)
+static void aspeed_set_pwm_polarity(const struct device *dev, uint32_t pwm,
+				    uint8_t polarity)
 {
-	volatile pwm_register_t *pwm_reg = DEV_CFG(dev)->base;
+	pwm_register_t *pwm_reg = DEV_CFG(dev)->base;
 	pwm_general_register_t general_reg;
 
 	general_reg.value = pwm_reg->pwm_gather[pwm].pwm_general.value;
@@ -143,41 +155,39 @@ static void aspeed_set_pwm_polarity(const struct device *dev,
 	pwm_reg->pwm_gather[pwm].pwm_general.value = general_reg.value;
 }
 
-static int pwm_aspeed_pin_set(const struct device *dev,
-			      uint32_t pwm,
-			      uint32_t period_cycles,
-			      uint32_t pulse_cycles,
+static int pwm_aspeed_pin_set(const struct device *dev, uint32_t pwm,
+			      uint32_t period_cycles, uint32_t pulse_cycles,
 			      pwm_flags_t flags)
 {
-	struct pwm_aspeed_data *priv = DEV_DATA(dev);
-	uint32_t cycles_max = priv->clk_src;
+	int ret;
+	pwm_register_t *pwm_reg = DEV_CFG(dev)->base;
+	pwm_duty_cycle_register_t duty_reg;
 
-	uint32_t duty_pt = DIV_ROUND_UP(pulse_cycles * 256, period_cycles);
-
-	if (period_cycles > cycles_max) {
-		LOG_ERR("Requested period cycles is %d but maximum cycles is %d\n",
-			period_cycles, cycles_max);
-		return -EIO;
+	if (pwm > NUM_OF_CHANNELS) {
+		return -EINVAL;
 	}
 
-	if (pulse_cycles > period_cycles) {
-		LOG_ERR("Requested pulse %d is longer than period %d\n",
-			pulse_cycles, period_cycles);
-		return -EIO;
-	}
+	duty_reg.value = pwm_reg->pwm_gather[pwm].pwm_duty_cycle.value;
+	duty_reg.fields.pwm_period = PWM_ASPEED_FIXED_PERIOD;
+	pwm_reg->pwm_gather[pwm].pwm_duty_cycle.value = duty_reg.value;
 
-	LOG_DBG("duty_pt: %d", duty_pt);
-	aspeed_set_pwm_freq(dev, pwm, period_cycles);
-	aspeed_set_pwm_duty(dev, pwm, duty_pt);
+	ret = aspeed_set_pwm_period(dev, pwm, period_cycles);
+	if (ret) {
+		return ret;
+	}
+	aspeed_set_pwm_duty(dev, pwm, pulse_cycles);
 	aspeed_set_pwm_polarity(dev, pwm, flags);
 	return 0;
 }
 
-static int pwm_aspeed_get_cycles_per_sec(const struct device *dev,
-					 uint32_t pwm,
+static int pwm_aspeed_get_cycles_per_sec(const struct device *dev, uint32_t pwm,
 					 uint64_t *cycles)
 {
 	struct pwm_aspeed_data *priv = DEV_DATA(dev);
+
+	if (pwm > NUM_OF_CHANNELS) {
+		return -EINVAL;
+	}
 
 	*cycles = priv->clk_src;
 	return 0;
@@ -190,19 +200,20 @@ static const struct pwm_driver_api pwm_aspeed_api = {
 	.get_cycles_per_sec = pwm_aspeed_get_cycles_per_sec,
 };
 
-#define PWM_ASPEED_INIT(n)							  \
-	static struct pwm_aspeed_data pwm_aspeed_data_##n;			  \
-	static const struct pwm_aspeed_cfg pwm_aspeed_cfg_##n = {		  \
-		.base = (pwm_register_t *)DT_REG_ADDR(DT_PARENT(DT_DRV_INST(n))), \
-		.clk_id = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(n, clk_id), \
-		.rst_id = (reset_control_subsys_t)DT_INST_RESETS_CELL(n, rst_id), \
-	};									  \
-	DEVICE_DT_INST_DEFINE(n,						  \
-			      pwm_aspeed_init,					  \
-			      device_pm_control_nop,				  \
-			      &pwm_aspeed_data_##n,				  \
-			      &pwm_aspeed_cfg_##n,				  \
-			      PRE_KERNEL_1, CONFIG_KERNEL_INIT_PRIORITY_DEVICE,	  \
+#define PWM_ASPEED_INIT(n)						       \
+	static struct pwm_aspeed_data pwm_aspeed_data_##n;		       \
+	static const struct pwm_aspeed_cfg pwm_aspeed_cfg_##n = {	       \
+		.base = (pwm_register_t *)DT_REG_ADDR(			       \
+			DT_PARENT(DT_DRV_INST(n))),			       \
+		.clk_id = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(n,       \
+								      clk_id), \
+		.rst_id = (reset_control_subsys_t)DT_INST_RESETS_CELL(n,       \
+								      rst_id), \
+	};								       \
+	DEVICE_DT_INST_DEFINE(n, pwm_aspeed_init, device_pm_control_nop,       \
+			      &pwm_aspeed_data_##n, &pwm_aspeed_cfg_##n,       \
+			      PRE_KERNEL_1,				       \
+			      CONFIG_KERNEL_INIT_PRIORITY_DEVICE,	       \
 			      &pwm_aspeed_api);
 
 DT_INST_FOREACH_STATUS_OKAY(PWM_ASPEED_INIT)
