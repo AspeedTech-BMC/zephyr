@@ -40,15 +40,22 @@ struct tach_aspeed_data {
 static int tach_aspeed_sample_fetch(const struct device *dev, enum sensor_channel chan)
 {
 	volatile tach_register_t *tach_reg = DEV_CFG(dev)->base;
+	tach_general_register_t tach_general;
 	tach_status_register_t tach_status;
 	int ret;
 
 	ARG_UNUSED(chan);
+	/* Restart the Tach channel to guarantee the value is fresh */
+	tach_general.value = tach_reg->tach_general.value;
+	tach_general.fields.enable_tach = 0;
+	tach_reg->tach_general.value = tach_general.value;
+	tach_general.fields.enable_tach = 1;
+	tach_reg->tach_general.value = tach_general.value;
 	ret = reg_read_poll_timeout(
 		tach_reg, tach_status, tach_status,
 		(tach_status.fields.tach_full_measurement &&
 		 tach_status.fields.tach_value_updated_since_last_read),
-		0, DEV_DATA(dev)->sample_period);
+		DEV_DATA(dev)->sample_period, DEV_DATA(dev)->sample_period * 3);
 	if (ret) {
 		return ret;
 	}
@@ -106,7 +113,7 @@ static int tach_aspeed_get_sample_period(const struct device *dev)
 	sample_period_ms = DIV_ROUND_UP(1000 * 2 * 60, (pulse_pr * min_rpm));
 	/* Add the margin (about 1.2) of tach sample period to avoid sample miss */
 	sample_period_ms = (sample_period_ms * 1200) >> 10;
-
+	LOG_DBG("sample period = %d ms", sample_period_ms);
 	DEV_DATA(dev)->sample_period = sample_period_ms;
 	return 0;
 }
