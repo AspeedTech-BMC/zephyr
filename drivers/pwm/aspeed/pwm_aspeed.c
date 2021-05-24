@@ -212,7 +212,7 @@ static const struct pwm_driver_api pwm_aspeed_api = {
 	};								       \
 	DEVICE_DT_INST_DEFINE(n, pwm_aspeed_init, device_pm_control_nop,       \
 			      &pwm_aspeed_data_##n, &pwm_aspeed_cfg_##n,       \
-			      PRE_KERNEL_1,				       \
+			      POST_KERNEL,				       \
 			      CONFIG_KERNEL_INIT_PRIORITY_DEVICE,	       \
 			      &pwm_aspeed_api);
 
