@@ -645,6 +645,43 @@
 			status = "disabled";
 		};
 
+		lpc: lpc@7e789000 {
+			compatible = "aspeed,lpc";
+			reg = <0x7e789000 0x1000>;
+
+			kcs1: kcs1 {
+				compatible="aspeed,kcs";
+				interrupts = <INTR_KCS1 AST10X0_IRQ_DEFAULT_PRIORITY>;
+				chan = <1>;
+				label = "KCS1";
+				status = "disabled";
+			};
+
+			kcs2: kcs2 {
+				compatible="aspeed,kcs";
+				interrupts = <INTR_KCS2 AST10X0_IRQ_DEFAULT_PRIORITY>;
+				chan = <2>;
+				label = "KCS2";
+				status = "disabled";
+			};
+
+			kcs3: kcs3 {
+				compatible="aspeed,kcs";
+				interrupts = <INTR_KCS3 AST10X0_IRQ_DEFAULT_PRIORITY>;
+				chan = <3>;
+				label = "KCS3";
+				status = "disabled";
+			};
+
+			kcs4: kcs4 {
+				compatible="aspeed,kcs";
+				interrupts = <INTR_KCS4 AST10X0_IRQ_DEFAULT_PRIORITY>;
+				chan = <4>;
+				label = "KCS4";
+				status = "disabled";
+			};
+		};
+
 	};
 };
 

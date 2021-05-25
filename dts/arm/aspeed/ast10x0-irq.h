@@ -36,6 +36,11 @@
 #define INTR_UART12			63
 #define INTR_UART13			64
 
+#define INTR_KCS1			138
+#define INTR_KCS2			139
+#define INTR_KCS3			140
+#define INTR_KCS4			141
+
 #define INTR_VUART1			147
 #define INTR_VUART2			148
 
