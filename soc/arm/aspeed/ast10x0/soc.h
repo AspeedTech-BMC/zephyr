@@ -36,10 +36,6 @@
 /* Common reset control device name for all Ast10x0 series */
 #define ASPEED_RST_CTRL_NAME DT_INST_RESETS_LABEL(0)
 
-/* CMSIS required definitions */
-#define __FPU_PRESENT  CONFIG_CPU_HAS_FPU
-#define __MPU_PRESENT  CONFIG_CPU_HAS_ARM_MPU
-
 /* non-cached (DMA) memory */
 #if (CONFIG_SRAM_NC_SIZE > 0)
 #define NON_CACHED_BSS	__attribute__((section(".nocache.bss")))
@@ -48,6 +44,34 @@
 #define NON_CACHED_BSS
 #define NON_CACHED_BSS_ALIGN16	__attribute__((aligned(16)))
 #endif /* end of "#if (CONFIG_SRAM_NC_SIZE > 0)" */
+/* CMSIS required definitions */
+typedef enum {
+	Reset_IRQn              = -15,
+	NonMaskableInt_IRQn     = -14,
+	HardFault_IRQn          = -13,
+#if defined(CONFIG_ARMV7_M_ARMV8_M_MAINLINE)
+	MemoryManagement_IRQn   = -12,
+	BusFault_IRQn           = -11,
+	UsageFault_IRQn         = -10,
+#if defined(CONFIG_ARM_SECURE_FIRMWARE)
+	SecureFault_IRQn        = -9,
+#endif  /* CONFIG_ARM_SECURE_FIRMWARE */
+#endif  /* CONFIG_ARMV7_M_ARMV8_M_MAINLINE */
+	SVCall_IRQn             =  -5,
+	DebugMonitor_IRQn       =  -4,
+	PendSV_IRQn             =  -2,
+	SysTick_IRQn            =  -1,
+/* -------------------  Processor Interrupt Numbers  ------------------------------ */
+	MAX_IRQn                = CONFIG_NUM_IRQS,
+} IRQn_Type;
+
+#define __CM4_REV                 0x0001U
+#define __VTOR_PRESENT            1U
+#define __NVIC_PRIO_BITS        NUM_IRQ_PRIO_BITS
+#define __Vendor_SysTickConfig    0U
+#define __FPU_PRESENT  CONFIG_CPU_HAS_FPU
+#define __MPU_PRESENT  CONFIG_CPU_HAS_ARM_MPU
+
 #endif /* ZEPHYR_SOC_ARM_ASPEED_AST10X0_SOC_H_*/
 
 #define PHY_SRAM_ADDR		0x80000000UL
