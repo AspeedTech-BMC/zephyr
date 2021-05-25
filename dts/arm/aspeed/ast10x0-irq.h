@@ -40,6 +40,7 @@
 #define INTR_KCS2			139
 #define INTR_KCS3			140
 #define INTR_KCS4			141
+#define INTR_BT				143
 
 #define INTR_VUART1			147
 #define INTR_VUART2			148

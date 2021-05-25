@@ -132,3 +132,9 @@
 	status = "okay";
 	addr = <0xca4>;
 };
+
+&bt {
+	status = "okay";
+	addr = <0xe4>;
+	sirq = <0xa>;
+};
