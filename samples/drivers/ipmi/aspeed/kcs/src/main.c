@@ -45,9 +45,12 @@ void main(void)
 	}
 
 	while (1) {
+		k_busy_wait(1000);
+
 		rc = kcs_aspeed_read(kcs_dev, ibuf, sizeof(ibuf));
 		if (rc < 0) {
-			printk("failed to read KCS data, rc=%d\n", rc);
+			if (rc != -ENODATA)
+				printk("failed to read KCS data, rc=%d\n", rc);
 			continue;
 		}
 

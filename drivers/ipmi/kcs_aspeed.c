@@ -415,8 +415,8 @@ int kcs_aspeed_read(const struct device *dev,
 	if (buf_sz < kcs->ibuf_idx)
 		return -ENOSPC;
 
-	while (!kcs->ibuf_avail)
-		k_busy_wait(1000);
+	if (!kcs->ibuf_avail)
+		return -ENODATA;
 
 	if (kcs->phase != KCS_PHASE_WRITE_DONE) {
 		kcs_force_abort(kcs);
