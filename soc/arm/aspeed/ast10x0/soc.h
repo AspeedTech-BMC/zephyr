@@ -61,7 +61,13 @@ typedef enum {
 	DebugMonitor_IRQn       =  -4,
 	PendSV_IRQn             =  -2,
 	SysTick_IRQn            =  -1,
-/* -------------------  Processor Interrupt Numbers  ------------------------------ */
+/*
+ * CMSIS IRQn_Type enum is broken relative to ARM GNU compiler.
+ *
+ * So add the MAX_IRQn to enlarge the size of IRQn_Type to avoid
+ * ARM compiler from sign extending IRQn_Type values higher than 0x80
+ * into negative IRQ values, which causes hard-to-debug Hard Faults.
+ */
 	MAX_IRQn                = CONFIG_NUM_IRQS,
 } IRQn_Type;
 
