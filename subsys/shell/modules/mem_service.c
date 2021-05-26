@@ -15,8 +15,8 @@ static int cmd_mem_wr(const struct shell *shell, size_t argc, char **argv)
 	char *endptr;
 
 	if (argc > 2) {
-		addr = strtol(argv[1], &endptr, 16);
-		data = strtol(argv[2], &endptr, 16);
+		addr = strtoul(argv[1], &endptr, 16);
+		data = strtoul(argv[2], &endptr, 16);
 		*(uint32_t *)addr = data;
  	} else {
 		return -EINVAL;
@@ -34,9 +34,9 @@ static int cmd_mem_md(const struct shell *shell, size_t argc, char **argv)
 	if (argc < 2)
 		return -EINVAL;
 
-	addr = strtol(argv[1], &endptr, 16);
+	addr = strtoul(argv[1], &endptr, 16);
 	if (argc > 2)
-		length = strtol(argv[2], &endptr, 16);
+		length = strtoul(argv[2], &endptr, 16);
 
 	for (i = 0; i < length; i++) {
 		if ((i & 0x3) == 0)
