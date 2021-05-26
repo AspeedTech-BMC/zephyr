@@ -64,7 +64,7 @@
 		};
 
 		adc0: adc@7e6e9000 {
-			compatible = "aspeed,ast1030-adc";
+			compatible = "aspeed,adc";
 			reg = <0x7e6e9000 0x100>;
 			clocks = <&adc_clk>;
 			resets = <&sysrst ASPEED_RESET_ADC>;
@@ -75,7 +75,7 @@
 		};
 
 		adc1: adc@7e6e9100 {
-			compatible = "aspeed,ast1030-adc";
+			compatible = "aspeed,adc";
 			reg = <0x7e6e9100 0x100>;
 			clocks = <&adc_clk>;
 			resets = <&sysrst ASPEED_RESET_ADC>;
@@ -88,7 +88,7 @@
 		pwm_tach: pwm_tach@7e610000 {
 			reg = <0x7e610000 0x100>;
 			pwm: pwm {
-				compatible = "aspeed,ast1030-pwm";
+				compatible = "aspeed,pwm";
 				#pwm-cells = <3>;
 				npwms = <16>;
 				clocks = <&sysclk ASPEED_CLK_HCLK>;
@@ -97,7 +97,7 @@
 				status = "disabled";
 			};
 			tach: tach {
-				compatible = "aspeed,ast1030-tach";
+				compatible = "aspeed,tach";
 				#address-cells = <1>;
 				#size-cells = <0>;
 				clocks = <&sysclk ASPEED_CLK_HCLK>;
@@ -112,7 +112,7 @@
 			interrupts = <11 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			gpio0_0: gpio0_0 {
-					compatible = "aspeed,ast1030-gpio";
+					compatible = "aspeed,gpio";
 					#gpio-cells = <2>;
 					gpio-controller;
 					ngpios = <32>;
@@ -124,7 +124,7 @@
 			};
 
 			gpio0_32: gpio0_32 {
-					compatible = "aspeed,ast1030-gpio";
+					compatible = "aspeed,gpio";
 					#gpio-cells = <2>;
 					gpio-controller;
 					ngpios = <32>;
@@ -136,7 +136,7 @@
 			};
 
 			gpio0_64: gpio0_64 {
-					compatible = "aspeed,ast1030-gpio";
+					compatible = "aspeed,gpio";
 					#gpio-cells = <2>;
 					gpio-controller;
 					ngpios = <32>;
@@ -148,7 +148,7 @@
 			};
 
 			gpio0_96: gpio0_96 {
-					compatible = "aspeed,ast1030-gpio";
+					compatible = "aspeed,gpio";
 					#gpio-cells = <2>;
 					gpio-controller;
 					ngpios = <32>;
@@ -160,7 +160,7 @@
 			};
 
 			gpio0_128: gpio0_128 {
-					compatible = "aspeed,ast1030-gpio";
+					compatible = "aspeed,gpio";
 					#gpio-cells = <2>;
 					gpio-controller;
 					ngpios = <32>;
@@ -172,7 +172,7 @@
 			};
 
 			gpio0_160: gpio0_160 {
-					compatible = "aspeed,ast1030-gpio";
+					compatible = "aspeed,gpio";
 					#gpio-cells = <2>;
 					gpio-controller;
 					ngpios = <8>;
@@ -185,7 +185,7 @@
 		};
 
 		peci: peci@7e78b000 {
-			compatible = "aspeed,ast1030-peci";
+			compatible = "aspeed,peci";
 			reg = <0x7e78b000 0x100>;
 			interrupts = <38 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_HCLK>;

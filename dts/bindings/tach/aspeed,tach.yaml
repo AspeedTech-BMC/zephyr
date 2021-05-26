@@ -3,7 +3,7 @@
 
 description: ASPEED tachometer controller
 
-compatible: "aspeed,ast1030-tach"
+compatible: "aspeed,tach"
 
 include: tach.yaml
 

@@ -3,7 +3,7 @@
 
 description: ASPEED PECI controller
 
-compatible: "aspeed,ast1030-peci"
+compatible: "aspeed,peci"
 
 include: peci.yaml
 

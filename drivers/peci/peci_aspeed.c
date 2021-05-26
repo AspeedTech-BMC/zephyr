@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#define DT_DRV_COMPAT aspeed_ast1030_peci
+#define DT_DRV_COMPAT aspeed_peci
 
 #include <stdlib.h>
 #include <errno.h>

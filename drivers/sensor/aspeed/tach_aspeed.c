@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#define DT_DRV_COMPAT aspeed_ast1030_tach
+#define DT_DRV_COMPAT aspeed_tach
 
 #include <errno.h>
 #include <device.h>

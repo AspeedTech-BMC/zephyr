@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#define DT_DRV_COMPAT aspeed_ast1030_pinmux
+#define DT_DRV_COMPAT aspeed_pinmux
 
 #include <drivers/pinmux.h>
 #include <kernel.h>

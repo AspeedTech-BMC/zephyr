@@ -1,6 +1,6 @@
 description: ASPEED family ADC
 
-compatible: "aspeed,ast1030-adc"
+compatible: "aspeed,adc"
 
 include: adc-controller.yaml
 

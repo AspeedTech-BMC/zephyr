@@ -29,8 +29,8 @@
 #define DT_DRV_COMPAT st_stm32_adc
 #elif DT_HAS_COMPAT_STATUS_OKAY(nuvoton_npcx_adc)
 #define DT_DRV_COMPAT nuvoton_npcx_adc
-#elif DT_HAS_COMPAT_STATUS_OKAY(aspeed_ast1030_adc)
-#define DT_DRV_COMPAT aspeed_ast1030_adc
+#elif DT_HAS_COMPAT_STATUS_OKAY(aspeed_adc)
+#define DT_DRV_COMPAT aspeed_adc
 #else
 #error No known devicetree compatible match for ADC shell
 #endif

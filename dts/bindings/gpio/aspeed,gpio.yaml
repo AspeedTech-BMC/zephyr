@@ -3,7 +3,7 @@
 
 description: ASPEED GPIO node
 
-compatible: "aspeed,ast1030-gpio"
+compatible: "aspeed,gpio"
 
 include: [gpio-controller.yaml, base.yaml]
 

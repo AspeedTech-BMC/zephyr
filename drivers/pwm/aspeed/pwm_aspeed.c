@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#define DT_DRV_COMPAT aspeed_ast1030_pwm
+#define DT_DRV_COMPAT aspeed_pwm
 
 #define LOG_LEVEL CONFIG_PWM_LOG_LEVEL
 #include <logging/log.h>
