@@ -78,8 +78,8 @@ typedef enum {
 #define __FPU_PRESENT  CONFIG_CPU_HAS_FPU
 #define __MPU_PRESENT  CONFIG_CPU_HAS_ARM_MPU
 
-#endif /* ZEPHYR_SOC_ARM_ASPEED_AST10X0_SOC_H_*/
-
 #define PHY_SRAM_ADDR		0x80000000UL
 #define TO_PHY_ADDR(addr)	(PHY_SRAM_ADDR + (uint32_t)(addr))
 #define TO_VIR_ADDR(addr)	((uint32_t)(addr) - PHY_SRAM_ADDR)
+
+#endif /* ZEPHYR_SOC_ARM_ASPEED_AST10X0_SOC_H_*/
