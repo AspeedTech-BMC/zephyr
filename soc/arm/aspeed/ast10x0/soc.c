@@ -9,6 +9,13 @@
 #include <stdint.h>
 #include <linker/linker-defs.h>
 
+/*WDT0 registers*/
+#define WDT0_BASE 0x7e785000
+
+#define WDT_SOFTWARE_RESET_MASK_REG 0x28
+
+#define WDT_SOFTWARE_RESET_REG 0x24
+#define WDT_TRIGGER_KEY 0xAEEDF123
 /* SCU registers */
 #define JTAG_PINMUX_REG	0x41c
 
@@ -42,4 +49,11 @@ void z_platform_init(void)
 
 	/* init cache */
 	aspeed_cache_init();
+}
+
+void sys_arch_reboot(int type)
+{
+	sys_write32(0x3fffff1, WDT0_BASE + WDT_SOFTWARE_RESET_MASK_REG);
+	sys_write32(WDT_TRIGGER_KEY, WDT0_BASE + WDT_SOFTWARE_RESET_REG);
+	ARG_UNUSED(type);
 }
