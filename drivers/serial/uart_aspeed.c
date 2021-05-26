@@ -453,12 +453,12 @@ static const struct uart_driver_api uart_aspeed_driver_api = {
 		.dev_idx = n,								\
 		.base = DT_INST_REG_ADDR(n),						\
 		.clk_id = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(n, clk_id),	\
-		.virt = DT_INST_PROP(n, virtual),					\
-		.virt_port = DT_INST_PROP(n, virtual_port),				\
-		.virt_sirq = DT_INST_PROP(n, virtual_sirq),				\
-		.virt_sirq_pol = DT_INST_PROP(n, virtual_sirq_polarity),		\
-		.dma = DT_INST_PROP(n, dma),						\
-		.dma_ch = DT_INST_PROP(n, dma_channel),					\
+		.virt = DT_INST_PROP_OR(n, virtual, 0),					\
+		.virt_port = DT_INST_PROP_OR(n, virtual_port, 0),			\
+		.virt_sirq = DT_INST_PROP_OR(n, virtual_sirq, 0),			\
+		.virt_sirq_pol = DT_INST_PROP_OR(n, virtual_sirq_polarity, 0),		\
+		.dma = DT_INST_PROP_OR(n, dma, 0),					\
+		.dma_ch = DT_INST_PROP_OR(n, dma_channel, 0),				\
 	};										\
 											\
 	DEVICE_DT_INST_DEFINE(n,							\

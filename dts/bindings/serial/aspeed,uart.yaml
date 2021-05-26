@@ -14,30 +14,30 @@ properties:
 
     virtual:
       type: int
-      required: true
+      required: false
       description: Virtual UART device
 
     virtual,port:
       type: int
-      required: true
+      required: false
       description: Virtual UART LPC I/O port address
 
     virtual,sirq:
       type: int
-      required: true
+      required: false
       description: Virtual UART LPC SerIRQ number
 
     virtual,sirq-polarity:
       type: int
-      required: true
+      required: false
       description: Virtual UART LPC SerIRQ polarity
 
     dma:
       type: int
-      required: true
+      required: false
       description: Enable UART DMA support
 
     dma,channel:
       type: int
-      required: true
+      required: false
       description: UART DMA channel to use
