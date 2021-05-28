@@ -273,7 +273,7 @@ static int peci_aspeed_transfer(const struct device *dev, struct peci_msg *msg)
 				osEventFlagsDelete(peci_data->evt_id);
 				peci_aspeed_init(dev);
 				peci_aspeed_configure(dev,
-						      DEV_DATA(dev)->freq);
+						      DEV_DATA(dev)->freq / 1000);
 				peci_aspeed_enable(dev);
 				return -ETIMEDOUT;
 			}
