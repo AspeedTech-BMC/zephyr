@@ -3,27 +3,35 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-#include <sys/slist.h>
-#include <arch/arm/aarch32/cortex_m/mpu/arm_mpu.h>
+#include <soc.h>
+#include "arm_mpu_mem_cfg.h"
 
 /* Some helper defines for aspeed regions */
-#define AST_REGION_RAM_ATTR(size) \
-{ \
-	(NORMAL_OUTER_INNER_WRITE_BACK_WRITE_READ_ALLOCATE_NON_SHAREABLE | \
-	 size | P_RW_U_NA_Msk) \
-}
+#define AST_REGION_RAM_ATTR(size)						   \
+	{									   \
+		(NORMAL_OUTER_INNER_WRITE_BACK_WRITE_READ_ALLOCATE_NON_SHAREABLE | \
+		 size | P_RW_U_NA_Msk)						   \
+	}
 
 static const struct arm_mpu_region mpu_regions[] = {
 	/* Region 0 */
 	MPU_REGION_ENTRY("FLASH_0",
-			 DT_REG_ADDR(DT_INST(0, flash_aspeed)),
-			 REGION_FLASH_ATTR(DT_REG_SIZE(DT_INST(0, flash_aspeed)))
-			),
+			 CONFIG_FLASH_BASE_ADDRESS,
+#if defined(CONFIG_ARMV8_M_BASELINE) || defined(CONFIG_ARMV8_M_MAINLINE)
+			 REGION_FLASH_ATTR(CONFIG_FLASH_BASE_ADDRESS,
+					   CONFIG_FLASH_SIZE * 1024)),
+#else
+			 REGION_FLASH_ATTR(REGION_FLASH_SIZE)),
+#endif
 	/* Region 1 */
 	MPU_REGION_ENTRY("SRAM_0",
-			 DT_REG_ADDR(DT_INST(0, mmio_sram)),
-			 AST_REGION_RAM_ATTR(DT_REG_SIZE(DT_INST(0, mmio_sram)))
-			),
+			 CONFIG_SRAM_BASE_ADDRESS,
+#if defined(CONFIG_ARMV8_M_BASELINE) || defined(CONFIG_ARMV8_M_MAINLINE)
+			 REGION_RAM_ATTR(CONFIG_SRAM_BASE_ADDRESS,
+					 CONFIG_SRAM_SIZE * 1024)),
+#else
+			 AST_REGION_RAM_ATTR(REGION_SRAM_SIZE)),
+#endif
 };
 
 const struct arm_mpu_config mpu_config = {
