@@ -9,4 +9,7 @@ source "soc/arm/aspeed/ast10x0/Kconfig.defconfig.ast10*0"
 config SOC_SERIES
 	default "ast10x0"
 
+config CPU_HAS_CUSTOM_FIXED_SOC_MPU_REGIONS
+	default y
+
 endif # SOC_SERIES_AST10X0
