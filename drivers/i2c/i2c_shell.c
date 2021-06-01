@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <drivers/i2c.h>
 #include <drivers/i2c/slave/eeprom.h>
+#include <drivers/i2c/slave/ipmb.h>
 #include <string.h>
 #include <sys/util.h>
 #include <stdlib.h>
@@ -229,9 +230,14 @@ static int cmd_i2c_read(const struct shell *shell, size_t argc, char **argv)
 	return 0;
 }
 
+#ifdef CONFIG_I2C_SLAVE
 #ifdef CONFIG_I2C_EEPROM_SLAVE
+#define EEPROM_SLAVE	0
 #define TEST_DATA_SIZE	20
+#define TEST_IPMB_SIZE	5
 static const uint8_t eeprom_0_data[TEST_DATA_SIZE] = "0123456789abcdefghij";
+#endif
+const struct device *ipmb_dev;
 
 static int cmd_i2c_slave_attach(const struct shell *shell,
 			      size_t argc, char **argv)
@@ -251,20 +257,55 @@ static int cmd_i2c_slave_attach(const struct shell *shell,
 			    argv[2]);
 		return -ENODEV;
 	}
-	
+
+#ifdef CONFIG_I2C_EEPROM_SLAVE
 	/* Program differentiable data into the two devices through a back door
 	 * that doesn't use I2C.
 	 */
 	if(eeprom_slave_program(slave_dev, eeprom_0_data, TEST_DATA_SIZE))
 		shell_error(shell, "I2C: Slave Device driver %s found.",slave_dev->name);
+#endif
+
+#ifdef CONFIG_I2C_IPMB_SLAVE
+	/* ipmb slave device */
+	ipmb_dev = slave_dev;
+#endif
 
 	/* Attach each EEPROM to its owning bus as a slave device. */
 	if(i2c_slave_driver_register(slave_dev))
 		shell_error(shell, "I2C: Slave Device driver %s not found.",slave_dev->name);
 
-
 	return 0;
 }
+
+#ifdef CONFIG_I2C_IPMB_SLAVE
+static int cmd_i2c_ipmb_read(const struct shell *shell,
+			      size_t argc, char **argv)
+{
+	int ret = 0, i;
+	struct ipmb_msg *msg = NULL;
+	uint8_t *buf = NULL;
+
+	if (ipmb_dev != NULL) {
+		ret = ipmb_slave_read(ipmb_dev, msg);
+
+		if (!ret) {
+			buf = (uint8_t *)(msg);
+
+			shell_print(shell, "ipmb length : %x\n", msg->len);
+			for (i = 1; i < ((msg->len)-1); i++) {
+				shell_print(shell, "%x ", *buf);
+			}
+
+			/* remove from list */
+			ipmb_slave_remove(ipmb_dev);
+		}
+	}
+
+	return ret;
+}
+#endif
+
 #endif
 
 static void device_name_get(size_t idx, struct shell_static_entry *entry);
@@ -298,10 +339,15 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_i2c_cmds,
 			       SHELL_CMD_ARG(write_byte, &dsub_device_name,
 					     "Write a byte to an I2C device",
 					     cmd_i2c_write_byte, 4, 1),
-#ifdef CONFIG_I2C_EEPROM_SLAVE					     
+#ifdef CONFIG_I2C_SLAVE
 			       SHELL_CMD_ARG(slave_attach, &dsub_device_name,
 					     "Attach slave device",
 					     cmd_i2c_slave_attach, 2, 1),
+#ifdef CONFIG_I2C_IPMB_SLAVE
+			       SHELL_CMD_ARG(slave_ipmb_read, &dsub_device_name,
+					     "Read ipmb buffer from slave",
+					      cmd_i2c_ipmb_read, 0, 1),
+#endif
 #endif
 			       SHELL_SUBCMD_SET_END     /* Array terminated. */
 			       );

@@ -70,6 +70,16 @@
 		status = "okay";
 	};
 
+	ipmb@50 {
+		compatible = "atmel,at24";
+		reg = <0x50>;
+		label = "IPMB_SLAVE_0";
+		size = <5>;
+		pagesize = <16>;
+		address-width = <8>;
+		timeout = <5>;
+		status = "okay";
+	};
 };
 
 &i2c1 {
@@ -111,30 +121,4 @@
 
 &udc {
 	status = "okay";
-};
-
-&kcs1 {
-	status = "okay";
-	addr = <0xca0>;
-};
-
-&kcs2 {
-	status = "okay";
-	addr = <0xca8>;
-};
-
-&kcs3 {
-	status = "okay";
-	addr = <0xca2>;
-};
-
-&kcs4 {
-	status = "okay";
-	addr = <0xca4>;
-};
-
-&bt {
-	status = "okay";
-	addr = <0xe4>;
-	sirq = <0xa>;
 };

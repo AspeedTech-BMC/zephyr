@@ -324,20 +324,11 @@ struct i2c_aspeed_data {
 	uint16_t flags;
 	uint8_t         *buf;
 	int len;                        /* master xfer count */
-	/* snoop mode */
-#ifdef I2C_SNOOP_MODE
-	uint8_t         *snoop_buf;
-	size_t snoop_size;
-#endif
+
 	/* slave configuration */
 	uint8_t slave_addr;
 	uint32_t slave_xfer_len;
 	uint32_t slave_xfer_cnt;
-
-	/* slave mqueue */
-	int fifo_fetch_idx;
-	int fifo_rx_idx;
-	int fifo_full;
 
 #ifdef CONFIG_I2C_SLAVE
 	unsigned char slave_dma_buf[I2C_SLAVE_BUF_SIZE];
