@@ -5,7 +5,7 @@
 
 zephyr_sources(soc.c cache.c)
 zephyr_sources_ifdef(
-  CONFIG_ARM_MPU
+  CONFIG_CPU_HAS_CUSTOM_FIXED_SOC_MPU_REGIONS
   mpu_regions.c
   )
 zephyr_include_directories(${ZEPHYR_BASE}/soc/arm/common/cortex_m)
