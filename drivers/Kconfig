@@ -55,6 +55,8 @@ source "drivers/clock_control/Kconfig"
 
 source "drivers/reset_control/Kconfig"
 
+source "drivers/jtag/Kconfig"
+
 source "drivers/ptp_clock/Kconfig"
 
 source "drivers/ipm/Kconfig"
