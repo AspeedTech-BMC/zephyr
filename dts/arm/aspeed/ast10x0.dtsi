@@ -195,6 +195,27 @@
 			#size-cells = <0>;
 		};
 
+		jtag0: jtag@7e6e4000 {
+			compatible = "aspeed,jtag";
+			reg= <0x7e6e4000 0x20>;
+			interrupts = <27 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_HCLK>;
+			resets = <&sysrst ASPEED_RESET_JTAG_M0>;
+			label = "JTAG0";
+			status = "disabled";
+		};
+
+		jtag1: jtag@7e6e4100 {
+			compatible = "aspeed,jtag";
+			reg= <0x7e6e4100 0x20>;
+			interrupts = <53 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_HCLK>;
+			resets = <&sysrst ASPEED_RESET_JTAG_M1>;
+			label = "JTAG1";
+			status = "disabled";
+		};
+
+
 		uart0: serial@7e783000 {
 			compatible = "aspeed,uart";
 			reg = <0x7e783000 0x1000>;
