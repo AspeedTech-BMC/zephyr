@@ -30,7 +30,8 @@ struct i2c_ipmb_slave_data {
 	sys_slist_t list_head;
 	struct ipmb_msg_elem *buffer;
 	uint32_t buffer_idx;
-	uint32_t ipmb_msg_count;
+	uint32_t max_msg_count;
+	uint32_t cur_msg_count;
 };
 
 struct i2c_ipmb_slave_config {
@@ -52,20 +53,22 @@ static int ipmb_slave_write_requested(struct i2c_slave_config *config)
 						struct i2c_ipmb_slave_data,
 						config);
 
-	struct i2c_ipmb_slave_config *cfg = (struct i2c_ipmb_slave_config *)(&(data->config));
-
 	/* check the max msg length */
-	if (data->ipmb_msg_count < cfg->ipmb_msg_length) {
+	if (data->cur_msg_count < data->max_msg_count) {
 
 		data->buffer = malloc(sizeof(struct ipmb_msg_elem));
 
+		LOG_DBG("ipmb: slave write data->buffer %x", (uint32_t)(data->buffer));
+
 		if (data->buffer != NULL) {
 			sys_slist_append(&(data->list_head), &(data->buffer->list));
-			data->ipmb_msg_count++;
+			data->cur_msg_count++;
 		} else {
 			return 1;
 		}
 	} else {
+		LOG_ERR("ipmb: buffer full");
+		data->buffer = NULL;
 		return 1;
 	}
 
@@ -79,6 +82,7 @@ static int ipmb_slave_write_requested(struct i2c_slave_config *config)
 
 	/*skip the first length parameter*/
 	buf[++data->buffer_idx] = GET_8BIT_ADDR(config->address);
+
 	return 0;
 }
 
@@ -100,7 +104,7 @@ static int ipmb_slave_write_received(struct i2c_slave_config *config,
 		LOG_DBG("ipmb: write received, val=0x%x", val);
 
 		/* fill data */
-		buf[data->buffer_idx++] = val;
+		buf[++data->buffer_idx] = val;
 		return 0;
 	} else {
 		return 1;
@@ -121,17 +125,13 @@ static int ipmb_slave_stop(struct i2c_slave_config *config)
 
 		msg->len = data->buffer_idx;
 
-		/* add this package into list */
-		sys_slist_append(&(data->list_head), &(data->buffer->list));
-		data->ipmb_msg_count++;
-
 		return 0;
 	}
 
 	return 1;
 }
 
-int ipmb_slave_read(const struct device *dev, struct ipmb_msg *ipmb_data)
+int ipmb_slave_read(const struct device *dev, struct ipmb_msg **ipmb_data)
 {
 	struct i2c_ipmb_slave_data *data = DEV_DATA(dev);
 	sys_snode_t *list_node = NULL;
@@ -139,11 +139,14 @@ int ipmb_slave_read(const struct device *dev, struct ipmb_msg *ipmb_data)
 
 	list_node = sys_slist_peek_head(&(data->list_head));
 
+	LOG_DBG("ipmb: slave read %x", (uint32_t)list_node);
+
 	if (list_node != NULL) {
-		elem = (struct ipmb_msg_elem *)(&list_node);
-		ipmb_data = &(elem->msg);
+		elem = (struct ipmb_msg_elem *)(list_node);
+		*ipmb_data = &(elem->msg);
 		return 0;
 	} else {
+		LOG_ERR("ipmb slave read: buffer empty!");
 		return 1;
 	}
 
@@ -157,12 +160,15 @@ int ipmb_slave_remove(const struct device *dev)
 
 	list_node = sys_slist_peek_head(&(data->list_head));
 
-	if (list_node != NULL) {
-		/* remove this item from list*/
-		sys_slist_find_and_remove(&(data->list_head), list_node);
-		data->ipmb_msg_count--;
+	LOG_DBG("ipmb: slave remove %x", (uint32_t)list_node);
 
+	if (list_node != NULL) {
+		/* remove this item from list */
+		sys_slist_find_and_remove(&(data->list_head), list_node);
+		data->cur_msg_count--;
 		free(list_node);
+
+		LOG_DBG("ipmb: slave remove successful.");
 
 		return 0;
 	} else {
@@ -218,6 +224,7 @@ static int i2c_ipmb_slave_init(const struct device *dev)
 		return -EINVAL;
 	}
 
+	data->max_msg_count = cfg->ipmb_msg_length;
 	data->config.address = cfg->address;
 	data->config.callbacks = &ipmb_callbacks;
 

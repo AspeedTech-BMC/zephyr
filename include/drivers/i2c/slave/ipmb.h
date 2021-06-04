@@ -58,7 +58,7 @@ struct ipmb_msg {
  * @retval 0 If successful.
  * @retval -EINVAL Invalid data pointer or offset
  */
-int ipmb_slave_read(const struct device *dev, struct ipmb_msg *ipmb_data);
+int ipmb_slave_read(const struct device *dev, struct ipmb_msg **ipmb_data);
 
 /**
  * @brief Remove single buffer of virtual IPMB memory
