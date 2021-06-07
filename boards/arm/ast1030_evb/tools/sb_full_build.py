@@ -123,8 +123,8 @@ if __name__ == "__main__":
     root_dir = sys.argv[1]
     image_path = root_dir+'/build/zephyr/zephyr.bin'
     uart_image_path = root_dir+'/build/zephyr/uart_zephyr.bin'
-    key_folder = root_dir+'/boards/arm/aspeed_bic_ast1030/key'
-    aes_key_path = root_dir+'/boards/arm/aspeed_bic_ast1030/key/test_aes_key.bin'
+    key_folder = root_dir+'/boards/arm/ast1030_evb/key'
+    aes_key_path = root_dir+'/boards/arm/ast1030_evb/key/test_aes_key.bin'
     run_shell('mkdir -p ./build/sb_bin')
 
     for mode2 in MODE_2_LIST:
@@ -132,7 +132,7 @@ if __name__ == "__main__":
         run_shell('mkdir -p {}'.format(dest_folder))
         alg = 'RSA{}_SHA{}'.format(mode2['rsa'], mode2['sha'])
 
-        otp_config = '{}/boards/arm/aspeed_bic_ast1030/otp_config/{}'.format(
+        otp_config = '{}/boards/arm/ast1030_evb/otp_config/{}'.format(
             root_dir, mode2['otp'])
         run_shell('otptool make_otp_image\
         {}\
@@ -184,7 +184,7 @@ if __name__ == "__main__":
                 '.format(output, otp_image))
 
             gen_uart_script = root_dir + \
-                '/boards/arm/aspeed_bic_ast1030/tools/gen_uart_booting_image.sh'
+                '/boards/arm/ast1030_evb/tools/gen_uart_booting_image.sh'
             uart_output = '{}/sec_uart_zephyr_{}.bin'.format(dest_folder, kid)
             run_shell('{} {} {}'.format(gen_uart_script, output, uart_output))
 

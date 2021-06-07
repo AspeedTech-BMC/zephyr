@@ -1,5 +1,5 @@
-identifier: aspeed_bic_ast1030
-name: ASPEED-BIC-AST1030
+identifier: ast1030_evb
+name: AST1030-EVB
 type: mcu
 arch: arm
 toolchain:

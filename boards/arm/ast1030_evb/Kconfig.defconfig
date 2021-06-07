@@ -4,10 +4,10 @@
 #
 # Copyright (c) 2021 ASPEED Technology Inc.
 
-if BOARD_ASPEED_BIC_AST1030
+if BOARD_AST1030_EVB
 
 config BOARD
-	default "aspeed_bic_ast1030"
+	default "ast1030_evb"
 
 if USB
 
@@ -22,4 +22,4 @@ config USB_DEVICE_MANUFACTURER
 
 endif # USB
 
-endif # BOARD_ASPEED_BIC_AST1030
+endif # BOARD_AST1030_EVB
