@@ -1,0 +1,76 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Copyright (c) 2021 ASPEED Technology Inc.
+ */
+
+#include <arm/armv7-m.dtsi>
+#include <mem.h>
+#include <dt-bindings/i2c/i2c.h>
+#include <aspeed/ast10x0-irq.h>
+#include <dt-bindings/clock/ast1030_clock.h>
+#include <dt-bindings/reset/ast26xx_reset.h>
+#include <dt-bindings/gpio/gpio.h>
+
+/ {
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu@0 {
+			device_type = "cpu";
+			compatible = "arm,cortex-m3";
+			reg = <0>;
+		};
+	};
+
+	sdram0: memory@0 {
+		device_type = "memory";
+	};
+
+	flash0: flash@20000000 {
+		compatible = "serial-flash";
+		label = "FLASH_ASPEED";
+		erase-block-size = <4096>;
+		write-block-size = <1>;
+	};
+
+	soc {
+		syscon: syscon@7e6e2000 {
+			reg = <0x7e6e2000 0x1000>;
+			sysclk: sysclk {
+				compatible = "aspeed,ast1030-clk";
+				#clock-cells = <1>;
+				label = "SYSCLK";
+			};
+
+			sysrst: sysrst {
+				compatible = "aspeed,ast1030-rst";
+				#reset-cells = <1>;
+				label = "SYSRST";
+			};
+			pinmux: pinmux {
+				compatible = "aspeed,ast1030-pinmux";
+			};
+		};
+
+		uart10: serial@7e790500 {
+			compatible = "aspeed,uart";
+			reg = <0x7e790500 0x100>;
+			interrupts = <INTR_UART11 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_UART11>;
+			status = "disabled";
+			label = "UART_10";
+		};
+
+		udma: udma@7e79e000 {
+			compatible = "aspeed,udma";
+			reg = <0x7e79e000 0x1000>;
+		};
+
+	};
+};
+
+&nvic {
+	arm,num-irq-priority-bits = <3>;
+};
