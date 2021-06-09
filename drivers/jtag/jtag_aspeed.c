@@ -112,6 +112,7 @@ struct jtag_aspeed_data {
 	uint32_t fifo_length;
 	enum tap_state state;
 	osEventFlagsId_t evt_id;
+	bool sw_tdi;
 };
 
 struct jtag_aspeed_cfg {
@@ -244,13 +245,68 @@ static int jtag_aspeed_tap_reset(const struct device *dev)
 	mode_1_control.value = jtag_register->mode_1_control.value;
 	/* Enable HW mode 1 */
 	mode_1_control.fields.engine_enable = 1;
-	mode_1_control.fields.engine_output_enable = 1;
 	/* Reset target tap */
 	mode_1_control.fields.reset_to_tlr = 1;
 	jtag_register->mode_1_control.value = mode_1_control.value;
 	while (jtag_register->mode_1_control.fields.reset_to_tlr)
 		;
 	priv->state = TAP_IDLE;
+	return 0;
+}
+
+static int jtag_aspeed_sw_xfer(const struct device *dev, enum jtag_pin pin,
+			       uint8_t value)
+{
+	struct jtag_aspeed_data *priv = DEV_DATA(dev);
+	const struct jtag_aspeed_cfg *config = DEV_CFG(dev);
+	struct jtag_register_s *jtag_register = config->base;
+	union software_mode_and_status_s software_mode_and_status;
+
+	software_mode_and_status.value =
+		jtag_register->software_mode_and_status.value;
+	software_mode_and_status.fields.software_mode_enable = 1;
+	software_mode_and_status.fields.software_tdi_and_tdo = priv->sw_tdi;
+	switch (pin) {
+	case JTAG_TDI:
+		LOG_DBG("JTAG_TDI = %d\t", value);
+		priv->sw_tdi = value;
+		software_mode_and_status.fields.software_tdi_and_tdo = value;
+		break;
+	case JTAG_TCK:
+		LOG_DBG("JTAG_TCK = %d\t", value);
+		software_mode_and_status.fields.software_tck = value;
+		break;
+	case JTAG_TMS:
+		LOG_DBG("JTAG_TMS = %d\t", value);
+		software_mode_and_status.fields.software_tms = value;
+		break;
+	case JTAG_ENABLE:
+	case JTAG_TRST:
+	default:
+		return -EINVAL;
+	}
+	jtag_register->software_mode_and_status.value =
+		software_mode_and_status.value;
+	LOG_DBG("Register value 0x%08x\n", software_mode_and_status.value);
+	return 0;
+}
+
+static int jtag_aspeed_tdo_get(const struct device *dev, uint8_t *value)
+{
+	struct jtag_aspeed_data *priv = DEV_DATA(dev);
+	const struct jtag_aspeed_cfg *config = DEV_CFG(dev);
+	struct jtag_register_s *jtag_register = config->base;
+	union software_mode_and_status_s software_mode_and_status;
+
+	software_mode_and_status.value =
+		jtag_register->software_mode_and_status.value;
+	software_mode_and_status.fields.software_mode_enable = 1;
+	software_mode_and_status.fields.software_tdi_and_tdo = priv->sw_tdi;
+	jtag_register->software_mode_and_status.value =
+		software_mode_and_status.value;
+	*value = jtag_register->software_mode_and_status.fields.software_tdi_and_tdo;
+	LOG_DBG("JTAG_TDO = %d\t", *value);
+	LOG_DBG("Register value 0x%08x\n", software_mode_and_status.value);
 	return 0;
 }
 
@@ -381,7 +437,6 @@ int jtag_aspeed_xfer(const struct device *dev, struct scan_command_s *scan)
 	/* Enable HW mode 1 */
 	mode_1_control.value = jtag_register->mode_1_control.value;
 	mode_1_control.fields.engine_enable = 1;
-	mode_1_control.fields.engine_output_enable = 1;
 	mode_1_control.fields.msb_first = 0;
 	mode_1_control.fields.last_xfer = 0;
 	LOG_DBG("scan info: %sScan size:%d end_state:%s\n",
@@ -498,11 +553,13 @@ static int jtag_aspeed_init(const struct device *dev)
 	const struct jtag_aspeed_cfg *config = DEV_CFG(dev);
 	struct jtag_register_s *jtag_register = config->base;
 	union mode_1_int_ctrl_s mode_1_int_ctrl;
+	union mode_1_control_s mode_1_control;
 	const struct device *reset_dev =
 		device_get_binding(ASPEED_RST_CTRL_NAME);
 
 	reset_control_assert(reset_dev, config->rst_id);
 	reset_control_deassert(reset_dev, config->rst_id);
+	priv->sw_tdi = 0;
 	priv->state = TAP_IDLE;
 	priv->evt_id = osEventFlagsNew(NULL);
 	config->irq_config_func(dev);
@@ -514,6 +571,10 @@ static int jtag_aspeed_init(const struct device *dev)
 	mode_1_int_ctrl.fields.enable_of_instr_xfer_pause = 1;
 	jtag_register->mode_1_int_ctrl.value = mode_1_int_ctrl.value;
 	jtag_aspeed_freq_set(dev, JTAG_ASPEED_MAX_FREQUENCY);
+	/* Output enable */
+	mode_1_control.value = jtag_register->mode_1_control.value;
+	mode_1_control.fields.engine_output_enable = 1;
+	jtag_register->mode_1_control.value = mode_1_control.value;
 	return 0;
 }
 
@@ -524,6 +585,8 @@ static struct jtag_driver_api jtag_aspeed_api = {
 	.tap_set = jtag_aspeed_tap_set,
 	.tck_run = jtag_aspeed_tck_run,
 	.xfer = jtag_aspeed_xfer,
+	.sw_xfer = jtag_aspeed_sw_xfer,
+	.tdo_get = jtag_aspeed_tdo_get,
 };
 
 #define ASPEED_JTAG_INIT(n)						       \

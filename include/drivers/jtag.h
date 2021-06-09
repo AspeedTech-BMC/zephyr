@@ -56,6 +56,14 @@ enum tap_state {
 	TAP_RESET = 0x0f,
 };
 
+enum jtag_pin {
+	JTAG_TDI = 0x01,
+	JTAG_TCK = 0x02,
+	JTAG_TMS = 0x04,
+	JTAG_ENABLE = 0x08,
+	JTAG_TRST = 0x10,
+};
+
 /**
  * This structure defines a single scan field in the scan. It provides
  * fields for the field's width and pointers to scan input and output
@@ -115,9 +123,22 @@ typedef int (*jtag_api_tap_get)(const struct device *dev,
 typedef int (*jtag_api_tck_run)(const struct device *dev, uint32_t run_count);
 
 /**
- * @brief Type definition of JTAG API function for setting a read request.
+ * @brief Type definition of JTAG API function for scanning.
  */
-typedef int (*jtag_api_xfer)(const struct device *dev, struct scan_command_s *scan);
+typedef int (*jtag_api_xfer)(const struct device *dev,
+			     struct scan_command_s *scan);
+
+/**
+ * @brief Type definition of JTAG API function for software mode.
+ */
+typedef int (*jtag_api_sw_xfer)(const struct device *dev, enum jtag_pin pin,
+				uint8_t value);
+
+/**
+ * @brief Type definition of JTAG API function for getting tdo value.
+ */
+typedef int (*jtag_api_tdo_get)(const struct device *dev, uint8_t *value);
+
 
 /**
  * @brief JTAG driver API
@@ -131,6 +152,8 @@ __subsystem struct jtag_driver_api {
 	jtag_api_tap_set tap_set;
 	jtag_api_tck_run tck_run;
 	jtag_api_xfer xfer;
+	jtag_api_sw_xfer sw_xfer;
+	jtag_api_tdo_get tdo_get;
 };
 
 __syscall int jtag_freq_get(const struct device *dev, uint32_t *freq);
@@ -228,6 +251,28 @@ static inline int z_impl_jtag_dr_scan(const struct device *dev, int num_bits,
 	scan.fields.in_value = in_value;
 
 	return api->xfer(dev, &scan);
+}
+
+__syscall int jtag_sw_xfer(const struct device *dev, enum jtag_pin pin,
+			   uint8_t value);
+
+static inline int z_impl_jtag_sw_xfer(const struct device *dev, enum jtag_pin pin,
+			   uint8_t value)
+{
+	const struct jtag_driver_api *api =
+		(const struct jtag_driver_api *)dev->api;
+
+	return api->sw_xfer(dev, pin, value);
+}
+
+__syscall int jtag_tdo_get(const struct device *dev, uint8_t *value);
+
+static inline int z_impl_jtag_tdo_get(const struct device *dev, uint8_t *value)
+{
+	const struct jtag_driver_api *api =
+		(const struct jtag_driver_api *)dev->api;
+
+	return api->tdo_get(dev, value);
 }
 
 /**

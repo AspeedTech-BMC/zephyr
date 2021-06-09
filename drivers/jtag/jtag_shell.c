@@ -128,6 +128,34 @@ static int cmd_tap_state(const struct shell *shell, size_t argc, char **argv)
 	return 0;
 }
 
+static int cmd_sw_xfer(const struct shell *shell, size_t argc, char **argv)
+{
+	const struct device *dev;
+	enum jtag_pin pin;
+	uint8_t value;
+	int err;
+
+	dev = device_get_binding(argv[1]);
+	if (!dev) {
+		shell_error(shell, "JTAG device not found");
+		return -EINVAL;
+	}
+
+	pin = strtoul(argv[2], NULL, 0);
+	value = strtoul(argv[3], NULL, 0);
+
+	err = jtag_sw_xfer(dev, pin, value);
+	if (err) {
+		shell_error(shell, "failed to transfer pin%d = %d(err %d)",
+			    pin, value, err);
+		return err;
+	}
+	jtag_tdo_get(dev, &value);
+	shell_print(shell, "%d", value);
+
+	return 0;
+}
+
 SHELL_STATIC_SUBCMD_SET_CREATE(
 	jtag_cmds,
 	SHELL_CMD_ARG(frequency, NULL, "<device> <frequency>", cmd_frequency, 3,
@@ -137,6 +165,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 	SHELL_CMD_ARG(dr_scan, NULL, "<device> <len> <value>", cmd_dr_scan, 4,
 		      0),
 	SHELL_CMD_ARG(tap_set, NULL, "<device> <tap_state>", cmd_tap_state, 3,
+		      0),
+	SHELL_CMD_ARG(sw_xfer, NULL, "<device> <pin> <value>", cmd_sw_xfer, 4,
 		      0),
 	SHELL_SUBCMD_SET_END);
 
