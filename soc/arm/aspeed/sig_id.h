@@ -2,12 +2,12 @@
 #define __SIG_ID_H__
 
 /* Pin ID */
-typedef enum {
-    SIG_NONE = -1,
+enum {
+	SIG_NONE = -1,
 #define SIG_DEFINE(sig, ...) sig,
     #include "sig_def_list.h"
 #undef SIG_DEFINE
-    MAX_SIG_ID,
-} aspeed_sig_id_t;
+	MAX_SIG_ID,
+};
 
 #endif /* #ifndef __SIG_ID_H__ */
