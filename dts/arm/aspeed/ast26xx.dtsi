@@ -45,7 +45,7 @@
 			};
 
 			sysrst: sysrst {
-				compatible = "aspeed,ast1030-rst";
+				compatible = "aspeed,aspeed-rst";
 				#reset-cells = <1>;
 				label = "SYSRST";
 			};

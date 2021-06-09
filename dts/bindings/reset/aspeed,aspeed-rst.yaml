@@ -3,7 +3,7 @@
 
 description: Aspeed Reset Controller
 
-compatible: "aspeed,ast1030-rst"
+compatible: "aspeed,aspeed-rst"
 
 include: [reset-controller.yaml, base.yaml]
 

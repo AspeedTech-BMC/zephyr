@@ -4,11 +4,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#define DT_DRV_COMPAT aspeed_ast1030_rst
+#define DT_DRV_COMPAT aspeed_aspeed_rst
 #include <errno.h>
 #include <soc.h>
 #include <drivers/reset_control.h>
-#include <dt-bindings/reset/ast1030_reset.h>
 
 #define LOG_LEVEL CONFIG_RESET_CONTROL_LOG_LEVEL
 #include <logging/log.h>
