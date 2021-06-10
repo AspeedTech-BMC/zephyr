@@ -3,6 +3,7 @@
 #include <string.h>
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
+#include <zephyr/shell/shell.h>
 #include <zephyr/drivers/jtag.h>
 #include "vmopcode.h"
 #include "file/vme_file.h"
@@ -366,7 +367,6 @@ void ispVMFreeMem()
 
 signed char ispVM(void)
 {
-	jtag_dev = device_get_binding("JTAG1");
 	char szFileVersion[9] = { 0 };
 	signed char cRetCode = 0;
 	signed char cIndex = 0;
@@ -446,16 +446,66 @@ signed char ispVM(void)
 	return cRetCode;
 }
 
+struct k_sem sem;
+
 void vme_test(void)
 {
+	signed char ret = 0;
+
+	k_sem_init(&sem, 0, 1);
 
 	while (1) {
+		k_sem_take(&sem, K_FOREVER);
 		read_bytes = 0;
-		ispVM();
-		printf("done");
-		osDelay(osWaitForever);
+		ret = ispVM();
+		if (ret < 0) {
+			printf("VME program FAIL error %d!!\n", ret);
+		} else {
+			printf("PASS!!\n");
+		}
 	}
 }
 
 K_THREAD_DEFINE(vme_thread, STACKSIZE, vme_test, NULL, NULL, NULL,
 		PRIORITY, 0, 0);
+
+#define VME_JTAG_DEVICE_PREFIX "jtag"
+
+static void vme_jtag_device_name_get(size_t idx, struct shell_static_entry *entry)
+{
+	const struct device *dev = shell_device_lookup(idx, VME_JTAG_DEVICE_PREFIX);
+
+	entry->syntax = (dev) ? dev->name : NULL;
+	entry->handler = NULL;
+	entry->help = NULL;
+	entry->subcmd = NULL;
+}
+
+SHELL_DYNAMIC_CMD_CREATE(dsub_vme_jtag_device, vme_jtag_device_name_get);
+
+static int cmd_vme_run(const struct shell *shell, size_t argc, char **argv)
+{
+	const struct device *dev;
+
+	dev = device_get_binding(argv[1]);
+	if (!dev) {
+		shell_error(shell, "JTAG device %s not found", argv[1]);
+		return -ENODEV;
+	}
+
+	if (!device_is_ready(dev)) {
+		shell_error(shell, "JTAG device %s not ready", dev->name);
+		return -ENODEV;
+	}
+
+	jtag_dev = dev;
+	k_sem_give(&sem);
+	return 0;
+}
+
+SHELL_STATIC_SUBCMD_SET_CREATE(vmd_cmds,
+			       SHELL_CMD_ARG(run, &dsub_vme_jtag_device, "<jtag_device>",
+					     cmd_vme_run, 2, 0),
+			       SHELL_SUBCMD_SET_END);
+
+SHELL_CMD_REGISTER(vme, &vmd_cmds, "vme commands", NULL);
