@@ -59,7 +59,11 @@ ssize_t z_impl_hwinfo_get_device_id(uint8_t *buffer, size_t length)
 		length = sizeof(rev_id);
 	}
 
-	memcpy(buffer, &rev_id, length);
+	for (i = 0; i < length; i++) {
+		int sft = (length - i - 1) * 8;
+
+		buffer[i] = (uint8_t)((rev_id >> sft) & 0xff);
+	}
 
 	return length;
 }
