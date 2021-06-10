@@ -8,7 +8,7 @@
 #include <aspeed/ast10x0.dtsi>
 
 / {
-	model = "Aspeed BIC AST1030 board";
+	model = "Aspeed AST1030 Evaluation board";
 	compatible = "aspeed,bic-ast1030", "aspeed,ast1030";
 
 	chosen {
