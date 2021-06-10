@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#define DT_DRV_COMPAT atmel_at24
+#define DT_DRV_COMPAT aspeed_ipmb
 
 #include <sys/util.h>
 #include <sys/slist.h>
