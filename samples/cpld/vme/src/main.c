@@ -3,6 +3,7 @@
 #include <string.h>
 #include <zephyr.h>
 #include <device.h>
+#include <shell/shell.h>
 #include <drivers/jtag.h>
 #include "vmopcode.h"
 #include <cmsis_rtos_v2/cmsis_os2.h>
@@ -447,16 +448,40 @@ signed char ispVM(void)
 	return cRetCode;
 }
 
+struct k_sem sem;
+
 void vme_test(void)
 {
+	signed char ret = 0;
+
+	k_sem_init(&sem, 0, 1);
 
 	while (1) {
+		k_sem_take(&sem, K_FOREVER);
 		read_bytes = 0;
-		ispVM();
-		printf("done");
-		osDelay(osWaitForever);
+		ret = ispVM();
+		if (ret < 0) {
+			printf("VME program FAIL error %d!!\n", ret);
+		} else {
+			printf("PASS!!\n");
+		}
 	}
 }
 
 K_THREAD_DEFINE(vme_thread, STACKSIZE, vme_test, NULL, NULL, NULL,
 		PRIORITY, 0, 0);
+
+
+static int cmd_vme_run(const struct shell *shell, size_t argc, char **argv)
+{
+	k_sem_give(&sem);
+	return 0;
+}
+
+SHELL_STATIC_SUBCMD_SET_CREATE(
+	vmd_cmds,
+	SHELL_CMD_ARG(run, NULL, NULL, cmd_vme_run, 0,
+		      0),
+	SHELL_SUBCMD_SET_END);
+
+SHELL_CMD_REGISTER(vme, &vmd_cmds, "vme commands", NULL);
