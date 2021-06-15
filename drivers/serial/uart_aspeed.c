@@ -378,6 +378,9 @@ static int uart_aspeed_init(const struct device *dev)
 	struct uart_aspeed_config *dev_cfg = (struct uart_aspeed_config *)dev->config;
 	struct uart_config *uart_cfg = &data->uart_cfg;
 
+	clock_control_on(device_get_binding(ASPEED_CLK_CTRL_NAME),
+			 dev_cfg->clk_id);
+
 	uart_dma_init(dev);
 
 	if (dev_cfg->virt) {

@@ -39,12 +39,6 @@ void z_platform_init(void)
 {
 	uint32_t base = DT_REG_ADDR(DT_NODELABEL(syscon));
 
-	/* FIXME:
-	 * for now we don't have clock-on function so put uart clock enabling
-	 * here.
-	 */
-	sys_write32(BIT(27), base + 0x94);
-
 	/* init cache */
 	aspeed_cache_init();
 }
