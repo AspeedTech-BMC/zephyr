@@ -39,7 +39,7 @@
 		syscon: syscon@7e6e2000 {
 			reg = <0x7e6e2000 0x1000>;
 			sysclk: sysclk {
-				compatible = "aspeed,ast1030-clk";
+				compatible = "aspeed,ast10x0-clk";
 				#clock-cells = <1>;
 				label = "SYSCLK";
 			};

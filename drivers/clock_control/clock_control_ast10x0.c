@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#define DT_DRV_COMPAT aspeed_ast1030_clk
+#define DT_DRV_COMPAT aspeed_ast10x0_clk
 #include <errno.h>
 #include <soc.h>
 #include <drivers/clock_control.h>
