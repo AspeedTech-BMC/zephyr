@@ -28,8 +28,11 @@ static int aspeed_clock_control_on(const struct device *dev,
 	uint32_t clk_gate = (uint32_t)sub_system;
 	uint32_t addr = DEV_CFG(dev)->base + 0x84;
 
-	if (clk_gate >= 32) {
-		clk_gate -= 32;
+	if (clk_gate >= ASPEED_CLK_GRP_2_OFFSET)
+		return 0;
+
+	if (clk_gate >= ASPEED_CLK_GRP_1_OFFSET) {
+		clk_gate -= ASPEED_CLK_GRP_1_OFFSET;
 		addr += 0x10;
 	}
 
@@ -44,8 +47,11 @@ static int aspeed_clock_control_off(const struct device *dev,
 	uint32_t clk_gate = (uint32_t)sub_system;
 	uint32_t addr = DEV_CFG(dev)->base + 0x80;
 
-	if (clk_gate >= 32) {
-		clk_gate -= 32;
+	if (clk_gate >= ASPEED_CLK_GRP_2_OFFSET)
+		return 0;
+
+	if (clk_gate >= ASPEED_CLK_GRP_1_OFFSET) {
+		clk_gate -= ASPEED_CLK_GRP_1_OFFSET;
 		addr += 0x10;
 	}
 
@@ -68,20 +74,19 @@ static int aspeed_clock_control_get_rate(
 	case ASPEED_CLK_PCLK:
 		*rate = 50000000;
 		break;
-	case ASPEED_CLK_UART1:
-	case ASPEED_CLK_UART2:
-	case ASPEED_CLK_UART3:
-	case ASPEED_CLK_UART4:
+	case ASPEED_CLK_GATE_UART1CLK:
+	case ASPEED_CLK_GATE_UART2CLK:
+	case ASPEED_CLK_GATE_UART3CLK:
+	case ASPEED_CLK_GATE_UART4CLK:
 	case ASPEED_CLK_UART5:
-	case ASPEED_CLK_UART6:
-	case ASPEED_CLK_UART7:
-	case ASPEED_CLK_UART8:
-	case ASPEED_CLK_UART9:
-	case ASPEED_CLK_UART10:
-	case ASPEED_CLK_UART11:
-	case ASPEED_CLK_UART12:
-	case ASPEED_CLK_UART13:
+	case ASPEED_CLK_GATE_UART6CLK:
+	case ASPEED_CLK_GATE_UART7CLK:
+	case ASPEED_CLK_GATE_UART8CLK:
+	case ASPEED_CLK_GATE_UART9CLK:
+	case ASPEED_CLK_GATE_UART10CLK:
 	case ASPEED_CLK_GATE_UART11CLK:
+	case ASPEED_CLK_GATE_UART12CLK:
+	case ASPEED_CLK_GATE_UART13CLK:
 		*rate = 24000000 / 13;
 		break;
 	case ASPEED_CLK_APB1:
