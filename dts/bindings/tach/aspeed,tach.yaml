@@ -5,7 +5,7 @@ description: ASPEED tachometer controller
 
 compatible: "aspeed,tach"
 
-include: tach.yaml
+include: [tach.yaml, aspeed-pinctrl.yaml]
 
 
 child-binding:

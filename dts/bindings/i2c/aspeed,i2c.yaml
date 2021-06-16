@@ -8,7 +8,7 @@ description: ASPEED I2C controller
 
 compatible: "aspeed,i2c"
 
-include: i2c-controller.yaml
+include: [i2c-controller.yaml, aspeed-pinctrl.yaml]
 
 properties:
     reg:

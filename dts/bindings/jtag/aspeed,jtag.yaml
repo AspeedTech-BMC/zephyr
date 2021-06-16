@@ -2,7 +2,7 @@ description: ASPEED family JTAG
 
 compatible: "aspeed,jtag"
 
-include: base.yaml
+include: [base.yaml, aspeed-pinctrl.yaml]
 
 properties:
     reg:

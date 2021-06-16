@@ -2,7 +2,7 @@ description: ASPEED family ADC
 
 compatible: "aspeed,adc"
 
-include: adc-controller.yaml
+include: [adc-controller.yaml, aspeed-pinctrl.yaml]
 
 properties:
     reg:
