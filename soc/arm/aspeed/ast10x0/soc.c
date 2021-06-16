@@ -17,21 +17,21 @@
 #define WDT_SOFTWARE_RESET_REG 0x24
 #define WDT_TRIGGER_KEY 0xAEEDF123
 /* SCU registers */
-#define JTAG_PINMUX_REG	0x41c
+#define JTAG_PINMUX_REG 0x41c
 
 /* secure boot header : provide image size to bootROM for SPI boot */
 struct sb_header {
-        uint32_t key_location;
-        uint32_t enc_img_addr;
-        uint32_t img_size;
-        uint32_t sign_location;
-        uint32_t header_rev[2];
-        uint32_t patch_location;        /* address of the rom patch */
-        uint32_t checksum;
+	uint32_t key_location;
+	uint32_t enc_img_addr;
+	uint32_t img_size;
+	uint32_t sign_location;
+	uint32_t header_rev[2];
+	uint32_t patch_location;        /* address of the rom patch */
+	uint32_t checksum;
 };
 
 struct sb_header sbh __attribute((used, section(".sboot"))) = {
-        .img_size = (uint32_t)&_image_rom_end,
+	.img_size = (uint32_t)&__bss_start,
 };
 
 /* external reference */
