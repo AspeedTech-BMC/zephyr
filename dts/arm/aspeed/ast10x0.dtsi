@@ -113,75 +113,75 @@
 			interrupts = <11 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			gpio0_0: gpio0_0 {
-					compatible = "aspeed,gpio";
-					#gpio-cells = <2>;
-					gpio-controller;
-					ngpios = <32>;
-					interrupt-controller;
-					#interrupt-cells = <2>;
-					gpio-reserved = <0>;
-					label = "GPIO0_0";
-					pin-offset = <0>;
+				compatible = "aspeed,gpio";
+				#gpio-cells = <2>;
+				gpio-controller;
+				ngpios = <32>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				gpio-reserved = <0>;
+				label = "GPIO0_0";
+				pin-offset = <0>;
 			};
 
 			gpio0_32: gpio0_32 {
-					compatible = "aspeed,gpio";
-					#gpio-cells = <2>;
-					gpio-controller;
-					ngpios = <32>;
-					interrupt-controller;
-					#interrupt-cells = <2>;
-					gpio-reserved = <0>;
-					label = "GPIO0_32";
-					pin-offset = <32>;
+				compatible = "aspeed,gpio";
+				#gpio-cells = <2>;
+				gpio-controller;
+				ngpios = <32>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				gpio-reserved = <0>;
+				label = "GPIO0_32";
+				pin-offset = <32>;
 			};
 
 			gpio0_64: gpio0_64 {
-					compatible = "aspeed,gpio";
-					#gpio-cells = <2>;
-					gpio-controller;
-					ngpios = <32>;
-					interrupt-controller;
-					#interrupt-cells = <2>;
-					gpio-reserved = <0>;
-					label = "GPIO0_64";
-					pin-offset = <64>;
+				compatible = "aspeed,gpio";
+				#gpio-cells = <2>;
+				gpio-controller;
+				ngpios = <32>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				gpio-reserved = <0>;
+				label = "GPIO0_64";
+				pin-offset = <64>;
 			};
 
 			gpio0_96: gpio0_96 {
-					compatible = "aspeed,gpio";
-					#gpio-cells = <2>;
-					gpio-controller;
-					ngpios = <32>;
-					interrupt-controller;
-					#interrupt-cells = <2>;
-					gpio-reserved = <0>;
-					label = "GPIO0_96";
-					pin-offset = <96>;
+				compatible = "aspeed,gpio";
+				#gpio-cells = <2>;
+				gpio-controller;
+				ngpios = <32>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				gpio-reserved = <0>;
+				label = "GPIO0_96";
+				pin-offset = <96>;
 			};
 
 			gpio0_128: gpio0_128 {
-					compatible = "aspeed,gpio";
-					#gpio-cells = <2>;
-					gpio-controller;
-					ngpios = <32>;
-					gpio-reserved = <0x1f3e7c0>;
-					interrupt-controller;
-					#interrupt-cells = <2>;
-					label = "GPIO0_128";
-					pin-offset = <128>;
+				compatible = "aspeed,gpio";
+				#gpio-cells = <2>;
+				gpio-controller;
+				ngpios = <32>;
+				gpio-reserved = <0x1f3e7c0>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				label = "GPIO0_128";
+				pin-offset = <128>;
 			};
 
 			gpio0_160: gpio0_160 {
-					compatible = "aspeed,gpio";
-					#gpio-cells = <2>;
-					gpio-controller;
-					ngpios = <8>;
-					interrupt-controller;
-					#interrupt-cells = <2>;
-					gpio-reserved = <0>;
-					label = "GPIO0_160";
-					pin-offset = <160>;
+				compatible = "aspeed,gpio";
+				#gpio-cells = <2>;
+				gpio-controller;
+				ngpios = <8>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				gpio-reserved = <0>;
+				label = "GPIO0_160";
+				pin-offset = <160>;
 			};
 		};
 
@@ -203,6 +203,7 @@
 			clocks = <&sysclk ASPEED_CLK_HCLK>;
 			resets = <&sysrst ASPEED_RESET_JTAG_M0>;
 			label = "JTAG0";
+			pinctrl-0 = <&pinctrl_jtagm0_default>;
 			status = "disabled";
 		};
 
@@ -213,6 +214,7 @@
 			clocks = <&sysclk ASPEED_CLK_HCLK>;
 			resets = <&sysrst ASPEED_RESET_JTAG_M1>;
 			label = "JTAG1";
+			pinctrl-0 = <&pinctrl_jtagm1_default>;
 			status = "disabled";
 		};
 

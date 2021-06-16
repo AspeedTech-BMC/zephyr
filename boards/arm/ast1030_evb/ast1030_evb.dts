@@ -33,14 +33,38 @@
 
 &pwm {
 	status = "okay";
+	pinctrl-0 = <&pinctrl_pwm0_default
+			&pinctrl_pwm1_default
+			&pinctrl_pwm2_default
+			&pinctrl_pwm3_default
+			&pinctrl_pwm4_default
+			&pinctrl_pwm5_default
+			&pinctrl_pwm6_default
+			&pinctrl_pwm7_default
+			&pinctrl_pwm8_default
+			&pinctrl_pwm9_default
+			&pinctrl_pwm10_default
+			&pinctrl_pwm11_default
+			&pinctrl_pwm12_default
+			&pinctrl_pwm13_default
+			&pinctrl_pwm14_default
+			&pinctrl_pwm15_default>;
 };
 
 &adc0 {
 	status = "okay";
+	pinctrl-0 = <&pinctrl_adc0_default &pinctrl_adc1_default
+		&pinctrl_adc2_default &pinctrl_adc3_default
+		&pinctrl_adc4_default &pinctrl_adc5_default
+		&pinctrl_adc6_default &pinctrl_adc7_default>;
 };
 
 &adc1 {
 	status = "okay";
+	pinctrl-0 = <&pinctrl_adc8_default &pinctrl_adc9_default
+		&pinctrl_adc10_default &pinctrl_adc11_default
+		&pinctrl_adc12_default &pinctrl_adc13_default
+		&pinctrl_adc14_default &pinctrl_adc15_default>;
 };
 
 &jtag1{
@@ -49,6 +73,22 @@
 
 &tach {
 	status = "okay";
+	pinctrl-0 = <&pinctrl_tach0_default
+			&pinctrl_tach1_default
+			&pinctrl_tach2_default
+			&pinctrl_tach3_default
+			&pinctrl_tach4_default
+			&pinctrl_tach5_default
+			&pinctrl_tach6_default
+			&pinctrl_tach7_default
+			&pinctrl_tach8_default
+			&pinctrl_tach9_default
+			&pinctrl_tach10_default
+			&pinctrl_tach11_default
+			&pinctrl_tach12_default
+			&pinctrl_tach13_default
+			&pinctrl_tach14_default
+			&pinctrl_tach15_default>;
 
 	fan@0 {
 		reg = <0x0>;
