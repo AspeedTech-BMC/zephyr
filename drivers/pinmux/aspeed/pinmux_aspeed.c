@@ -74,6 +74,19 @@ const struct aspeed_fun_desc *aspeed_fun_desc_table[] =
 };
 #undef FUN_DEFINE
 
+#define DEP_ORD_ARRAY(node_id)								    \
+	static const uint8_t CONCAT(dep_ord_array_, node_id)[] __attribute__ ((unused)) = { \
+		DT_SUPPORTS_DEP_ORDS(node_id)						    \
+	};
+DT_FOREACH_CHILD(DT_DRV_INST(0), DEP_ORD_ARRAY)
+
+#define FUN_DEFINE(node_id, ...) \
+	[node_id] = sizeof(CONCAT(dep_ord_array_, node_id)) ? 1 : 0,
+const bool aspeed_fun_en_table[] = {
+	#include "fun_def_list.h"
+};
+#undef FUN_DEFINE
+
 struct pinmux_aspeed_config {
 	uintptr_t base;
 };
@@ -214,7 +227,9 @@ static int pinmux_aspeed_init(const struct device *dev)
 	uint32_t fun_id;
 
 	for (fun_id = 0; fun_id < MAX_FUN_ID; fun_id++) {
-		aspeed_pinctrl_fn_group_request(dev, fun_id);
+		if (aspeed_fun_en_table[fun_id]) {
+			aspeed_pinctrl_fn_group_request(dev, fun_id);
+		}
 	}
 	return 0;
 }
