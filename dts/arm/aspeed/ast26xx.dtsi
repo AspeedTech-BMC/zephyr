@@ -71,7 +71,7 @@
 
 	};
 };
-
+#include "aspeed/ast26xx-pinctrl.dtsi"
 &nvic {
 	arm,num-irq-priority-bits = <3>;
 };
