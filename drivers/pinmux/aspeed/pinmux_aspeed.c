@@ -25,7 +25,7 @@ const char *aspeed_pin_name[] =
 #undef PIN_DEFINE
 
 #define FUN_DEFINE(fun, ...) \
-	[GET_FUN_ID(fun)] = # fun,
+	[fun] = # fun,
 const char *aspeed_fun_name[] =
 {
     #include "fun_def_list.h"
@@ -67,7 +67,7 @@ const struct aspeed_sig_desc *aspeed_sig_desc_table[] =
 #undef SIG_DEFINE
 
 #define FUN_DEFINE(fun, ...) \
-	[GET_FUN_ID(fun)] = FUN_SYM_PTR(fun),
+	[fun] = FUN_SYM_PTR(fun),
 const struct aspeed_fun_desc *aspeed_fun_desc_table[] =
 {
 	#include "fun_def_list.h"
