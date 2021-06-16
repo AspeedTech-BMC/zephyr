@@ -36,10 +36,9 @@ struct aspeed_sig_en {
 
 /**
  * describe how to enable a signal, include:
- * 	1. signal id
- * 	2. number of aspeed_sig_en
- *  3. pin id of this signal used.
- * 	3. a list of aspeed_sig_en(s)
+ * 1. number of aspeed_sig_en
+ * 2. pin id of this signal used.
+ * 3. a list of aspeed_sig_en(s)
  */
 struct aspeed_sig_desc {
 	uint8_t nsig_en;
@@ -49,9 +48,8 @@ struct aspeed_sig_desc {
 
 /**
  * describe how to enable a function group, include:
- * 	1. function id
- *  2. number of signals
- * 	3. a list of signal id(s)
+ * 1. number of signals
+ * 2. a list of signal id(s)
  */
 struct aspeed_fun_desc {
 	uint8_t nsignal;
