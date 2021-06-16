@@ -50,7 +50,8 @@
 				label = "SYSRST";
 			};
 			pinmux: pinmux {
-				compatible = "aspeed,ast1030-pinmux";
+				compatible = "aspeed,pinmux";
+				label = "PINMUX";
 			};
 		};
 
