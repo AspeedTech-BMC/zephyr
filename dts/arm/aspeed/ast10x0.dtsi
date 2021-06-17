@@ -42,6 +42,14 @@
 				compatible = "aspeed,ast10x0-clk";
 				#clock-cells = <1>;
 				label = "SYSCLK";
+				adc_clk: adc_clk {
+					#clock-cells = <0>;
+					compatible = "fixed-factor-clock";
+					clocks = <&sysclk ASPEED_CLK_PCLK>;
+					clock-mult = <1>;
+					clock-div = <2>;
+					label = "ADC_CLK";
+				};
 			};
 
 			sysrst: sysrst {
@@ -53,15 +61,6 @@
 				compatible = "aspeed,pinmux";
 				label = "PINMUX";
 			};
-		};
-
-		adc_clk: adc_clk {
-			#clock-cells = <0>;
-			compatible = "fixed-factor-clock";
-			clocks = <&sysclk ASPEED_CLK_PCLK>;
-			clock-mult = <1>;
-			clock-div = <2>;
-			label = "ADC_CLK";
 		};
 
 		adc0: adc@7e6e9000 {
