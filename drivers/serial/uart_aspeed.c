@@ -468,7 +468,7 @@ static const struct uart_driver_api uart_aspeed_driver_api = {
 			      &uart_aspeed_init,					\
 			      device_pm_control_nop,					\
 			      &uart_aspeed_data_##n, &uart_aspeed_config_##n,		\
-			      POST_KERNEL,						\
+			      PRE_KERNEL_1,						\
 			      CONFIG_KERNEL_INIT_PRIORITY_DEVICE,			\
 			      &uart_aspeed_driver_api);
 
