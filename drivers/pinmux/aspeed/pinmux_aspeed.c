@@ -11,39 +11,46 @@
 
 #define LOG_LEVEL CONFIG_PINMUX_LOG_LEVEL
 #include <logging/log.h>
-LOG_MODULE_REGISTER(pimux_aspeed);
+LOG_MODULE_REGISTER(pinmux_aspeed);
 #include "pinmux_aspeed.h"
 
 #ifdef CONFIG_PINCTRL_STRING_NAME
 
 #define PIN_DEFINE(pin)	\
 	[pin] = # pin,
-const char *aspeed_pin_name[] =
-{
+const char *aspeed_pin_name[] = {
     #include "pin_def_list.h"
 };
 #undef PIN_DEFINE
 
 #define FUN_DEFINE(fun, ...) \
 	[fun] = # fun,
-const char *aspeed_fun_name[] =
-{
+const char *aspeed_fun_name[] = {
     #include "fun_def_list.h"
 };
 #undef FUN_DEFINE
 
+#define GPIO_SIG_DEFINE(sig, pin, ...)
 #define SIG_DEFINE(sig, ...) \
 	[sig] = # sig,
-const char *aspeed_sig_name[] =
-{
+const char *aspeed_sig_name[] = {
     #include "sig_def_list.h"
 };
 #undef SIG_DEFINE
+#undef GPIO_SIG_DEFINE
 
 #endif
 
+#define GPIO_SIG_DEFINE(sig, pin, ...)
 #define SIG_DEFINE(sig, pin, ...) SIG_DECL(sig, pin, __VA_ARGS__);
 #include "sig_def_list.h"
+#undef SIG_DEFINE
+#undef GPIO_SIG_DEFINE
+
+#define SIG_DEFINE(sig, ...)
+#define GPIO_SIG_DEFINE(sig, pin, ...) SIG_DECL(sig, pin, __VA_ARGS__);
+#include "sig_def_list.h"
+#undef GPIO_SIG_DEFINE
 #undef SIG_DEFINE
 
 #define FUN_DEFINE(fun, ...) FUN_DECL(fun, __VA_ARGS__);
@@ -52,24 +59,32 @@ const char *aspeed_sig_name[] =
 
 #define PIN_DEFINE(pin)	\
 	[pin] = 0xffffffff,
-uint32_t aspeed_pin_desc_table[] =
-{
+uint32_t aspeed_pin_desc_table[] = {
     #include "pin_def_list.h"
 };
 #undef PIN_DEFINE
 
+#define GPIO_SIG_DEFINE(sig, pin, ...)
 #define SIG_DEFINE(sig, ...) \
 	[sig] = SIG_SYM_PTR(sig),
-const struct aspeed_sig_desc *aspeed_sig_desc_table[] =
-{
+const struct aspeed_sig_desc *aspeed_sig_desc_table[] = {
 	#include "sig_def_list.h"
 };
+#undef SIG_DEFINE
+#undef GPIO_SIG_DEFINE
+
+#define SIG_DEFINE(sig, ...)
+#define GPIO_SIG_DEFINE(sig, ...) \
+	SIG_SYM_PTR(sig),
+const struct aspeed_sig_desc *aspeed_gpio_sig_desc_table[] = {
+	#include "sig_def_list.h"
+};
+#undef GPIO_SIG_DEFINE
 #undef SIG_DEFINE
 
 #define FUN_DEFINE(fun, ...) \
 	[fun] = FUN_SYM_PTR(fun),
-const struct aspeed_fun_desc *aspeed_fun_desc_table[] =
-{
+const struct aspeed_fun_desc *aspeed_fun_desc_table[] = {
 	#include "fun_def_list.h"
 };
 #undef FUN_DEFINE
@@ -126,31 +141,60 @@ static int pinmux_aspeed_set(const struct device *dev, uint32_t pin,
 	uint32_t scu_base = DEV_CFG(dev)->base;
 	const struct aspeed_sig_desc *sig_desc;
 	const struct aspeed_sig_en *sig_en;
+	struct aspeed_sig_desc dummy = {
+		.nsig_en = 0,
+		.pin = pin,
+		.sig_en = NULL,
+	};
 	uint32_t ret_sig_id;
+	uint32_t gpio_sig_num = sizeof(aspeed_gpio_sig_desc_table) /
+				sizeof(aspeed_gpio_sig_desc_table[0]);
+	uint32_t index;
 	int sig_en_number;
 	int sig_en_idx;
 
-	if (func >=
-	    sizeof(aspeed_sig_desc_table) / sizeof(aspeed_sig_desc_table[0])) {
+	if (func >= MAX_SIG_ID) {
 		return -EINVAL;
 	}
-	sig_desc = aspeed_sig_desc_table[func];
-	if (sig_desc == NULL) {
-		return -EINVAL;
-	}
+	if (func == SIG_GPIO) {
+		sig_desc = &dummy;
+		for (index = 0; index < gpio_sig_num; index++) {
+			if (pin == aspeed_gpio_sig_desc_table[index]->pin) {
+				sig_desc = aspeed_gpio_sig_desc_table[index];
+				break;
+			}
+		}
+		func = (pin << 16) | func;
+	} else {
+		sig_desc = aspeed_sig_desc_table[func];
+		if (sig_desc == NULL) {
+			return -EINVAL;
+		}
 
-	if (pin != sig_desc->pin) {
-		return -EINVAL;
+		if (pin != sig_desc->pin) {
+			return -EINVAL;
+		}
 	}
-
 	pinmux_aspeed_get(dev, pin, &ret_sig_id);
-	if (ret_sig_id == 0xffffffff) {
+	if (ret_sig_id == func) {
+		return 0;
+	} else if (ret_sig_id == 0xffffffff) {
 		aspeed_pin_desc_table[pin] = func;
 #ifdef CONFIG_PINCTRL_STRING_NAME
-		LOG_DBG("The pin %s is being occupied by signal %s\n",
-			aspeed_pin_name[pin], aspeed_sig_name[func]);
+		if ((func & 0xffff) == SIG_GPIO) {
+			LOG_DBG("registered pin %s on GPIO%d\n",
+				aspeed_pin_name[pin], func >> 16);
+		} else {
+			LOG_DBG("registered pin %s on %s\n",
+				aspeed_pin_name[pin], aspeed_sig_name[func]);
+		}
 #else
-		LOG_DBG("The pin %d is being occupied by signal %d\n", pin, func);
+		if ((func & 0xffff) == SIG_GPIO) {
+			LOG_DBG("registered pin %d on GPIO%d\n", pin,
+				func >> 16);
+		} else {
+			LOG_DBG("registered pin %d on %d\n", pin, func);
+		}
 #endif
 		sig_en_number = sig_desc->nsig_en;
 		for (sig_en_idx = 0; sig_en_idx < sig_en_number; sig_en_idx++) {
@@ -170,12 +214,25 @@ static int pinmux_aspeed_set(const struct device *dev, uint32_t pin,
 		return 0;
 	} else {
 #ifdef CONFIG_PINCTRL_STRING_NAME
-		LOG_ERR("Request %s to pin %s error: already occupied by signal %s\n",
-			aspeed_sig_name[func], aspeed_pin_name[pin],
-			aspeed_sig_name[ret_sig_id]);
+		if ((ret_sig_id & 0xffff) == SIG_GPIO) {
+			LOG_ERR("pin %s already occupied by GPIO%d\n",
+				aspeed_pin_name[pin],
+				ret_sig_id >> 16);
+		} else {
+			LOG_ERR("pin %s already occupied by signal %s\n",
+				aspeed_pin_name[pin],
+				aspeed_sig_name[ret_sig_id]);
+		}
 #else
-		LOG_ERR("Request %d to pin %d error: already occupied by signal %d\n",
-			func, pin, ret_sig_id);
+		if ((ret_sig_id & 0xffff) == SIG_GPIO) {
+			LOG_ERR("pin %d already occupied by GPIO%d\n",
+				pin,
+				ret_sig_id >> 16);
+		} else {
+			LOG_ERR("pin %d already occupied by %d\n",
+				pin,
+				ret_sig_id);
+		}
 #endif
 		return -EBUSY;
 	}
