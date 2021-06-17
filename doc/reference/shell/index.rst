@@ -30,12 +30,15 @@ interaction is required. This module is a Unix-like shell with these features:
 * Built-in handler to display help for the commands.
 * Support for wildcards: ``*`` and ``?``.
 * Support for meta keys.
+* Support for getopt.
 * Kconfig configuration to optimize memory usage.
 
-Some of these features have a significant impact on RAM and flash usage,
-but many can be disabled when not needed.  A configuration that should
-produce the minimum useful feature set is in
-:zephyr_file:`samples/subsys/shell/shell_module/prj_minimal.conf`.
+.. note::
+	Some of these features have a significant impact on RAM and flash usage,
+	but many can be disabled when not needed.  To default to options which
+	favor reduced RAM and flash requirements instead of features, you should
+	enable :option:`CONFIG_SHELL_MINIMAL` and selectively enable just the
+	features you want.
 
 The module can be connected to any transport for command input and output.
 At this point, the following transport layers are implemented:
@@ -478,6 +481,51 @@ The shell module supports the following meta keys:
 
 This feature is activated by :option:`CONFIG_SHELL_METAKEYS` set to ``y``.
 
+Getopt Feature
+*****************
+
+Some shell users apart from subcommands might need to use options as well.
+the arguments string, looking for supported options. Typically, this task
+is accomplished by the ``getopt`` function.
+
+For this purpose shell supports the getopt library available
+in the FreeBSD project. I was modified so that it can be used
+by all instances of the shell at the same time, hence its call requires
+one more parameter.
+
+An example usage:
+
+.. code-block:: c
+
+  while ((char c = shell_getopt(shell, argc, argv, "abhc:")) != -1) {
+     /* some code */
+  }
+
+This module is activated by :option:`CONFIG_SHELL_GETOPT` set to ``y``.
+
+Obscured Input Feature
+**********************
+
+With the obscured input feature, the shell can be used for implementing a login
+prompt or other user interaction whereby the characters the user types should
+not be revealed on screen, such as when entering a password.
+
+Once the obscured input has been accepted, it is normally desired to return the
+shell to normal operation.  Such runtime control is possible with the
+``shell_obscure_set`` function.
+
+An example of login and logout commands using this feature is located in
+:zephyr_file:`samples/subsys/shell/shell_module/src/main.c` and the config file
+:zephyr_file:`samples/subsys/shell/shell_module/prj_login.conf`.
+
+This feature is activated upon startup by :option:`CONFIG_SHELL_START_OBSCURED`
+set to ``y``. With this set either way, the option can still be controlled later
+at runtime. :option:`CONFIG_SHELL_CMDS_SELECT` is useful to prevent entry
+of any other command besides a login command, by means of the
+``shell_set_root_cmd`` function. Likewise, :option:`CONFIG_SHELL_PROMPT_UART`
+allows you to set the prompt upon startup, but it can be changed later with the
+``shell_prompt_change`` function.
+
 Shell Logger Backend Feature
 ****************************
 
@@ -594,4 +642,3 @@ API Reference
 *************
 
 .. doxygengroup:: shell_api
-   :project: Zephyr

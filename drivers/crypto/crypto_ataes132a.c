@@ -182,7 +182,7 @@ int ataes132a_init(const struct device *dev)
 
 	i2c_configure(ataes132a->i2c, i2c_cfg);
 
-	k_sem_init(&ataes132a->device_sem, 1, UINT_MAX);
+	k_sem_init(&ataes132a->device_sem, 1, K_SEM_MAX_LIMIT);
 
 	ataes132a_init_states();
 
@@ -899,6 +899,6 @@ static struct crypto_driver_api crypto_enc_funcs = {
 struct ataes132a_device_data ataes132a_data;
 
 DEVICE_DEFINE(ataes132a, CONFIG_CRYPTO_ATAES132A_DRV_NAME, ataes132a_init,
-		device_pm_control_nop, &ataes132a_data, &ataes132a_config,
+		NULL, &ataes132a_data, &ataes132a_config,
 		POST_KERNEL, CONFIG_CRYPTO_INIT_PRIORITY,
 		(void *)&crypto_enc_funcs);

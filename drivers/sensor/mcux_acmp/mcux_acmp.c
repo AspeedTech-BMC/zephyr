@@ -14,17 +14,23 @@
 
 LOG_MODULE_REGISTER(mcux_acmp, CONFIG_SENSOR_LOG_LEVEL);
 
-#define MCUX_ACMP_HAS_INPSEL \
-	defined(FSL_FEATURE_ACMP_HAS_C1_INPSEL_BIT) && \
-	(FSL_FEATURE_ACMP_HAS_C1_INPSEL_BIT == 1U)
+#if defined(FSL_FEATURE_ACMP_HAS_C1_INPSEL_BIT) && (FSL_FEATURE_ACMP_HAS_C1_INPSEL_BIT == 1U)
+#define MCUX_ACMP_HAS_INPSEL 1
+#else
+#define MCUX_ACMP_HAS_INPSEL 0
+#endif
 
-#define MCUX_ACMP_HAS_INNSEL \
-	defined(FSL_FEATURE_ACMP_HAS_C1_INNSEL_BIT) && \
-	(FSL_FEATURE_ACMP_HAS_C1_INNSEL_BIT == 1U)
+#if defined(FSL_FEATURE_ACMP_HAS_C1_INNSEL_BIT) && (FSL_FEATURE_ACMP_HAS_C1_INNSEL_BIT == 1U)
+#define MCUX_ACMP_HAS_INNSEL 1
+#else
+#define MCUX_ACMP_HAS_INNSEL 0
+#endif
 
-#define MCUX_ACMP_HAS_OFFSET \
-	defined(FSL_FEATURE_ACMP_HAS_C0_OFFSET_BIT) && \
-	(FSL_FEATURE_ACMP_HAS_C0_OFFSET_BIT == 1U)
+#if defined(FSL_FEATURE_ACMP_HAS_C0_OFFSET_BIT) && (FSL_FEATURE_ACMP_HAS_C0_OFFSET_BIT == 1U)
+#define MCUX_ACMP_HAS_OFFSET 1
+#else
+#define MCUX_ACMP_HAS_OFFSET 0
+#endif
 
 #define MCUX_ACMP_DAC_LEVELS 256
 #define MCUX_ACMP_INPUT_CHANNELS 8
@@ -426,7 +432,7 @@ static const struct mcux_acmp_config mcux_acmp_config_##n = {		\
 	static const struct mcux_acmp_config mcux_acmp_config_##n;	\
 									\
 	DEVICE_DT_INST_DEFINE(n, &mcux_acmp_init,			\
-			      device_pm_control_nop,			\
+			      NULL,					\
 			      &mcux_acmp_data_##n,			\
 			      &mcux_acmp_config_##n, POST_KERNEL,	\
 			      CONFIG_SENSOR_INIT_PRIORITY,		\

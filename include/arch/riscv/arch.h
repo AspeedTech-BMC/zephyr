@@ -54,7 +54,8 @@
  */
 #ifdef CONFIG_PMP_STACK_GUARD
 #define ARCH_KERNEL_STACK_RESERVED	Z_RISCV_STACK_GUARD_SIZE
-#define ARCH_KERNEL_STACK_OBJ_ALIGN	Z_RISCV_PMP_ALIGN
+#define ARCH_KERNEL_STACK_OBJ_ALIGN \
+		MAX(Z_RISCV_PMP_ALIGN, ARCH_STACK_PTR_ALIGN)
 #endif
 
 #ifdef CONFIG_USERSPACE
@@ -278,12 +279,6 @@ typedef struct {
 	uint8_t pmp_attr;
 } k_mem_partition_attr_t;
 
-/*
- * SOC-specific function to get the IRQ number generating the interrupt.
- * __soc_get_irq returns a bitfield of pending IRQs.
- */
-extern uint32_t __soc_get_irq(void);
-
 void arch_irq_enable(unsigned int irq);
 void arch_irq_disable(unsigned int irq);
 int arch_irq_is_enabled(unsigned int irq);
@@ -352,11 +347,11 @@ static ALWAYS_INLINE void arch_nop(void)
 	__asm__ volatile("nop");
 }
 
-extern uint32_t z_timer_cycle_get_32(void);
+extern uint32_t sys_clock_cycle_get_32(void);
 
 static inline uint32_t arch_k_cycle_get_32(void)
 {
-	return z_timer_cycle_get_32();
+	return sys_clock_cycle_get_32();
 }
 
 #ifdef CONFIG_USERSPACE

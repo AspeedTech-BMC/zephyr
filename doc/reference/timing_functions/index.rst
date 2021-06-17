@@ -1,7 +1,7 @@
 .. _timing_functions:
 
-Timing Functions
-################
+Executing Time Functions
+########################
 
 The timing functions can be used to obtain execution time of
 a section of code to aid in analysis and optimization.
@@ -78,4 +78,3 @@ API documentation
 *****************
 
 .. doxygengroup:: timing_api
-   :project: Zephyr

@@ -39,7 +39,7 @@ static inline int npcx_clock_control_on(const struct device *dev,
 	struct npcx_clk_cfg *clk_cfg = (struct npcx_clk_cfg *)(sub_system);
 	const uint32_t pmc_base = DRV_CONFIG(dev)->base_pmc;
 
-	if (clk_cfg->ctrl >= NPCX_PWDWN_CTL_COUNT || clk_cfg->bit >= 8)
+	if (clk_cfg->ctrl >= NPCX_PWDWN_CTL_COUNT)
 		return -EINVAL;
 
 	/* Clear related PD (Power-Down) bit of module to turn on clock */
@@ -54,7 +54,7 @@ static inline int npcx_clock_control_off(const struct device *dev,
 	struct npcx_clk_cfg *clk_cfg = (struct npcx_clk_cfg *)(sub_system);
 	const uint32_t pmc_base = DRV_CONFIG(dev)->base_pmc;
 
-	if (clk_cfg->ctrl >= NPCX_PWDWN_CTL_COUNT || clk_cfg->bit >= 8)
+	if (clk_cfg->ctrl >= NPCX_PWDWN_CTL_COUNT)
 		return -EINVAL;
 
 	/* Set related PD (Power-Down) bit of module to turn off clock */
@@ -95,10 +95,41 @@ static int npcx_clock_control_get_subsys_rate(const struct device *dev,
 		*rate = 0U;
 		/* Invalid parameters */
 		return -EINVAL;
-	};
+	}
 
 	return 0;
 }
+
+/* Platform specific clock controller functions */
+#if defined(CONFIG_PM)
+void npcx_clock_control_turn_on_system_sleep(bool is_deep, bool is_instant)
+{
+	const struct device *const clk_dev =
+					device_get_binding(NPCX_CLK_CTRL_NAME);
+	struct pmc_reg *const inst_pmc = HAL_PMC_INST(clk_dev);
+	/* Configure that ec enters system sleep mode if receiving 'wfi' */
+	uint8_t pm_flags = BIT(NPCX_PMCSR_IDLE);
+
+	/* Add 'Disable High-Frequency' flag (ie. 'deep sleep' mode) */
+	if (is_deep) {
+		pm_flags |= BIT(NPCX_PMCSR_DHF);
+		/* Add 'Instant Wake-up' flag if sleep time is within 200 ms */
+		if (is_instant)
+			pm_flags |= BIT(NPCX_PMCSR_DI_INSTW);
+	}
+
+	inst_pmc->PMCSR = pm_flags;
+}
+
+void npcx_clock_control_turn_off_system_sleep(void)
+{
+	const struct device *const clk_dev =
+					device_get_binding(NPCX_CLK_CTRL_NAME);
+	struct pmc_reg *const inst_pmc = HAL_PMC_INST(clk_dev);
+
+	inst_pmc->PMCSR = 0;
+}
+#endif /* CONFIG_PM */
 
 /* Clock controller driver registration */
 static struct clock_control_driver_api npcx_clock_control_api = {
@@ -106,6 +137,31 @@ static struct clock_control_driver_api npcx_clock_control_api = {
 	.off = npcx_clock_control_off,
 	.get_rate = npcx_clock_control_get_subsys_rate,
 };
+
+/* valid clock frequency check */
+BUILD_ASSERT(CORE_CLK <= 100000000 &&
+	     CORE_CLK >= 4000000 &&
+	     OSC_CLK % CORE_CLK == 0 &&
+	     OSC_CLK / CORE_CLK <= 10,
+	     "Invalid CORE_CLK setting");
+BUILD_ASSERT(CORE_CLK / (FIUDIV_VAL + 1) <= 50000000 &&
+	     CORE_CLK / (FIUDIV_VAL + 1) >= 4000000,
+	     "Invalid FIUCLK setting");
+BUILD_ASSERT(CORE_CLK / (AHB6DIV_VAL + 1) <= 50000000 &&
+	     CORE_CLK / (AHB6DIV_VAL + 1) >= 4000000,
+	     "Invalid AHB6_CLK setting");
+BUILD_ASSERT(APBSRC_CLK / (APB1DIV_VAL + 1) <= 50000000 &&
+	     APBSRC_CLK / (APB1DIV_VAL + 1) >= 4000000 &&
+	     (APB1DIV_VAL + 1) % (FPRED_VAL + 1) == 0,
+	     "Invalid APB1_CLK setting");
+BUILD_ASSERT(APBSRC_CLK / (APB2DIV_VAL + 1) <= 50000000 &&
+	     APBSRC_CLK / (APB2DIV_VAL + 1) >= 8000000 &&
+	     (APB2DIV_VAL + 1) % (FPRED_VAL + 1) == 0,
+	     "Invalid APB2_CLK setting");
+BUILD_ASSERT(APBSRC_CLK / (APB3DIV_VAL + 1) <= 50000000 &&
+	     APBSRC_CLK / (APB3DIV_VAL + 1) >= 12500000 &&
+	     (APB3DIV_VAL + 1) % (FPRED_VAL + 1) == 0,
+	     "Invalid APB3_CLK setting");
 
 static int npcx_clock_control_init(const struct device *dev)
 {
@@ -160,9 +216,9 @@ const struct npcx_pcc_config pcc_config = {
 	.base_pmc  = DT_INST_REG_ADDR_BY_NAME(0, pmc),
 };
 
-DEVICE_DEFINE(npcx_cdcg, NPCX_CLK_CTRL_NAME,
+DEVICE_DT_INST_DEFINE(0,
 		    &npcx_clock_control_init,
-		    device_pm_control_nop,
+		    NULL,
 		    NULL, &pcc_config,
 		    PRE_KERNEL_1,
 		    CONFIG_KERNEL_INIT_PRIORITY_OBJECTS,

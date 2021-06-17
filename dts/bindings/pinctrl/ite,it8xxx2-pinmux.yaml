@@ -11,5 +11,18 @@ properties:
     reg:
       required: true
 
-    label:
-      required: true
+    func3_gcr:
+        type: array
+        required: true
+
+    func3_en_mask:
+        type: array
+        required: true
+
+    func4_gcr:
+        type: array
+        required: true
+
+    func4_en_mask:
+        type: array
+        required: true

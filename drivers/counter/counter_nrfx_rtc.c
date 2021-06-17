@@ -552,11 +552,6 @@ static uint32_t get_top_value(const struct device *dev)
 	return get_dev_data(dev)->top;
 }
 
-static uint32_t get_max_relative_alarm(const struct device *dev)
-{
-	return get_dev_data(dev)->top;
-}
-
 static uint32_t get_guard_period(const struct device *dev, uint32_t flags)
 {
 	return get_dev_data(dev)->guard_period;
@@ -647,7 +642,6 @@ static const struct counter_driver_api counter_nrfx_driver_api = {
 	.set_top_value = set_top_value,
 	.get_pending_int = get_pending_int,
 	.get_top_value = get_top_value,
-	.get_max_relative_alarm = get_max_relative_alarm,
 	.get_guard_period = get_guard_period,
 	.set_guard_period = set_guard_period,
 };
@@ -694,7 +688,7 @@ static const struct counter_driver_api counter_nrfx_driver_api = {
 	};								       \
 	DEVICE_DT_DEFINE(RTC(idx),					       \
 			    counter_##idx##_init,			       \
-			    device_pm_control_nop,			       \
+			    NULL,					       \
 			    &counter_##idx##_data,			       \
 			    &nrfx_counter_##idx##_config.info,		       \
 			    PRE_KERNEL_1, CONFIG_KERNEL_INIT_PRIORITY_DEVICE,  \

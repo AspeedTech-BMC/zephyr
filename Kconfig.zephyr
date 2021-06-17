@@ -62,15 +62,6 @@ config LINKER_ORPHAN_SECTION_ERROR
 
 endchoice
 
-config CODE_DATA_RELOCATION
-	bool "Relocate code/data sections"
-	depends on ARM
-	help
-	  When selected this will relocate .text, data and .bss sections from
-	  the specified files and places it in the required memory region. The
-	  files should be specified in the CMakeList.txt file with
-	  a cmake API zephyr_code_relocate().
-
 config HAS_FLASH_LOAD_OFFSET
 	bool
 	help
@@ -167,6 +158,53 @@ config LINKER_SORT_BY_ALIGNMENT
 	  in decreasing size of symbols. This helps to minimize
 	  padding between symbols.
 
+config SRAM_VECTOR_TABLE
+	bool "Place the vector table in SRAM instead of flash"
+	help
+	  The option specifies that the vector table should be placed at the
+	  start of SRAM instead of the start of flash.
+
+config HAS_SRAM_OFFSET
+	bool
+	help
+	  This option is selected by targets that require SRAM_OFFSET.
+
+config SRAM_OFFSET
+	hex "Kernel SRAM offset" if HAS_SRAM_OFFSET
+	default 0
+	help
+	  This option specifies the byte offset from the beginning of SRAM
+	  where the kernel begins. Changing this value from zero will affect
+	  the Zephyr image's link, and will decrease the total amount of
+	  SRAM available for use by application code.
+
+	  If unsure, leave at the default value 0.
+
+menu "Linker Sections"
+
+config LINKER_USE_BOOT_SECTION
+	bool "Enable Usage of Boot Linker Section"
+	help
+	  If enabled, the symbols which are needed for the boot process
+	  will be put into another linker section reserved for these
+	  symbols.
+
+	  Requires that boot sections exist in the architecture, SoC,
+	  board or custom linker script.
+
+config LINKER_USE_PINNED_SECTION
+	bool "Enable Usage of Pinned Linker Section"
+	help
+	  If enabled, the symbols which need to be pinned in memory
+	  will be put into another linker section reserved for pinned
+	  symbols. During boot, the corresponding memory will be marked
+	  as pinned.
+
+	  Requires that pinned sections exist in the architecture, SoC,
+	  board or custom linker script.
+
+endmenu # "Linker Sections"
+
 endmenu
 
 menu "Compiler Options"
@@ -219,6 +257,12 @@ config NO_OPTIMIZATIONS
 
 endchoice
 
+config COMPILER_COLOR_DIAGNOSTICS
+	bool "Enable colored diganostics"
+	default y
+	help
+	  Compiler diagnostic messages are colorized.
+
 config COMPILER_OPT
 	string "Custom compiler options"
 	help
@@ -228,6 +272,14 @@ config COMPILER_OPT
 	  predefined set of compiler supplied by the build system,
 	  and can be used to change compiler optimization, warning and error
 	  messages, and so on.
+
+config MISRA_SANE
+	bool "MISRA standards compliance features"
+	help
+	  Causes the source code to build in "MISRA" mode, which
+	  disallows some otherwise-permitted features of the C
+	  standard for safety reasons.  Specifically variable length
+	  arrays are not permitted (and gcc will enforce this).
 
 endmenu
 
@@ -344,6 +396,47 @@ config BUILD_OUTPUT_S19
 	  Build an S19 binary zephyr/zephyr.s19 in the build directory.
 	  The name of this file can be customized with CONFIG_KERNEL_BIN_NAME.
 
+config BUILD_OUTPUT_UF2
+	bool "Build a binary in UF2 format"
+	depends on BUILD_OUTPUT_BIN
+	help
+	  Build a UF2 binary zephyr/zephyr.uf2 in the build directory.
+	  The name of this file can be customized with CONFIG_KERNEL_BIN_NAME.
+
+if BUILD_OUTPUT_UF2
+
+config BUILD_OUTPUT_UF2_FAMILY_ID
+	string "UF2 device family ID"
+	default "0x1c5f21b0" if SOC_ESP32
+	default "0xada52840" if SOC_NRF52840_QIAA
+	default "0x4fb2d5bd" if SOC_SERIES_IMX_RT
+	default "0x2abc77ec" if SOC_SERIES_LPC55XXX
+	default "0x68ed2b88" if SOC_SERIES_SAMD21
+	default "0x55114460" if SOC_SERIES_SAMD51
+	default "0x647824b6" if SOC_SERIES_STM32F0X
+	default "0x5d1a0a2e" if SOC_SERIES_STM32F2X
+	default "0x6b846188" if SOC_SERIES_STM32F3X
+	default "0x53b80f00" if SOC_SERIES_STM32F7X
+	default "0x300f5633" if SOC_SERIES_STM32G0X
+	default "0x4c71240a" if SOC_SERIES_STM32G4X
+	default "0x6db66082" if SOC_SERIES_STM32H7X
+	default "0x202e3a91" if SOC_SERIES_STM32L0X
+	default "0x1e1f432d" if SOC_SERIES_STM32L1X
+	default "0x00ff6919" if SOC_SERIES_STM32L4X
+	default "0x04240bdf" if SOC_SERIES_STM32L5X
+	default "0x70d16653" if SOC_SERIES_STM32WBX
+	default "0x5ee21072" if SOC_STM32F103XE
+	default "0x57755a57" if SOC_STM32F401XC || SOC_STM32F401XE
+	default "0x6d0922fa" if SOC_STM32F407XE
+	default "0x8fb060fe" if SOC_STM32F407XG
+	help
+	  UF2 bootloaders only accept UF2 files with a matching family ID.
+	  This can be either a hex, e.g. 0x68ed2b88, or well-known family
+	  name string. If the SoC in use is known by UF2, the Family ID will
+	  be pre-filled with the known value.
+
+endif # BUILD_OUTPUT_UF2
+
 config BUILD_OUTPUT_STRIPPED
 	bool "Build a stripped binary"
 	help
@@ -361,13 +454,6 @@ config MAKEFILE_EXPORTS
 	help
 	  Generates a file with build information that can be read by
 	  third party Makefile-based build systems.
-
-config DEPRECATED_ZEPHYR_INT_TYPES
-	bool "Allow the use of the deprecated zephyr integer types"
-	help
-	  Allows the use of the deprecated Zephyr integer typedefs defined in
-	  Zephyr 2.3 and previous versions.  These types are:
-	  u8_t, u16_t, u32_t, u64_t, s8_t, s16_t, s32_t, and s64_t.
 
 endmenu
 endmenu
@@ -483,7 +569,6 @@ config BOOTLOADER_ESP_IDF
 config BOOTLOADER_BOSSA
 	bool "BOSSA bootloader support"
 	select USE_DT_CODE_PARTITION
-	depends on SOC_FAMILY_SAM0
 
 	help
 	  Signifies that the target uses a BOSSA compatible bootloader.  If CDC
@@ -501,6 +586,13 @@ choice
 	prompt "BOSSA bootloader variant"
 	depends on BOOTLOADER_BOSSA
 
+config BOOTLOADER_BOSSA_LEGACY
+	bool "Legacy"
+	help
+	  Select the Legacy variant of the BOSSA bootloader.  This is defined
+	  for compatibility mode only.  The recommendation is use newer
+	  versions like Arduino or Adafruit UF2.
+
 config BOOTLOADER_BOSSA_ARDUINO
 	bool "Arduino"
 	help
@@ -514,22 +606,6 @@ config BOOTLOADER_BOSSA_ADAFRUIT_UF2
 	  0xf01669ef as the magic value to enter the bootloader.
 
 endchoice
-
-config REBOOT
-	bool "Reboot functionality"
-	select SYSTEM_CLOCK_DISABLE
-	help
-	  Enable the sys_reboot() API. Enabling this can drag in other subsystems
-	  needed to perform a "safe" reboot (e.g. SYSTEM_CLOCK_DISABLE, to stop the
-	  system clock before issuing a reset).
-
-config MISRA_SANE
-	bool "MISRA standards compliance features"
-	help
-	  Causes the source code to build in "MISRA" mode, which
-	  disallows some otherwise-permitted features of the C
-	  standard for safety reasons.  Specifically variable length
-	  arrays are not permitted (and gcc will enforce this).
 
 endmenu
 

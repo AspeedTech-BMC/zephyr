@@ -27,7 +27,8 @@
  */
 
 #if defined(CONFIG_BOARD_NUCLEO_L073RZ) || \
-	defined(CONFIG_BOARD_NUCLEO_L152RE)
+	defined(CONFIG_BOARD_NUCLEO_L152RE) || \
+	defined(CONFIG_BOARD_RONOTH_LODEV)
 
 /*
  * DAC output on PA4 (Arduino A2 pin of Nucleo board)
@@ -95,6 +96,43 @@
 #define ADC_ACQUISITION_TIME	ADC_ACQ_TIME_DEFAULT
 #define ADC_CHANNEL_ID		23
 
+#elif defined(CONFIG_BOARD_FRDM_K22F)
+
+/* DAC0 output is internally available on ADC0_SE23 */
+
+#define DAC_DEVICE_NAME		DT_LABEL(DT_NODELABEL(dac0))
+#define DAC_RESOLUTION		12
+#define DAC_CHANNEL_ID		0
+
+#define ADC_DEVICE_NAME		DT_LABEL(DT_NODELABEL(adc0))
+#define ADC_RESOLUTION		12
+#define ADC_GAIN		ADC_GAIN_1
+#define ADC_REFERENCE		ADC_REF_INTERNAL
+#define ADC_ACQUISITION_TIME	ADC_ACQ_TIME_DEFAULT
+#define ADC_CHANNEL_ID		23
+
+#elif defined(CONFIG_BOARD_BL652_DVK) || \
+	defined(CONFIG_BOARD_BL653_DVK) || \
+	defined(CONFIG_BOARD_BL654_DVK)
+#include <hal/nrf_saadc.h>
+ /* DAC output from MCP4725 pin 1
+  * ADC_1 input read from pin SIO_3
+  * Note external DAC MCP4725 is not populated on BL652_DVK, BL653_DVK and
+  * BL654_DVK at factory
+  */
+
+#define DAC_DEVICE_NAME		DT_LABEL(DT_NODELABEL(dac0))
+#define DAC_RESOLUTION		12
+#define DAC_CHANNEL_ID		0
+
+#define ADC_DEVICE_NAME		DT_LABEL(DT_NODELABEL(adc))
+#define ADC_RESOLUTION		12
+#define ADC_GAIN		ADC_GAIN_1_4
+#define ADC_REFERENCE		ADC_REF_VDD_1_4
+#define ADC_ACQUISITION_TIME	ADC_ACQ_TIME_DEFAULT
+#define ADC_CHANNEL_ID		1
+#define ADC_1ST_CHANNEL_INPUT	NRF_SAADC_INPUT_AIN1
+
 #else
 #error "Unsupported board."
 #endif
@@ -109,6 +147,12 @@ static const struct adc_channel_cfg adc_ch_cfg = {
 	.reference        = ADC_REFERENCE,
 	.acquisition_time = ADC_ACQUISITION_TIME,
 	.channel_id       = ADC_CHANNEL_ID,
+
+#if defined(CONFIG_BOARD_BL652_DVK) || \
+	defined(CONFIG_BOARD_BL653_DVK) || \
+	defined(CONFIG_BOARD_BL654_DVK)
+	.input_positive   = ADC_1ST_CHANNEL_INPUT,
+#endif
 };
 
 static const struct device *init_dac(void)

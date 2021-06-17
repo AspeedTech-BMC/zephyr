@@ -30,7 +30,7 @@
 #ifdef CONFIG_ARC_MPU_ENABLE
 	#if CONFIG_ARC_MPU_VER == 2
 		#define MPU_MIN_SIZE 2048
-	#elif CONFIG_ARC_MPU_VER == 3
+	#elif CONFIG_ARC_MPU_VER == 4
 		#define MPU_MIN_SIZE 32
 	#endif
 	#define MPU_MIN_SIZE_ALIGN . = ALIGN(MPU_MIN_SIZE);
@@ -101,8 +101,6 @@ SECTIONS {
 #include <linker/thread-local-storage.ld>
 
 	SECTION_PROLOGUE(_RODATA_SECTION_NAME,,) {
-		KEEP(*(.openocd_dbg))
-		KEEP(*(".openocd_dbg.*"))
 		*(".rodata")
 		*(".rodata.*")
 		*(.gnu.linkonce.r.*)
@@ -190,7 +188,7 @@ SECTIONS {
 	__data_rom_start = LOADADDR(_DATA_SECTION_NAME);
 
 #include <linker/common-ram.ld>
-#include <linker/kobject.ld>
+#include <linker/kobject-data.ld>
 
 #ifdef __MWDT_LINKER_CMD__
 /* TODO: add mwdt specific RAM C++ sections */

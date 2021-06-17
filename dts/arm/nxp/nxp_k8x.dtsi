@@ -43,6 +43,34 @@
 			reg = <0x40047000 0x2000>;
 			label = "SIM";
 			#clock-cells = <3>;
+
+			core_clk {
+				compatible = "fixed-factor-clock";
+				clocks = <&mcg KINETIS_MCG_OUT_CLK>;
+				clock-div = <1>;
+				#clock-cells = <0>;
+			};
+
+			bus_clk {
+				compatible = "fixed-factor-clock";
+				clocks = <&mcg KINETIS_MCG_OUT_CLK>;
+				clock-div = <2>;
+				#clock-cells = <0>;
+			};
+
+			flexbus_clk {
+				compatible = "fixed-factor-clock";
+				clocks = <&mcg KINETIS_MCG_OUT_CLK>;
+				clock-div = <2>;
+				#clock-cells = <0>;
+			};
+
+			flash_clk {
+				compatible = "fixed-factor-clock";
+				clocks = <&mcg KINETIS_MCG_OUT_CLK>;
+				clock-div = <5>;
+				#clock-cells = <0>;
+			};
 		};
 
 		mcg: clock-controller@40064000 {
@@ -72,7 +100,12 @@
 		adc0: adc@4003b000 {
 			compatible = "nxp,kinetis-adc16";
 			reg = <0x4003b000 0x1000>;
+			clocks = <&sim KINETIS_SIM_SIM_SOPT7 0 0xF>,
+				<&sim KINETIS_SIM_SIM_SOPT7 7 0x80>;
 			interrupts = <39 0>;
+			dmas = <&edma0 0 40>;
+			dma-names = "adc0";
+			clk-source = <0>;
 			label = "ADC_0";
 			status = "disabled";
 			#io-channel-cells = <1>;
@@ -230,35 +263,30 @@
 			compatible = "nxp,kinetis-pinmux";
 			reg = <0x40049000 0x1000>;
 			clocks = <&sim KINETIS_SIM_BUS_CLK 0x1038 9>;
-			label = "porta";
 		};
 
 		portb: pinmux@4004a000 {
 			compatible = "nxp,kinetis-pinmux";
 			reg = <0x4004a000 0x1000>;
 			clocks = <&sim KINETIS_SIM_BUS_CLK 0x1038 10>;
-			label = "portb";
 		};
 
 		portc: pinmux@4004b000 {
 			compatible = "nxp,kinetis-pinmux";
 			reg = <0x4004b000 0x1000>;
 			clocks = <&sim KINETIS_SIM_BUS_CLK 0x1038 11>;
-			label = "portc";
 		};
 
 		portd: pinmux@4004c000 {
 			compatible = "nxp,kinetis-pinmux";
 			reg = <0x4004c000 0x1000>;
 			clocks = <&sim KINETIS_SIM_BUS_CLK 0x1038 12>;
-			label = "portd";
 		};
 
 		porte: pinmux@4004d000 {
 			compatible = "nxp,kinetis-pinmux";
 			reg = <0x4004d000 0x1000>;
 			clocks = <&sim KINETIS_SIM_BUS_CLK 0x1038 13>;
-			label = "porte";
 		};
 
 		ftm0: ftm@40038000 {
@@ -380,6 +408,26 @@
 			clock-frequency = <60000000>;
 			label = "PIT0";
 		};
+
+		edma0: dma-controller@40008000 {
+			#dma-cells = <2>;
+			compatible = "nxp,mcux-edma";
+			dma-channels = <16>;
+			dma-requests = <64>;
+			nxp,mem2mem;
+			reg = <0x40008000 0x1000>,
+				<0x40021000 0x1000>;
+			interrupts = <0 0>, <1 0>, <2 0>, <3 0>,
+				<4 0>, <5 0>, <6 0>, <7 0>,
+				<8 0>, <9 0>, <10 0>, <11 0>,
+				<12 0>, <13 0>, <14 0>, <15 0>,
+				<16 0>;
+			clocks = <&sim KINETIS_SIM_DMA_CLK 0x1040 0x00000002>,
+				<&sim KINETIS_SIM_DMAMUX_CLK 0x103C 0x00000002>;
+			status = "disabled";
+			label = "DMA_0";
+		};
+
 	};
 };
 

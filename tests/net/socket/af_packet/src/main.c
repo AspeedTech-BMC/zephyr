@@ -82,12 +82,12 @@ static int eth_fake_init(const struct device *dev)
 }
 
 ETH_NET_DEVICE_INIT(eth_fake1, "eth_fake1", eth_fake_init,
-		    device_pm_control_nop, &eth_fake_data1, NULL,
+		    NULL, &eth_fake_data1, NULL,
 		    CONFIG_ETH_INIT_PRIORITY, &eth_fake_api_funcs,
 		    NET_ETH_MTU);
 
 ETH_NET_DEVICE_INIT(eth_fake2, "eth_fake2", eth_fake_init,
-		    device_pm_control_nop, &eth_fake_data2, NULL,
+		    NULL, &eth_fake_data2, NULL,
 		    CONFIG_ETH_INIT_PRIORITY, &eth_fake_api_funcs,
 		    NET_ETH_MTU);
 
@@ -269,6 +269,8 @@ static void test_raw_packet_sockets(void)
 			  sizeof(data_to_send),
 			  "Sent and received buffers do not match");
 
+	close(sock1);
+	close(sock2);
 	close(sock3);
 	close(sock4);
 }
@@ -278,6 +280,9 @@ static void test_packet_sockets(void)
 	int sock1, sock2;
 
 	__test_packet_sockets(&sock1, &sock2);
+
+	close(sock1);
+	close(sock2);
 }
 
 static void test_packet_sockets_dgram(void)
@@ -360,6 +365,9 @@ static void test_packet_sockets_dgram(void)
 
 	zassert_equal(ret, sizeof(data_to_send), "Cannot receive all data (%d)",
 		      -errno);
+
+	close(sock1);
+	close(sock2);
 }
 
 void test_main(void)

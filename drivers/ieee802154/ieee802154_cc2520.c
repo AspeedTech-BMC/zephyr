@@ -830,7 +830,7 @@ static int cc2520_tx(const struct device *dev,
 	/* 1 retry is allowed here */
 	do {
 		atomic_set(&cc2520->tx, 1);
-		k_sem_init(&cc2520->tx_sync, 0, UINT_MAX);
+		k_sem_init(&cc2520->tx_sync, 0, K_SEM_MAX_LIMIT);
 
 		if (!instruct_stxoncca(cc2520)) {
 			LOG_ERR("Cannot start transmission");
@@ -1087,7 +1087,7 @@ static int cc2520_init(const struct device *dev)
 	struct cc2520_context *cc2520 = dev->data;
 
 	atomic_set(&cc2520->tx, 0);
-	k_sem_init(&cc2520->rx_lock, 0, UINT_MAX);
+	k_sem_init(&cc2520->rx_lock, 0, K_SEM_MAX_LIMIT);
 
 #ifdef CONFIG_IEEE802154_CC2520_CRYPTO
 	k_sem_init(&cc2520->access_lock, 1, 1);
@@ -1151,12 +1151,12 @@ static struct ieee802154_radio_api cc2520_radio_api = {
 
 #if defined(CONFIG_IEEE802154_RAW_MODE)
 DEVICE_DEFINE(cc2520, CONFIG_IEEE802154_CC2520_DRV_NAME,
-		cc2520_init, device_pm_control_nop, &cc2520_context_data, NULL,
+		cc2520_init, NULL, &cc2520_context_data, NULL,
 		POST_KERNEL, CONFIG_IEEE802154_CC2520_INIT_PRIO,
 		&cc2520_radio_api);
 #else
 NET_DEVICE_INIT(cc2520, CONFIG_IEEE802154_CC2520_DRV_NAME,
-		cc2520_init, device_pm_control_nop,
+		cc2520_init, NULL,
 		&cc2520_context_data, NULL,
 		CONFIG_IEEE802154_CC2520_INIT_PRIO,
 		&cc2520_radio_api, IEEE802154_L2,
@@ -1486,7 +1486,7 @@ struct crypto_driver_api cc2520_crypto_api = {
 };
 
 DEVICE_DEFINE(cc2520_crypto, CONFIG_IEEE802154_CC2520_CRYPTO_DRV_NAME,
-		cc2520_crypto_init, device_pm_control_nop,
+		cc2520_crypto_init, NULL,
 		&cc2520_context_data, NULL, POST_KERNEL,
 		CONFIG_IEEE802154_CC2520_CRYPTO_INIT_PRIO, &cc2520_crypto_api);
 

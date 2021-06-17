@@ -29,16 +29,20 @@
 #include "lll.h"
 #include "lll_vendor.h"
 #include "lll_clock.h"
+#include "lll_adv_types.h"
 #include "lll_adv.h"
+#include "lll_adv_pdu.h"
 #include "lll_adv_aux.h"
 #include "lll_conn.h"
 #include "lll_chan.h"
 #include "lll_filter.h"
+#include "lll_df_types.h"
 
 #include "lll_internal.h"
 #include "lll_tim_internal.h"
 #include "lll_adv_internal.h"
 #include "lll_prof_internal.h"
+#include "lll_df_internal.h"
 
 #define BT_DBG_ENABLED IS_ENABLED(CONFIG_BT_DEBUG_HCI_DRIVER)
 #define LOG_MODULE_NAME bt_ctlr_lll_adv
@@ -46,9 +50,17 @@
 #include "hal/debug.h"
 
 static int init_reset(void);
+
+static struct pdu_adv *adv_pdu_allocate(struct lll_adv_pdu *pdu, uint8_t last);
+#if defined(CONFIG_BT_CTLR_ADV_EXT_PDU_EXTRA_DATA_MEMORY)
+static inline void adv_extra_data_release(struct lll_adv_pdu *pdu, int idx);
+static void *adv_extra_data_allocate(struct lll_adv_pdu *pdu, uint8_t last);
+static int adv_extra_data_free(struct lll_adv_pdu *pdu, uint8_t last);
+#endif /* CONFIG_BT_CTLR_ADV_EXT_PDU_EXTRA_DATA_MEMORY */
+
 static int prepare_cb(struct lll_prepare_param *p);
-static int is_abort_cb(void *next, int prio, void *curr,
-		       lll_prepare_cb_t *resume_cb, int *resume_prio);
+static int is_abort_cb(void *next, void *curr,
+		       lll_prepare_cb_t *resume_cb);
 static void abort_cb(struct lll_prepare_param *prepare_param, void *param);
 static void isr_tx(void *param);
 static void isr_rx(void *param);
@@ -109,6 +121,34 @@ static MFIFO_DEFINE(pdu_free, sizeof(void *), PDU_MEM_FIFO_COUNT);
 
 /* Semaphore to wakeup thread waiting for free AD data PDU buffers */
 static struct k_sem sem_pdu_free;
+
+#if defined(CONFIG_BT_CTLR_ADV_EXT_PDU_EXTRA_DATA_MEMORY)
+#if defined(CONFIG_BT_CTLR_DF_ADV_CTE_TX)
+#define EXTRA_DATA_MEM_SIZE MROUND(sizeof(struct lll_df_adv_cfg))
+#else
+#define EXTRA_DATA_MEM_SIZE 0
+#endif /* CONFIG_BT_CTLR_DF_ADV_CTE_TX */
+
+/* ToDo check if number of fragments is not smaller than number of CTE
+ * to be transmitted. Pay attention it would depend on the chain PDU storage
+ *
+ * Currently we can send only single CTE with AUX_SYNC_IND.
+ * Number is equal to allowed adv sync sets * 2 (double buffering).
+ */
+#define EXTRA_DATA_MEM_COUNT (BT_CTLR_ADV_SYNC_SET * PAYLOAD_FRAG_COUNT + 1)
+#define EXTRA_DATA_MEM_FIFO_COUNT (EXTRA_DATA_MEM_COUNT * 2)
+#define EXTRA_DATA_POOL_SIZE (EXTRA_DATA_MEM_SIZE * EXTRA_DATA_MEM_COUNT * 2)
+
+/* Free extra data buffer pool */
+static struct {
+	void *free;
+	uint8_t pool[EXTRA_DATA_POOL_SIZE];
+} mem_extra_data;
+
+/* FIFO to return stale extra data buffers from LLL to thread context. */
+static MFIFO_DEFINE(extra_data_free, sizeof(void *), EXTRA_DATA_MEM_FIFO_COUNT);
+static struct k_sem sem_extra_data_free;
+#endif /* CONFIG_BT_CTLR_ADV_EXT_PDU_EXTRA_DATA_MEMORY */
 
 int lll_adv_init(void)
 {
@@ -181,6 +221,13 @@ int lll_adv_data_reset(struct lll_adv_pdu *pdu)
 	pdu->last = 0U;
 	pdu->pdu[1] = NULL;
 
+#if defined(CONFIG_BT_CTLR_ADV_EXT_PDU_EXTRA_DATA_MEMORY)
+	/* Both slots are NULL because the extra_memory is allocated only
+	 * on request. Not every advertising PDU includes extra_data.
+	 */
+	pdu->extra_data[0] = NULL;
+	pdu->extra_data[1] = NULL;
+#endif /* CONFIG_BT_CTLR_ADV_EXT_PDU_EXTRA_DATA_MEMORY */
 	return 0;
 }
 
@@ -210,8 +257,6 @@ int lll_adv_data_release(struct lll_adv_pdu *pdu)
 struct pdu_adv *lll_adv_pdu_alloc(struct lll_adv_pdu *pdu, uint8_t *idx)
 {
 	uint8_t first, last;
-	struct pdu_adv *p;
-	int err;
 
 	first = pdu->first;
 	last = pdu->last;
@@ -236,38 +281,7 @@ struct pdu_adv *lll_adv_pdu_alloc(struct lll_adv_pdu *pdu, uint8_t *idx)
 
 	*idx = last;
 
-	p = (void *)pdu->pdu[last];
-	if (p) {
-		return p;
-	}
-
-	p = MFIFO_DEQUEUE_PEEK(pdu_free);
-	if (p) {
-		err = k_sem_take(&sem_pdu_free, K_NO_WAIT);
-		LL_ASSERT(!err);
-
-		MFIFO_DEQUEUE(pdu_free);
-		pdu->pdu[last] = (void *)p;
-
-		return p;
-	}
-
-	p = mem_acquire(&mem_pdu.free);
-	if (p) {
-		pdu->pdu[last] = (void *)p;
-
-		return p;
-	}
-
-	err = k_sem_take(&sem_pdu_free, K_FOREVER);
-	LL_ASSERT(!err);
-
-	p = MFIFO_DEQUEUE(pdu_free);
-	LL_ASSERT(p);
-
-	pdu->pdu[last] = (void *)p;
-
-	return p;
+	return adv_pdu_allocate(pdu, last);
 }
 
 struct pdu_adv *lll_adv_pdu_latest_get(struct lll_adv_pdu *pdu,
@@ -282,8 +296,6 @@ struct pdu_adv *lll_adv_pdu_latest_get(struct lll_adv_pdu *pdu,
 		void *p;
 
 		if (!MFIFO_ENQUEUE_IDX_GET(pdu_free, &free_idx)) {
-			LL_ASSERT(false);
-
 			return NULL;
 		}
 
@@ -305,6 +317,165 @@ struct pdu_adv *lll_adv_pdu_latest_get(struct lll_adv_pdu *pdu,
 
 	return (void *)pdu->pdu[first];
 }
+
+#if defined(CONFIG_BT_CTLR_ADV_EXT_PDU_EXTRA_DATA_MEMORY)
+int lll_adv_and_extra_data_init(struct lll_adv_pdu *pdu)
+{
+	struct pdu_adv *p;
+	void *extra_data;
+
+	p = mem_acquire(&mem_pdu.free);
+	if (!p) {
+		return -ENOMEM;
+	}
+
+	pdu->pdu[0] = (void *)p;
+
+	extra_data = mem_acquire(&mem_extra_data.free);
+	if (!extra_data) {
+		return -ENOMEM;
+	}
+
+	pdu->extra_data[0] = extra_data;
+
+	return 0;
+}
+
+int lll_adv_and_extra_data_release(struct lll_adv_pdu *pdu)
+{
+	uint8_t last;
+	void *p;
+
+	last = pdu->last;
+	p = pdu->pdu[last];
+	pdu->pdu[last] = NULL;
+	mem_release(p, &mem_pdu.free);
+
+	adv_extra_data_release(pdu, last);
+
+	last++;
+	if (last == DOUBLE_BUFFER_SIZE) {
+		last = 0U;
+	}
+	p = pdu->pdu[last];
+	if (p) {
+		pdu->pdu[last] = NULL;
+		mem_release(p, &mem_pdu.free);
+	}
+
+	adv_extra_data_release(pdu, last);
+
+	return 0;
+}
+
+struct pdu_adv *lll_adv_pdu_and_extra_data_alloc(struct lll_adv_pdu *pdu,
+						 void **extra_data,
+						 uint8_t *idx)
+{
+	uint8_t first, last;
+	struct pdu_adv *p;
+
+	first = pdu->first;
+	last = pdu->last;
+	if (first == last) {
+		last++;
+		if (last == DOUBLE_BUFFER_SIZE) {
+			last = 0U;
+		}
+	} else {
+		uint8_t first_latest;
+
+		pdu->last = first;
+		cpu_dmb();
+		first_latest = pdu->first;
+		if (first_latest != first) {
+			last++;
+			if (last == DOUBLE_BUFFER_SIZE) {
+				last = 0U;
+			}
+		}
+	}
+
+	*idx = last;
+
+	p = adv_pdu_allocate(pdu, last);
+
+	if (extra_data) {
+		*extra_data = adv_extra_data_allocate(pdu, last);
+	} else {
+		if (adv_extra_data_free(pdu, last)) {
+			/* There is no release of memory allocated by
+			 * adv_pdu_allocate because there is no memory leak.
+			 * If caller can recover from this error and subsequent
+			 * call to this function occures, no new memory will be
+			 * allocated. adv_pdu_allocate will return already
+			 * allocated memory.
+			 */
+			return NULL;
+		}
+	}
+
+	return p;
+}
+
+struct pdu_adv *lll_adv_pdu_and_extra_data_latest_get(struct lll_adv_pdu *pdu,
+						      void **extra_data,
+						      uint8_t *is_modified)
+{
+	uint8_t first;
+
+	first = pdu->first;
+	if (first != pdu->last) {
+		uint8_t pdu_free_idx;
+		uint8_t ed_free_idx;
+		void *ed;
+		uint8_t pdu_idx;
+		void *p;
+
+		if (!MFIFO_ENQUEUE_IDX_GET(pdu_free, &pdu_free_idx)) {
+			return NULL;
+		}
+
+		pdu_idx = first;
+		ed = pdu->extra_data[pdu_idx];
+
+		if (ed && (!MFIFO_ENQUEUE_IDX_GET(extra_data_free,
+						  &ed_free_idx))) {
+			/* No pdu_free_idx clean up is required, sobsequent
+			 * calls to MFIFO_ENQUEUE_IDX_GET return ther same
+			 * index to memory that is in limbo state.
+			 */
+			return NULL;
+		}
+
+		first += 1U;
+		if (first == DOUBLE_BUFFER_SIZE) {
+			first = 0U;
+		}
+		pdu->first = first;
+		*is_modified = 1U;
+
+		p = pdu->pdu[pdu_idx];
+		pdu->pdu[pdu_idx] = NULL;
+
+		MFIFO_BY_IDX_ENQUEUE(pdu_free, pdu_free_idx, p);
+		k_sem_give(&sem_pdu_free);
+
+		if (ed) {
+			pdu->extra_data[pdu_idx] = NULL;
+
+			MFIFO_BY_IDX_ENQUEUE(extra_data_free, ed_free_idx, ed);
+			k_sem_give(&sem_extra_data_free);
+		}
+	}
+
+	if (extra_data) {
+		*extra_data = pdu->extra_data[first];
+	}
+
+	return (void *)pdu->pdu[first];
+}
+#endif /* CONFIG_BT_CTLR_ADV_EXT_PDU_EXTRA_DATA_MEMORY */
 
 void lll_adv_prepare(void *param)
 {
@@ -419,18 +590,147 @@ static int init_reset(void)
 	/* Initialize AC PDU free buffer return queue */
 	MFIFO_INIT(pdu_free);
 
+#if defined(CONFIG_BT_CTLR_ADV_EXT_PDU_EXTRA_DATA_MEMORY)
+	/* Initialize extra data pool */
+	mem_init(mem_extra_data.pool, EXTRA_DATA_MEM_SIZE,
+		 (sizeof(mem_extra_data.pool) / EXTRA_DATA_MEM_SIZE), &mem_extra_data.free);
+
+	/* Initialize extra data free buffer return queue */
+	MFIFO_INIT(extra_data_free);
+
+	k_sem_init(&sem_extra_data_free, 0, EXTRA_DATA_MEM_FIFO_COUNT);
+#endif /* CONFIG_BT_CTLR_ADV_EXT_PDU_EXTRA_DATA_MEMORY */
+
 	/* Initialize semaphore for ticker API blocking wait */
 	k_sem_init(&sem_pdu_free, 0, PDU_MEM_FIFO_COUNT);
 
 	return 0;
 }
 
+static struct pdu_adv *adv_pdu_allocate(struct lll_adv_pdu *pdu, uint8_t last)
+{
+	void *p;
+	int err;
+
+	p = (void *)pdu->pdu[last];
+	if (p) {
+		return p;
+	}
+
+	p = MFIFO_DEQUEUE_PEEK(pdu_free);
+	if (p) {
+		err = k_sem_take(&sem_pdu_free, K_NO_WAIT);
+		LL_ASSERT(!err);
+
+		MFIFO_DEQUEUE(pdu_free);
+		pdu->pdu[last] = (void *)p;
+
+		return p;
+	}
+
+	p = mem_acquire(&mem_pdu.free);
+	if (p) {
+		pdu->pdu[last] = (void *)p;
+
+		return p;
+	}
+
+	err = k_sem_take(&sem_pdu_free, K_FOREVER);
+	LL_ASSERT(!err);
+
+	p = MFIFO_DEQUEUE(pdu_free);
+	LL_ASSERT(p);
+	/* If !p then check initial value of sem_pdu_free. It must be the same
+	 * as number of elements in pdu_free store. This may not happen in
+	 * runtime.
+	 */
+
+	pdu->pdu[last] = (void *)p;
+
+	return p;
+}
+
+#if defined(CONFIG_BT_CTLR_ADV_EXT_PDU_EXTRA_DATA_MEMORY)
+static void *adv_extra_data_allocate(struct lll_adv_pdu *pdu, uint8_t last)
+{
+	void *extra_data;
+	int err;
+
+	extra_data = pdu->extra_data[last];
+	if (extra_data) {
+		return extra_data;
+	}
+
+	extra_data = MFIFO_DEQUEUE_PEEK(extra_data_free);
+	if (extra_data) {
+		err = k_sem_take(&sem_extra_data_free, K_NO_WAIT);
+		LL_ASSERT(!err);
+
+		MFIFO_DEQUEUE(extra_data_free);
+		pdu->extra_data[last] = extra_data;
+
+		return extra_data;
+	}
+
+	extra_data = mem_acquire(&mem_extra_data.free);
+	if (extra_data) {
+		pdu->extra_data[last] = extra_data;
+
+		return extra_data;
+	}
+
+	err = k_sem_take(&sem_extra_data_free, K_FOREVER);
+	LL_ASSERT(!err);
+
+	extra_data = MFIFO_DEQUEUE(extra_data_free);
+	LL_ASSERT(extra_data);
+
+	pdu->extra_data[last] = (void *)extra_data;
+
+	return extra_data;
+}
+
+static int adv_extra_data_free(struct lll_adv_pdu *pdu, uint8_t last)
+{
+	uint8_t ed_free_idx;
+	void *ed;
+
+	ed = pdu->extra_data[last];
+
+	if (ed) {
+		if (!MFIFO_ENQUEUE_IDX_GET(extra_data_free, &ed_free_idx)) {
+			/* ToDo what if enqueue fails and assert does not fire?
+			 * pdu_free_idx should be released before return.
+			 */
+			return -ENOMEM;
+		}
+		pdu->extra_data[last] = NULL;
+
+		MFIFO_BY_IDX_ENQUEUE(extra_data_free, ed_free_idx, ed);
+		k_sem_give(&sem_extra_data_free);
+	}
+
+	return 0;
+}
+
+static inline void adv_extra_data_release(struct lll_adv_pdu *pdu, int idx)
+{
+	void *extra_data;
+
+	extra_data = pdu->extra_data[idx];
+	if (extra_data) {
+		pdu->extra_data[idx] = NULL;
+		mem_release(extra_data, &mem_extra_data.free);
+	}
+}
+#endif /* CONFIG_BT_CTLR_ADV_EXT_PDU_EXTRA_DATA_MEMORY */
+
 static int prepare_cb(struct lll_prepare_param *p)
 {
 	uint32_t ticks_at_event;
 	uint32_t ticks_at_start;
 	struct pdu_adv *pdu;
-	struct evt_hdr *evt;
+	struct ull_hdr *ull;
 	struct lll_adv *lll;
 	uint32_t remainder;
 	uint32_t start_us;
@@ -440,20 +740,21 @@ static int prepare_cb(struct lll_prepare_param *p)
 
 	lll = p->param;
 
-	/* Check if stopped (on connection establishment race between LLL and
-	 * ULL.
+#if defined(CONFIG_BT_PERIPHERAL)
+	/* Check if stopped (on connection establishment- or disabled race
+	 * between LLL and ULL.
+	 * When connectable advertising is disabled in thread context, cancelled
+	 * flag is set, and initiated flag is checked. Here, we avoid
+	 * transmitting connectable advertising event if cancelled flag is set.
 	 */
-	if (unlikely(lll_is_stop(lll))) {
-		int err;
+	if (unlikely(lll->conn &&
+		(lll->conn->slave.initiated || lll->conn->slave.cancelled))) {
+		radio_isr_set(lll_isr_early_abort, lll);
+		radio_disable();
 
-		err = lll_hfclock_off();
-		LL_ASSERT(err >= 0);
-
-		lll_done(NULL);
-
-		DEBUG_RADIO_CLOSE_A(0);
 		return 0;
 	}
+#endif /* CONFIG_BT_PERIPHERAL */
 
 	radio_reset();
 
@@ -508,8 +809,8 @@ static int prepare_cb(struct lll_prepare_param *p)
 	}
 
 	ticks_at_event = p->ticks_at_expire;
-	evt = HDR_LLL2EVT(lll);
-	ticks_at_event += lll_evt_offset_get(evt);
+	ull = HDR_LLL2ULL(lll);
+	ticks_at_event += lll_event_offset_get(ull);
 
 	ticks_at_start = ticks_at_event;
 	ticks_at_start += HAL_TICKER_US_TO_TICKS(EVENT_OVERHEAD_START_US);
@@ -531,7 +832,7 @@ static int prepare_cb(struct lll_prepare_param *p)
 #if defined(CONFIG_BT_CTLR_XTAL_ADVANCED) && \
 	(EVENT_OVERHEAD_PREEMPT_US <= EVENT_OVERHEAD_PREEMPT_MIN_US)
 	/* check if preempt to start has changed */
-	if (lll_preempt_calc(evt, (TICKER_ID_ADV_BASE +
+	if (lll_preempt_calc(ull, (TICKER_ID_ADV_BASE +
 				   ull_adv_lll_handle_get(lll)),
 			     ticks_at_event)) {
 		radio_isr_set(isr_abort, lll);
@@ -553,10 +854,10 @@ static int prepare_cb(struct lll_prepare_param *p)
 #if defined(CONFIG_BT_PERIPHERAL)
 static int resume_prepare_cb(struct lll_prepare_param *p)
 {
-	struct evt_hdr *evt;
+	struct ull_hdr *ull;
 
-	evt = HDR_LLL2EVT(p->param);
-	p->ticks_at_expire = ticker_ticks_now_get() - lll_evt_offset_get(evt);
+	ull = HDR_LLL2ULL(p->param);
+	p->ticks_at_expire = ticker_ticks_now_get() - lll_event_offset_get(ull);
 	p->remainder = 0;
 	p->lazy = 0;
 
@@ -564,8 +865,7 @@ static int resume_prepare_cb(struct lll_prepare_param *p)
 }
 #endif /* CONFIG_BT_PERIPHERAL */
 
-static int is_abort_cb(void *next, int prio, void *curr,
-		       lll_prepare_cb_t *resume_cb, int *resume_prio)
+static int is_abort_cb(void *next, void *curr, lll_prepare_cb_t *resume_cb)
 {
 #if defined(CONFIG_BT_PERIPHERAL)
 	struct lll_adv *lll = curr;
@@ -581,7 +881,6 @@ static int is_abort_cb(void *next, int prio, void *curr,
 
 			/* wrap back after the pre-empter */
 			*resume_cb = resume_prepare_cb;
-			*resume_prio = 0; /* TODO: */
 
 			/* Retain HF clk */
 			err = lll_hfclock_on();
@@ -784,7 +1083,14 @@ static void isr_done(void *param)
 	}
 #endif /* CONFIG_BT_PERIPHERAL */
 
-	if (lll->chan_map_curr) {
+	/* NOTE: Do not continue to connectable advertise if advertising is
+	 *       being disabled, by checking the cancelled flag.
+	 */
+	if (lll->chan_map_curr &&
+#if defined(CONFIG_BT_PERIPHERAL)
+	    (!lll->conn || !lll->conn->slave.cancelled) &&
+#endif /* CONFIG_BT_PERIPHERAL */
+	    1) {
 		struct pdu_adv *pdu;
 		uint32_t start_us;
 
@@ -818,25 +1124,6 @@ static void isr_done(void *param)
 		radio_tmr_end_capture();
 
 		return;
-
-#if defined(CONFIG_BT_CTLR_ADV_EXT) && defined(BT_CTLR_ADV_EXT_PBACK)
-	} else {
-		struct pdu_adv_com_ext_adv *p;
-		struct pdu_adv_ext_hdr *h;
-		struct pdu_adv *pdu;
-
-		pdu = lll_adv_data_curr_get(lll);
-		p = (void *)&pdu->adv_ext_ind;
-		h = (void *)p->ext_hdr_adv_data;
-
-		if ((pdu->type == PDU_ADV_TYPE_EXT_IND) && h->aux_ptr) {
-			radio_filter_disable();
-
-			lll_adv_aux_pback_prepare(lll);
-
-			return;
-		}
-#endif /* CONFIG_BT_CTLR_ADV_EXT */
 	}
 
 	radio_filter_disable();
@@ -909,6 +1196,7 @@ static struct pdu_adv *chan_prepare(struct lll_adv *lll)
 	/* FIXME: get latest only when primary PDU without Aux PDUs */
 	upd = 0U;
 	pdu = lll_adv_data_latest_get(lll, &upd);
+	LL_ASSERT(pdu);
 
 	radio_pkt_tx_set(pdu);
 
@@ -918,6 +1206,7 @@ static struct pdu_adv *chan_prepare(struct lll_adv *lll)
 		struct pdu_adv *scan_pdu;
 
 		scan_pdu = lll_adv_scan_rsp_latest_get(lll, &upd);
+		LL_ASSERT(scan_pdu);
 
 #if defined(CONFIG_BT_CTLR_PRIVACY)
 		if (upd) {
@@ -1024,15 +1313,24 @@ static inline int isr_rx_pdu(struct lll_adv *lll,
 		return 0;
 
 #if defined(CONFIG_BT_PERIPHERAL)
+	/* NOTE: Do not accept CONNECT_IND if cancelled flag is set in thread
+	 *       context when disabling connectable advertising. This is to
+	 *       avoid any race in checking the initiated flags in thread mode
+	 *       which is set here if accepting a connection establishment.
+	 *
+	 *       Under this race, peer central would get failed to establish
+	 *       connection as the disconnect reason. This is an acceptable
+	 *       outcome to keep the thread mode implementation simple when
+	 *       disabling connectable advertising.
+	 */
 	} else if ((pdu_rx->type == PDU_ADV_TYPE_CONNECT_IND) &&
 		   (pdu_rx->len == sizeof(struct pdu_adv_connect_ind)) &&
+		   lll->conn && !lll->conn->slave.cancelled &&
 		   lll_adv_connect_ind_check(lll, pdu_rx, tx_addr, addr,
 					     rx_addr, tgt_addr,
-					     devmatch_ok, &rl_idx) &&
-		   lll->conn) {
+					     devmatch_ok, &rl_idx)) {
 		struct node_rx_ftr *ftr;
 		struct node_rx_pdu *rx;
-		int ret;
 
 		if (IS_ENABLED(CONFIG_BT_CTLR_CHAN_SEL_2)) {
 			rx = ull_pdu_rx_alloc_peek(4);
@@ -1061,8 +1359,7 @@ static inline int isr_rx_pdu(struct lll_adv *lll,
 #endif /* CONFIG_BT_CTLR_CONN_RSSI */
 
 		/* Stop further LLL radio events */
-		ret = lll_stop(lll);
-		LL_ASSERT(!ret);
+		lll->conn->slave.initiated = 1;
 
 		rx = ull_pdu_rx_alloc();
 

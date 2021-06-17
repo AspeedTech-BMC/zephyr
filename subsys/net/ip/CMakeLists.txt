@@ -26,14 +26,14 @@ zephyr_library_sources(net_tc.c)
 zephyr_library_sources_ifdef(CONFIG_NET_6LO          6lo.c)
 zephyr_library_sources_ifdef(CONFIG_NET_DHCPV4       dhcpv4.c)
 zephyr_library_sources_ifdef(CONFIG_NET_IPV4_AUTO    ipv4_autoconf.c)
-zephyr_library_sources_ifdef(CONFIG_NET_IPV4         icmpv4.c       ipv4.c)
+zephyr_library_sources_ifdef(CONFIG_NET_IPV4         icmpv4.c ipv4.c)
+zephyr_library_sources_ifdef(CONFIG_NET_IPV4_IGMP    igmp.c)
 zephyr_library_sources_ifdef(CONFIG_NET_IPV6         icmpv6.c nbr.c
                                                      ipv6.c ipv6_nbr.c)
 zephyr_library_sources_ifdef(CONFIG_NET_IPV6_MLD     ipv6_mld.c)
 zephyr_library_sources_ifdef(CONFIG_NET_IPV6_FRAGMENT     ipv6_fragment.c)
 zephyr_library_sources_ifdef(CONFIG_NET_ROUTE        route.c)
 zephyr_library_sources_ifdef(CONFIG_NET_STATISTICS   net_stats.c)
-zephyr_library_sources_ifdef(CONFIG_NET_TCP1         connection.c tcp.c)
 zephyr_library_sources_ifdef(CONFIG_NET_TCP2         connection.c tcp2.c)
 zephyr_library_sources_ifdef(CONFIG_NET_TEST_PROTOCOL           tp.c)
 zephyr_library_sources_ifdef(CONFIG_NET_TRICKLE      trickle.c)
@@ -43,6 +43,10 @@ zephyr_library_sources_ifdef(CONFIG_NET_SOCKETS_PACKET  connection.c
 zephyr_library_sources_ifdef(CONFIG_NET_SOCKETS_CAN  connection.c
                                                      canbus_socket.c)
 zephyr_library_sources_ifdef(CONFIG_NET_PROMISCUOUS_MODE promiscuous.c)
+
+if(CONFIG_NET_TCP_ISN_RFC6528)
+  zephyr_library_link_libraries_ifdef(CONFIG_MBEDTLS mbedTLS)
+endif()
 endif()
 
 zephyr_library_include_directories(

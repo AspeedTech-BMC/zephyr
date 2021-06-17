@@ -8,7 +8,9 @@
 #include <stdlib.h>
 #include <sys/atomic.h>
 #include <shell/shell.h>
+#if defined(CONFIG_SHELL_BACKEND_DUMMY)
 #include <shell/shell_dummy.h>
+#endif
 #include "shell_ops.h"
 #include "shell_help.h"
 #include "shell_utils.h"
@@ -533,6 +535,10 @@ static int exec_cmd(const struct shell *shell, size_t argc, const char **argv,
 	}
 
 	if (!ret_val) {
+#if CONFIG_SHELL_GETOPT
+		z_shell_getopt_init(&shell->ctx->getopt_state);
+#endif
+
 		z_flag_cmd_ctx_set(shell, true);
 		/* Unlock thread mutex in case command would like to borrow
 		 * shell context to other thread to avoid mutex deadlock.
@@ -662,8 +668,7 @@ static int execute(const struct shell *shell)
 		}
 
 		if (IS_ENABLED(CONFIG_SHELL_HELP) && (cmd_lvl > 0) &&
-		    (!strcmp(argvp[0], "-h") ||
-		     !strcmp(argvp[0], "--help"))) {
+		    z_shell_help_request(argvp[0])) {
 			/* Command called with help option so it makes no sense
 			 * to search deeper commands.
 			 */
@@ -1163,6 +1168,7 @@ static int instance_init(const struct shell *shell, const void *p_config,
 
 	z_flag_tx_rdy_set(shell, true);
 	z_flag_echo_set(shell, IS_ENABLED(CONFIG_SHELL_ECHO_STATUS));
+	z_flag_obscure_set(shell, IS_ENABLED(CONFIG_SHELL_START_OBSCURED));
 	z_flag_mode_delete_set(shell,
 			     IS_ENABLED(CONFIG_SHELL_BACKSPACE_MODE_DELETE));
 	shell->ctx->vt100_ctx.cons.terminal_wid =
@@ -1229,7 +1235,13 @@ static void shell_signal_handle(const struct shell *shell,
 
 static void kill_handler(const struct shell *shell)
 {
-	(void)instance_uninit(shell);
+	int err = instance_uninit(shell);
+
+	if (shell->ctx->uninit_cb) {
+		shell->ctx->uninit_cb(shell, err);
+	}
+
+	shell->ctx->tid = NULL;
 	k_thread_abort(k_current_get());
 }
 
@@ -1246,7 +1258,7 @@ void shell_thread(void *shell_handle, void *arg_log_backend,
 		return;
 	}
 
-	if (log_backend && IS_ENABLED(CONFIG_SHELL_LOG_BACKEND)) {
+	if (IS_ENABLED(CONFIG_SHELL_LOG_BACKEND) && log_backend) {
 		z_shell_log_backend_enable(shell->log_backend, (void *)shell,
 					   log_level);
 	}
@@ -1293,6 +1305,10 @@ int shell_init(const struct shell *shell, const void *transport_config,
 	__ASSERT_NO_MSG(shell);
 	__ASSERT_NO_MSG(shell->ctx && shell->iface && shell->default_prompt);
 
+	if (shell->ctx->tid) {
+		return -EALREADY;
+	}
+
 	int err = instance_init(shell, transport_config, use_colors);
 
 	if (err != 0) {
@@ -1311,7 +1327,7 @@ int shell_init(const struct shell *shell, const void *transport_config,
 	return 0;
 }
 
-int shell_uninit(const struct shell *shell)
+void shell_uninit(const struct shell *shell, shell_uninit_cb_t cb)
 {
 	__ASSERT_NO_MSG(shell);
 
@@ -1319,12 +1335,19 @@ int shell_uninit(const struct shell *shell)
 		struct k_poll_signal *signal =
 				&shell->ctx->signals[SHELL_SIGNAL_KILL];
 
+		shell->ctx->uninit_cb = cb;
 		/* signal kill message */
 		(void)k_poll_signal_raise(signal, 0);
 
-		return 0;
+		return;
+	}
+
+	int err = instance_uninit(shell);
+
+	if (cb) {
+		cb(shell, err);
 	} else {
-		return instance_uninit(shell);
+		__ASSERT_NO_MSG(0);
 	}
 }
 
@@ -1373,13 +1396,8 @@ void shell_process(const struct shell *shell)
 	__ASSERT_NO_MSG(shell);
 	__ASSERT_NO_MSG(shell->ctx);
 
-	union shell_internal internal;
-
-	internal.value = 0U;
-	internal.flags.processing = 1U;
-
-	(void)atomic_or((atomic_t *)&shell->ctx->internal.value,
-			internal.value);
+	/* atomically set the processing flag */
+	z_flag_processing_set(shell, true);
 
 	switch (shell->ctx->state) {
 	case SHELL_STATE_UNINITIALIZED:
@@ -1394,10 +1412,8 @@ void shell_process(const struct shell *shell)
 		break;
 	}
 
-	internal.value = 0xFFFFFFFF;
-	internal.flags.processing = 0U;
-	(void)atomic_and((atomic_t *)&shell->ctx->internal.value,
-			 internal.value);
+	/* atomically clear the processing flag */
+	z_flag_processing_set(shell, false);
 }
 
 /* This function mustn't be used from shell context to avoid deadlock.
@@ -1408,9 +1424,9 @@ void shell_vfprintf(const struct shell *shell, enum shell_vt100_color color,
 {
 	__ASSERT_NO_MSG(shell);
 	__ASSERT(!k_is_in_isr(), "Thread context required.");
+	__ASSERT_NO_MSG(shell->ctx);
 	__ASSERT_NO_MSG((shell->ctx->internal.flags.cmd_ctx == 1) ||
 			(k_current_get() != shell->ctx->tid));
-	__ASSERT_NO_MSG(shell->ctx);
 	__ASSERT_NO_MSG(shell->fprintf_ctx);
 	__ASSERT_NO_MSG(fmt);
 
@@ -1554,6 +1570,51 @@ int shell_execute_cmd(const struct shell *shell, const char *cmd)
 	k_mutex_unlock(&shell->ctx->wr_mtx);
 
 	return ret_val;
+}
+
+int shell_insert_mode_set(const struct shell *shell, bool val)
+{
+	if (shell == NULL) {
+		return -EINVAL;
+	}
+
+	return (int)z_flag_insert_mode_set(shell, val);
+}
+
+int shell_use_colors_set(const struct shell *shell, bool val)
+{
+	if (shell == NULL) {
+		return -EINVAL;
+	}
+
+	return (int)z_flag_use_colors_set(shell, val);
+}
+
+int shell_echo_set(const struct shell *shell, bool val)
+{
+	if (shell == NULL) {
+		return -EINVAL;
+	}
+
+	return (int)z_flag_echo_set(shell, val);
+}
+
+int shell_obscure_set(const struct shell *shell, bool val)
+{
+	if (shell == NULL) {
+		return -EINVAL;
+	}
+
+	return (int)z_flag_obscure_set(shell, val);
+}
+
+int shell_mode_delete_set(const struct shell *shell, bool val)
+{
+	if (shell == NULL) {
+		return -EINVAL;
+	}
+
+	return (int)z_flag_mode_delete_set(shell, val);
 }
 
 static int cmd_help(const struct shell *shell, size_t argc, char **argv)

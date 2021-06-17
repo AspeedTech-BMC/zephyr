@@ -8,8 +8,7 @@
 #include <sys/printk.h>
 #include <shell/shell.h>
 #include <init.h>
-#include <debug/object_tracing.h>
-#include <power/reboot.h>
+#include <sys/reboot.h>
 #include <debug/stack.h>
 #include <string.h>
 #include <device.h>
@@ -78,14 +77,15 @@ static void shell_tdata_dump(const struct k_thread *cthread, void *user_data)
 		      thread->base.user_options,
 		      thread->base.prio,
 		      thread->base.timeout.dticks);
-	shell_print(shell, "\tstate: %s", k_thread_state_str(thread));
+	shell_print(shell, "\tstate: %s, entry: %p", k_thread_state_str(thread),
+		    thread->entry);
 
 #ifdef CONFIG_THREAD_RUNTIME_STATS
 	ret = 0;
 
 	if (k_thread_runtime_stats_get(thread, &rt_stats_thread) != 0) {
 		ret++;
-	};
+	}
 
 	if (k_thread_runtime_stats_all_get(&rt_stats_all) != 0) {
 		ret++;
@@ -138,7 +138,7 @@ static int cmd_kernel_threads(const struct shell *shell,
 	ARG_UNUSED(argc);
 	ARG_UNUSED(argv);
 
-	shell_print(shell, "Scheduler: %u since last call", z_clock_elapsed());
+	shell_print(shell, "Scheduler: %u since last call", sys_clock_elapsed());
 	shell_print(shell, "Threads:");
 	k_thread_foreach(shell_tdata_dump, (void *)shell);
 	return 0;
@@ -220,6 +220,9 @@ static int cmd_kernel_reboot_warm(const struct shell *shell,
 {
 	ARG_UNUSED(argc);
 	ARG_UNUSED(argv);
+#if (CONFIG_KERNEL_SHELL_REBOOT_DELAY > 0)
+	k_sleep(K_MSEC(CONFIG_KERNEL_SHELL_REBOOT_DELAY));
+#endif
 	sys_reboot(SYS_REBOOT_WARM);
 	return 0;
 }
@@ -229,6 +232,9 @@ static int cmd_kernel_reboot_cold(const struct shell *shell,
 {
 	ARG_UNUSED(argc);
 	ARG_UNUSED(argv);
+#if (CONFIG_KERNEL_SHELL_REBOOT_DELAY > 0)
+	k_sleep(K_MSEC(CONFIG_KERNEL_SHELL_REBOOT_DELAY));
+#endif
 	sys_reboot(SYS_REBOOT_COLD);
 	return 0;
 }

@@ -10,7 +10,10 @@
 #include <ztest.h>
 
 #if defined(CONFIG_BOARD_NUCLEO_L073RZ) || \
-	defined(CONFIG_BOARD_NUCLEO_L152RE)
+	defined(CONFIG_BOARD_NUCLEO_L152RE) || \
+	defined(CONFIG_BOARD_NUCLEO_F429ZI) || \
+	defined(CONFIG_BOARD_NUCLEO_F767ZI) || \
+	defined(CONFIG_BOARD_RONOTH_LODEV)
 
 #define DAC_DEVICE_NAME		DT_LABEL(DT_NODELABEL(dac1))
 #define DAC_CHANNEL_ID		1
@@ -24,6 +27,22 @@
 
 #elif defined(CONFIG_BOARD_FRDM_K64F)
 
+#define DAC_DEVICE_NAME		DT_LABEL(DT_NODELABEL(dac0))
+#define DAC_RESOLUTION		12
+#define DAC_CHANNEL_ID		0
+
+#elif defined(CONFIG_BOARD_FRDM_K22F)
+
+#define DAC_DEVICE_NAME		DT_LABEL(DT_NODELABEL(dac0))
+#define DAC_RESOLUTION		12
+#define DAC_CHANNEL_ID		0
+
+#elif defined(CONFIG_BOARD_BL652_DVK) || \
+	defined(CONFIG_BOARD_BL653_DVK) || \
+	defined(CONFIG_BOARD_BL654_DVK)
+ /* Note external DAC MCP4725 is not populated on BL652_DVK, BL653_DVK and
+  * BL654_DVK at factory
+  */
 #define DAC_DEVICE_NAME		DT_LABEL(DT_NODELABEL(dac0))
 #define DAC_RESOLUTION		12
 #define DAC_CHANNEL_ID		0

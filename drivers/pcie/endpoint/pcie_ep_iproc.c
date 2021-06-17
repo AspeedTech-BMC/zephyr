@@ -181,13 +181,12 @@ static int iproc_pcie_pl330_dma_xfer(const struct device *dev,
 	const struct iproc_pcie_ep_config *cfg = dev->config;
 	struct dma_config dma_cfg = { 0 };
 	struct dma_block_config dma_block_cfg = { 0 };
-	const struct device *pl330_dev;
 	uint32_t chan_id;
 	int ret = -EINVAL;
 
-	pl330_dev = device_get_binding(cfg->pl330_dev_name);
-	if (!pl330_dev) {
-		LOG_ERR("Cannot get dma controller\n");
+	if (!device_is_ready(cfg->pl330_dev)) {
+		LOG_ERR("DMA controller is not ready\n");
+		ret = -ENODEV;
 		goto out;
 	}
 
@@ -207,14 +206,14 @@ static int iproc_pcie_pl330_dma_xfer(const struct device *dev,
 		chan_id = cfg->pl330_rx_chan_id;
 	}
 
-	ret = dma_config(pl330_dev, chan_id,  &dma_cfg);
+	ret = dma_config(cfg->pl330_dev, chan_id,  &dma_cfg);
 	if (ret) {
 		LOG_ERR("DMA config failed\n");
 		goto out;
 	}
 
 	/* start DMA */
-	ret = dma_start(pl330_dev, chan_id);
+	ret = dma_start(cfg->pl330_dev, chan_id);
 	if (ret) {
 		LOG_ERR("DMA transfer failed\n");
 	}
@@ -319,7 +318,7 @@ static void iproc_pcie_reset_config(const struct device *dev)
 
 	IRQ_CONNECT(DT_INST_IRQ_BY_NAME(0, perst, irq),
 		    DT_INST_IRQ_BY_NAME(0, perst, priority),
-		    iproc_pcie_perst, DEVICE_GET(iproc_pcie_ep_0), 0);
+		    iproc_pcie_perst, DEVICE_DT_INST_GET(0), 0);
 	irq_enable(DT_INST_IRQ_BY_NAME(0, perst, irq));
 #endif
 
@@ -338,7 +337,7 @@ static void iproc_pcie_reset_config(const struct device *dev)
 
 	IRQ_CONNECT(DT_INST_IRQ_BY_NAME(0, perst_inband, irq),
 		    DT_INST_IRQ_BY_NAME(0, perst_inband, priority),
-		    iproc_pcie_hot_reset, DEVICE_GET(iproc_pcie_ep_0), 0);
+		    iproc_pcie_hot_reset, DEVICE_DT_INST_GET(0), 0);
 	irq_enable(DT_INST_IRQ_BY_NAME(0, perst_inband, irq));
 #endif
 
@@ -358,7 +357,7 @@ static void iproc_pcie_reset_config(const struct device *dev)
 
 	IRQ_CONNECT(DT_INST_IRQ_BY_NAME(0, flr, irq),
 		    DT_INST_IRQ_BY_NAME(0, flr, priority),
-		    iproc_pcie_flr, DEVICE_GET(iproc_pcie_ep_0), 0);
+		    iproc_pcie_flr, DEVICE_DT_INST_GET(0), 0);
 	irq_enable(DT_INST_IRQ_BY_NAME(0, flr, irq));
 #endif
 }
@@ -383,7 +382,7 @@ static void iproc_pcie_msix_pvm_config(const struct device *dev)
 
 	IRQ_CONNECT(DT_INST_IRQ_BY_NAME(0, snoop_irq1, irq),
 		    DT_INST_IRQ_BY_NAME(0, snoop_irq1, priority),
-		    iproc_pcie_func_mask_isr, DEVICE_GET(iproc_pcie_ep_0), 0);
+		    iproc_pcie_func_mask_isr, DEVICE_DT_INST_GET(0), 0);
 	irq_enable(DT_INST_IRQ_BY_NAME(0, snoop_irq1, irq));
 
 	LOG_DBG("snoop interrupt configured\n");
@@ -405,7 +404,7 @@ static void iproc_pcie_msix_pvm_config(const struct device *dev)
 
 	IRQ_CONNECT(DT_INST_IRQ_BY_NAME(0, pcie_pmon_lite, irq),
 		    DT_INST_IRQ_BY_NAME(0, pcie_pmon_lite, priority),
-		    iproc_pcie_vector_mask_isr, DEVICE_GET(iproc_pcie_ep_0), 0);
+		    iproc_pcie_vector_mask_isr, DEVICE_DT_INST_GET(0), 0);
 	irq_enable(DT_INST_IRQ_BY_NAME(0, pcie_pmon_lite, irq));
 
 	LOG_DBG("pcie pmon lite interrupt configured\n");
@@ -476,7 +475,7 @@ static struct iproc_pcie_ep_config iproc_pcie_ep_config_0 = {
 	.map_low_size = DT_INST_REG_SIZE_BY_NAME(0, map_lowmem),
 	.map_high_base = DT_INST_REG_ADDR_BY_NAME(0, map_highmem),
 	.map_high_size = DT_INST_REG_SIZE_BY_NAME(0, map_highmem),
-	.pl330_dev_name = DT_INST_DMAS_LABEL_BY_IDX(0, 0),
+	.pl330_dev = DEVICE_DT_GET(DT_INST_DMAS_CTLR_BY_IDX(0, 0)),
 	.pl330_tx_chan_id = DT_INST_DMAS_CELL_BY_NAME(0, txdma, channel),
 	.pl330_rx_chan_id = DT_INST_DMAS_CELL_BY_NAME(0, rxdma, channel),
 };
@@ -491,7 +490,7 @@ static struct pcie_ep_driver_api iproc_pcie_ep_api = {
 	.dma_xfer = iproc_pcie_pl330_dma_xfer,
 };
 
-DEVICE_DT_INST_DEFINE(0, &iproc_pcie_ep_init, device_pm_control_nop,
+DEVICE_DT_INST_DEFINE(0, &iproc_pcie_ep_init, NULL,
 		    &iproc_pcie_ep_ctx_0,
 		    &iproc_pcie_ep_config_0,
 		    POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEVICE,

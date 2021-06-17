@@ -65,7 +65,6 @@ void lll_slave_prepare(void *param)
 {
 	struct lll_prepare_param *p;
 	struct lll_conn *lll;
-	uint16_t elapsed;
 	int err;
 
 	err = lll_hfclock_on();
@@ -73,17 +72,11 @@ void lll_slave_prepare(void *param)
 
 	p = param;
 
-	/* Instants elapsed */
-	elapsed = p->lazy + 1;
-
 	lll = p->param;
-
-	/* Save the (latency + 1) for use in event */
-	lll->latency_prepare += elapsed;
 
 	/* Accumulate window widening */
 	lll->slave.window_widening_prepare_us +=
-	    lll->slave.window_widening_periodic_us * elapsed;
+	    lll->slave.window_widening_periodic_us * (p->lazy + 1);
 	if (lll->slave.window_widening_prepare_us >
 	    lll->slave.window_widening_max_us) {
 		lll->slave.window_widening_prepare_us =
@@ -108,7 +101,7 @@ static int prepare_cb(struct lll_prepare_param *p)
 	uint32_t remainder_us;
 	uint8_t data_chan_use;
 	struct lll_conn *lll;
-	struct evt_hdr *evt;
+	struct ull_hdr *ull;
 	uint32_t remainder;
 	uint32_t hcto;
 
@@ -119,28 +112,23 @@ static int prepare_cb(struct lll_prepare_param *p)
 	/* Check if stopped (on disconnection between prepare and pre-empt)
 	 */
 	if (unlikely(lll->handle == 0xFFFF)) {
-		int err;
+		radio_isr_set(lll_isr_early_abort, lll);
+		radio_disable();
 
-		err = lll_hfclock_off();
-		LL_ASSERT(err >= 0);
-
-		lll_done(NULL);
-
-		DEBUG_RADIO_CLOSE_S(0);
 		return 0;
 	}
 
 	/* Reset connection event global variables */
 	lll_conn_prepare_reset();
 
-	/* Deduce the latency */
-	lll->latency_event = lll->latency_prepare - 1;
+	/* Calculate the current event latency */
+	lll->latency_event = lll->latency_prepare + p->lazy;
 
 	/* Calculate the current event counter value */
 	event_counter = lll->event_counter + lll->latency_event;
 
 	/* Update event counter to next value */
-	lll->event_counter = lll->event_counter + lll->latency_prepare;
+	lll->event_counter = (event_counter + 1);
 
 	/* Reset accumulated latencies */
 	lll->latency_prepare = 0;
@@ -177,6 +165,24 @@ static int prepare_cb(struct lll_prepare_param *p)
 		lll->slave.window_size_prepare_us;
 	lll->slave.window_size_prepare_us = 0;
 
+	/* Ensure that empty flag reflects the state of the Tx queue, as a
+	 * peripheral if this is the first connection event and as no prior PDU
+	 * is transmitted, an incorrect acknowledgment by peer should not
+	 * dequeue a PDU that has not been transmitted on air.
+	 */
+	if (!lll->empty) {
+		memq_link_t *link;
+
+		/* Check for any Tx PDU at the head of the queue */
+		link = memq_peek(lll->memq_tx.head, lll->memq_tx.tail, NULL);
+		if (!link) {
+			/* Update empty flag to reflect that no valid non-empty
+			 * PDU was transmitted prior to this connection event.
+			 */
+			lll->empty = 1U;
+		}
+	}
+
 	/* Start setting up Radio h/w */
 	radio_reset();
 #if defined(CONFIG_BT_CTLR_TX_PWR_DYNAMIC_CONTROL)
@@ -207,8 +213,8 @@ static int prepare_cb(struct lll_prepare_param *p)
 #endif /* !CONFIG_BT_CTLR_PHY */
 
 	ticks_at_event = p->ticks_at_expire;
-	evt = HDR_LLL2EVT(lll);
-	ticks_at_event += lll_evt_offset_get(evt);
+	ull = HDR_LLL2ULL(lll);
+	ticks_at_event += lll_event_offset_get(ull);
 
 	ticks_at_start = ticks_at_event;
 	ticks_at_start += HAL_TICKER_US_TO_TICKS(EVENT_OVERHEAD_START_US);
@@ -262,7 +268,7 @@ static int prepare_cb(struct lll_prepare_param *p)
 #if defined(CONFIG_BT_CTLR_XTAL_ADVANCED) && \
 	(EVENT_OVERHEAD_PREEMPT_US <= EVENT_OVERHEAD_PREEMPT_MIN_US)
 	/* check if preempt to start has changed */
-	if (lll_preempt_calc(evt, (TICKER_ID_CONN_BASE + lll->handle),
+	if (lll_preempt_calc(ull, (TICKER_ID_CONN_BASE + lll->handle),
 			     ticks_at_event)) {
 		radio_isr_set(lll_isr_abort, lll);
 		radio_disable();

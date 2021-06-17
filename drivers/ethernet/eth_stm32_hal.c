@@ -67,24 +67,27 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
 #if defined(CONFIG_ETH_STM32_HAL_USE_DTCM_FOR_DMA_BUFFER) && \
 	    DT_NODE_HAS_STATUS(DT_CHOSEN(zephyr_dtcm), okay)
-#define ETH_DMA_MEM	__dtcm_noinit_section
+#define __eth_stm32_desc __dtcm_noinit_section
+#define __eth_stm32_buf  __dtcm_noinit_section
+#elif defined(CONFIG_SOC_SERIES_STM32H7X) && \
+		DT_NODE_HAS_STATUS(DT_NODELABEL(sram3), okay)
+#define __eth_stm32_desc __attribute__((section(".eth_stm32_desc")))
+#define __eth_stm32_buf  __attribute__((section(".eth_stm32_buf")))
+#elif defined(CONFIG_NOCACHE_MEMORY)
+#define __eth_stm32_desc __nocache __aligned(4)
+#define __eth_stm32_buf  __nocache __aligned(4)
 #else
-#define ETH_DMA_MEM	__aligned(4)
-#endif /* CONFIG_ETH_STM32_HAL_USE_DTCM_FOR_DMA_BUFFER */
-
-#if defined(CONFIG_NOCACHE_MEMORY)
-#define CACHE __nocache
-#else
-#define CACHE
+#define __eth_stm32_desc __aligned(4)
+#define __eth_stm32_buf  __aligned(4)
 #endif
 
-static ETH_DMADescTypeDef dma_rx_desc_tab[ETH_RXBUFNB] CACHE ETH_DMA_MEM;
-static ETH_DMADescTypeDef dma_tx_desc_tab[ETH_TXBUFNB] CACHE ETH_DMA_MEM;
-static uint8_t dma_rx_buffer[ETH_RXBUFNB][ETH_RX_BUF_SIZE] CACHE ETH_DMA_MEM;
-static uint8_t dma_tx_buffer[ETH_TXBUFNB][ETH_TX_BUF_SIZE] CACHE ETH_DMA_MEM;
+static ETH_DMADescTypeDef dma_rx_desc_tab[ETH_RXBUFNB] __eth_stm32_desc;
+static ETH_DMADescTypeDef dma_tx_desc_tab[ETH_TXBUFNB] __eth_stm32_desc;
+static uint8_t dma_rx_buffer[ETH_RXBUFNB][ETH_RX_BUF_SIZE] __eth_stm32_buf;
+static uint8_t dma_tx_buffer[ETH_TXBUFNB][ETH_TX_BUF_SIZE] __eth_stm32_buf;
 
 #if defined(CONFIG_SOC_SERIES_STM32H7X)
-static ETH_TxPacketConfig tx_config CACHE;
+static ETH_TxPacketConfig tx_config;
 #endif
 
 #if defined(CONFIG_NET_L2_CANBUS_ETH_TRANSLATOR)
@@ -635,8 +638,7 @@ static int eth_initialize(const struct device *dev)
 	__ASSERT_NO_MSG(dev_data != NULL);
 	__ASSERT_NO_MSG(cfg != NULL);
 
-	dev_data->clock = device_get_binding(STM32_CLOCK_CONTROL_NAME);
-	__ASSERT_NO_MSG(dev_data->clock != NULL);
+	dev_data->clock = DEVICE_DT_GET(STM32_CLOCK_CONTROL_NODE);
 
 	/* enable clock */
 	ret = clock_control_on(dev_data->clock,
@@ -704,9 +706,9 @@ static int eth_initialize(const struct device *dev)
 
 	/* Initialize semaphores */
 	k_mutex_init(&dev_data->tx_mutex);
-	k_sem_init(&dev_data->rx_int_sem, 0, UINT_MAX);
+	k_sem_init(&dev_data->rx_int_sem, 0, K_SEM_MAX_LIMIT);
 #ifdef CONFIG_SOC_SERIES_STM32H7X
-	k_sem_init(&dev_data->tx_int_sem, 0, UINT_MAX);
+	k_sem_init(&dev_data->tx_int_sem, 0, K_SEM_MAX_LIMIT);
 #endif /* CONFIG_SOC_SERIES_STM32H7X */
 
 	/* Start interruption-poll thread */
@@ -775,6 +777,7 @@ static void eth_iface_init(struct net_if *iface)
 {
 	const struct device *dev;
 	struct eth_stm32_hal_dev_data *dev_data;
+	bool is_first_init = false;
 
 	__ASSERT_NO_MSG(iface != NULL);
 
@@ -790,10 +793,7 @@ static void eth_iface_init(struct net_if *iface)
 	 */
 	if (dev_data->iface == NULL) {
 		dev_data->iface = iface;
-
-		/* Now that the iface is setup, we are safe to enable IRQs. */
-		__ASSERT_NO_MSG(DEV_CFG(dev)->config_func != NULL);
-		DEV_CFG(dev)->config_func();
+		is_first_init = true;
 	}
 
 	/* Register Ethernet MAC Address with the upper layer */
@@ -804,6 +804,12 @@ static void eth_iface_init(struct net_if *iface)
 	ethernet_init(iface);
 
 	net_if_flag_set(iface, NET_IF_NO_AUTO_START);
+
+	if (is_first_init) {
+		/* Now that the iface is setup, we are safe to enable IRQs. */
+		__ASSERT_NO_MSG(DEV_CFG(dev)->config_func != NULL);
+		DEV_CFG(dev)->config_func();
+	}
 }
 
 static enum ethernet_hw_caps eth_stm32_hal_get_capabilities(const struct device *dev)
@@ -910,5 +916,5 @@ static struct eth_stm32_hal_dev_data eth0_data = {
 };
 
 ETH_NET_DEVICE_DT_INST_DEFINE(0, eth_initialize,
-		    device_pm_control_nop, &eth0_data, &eth0_config,
+		    NULL, &eth0_data, &eth0_config,
 		    CONFIG_ETH_INIT_PRIORITY, &eth_api, ETH_STM32_HAL_MTU);

@@ -175,7 +175,14 @@ BT_GATT_SERVICE_DEFINE(_2_gap_svc,
 	/* Require pairing for writes to device name */
 	BT_GATT_CHARACTERISTIC(BT_UUID_GAP_DEVICE_NAME,
 			       BT_GATT_CHRC_READ | BT_GATT_CHRC_WRITE,
-			       BT_GATT_PERM_READ | BT_GATT_PERM_WRITE_ENCRYPT,
+			       BT_GATT_PERM_READ |
+#if defined(CONFIG_DEVICE_NAME_GATT_WRITABLE_AUTHEN)
+			       BT_GATT_PERM_WRITE_AUTHEN,
+#elif defined(CONFIG_DEVICE_NAME_GATT_WRITABLE_ENCRYPT)
+			       BT_GATT_PERM_WRITE_ENCRYPT,
+#else
+			       BT_GATT_PERM_WRITE,
+#endif
 			       read_name, write_name, bt_dev.name),
 #else
 	BT_GATT_CHARACTERISTIC(BT_UUID_GAP_DEVICE_NAME, BT_GATT_CHRC_READ,
@@ -215,6 +222,40 @@ struct gatt_sc_cfg {
 #endif
 static struct gatt_sc_cfg sc_cfg[SC_CFG_MAX];
 BUILD_ASSERT(sizeof(struct sc_data) == sizeof(sc_cfg[0].data));
+
+enum {
+	SC_RANGE_CHANGED,    /* SC range changed */
+	SC_INDICATE_PENDING, /* SC indicate pending */
+
+#if defined(CONFIG_BT_GATT_CACHING)
+	DB_HASH_VALID,       /* Database hash needs to be calculated */
+	DB_HASH_LOAD,        /* Database hash loaded from settings. */
+#endif
+	/* Total number of flags - must be at the end of the enum */
+	SC_NUM_FLAGS,
+};
+
+#if defined(CONFIG_BT_GATT_SERVICE_CHANGED)
+static struct gatt_sc {
+	struct bt_gatt_indicate_params params;
+	uint16_t start;
+	uint16_t end;
+	struct k_work_delayable work;
+
+	ATOMIC_DEFINE(flags, SC_NUM_FLAGS);
+} gatt_sc;
+#endif /* defined(CONFIG_BT_GATT_SERVICE_CHANGED) */
+
+#if defined(CONFIG_BT_GATT_CACHING)
+static struct db_hash {
+	uint8_t hash[16];
+#if defined(CONFIG_BT_SETTINGS)
+	 uint8_t stored_hash[16];
+#endif
+	struct k_work_delayable work;
+	struct k_work_sync sync;
+} db_hash;
+#endif
 
 static struct gatt_sc_cfg *find_sc_cfg(uint8_t id, bt_addr_le_t *addr)
 {
@@ -425,7 +466,8 @@ enum {
 #define CF_BIT_NOTIFY_MULTI	2
 #define CF_BIT_LAST		CF_BIT_NOTIFY_MULTI
 
-#define CF_BYTE_LAST		(CF_BIT_LAST % 8)
+#define CF_NUM_BITS             (CF_BIT_LAST + 1)
+#define CF_NUM_BYTES            ((CF_BIT_LAST / 8) + 1)
 
 #define CF_ROBUST_CACHING(_cfg) (_cfg->data[0] & BIT(CF_BIT_ROBUST_CACHING))
 #define CF_EATT(_cfg) (_cfg->data[0] & BIT(CF_BIT_EATT))
@@ -434,7 +476,7 @@ enum {
 struct gatt_cf_cfg {
 	uint8_t                    id;
 	bt_addr_le_t		peer;
-	uint8_t			data[1];
+	uint8_t			data[CF_NUM_BYTES];
 	ATOMIC_DEFINE(flags, CF_NUM_FLAGS);
 };
 
@@ -491,26 +533,24 @@ static ssize_t cf_read(struct bt_conn *conn, const struct bt_gatt_attr *attr,
 static bool cf_set_value(struct gatt_cf_cfg *cfg, const uint8_t *value, uint16_t len)
 {
 	uint16_t i;
-	uint8_t last_byte = CF_BYTE_LAST;
-	uint8_t last_bit = CF_BIT_LAST;
 
 	/* Validate the bits */
-	for (i = 0U; i < len && i <= last_byte; i++) {
-		uint8_t chg_bits = value[i] ^ cfg->data[i];
-		uint8_t bit;
-
-		for (bit = 0U; bit <= last_bit; bit++) {
+	for (i = 0U; i <= CF_BIT_LAST && (i / 8) < len; i++) {
+		if ((cfg->data[i / 8] & BIT(i % 8)) &&
+		    !(value[i / 8] & BIT(i % 8))) {
 			/* A client shall never clear a bit it has set */
-			if ((BIT(bit) & chg_bits) &&
-			    (BIT(bit) & cfg->data[i])) {
-				return false;
-			}
+			return false;
 		}
 	}
 
 	/* Set the bits for each octect */
-	for (i = 0U; i < len && i < last_byte; i++) {
-		cfg->data[i] |= value[i] & (BIT(last_bit + 1) - 1);
+	for (i = 0U; i < len && i < CF_NUM_BYTES; i++) {
+		if (i == (CF_NUM_BYTES - 1)) {
+			cfg->data[i] |= value[i] & BIT_MASK(CF_NUM_BITS % 8);
+		} else {
+			cfg->data[i] |= value[i];
+		}
+
 		BT_DBG("byte %u: data 0x%02x value 0x%02x", i, cfg->data[i],
 		       value[i]);
 	}
@@ -555,9 +595,6 @@ static ssize_t cf_write(struct bt_conn *conn, const struct bt_gatt_attr *attr,
 	return len;
 }
 
-static uint8_t db_hash[16];
-struct k_delayed_work db_hash_work;
-
 struct gen_hash_state {
 	struct tc_cmac_struct state;
 	int err;
@@ -579,11 +616,11 @@ static uint8_t gen_hash_m(const struct bt_gatt_attr *attr, uint16_t handle,
 
 	switch (u16->val) {
 	/* Attributes to hash: handle + UUID + value */
-	case 0x2800: /* GATT Primary Service */
-	case 0x2801: /* GATT Secondary Service */
-	case 0x2802: /* GATT Include Service */
-	case 0x2803: /* GATT Characteristic */
-	case 0x2900: /* GATT Characteristic Extended Properties */
+	case BT_UUID_GATT_PRIMARY_VAL:
+	case BT_UUID_GATT_SECONDARY_VAL:
+	case BT_UUID_GATT_INCLUDE_VAL:
+	case BT_UUID_GATT_CHRC_VAL:
+	case BT_UUID_GATT_CEP_VAL:
 		value = sys_cpu_to_le16(handle);
 		if (tc_cmac_update(&state->state, (uint8_t *)&value,
 				   sizeof(handle)) == TC_CRYPTO_FAIL) {
@@ -612,11 +649,11 @@ static uint8_t gen_hash_m(const struct bt_gatt_attr *attr, uint16_t handle,
 
 		break;
 	/* Attributes to hash: handle + UUID */
-	case 0x2901: /* GATT Characteristic User Descriptor */
-	case 0x2902: /* GATT Client Characteristic Configuration */
-	case 0x2903: /* GATT Server Characteristic Configuration */
-	case 0x2904: /* GATT Characteristic Presentation Format */
-	case 0x2905: /* GATT Characteristic Aggregated Format */
+	case BT_UUID_GATT_CUD_VAL:
+	case BT_UUID_GATT_CCC_VAL:
+	case BT_UUID_GATT_SCC_VAL:
+	case BT_UUID_GATT_CPF_VAL:
+	case BT_UUID_GATT_CAF_VAL:
 		value = sys_cpu_to_le16(handle);
 		if (tc_cmac_update(&state->state, (uint8_t *)&value,
 				   sizeof(handle)) == TC_CRYPTO_FAIL) {
@@ -642,7 +679,7 @@ static void db_hash_store(void)
 {
 	int err;
 
-	err = settings_save_one("bt/hash", &db_hash, sizeof(db_hash));
+	err = settings_save_one("bt/hash", &db_hash.hash, sizeof(db_hash.hash));
 	if (err) {
 		BT_ERR("Failed to save Database Hash (err %d)", err);
 	}
@@ -650,13 +687,6 @@ static void db_hash_store(void)
 	BT_DBG("Database Hash stored");
 }
 
-/* Once the db_hash work has started we cannot cancel it anymore, so the
- * assumption is made that the in-progress work cannot be pre-empted.
- * This assumption should hold as long as calculation does not make any calls
- * that would make it unready.
- * If this assumption is no longer true we will have to solve the case where
- * k_delayed_work_cancel failed because the work was in-progress but pre-empted.
- */
 static void db_hash_gen(bool store)
 {
 	uint8_t key[16] = {};
@@ -670,7 +700,7 @@ static void db_hash_gen(bool store)
 
 	bt_gatt_foreach_attr(0x0001, 0xffff, gen_hash_m, &state);
 
-	if (tc_cmac_final(db_hash, &state.state) == TC_CRYPTO_FAIL) {
+	if (tc_cmac_final(db_hash.hash, &state.state) == TC_CRYPTO_FAIL) {
 		BT_ERR("Unable to calculate hash");
 		return;
 	}
@@ -682,17 +712,55 @@ static void db_hash_gen(bool store)
 	 * in little endianess as well. bt_smp_aes_cmac calculates the hash in
 	 * big endianess so we have to swap.
 	 */
-	sys_mem_swap(db_hash, sizeof(db_hash));
+	sys_mem_swap(db_hash.hash, sizeof(db_hash.hash));
 
-	BT_HEXDUMP_DBG(db_hash, sizeof(db_hash), "Hash: ");
+	BT_HEXDUMP_DBG(db_hash.hash, sizeof(db_hash.hash), "Hash: ");
 
 	if (IS_ENABLED(CONFIG_BT_SETTINGS) && store) {
 		db_hash_store();
 	}
+
+	atomic_set_bit(gatt_sc.flags, DB_HASH_VALID);
 }
+
+#if defined(CONFIG_BT_SETTINGS)
+static void sc_indicate(uint16_t start, uint16_t end);
+#endif
 
 static void db_hash_process(struct k_work *work)
 {
+#if defined(CONFIG_BT_SETTINGS)
+	if (atomic_test_and_clear_bit(gatt_sc.flags, DB_HASH_LOAD)) {
+		if (!atomic_test_bit(gatt_sc.flags, DB_HASH_VALID)) {
+			db_hash_gen(false);
+		}
+
+		/* Check if hash matches then skip SC update */
+		if (!memcmp(db_hash.stored_hash, db_hash.hash,
+			    sizeof(db_hash.stored_hash))) {
+			BT_DBG("Database Hash matches");
+			k_work_cancel_delayable(&gatt_sc.work);
+			atomic_clear_bit(gatt_sc.flags, SC_RANGE_CHANGED);
+			return;
+		}
+
+		BT_HEXDUMP_DBG(db_hash.hash, sizeof(db_hash.hash),
+			       "New Hash: ");
+
+		/* GATT database has been modified since last boot, likely due
+		 * to a firmware update or a dynamic service that was not
+		 * re-registered on boot.
+		 * Indicate Service Changed to all bonded devices for the full
+		 * database range to invalidate client-side cache and force
+		 * discovery on reconnect.
+		 */
+		sc_indicate(0x0001, 0xffff);
+
+		/* Hash did not match, overwrite with current hash */
+		db_hash_store();
+		return;
+	}
+#endif /* defined(CONFIG_BT_SETTINGS) */
 	db_hash_gen(true);
 }
 
@@ -700,13 +768,11 @@ static ssize_t db_hash_read(struct bt_conn *conn,
 			    const struct bt_gatt_attr *attr,
 			    void *buf, uint16_t len, uint16_t offset)
 {
-	int err;
-
 	/* Check if db_hash is already pending in which case it shall be
 	 * generated immediately instead of waiting for the work to complete.
 	 */
-	err = k_delayed_work_cancel(&db_hash_work);
-	if (!err) {
+	(void)k_work_cancel_delayable_sync(&db_hash.work, &db_hash.sync);
+	if (!atomic_test_bit(gatt_sc.flags, DB_HASH_VALID)) {
 		db_hash_gen(true);
 	}
 
@@ -718,8 +784,8 @@ static ssize_t db_hash_read(struct bt_conn *conn,
 	 */
 	bt_gatt_change_aware(conn, true);
 
-	return bt_gatt_attr_read(conn, attr, buf, len, offset, db_hash,
-				 sizeof(db_hash));
+	return bt_gatt_attr_read(conn, attr, buf, len, offset, db_hash.hash,
+				 sizeof(db_hash.hash));
 }
 
 static void remove_cf_cfg(struct bt_conn *conn)
@@ -877,28 +943,10 @@ populate:
 }
 #endif /* CONFIG_BT_GATT_DYNAMIC_DB */
 
-enum {
-	SC_RANGE_CHANGED,    /* SC range changed */
-	SC_INDICATE_PENDING, /* SC indicate pending */
-
-	/* Total number of flags - must be at the end of the enum */
-	SC_NUM_FLAGS,
-};
-
-#if defined(CONFIG_BT_GATT_SERVICE_CHANGED)
-static struct gatt_sc {
-	struct bt_gatt_indicate_params params;
-	uint16_t start;
-	uint16_t end;
-	struct k_delayed_work work;
-	ATOMIC_DEFINE(flags, SC_NUM_FLAGS);
-} gatt_sc;
-#endif /* defined(CONFIG_BT_GATT_SERVICE_CHANGED) */
-
 static inline void sc_work_submit(k_timeout_t timeout)
 {
 #if defined(CONFIG_BT_GATT_SERVICE_CHANGED)
-	k_delayed_work_submit(&gatt_sc.work, timeout);
+	k_work_reschedule(&gatt_sc.work, timeout);
 #endif
 }
 
@@ -975,7 +1023,7 @@ static void clear_ccc_cfg(struct bt_gatt_ccc_cfg *cfg)
 #if defined(CONFIG_BT_SETTINGS_CCC_STORE_ON_WRITE)
 static struct gatt_ccc_store {
 	struct bt_conn *conn_list[CONFIG_BT_MAX_CONN];
-	struct k_delayed_work work;
+	struct k_work_delayable work;
 } gatt_ccc_store;
 
 static bool gatt_ccc_conn_is_queued(struct bt_conn *conn)
@@ -1003,7 +1051,7 @@ static void gatt_ccc_conn_enqueue(struct bt_conn *conn)
 		gatt_ccc_store.conn_list[bt_conn_index(conn)] =
 			bt_conn_ref(conn);
 
-		k_delayed_work_submit(&gatt_ccc_store.work, CCC_STORE_DELAY);
+		k_work_reschedule(&gatt_ccc_store.work, CCC_STORE_DELAY);
 	}
 }
 
@@ -1059,16 +1107,16 @@ void bt_gatt_init(void)
 	bt_gatt_service_init();
 
 #if defined(CONFIG_BT_GATT_CACHING)
-	k_delayed_work_init(&db_hash_work, db_hash_process);
+	k_work_init_delayable(&db_hash.work, db_hash_process);
 
 	/* Submit work to Generate initial hash as there could be static
 	 * services already in the database.
 	 */
-	k_delayed_work_submit(&db_hash_work, DB_HASH_TIMEOUT);
+	k_work_schedule(&db_hash.work, DB_HASH_TIMEOUT);
 #endif /* CONFIG_BT_GATT_CACHING */
 
 #if defined(CONFIG_BT_GATT_SERVICE_CHANGED)
-	k_delayed_work_init(&gatt_sc.work, sc_process);
+	k_work_init_delayable(&gatt_sc.work, sc_process);
 	if (IS_ENABLED(CONFIG_BT_SETTINGS)) {
 		/* Make sure to not send SC indications until SC
 		 * settings are loaded
@@ -1078,7 +1126,7 @@ void bt_gatt_init(void)
 #endif /* defined(CONFIG_BT_GATT_SERVICE_CHANGED) */
 
 #if defined(CONFIG_BT_SETTINGS_CCC_STORE_ON_WRITE)
-	k_delayed_work_init(&gatt_ccc_store.work, ccc_delayed_store);
+	k_work_init_delayable(&gatt_ccc_store.work, ccc_delayed_store);
 #endif
 }
 
@@ -1115,7 +1163,8 @@ static void db_changed(void)
 #if defined(CONFIG_BT_GATT_CACHING)
 	int i;
 
-	k_delayed_work_submit(&db_hash_work, DB_HASH_TIMEOUT);
+	atomic_clear_bit(gatt_sc.flags, DB_HASH_VALID);
+	k_work_reschedule(&db_hash.work, DB_HASH_TIMEOUT);
 
 	for (i = 0; i < ARRAY_SIZE(cf_cfg); i++) {
 		struct gatt_cf_cfg *cfg = &cf_cfg[i];
@@ -1208,13 +1257,17 @@ int bt_gatt_service_register(struct bt_gatt_service *svc)
 		return -EALREADY;
 	}
 
+	k_sched_lock();
+
 	err = gatt_register(svc);
 	if (err < 0) {
+		k_sched_unlock();
 		return err;
 	}
 
 	/* Don't submit any work until the stack is initialized */
 	if (!atomic_get(&init)) {
+		k_sched_unlock();
 		return 0;
 	}
 
@@ -1222,6 +1275,8 @@ int bt_gatt_service_register(struct bt_gatt_service *svc)
 		    svc->attrs[svc->attr_count - 1].handle);
 
 	db_changed();
+
+	k_sched_unlock();
 
 	return 0;
 }
@@ -1232,13 +1287,17 @@ int bt_gatt_service_unregister(struct bt_gatt_service *svc)
 
 	__ASSERT(svc, "invalid parameters\n");
 
+	k_sched_lock();
+
 	err = gatt_unregister(svc);
 	if (err) {
+		k_sched_unlock();
 		return err;
 	}
 
 	/* Don't submit any work until the stack is initialized */
 	if (!atomic_get(&init)) {
+		k_sched_unlock();
 		return 0;
 	}
 
@@ -1246,6 +1305,8 @@ int bt_gatt_service_unregister(struct bt_gatt_service *svc)
 		    svc->attrs[svc->attr_count - 1].handle);
 
 	db_changed();
+
+	k_sched_unlock();
 
 	return 0;
 }
@@ -1630,6 +1691,7 @@ ssize_t bt_gatt_attr_write_ccc(struct bt_conn *conn,
 {
 	struct _bt_gatt_ccc *ccc = attr->user_data;
 	struct bt_gatt_ccc_cfg *cfg;
+	bool value_changed;
 	uint16_t value;
 
 	if (offset) {
@@ -1680,6 +1742,7 @@ ssize_t bt_gatt_attr_write_ccc(struct bt_conn *conn,
 		}
 	}
 
+	value_changed = cfg->value != value;
 	cfg->value = value;
 
 	BT_DBG("handle 0x%04x value %u", attr->handle, cfg->value);
@@ -1687,8 +1750,11 @@ ssize_t bt_gatt_attr_write_ccc(struct bt_conn *conn,
 	/* Update cfg if don't match */
 	if (cfg->value != ccc->value) {
 		gatt_ccc_changed(attr, ccc);
+	}
 
+	if (value_changed) {
 #if defined(CONFIG_BT_SETTINGS_CCC_STORE_ON_WRITE)
+		/* Enqueue CCC store if value has changed for the connection */
 		gatt_ccc_conn_enqueue(conn);
 #endif
 	}
@@ -1722,14 +1788,29 @@ ssize_t bt_gatt_attr_read_cud(struct bt_conn *conn,
 				 strlen(value));
 }
 
+struct gatt_cpf {
+	uint8_t  format;
+	int8_t   exponent;
+	uint16_t unit;
+	uint8_t  name_space;
+	uint16_t description;
+} __packed;
+
 ssize_t bt_gatt_attr_read_cpf(struct bt_conn *conn,
 			      const struct bt_gatt_attr *attr, void *buf,
 			      uint16_t len, uint16_t offset)
 {
-	const struct bt_gatt_cpf *value = attr->user_data;
+	const struct bt_gatt_cpf *cpf = attr->user_data;
+	struct gatt_cpf value;
 
-	return bt_gatt_attr_read(conn, attr, buf, len, offset, value,
-				 sizeof(*value));
+	value.format = cpf->format;
+	value.exponent = cpf->exponent;
+	value.unit = sys_cpu_to_le16(cpf->unit);
+	value.name_space = cpf->name_space;
+	value.description = sys_cpu_to_le16(cpf->description);
+
+	return bt_gatt_attr_read(conn, attr, buf, len, offset, &value,
+				 sizeof(value));
 }
 
 struct notify_data {
@@ -1866,6 +1947,13 @@ static int gatt_notify(struct bt_conn *conn, uint16_t handle,
 	}
 #endif
 
+	/* Confirm that the connection has the correct level of security */
+	if (bt_gatt_check_perm(conn, params->attr,
+			       BT_GATT_PERM_READ_ENCRYPT | BT_GATT_PERM_READ_AUTHEN)) {
+		BT_WARN("Link is not encrypted");
+		return -EPERM;
+	}
+
 #if defined(CONFIG_BT_GATT_NOTIFY_MULTIPLE)
 	if (gatt_cf_notify_multi(conn)) {
 		int err;
@@ -1992,6 +2080,14 @@ static int gatt_indicate(struct bt_conn *conn, uint16_t handle,
 		return -EAGAIN;
 	}
 #endif
+
+	/* Confirm that the connection has the correct level of security */
+	if (bt_gatt_check_perm(conn, params->attr,
+			       BT_GATT_PERM_READ_ENCRYPT | BT_GATT_PERM_READ_AUTHEN)) {
+		BT_WARN("Link is not encrypted");
+		return -EPERM;
+	}
+
 	len = sizeof(*ind) + params->len;
 
 	req = gatt_req_alloc(gatt_indicate_rsp, params, NULL,
@@ -2091,6 +2187,13 @@ static uint8_t notify_cb(const struct bt_gatt_attr *attr, uint16_t handle,
 		/* Confirm match if cfg is managed by application */
 		if (ccc->cfg_match && !ccc->cfg_match(conn, attr)) {
 			bt_conn_unref(conn);
+			continue;
+		}
+
+		/* Confirm that the connection has the correct level of security */
+		if (bt_gatt_check_perm(conn, attr,
+				       BT_GATT_PERM_READ_ENCRYPT | BT_GATT_PERM_READ_AUTHEN)) {
+			BT_WARN("Link is not encrypted");
 			continue;
 		}
 
@@ -3181,6 +3284,82 @@ done:
 	return 0;
 }
 
+static uint16_t parse_read_std_char_desc(struct bt_conn *conn, const void *pdu,
+					 struct bt_gatt_discover_params *params,
+					 uint16_t length)
+{
+	const struct bt_att_read_type_rsp *rsp = pdu;
+	uint16_t handle = 0U;
+	uint16_t uuid_val;
+
+	if (params->uuid->type != BT_UUID_TYPE_16) {
+		goto done;
+	}
+
+	uuid_val = BT_UUID_16(params->uuid)->val;
+
+	/* Parse characteristics found */
+	for (length--, pdu = rsp->data; length >= rsp->len;
+	     length -= rsp->len, pdu = (const uint8_t *)pdu + rsp->len) {
+		union {
+			struct bt_gatt_ccc ccc;
+			struct bt_gatt_cpf cpf;
+			struct bt_gatt_cep cep;
+			struct bt_gatt_scc scc;
+		} value;
+		const struct bt_att_data *data = pdu;
+		struct bt_gatt_attr attr;
+
+		handle = sys_le16_to_cpu(data->handle);
+		/* Handle 0 is invalid */
+		if (!handle) {
+			goto done;
+		}
+
+		switch (uuid_val) {
+		case BT_UUID_GATT_CEP_VAL:
+			value.cep.properties = sys_get_le16(data->value);
+			break;
+		case BT_UUID_GATT_CCC_VAL:
+			value.ccc.flags = sys_get_le16(data->value);
+			break;
+		case BT_UUID_GATT_SCC_VAL:
+			value.scc.flags = sys_get_le16(data->value);
+			break;
+		case BT_UUID_GATT_CPF_VAL:
+		{
+			struct gatt_cpf *cpf = (struct gatt_cpf *)data->value;
+
+			value.cpf.format = cpf->format;
+			value.cpf.exponent = cpf->exponent;
+			value.cpf.unit = sys_le16_to_cpu(cpf->unit);
+			value.cpf.name_space = cpf->name_space;
+			value.cpf.description = sys_le16_to_cpu(cpf->description);
+			break;
+		}
+		default:
+			goto done;
+		}
+
+		attr = (struct bt_gatt_attr)BT_GATT_ATTRIBUTE(
+			params->uuid, 0, NULL, NULL, &value);
+		attr.handle = handle;
+
+		if (params->func(conn, &attr, params) == BT_GATT_ITER_STOP) {
+			return 0;
+		}
+	}
+
+	/* Whole PDU read without error */
+	if (length == 0U && handle) {
+		return handle;
+	}
+
+done:
+	params->func(conn, NULL, params);
+	return 0;
+}
+
 static void gatt_read_type_rsp(struct bt_conn *conn, uint8_t err,
 			       const void *pdu, uint16_t length,
 			       void *user_data)
@@ -3197,8 +3376,10 @@ static void gatt_read_type_rsp(struct bt_conn *conn, uint8_t err,
 
 	if (params->type == BT_GATT_DISCOVER_INCLUDE) {
 		handle = parse_include(conn, pdu, params, length);
-	} else {
+	} else if (params->type == BT_GATT_DISCOVER_CHARACTERISTIC) {
 		handle = parse_characteristic(conn, pdu, params, length);
+	} else {
+		handle = parse_read_std_char_desc(conn, pdu, params, length);
 	}
 
 	if (!handle) {
@@ -3218,10 +3399,17 @@ static int gatt_read_type_encode(struct net_buf *buf, size_t len,
 	req->start_handle = sys_cpu_to_le16(params->start_handle);
 	req->end_handle = sys_cpu_to_le16(params->end_handle);
 
-	if (params->type == BT_GATT_DISCOVER_INCLUDE) {
+	switch (params->type) {
+	case BT_GATT_DISCOVER_INCLUDE:
 		net_buf_add_le16(buf, BT_UUID_GATT_INCLUDE_VAL);
-	} else {
+		break;
+	case BT_GATT_DISCOVER_CHARACTERISTIC:
 		net_buf_add_le16(buf, BT_UUID_GATT_CHRC_VAL);
+		break;
+	default:
+		/* Only 16-bit UUIDs supported */
+		net_buf_add_le16(buf, BT_UUID_16(params->uuid)->val);
+		break;
 	}
 
 	return 0;
@@ -3534,6 +3722,16 @@ int bt_gatt_discover(struct bt_conn *conn,
 			return gatt_find_type(conn, params);
 		}
 		return gatt_read_group(conn, params);
+
+	case BT_GATT_DISCOVER_STD_CHAR_DESC:
+		if (!(params->uuid && params->uuid->type == BT_UUID_TYPE_16 &&
+		      (!bt_uuid_cmp(params->uuid, BT_UUID_GATT_CEP) ||
+		       !bt_uuid_cmp(params->uuid, BT_UUID_GATT_CCC) ||
+		       !bt_uuid_cmp(params->uuid, BT_UUID_GATT_SCC) ||
+		       !bt_uuid_cmp(params->uuid, BT_UUID_GATT_CPF)))) {
+			return -EINVAL;
+		}
+		__fallthrough;
 	case BT_GATT_DISCOVER_INCLUDE:
 	case BT_GATT_DISCOVER_CHARACTERISTIC:
 		return gatt_read_type(conn, params);
@@ -3952,6 +4150,26 @@ static int gatt_exec_write(struct bt_conn *conn,
 			     sizeof(struct bt_att_exec_write_req));
 }
 
+static int gatt_cancel_encode(struct net_buf *buf, size_t len, void *user_data)
+{
+	struct bt_att_exec_write_req *req;
+
+	req = net_buf_add(buf, sizeof(*req));
+	req->flags = BT_ATT_FLAG_CANCEL;
+
+	return 0;
+}
+
+static int gatt_cancel_all_writes(struct bt_conn *conn,
+			   struct bt_gatt_write_params *params)
+{
+	BT_DBG("");
+
+	return gatt_req_send(conn, gatt_write_rsp, params, gatt_cancel_encode,
+			     BT_ATT_OP_EXEC_WRITE_REQ,
+			     sizeof(struct bt_att_exec_write_req));
+}
+
 static void gatt_prepare_write_rsp(struct bt_conn *conn, uint8_t err,
 				   const void *pdu, uint16_t length,
 				   void *user_data)
@@ -3959,6 +4177,7 @@ static void gatt_prepare_write_rsp(struct bt_conn *conn, uint8_t err,
 	struct bt_gatt_write_params *params = user_data;
 	const struct bt_att_prepare_write_rsp *rsp = pdu;
 	size_t len;
+	bool data_valid;
 
 	BT_DBG("err 0x%02x", err);
 
@@ -3970,7 +4189,21 @@ static void gatt_prepare_write_rsp(struct bt_conn *conn, uint8_t err,
 
 	len = length - sizeof(*rsp);
 	if (len > params->length) {
-		params->func(conn, BT_ATT_ERR_INVALID_PDU, params);
+		BT_ERR("Incorrect length, canceling write");
+		if (gatt_cancel_all_writes(conn, params)) {
+			goto fail;
+		}
+
+		return;
+	}
+
+	data_valid = memcmp(params->data, rsp->value, len) == 0;
+	if (params->offset != rsp->offset || !data_valid) {
+		BT_ERR("Incorrect offset or data in response, canceling write");
+		if (gatt_cancel_all_writes(conn, params)) {
+			goto fail;
+		}
+
 		return;
 	}
 
@@ -3981,12 +4214,22 @@ static void gatt_prepare_write_rsp(struct bt_conn *conn, uint8_t err,
 
 	/* If there is no more data execute */
 	if (!params->length) {
-		gatt_exec_write(conn, params);
+		if (gatt_exec_write(conn, params)) {
+			goto fail;
+		}
+
 		return;
 	}
 
 	/* Write next chunk */
-	bt_gatt_write(conn, params);
+	if (!bt_gatt_write(conn, params)) {
+		/* Success */
+		return;
+	}
+
+fail:
+	/* Notify application that the write operation has failed */
+	params->func(conn, BT_ATT_ERR_UNLIKELY, params);
 }
 
 static int gatt_prepare_write_encode(struct net_buf *buf, size_t len,
@@ -4611,7 +4854,12 @@ void bt_gatt_connected(struct bt_conn *conn)
 	 */
 	if (IS_ENABLED(CONFIG_BT_SMP) &&
 	    bt_conn_get_security(conn) < data.sec) {
-		bt_conn_set_security(conn, data.sec);
+		int err = bt_conn_set_security(conn, data.sec);
+
+		if (err) {
+			BT_WARN("Failed to set security for bonded peer (%d)",
+				err);
+		}
 	}
 
 #if defined(CONFIG_BT_GATT_CLIENT)
@@ -4965,55 +5213,30 @@ static int cf_set(const char *name, size_t len_rd, settings_read_cb read_cb,
 
 SETTINGS_STATIC_HANDLER_DEFINE(bt_cf, "bt/cf", NULL, cf_set, NULL, NULL);
 
-static uint8_t stored_hash[16];
-
 static int db_hash_set(const char *name, size_t len_rd,
 		       settings_read_cb read_cb, void *cb_arg)
 {
 	ssize_t len;
 
-	len = read_cb(cb_arg, stored_hash, sizeof(stored_hash));
+	len = read_cb(cb_arg, db_hash.stored_hash, sizeof(db_hash.stored_hash));
 	if (len < 0) {
 		BT_ERR("Failed to decode value (err %zd)", len);
 		return len;
 	}
 
-	BT_HEXDUMP_DBG(stored_hash, sizeof(stored_hash), "Stored Hash: ");
+	BT_HEXDUMP_DBG(db_hash.stored_hash, sizeof(db_hash.stored_hash),
+		       "Stored Hash: ");
 
 	return 0;
 }
 
 static int db_hash_commit(void)
 {
-	int err;
-
-	/* Stop work and generate the hash */
-	err = k_delayed_work_cancel(&db_hash_work);
-	if (!err) {
-		db_hash_gen(false);
-	}
-
-	/* Check if hash matches then skip SC update */
-	if (!memcmp(stored_hash, db_hash, sizeof(stored_hash))) {
-		BT_DBG("Database Hash matches");
-		k_delayed_work_cancel(&gatt_sc.work);
-		atomic_clear_bit(gatt_sc.flags, SC_RANGE_CHANGED);
-		return 0;
-	}
-
-	BT_HEXDUMP_DBG(db_hash, sizeof(db_hash), "New Hash: ");
-
-	/**
-	 * GATT database has been modified since last boot, likely due to
-	 * a firmware update or a dynamic service that was not re-registered on
-	 * boot. Indicate Service Changed to all bonded devices for the full
-	 * database range to invalidate client-side cache and force discovery on
-	 * reconnect.
+	atomic_set_bit(gatt_sc.flags, DB_HASH_LOAD);
+	/* Reschedule work to calculate and compare against the Hash value
+	 * loaded from flash.
 	 */
-	sc_indicate(0x0001, 0xffff);
-
-	/* Hash did not match overwrite with current hash */
-	db_hash_store();
+	k_work_reschedule(&db_hash.work, K_NO_WAIT);
 
 	return 0;
 }
@@ -5178,7 +5401,7 @@ void bt_gatt_disconnected(struct bt_conn *conn)
 	gatt_ccc_conn_unqueue(conn);
 
 	if (gatt_ccc_conn_queue_is_empty()) {
-		k_delayed_work_cancel(&gatt_ccc_store.work);
+		k_work_cancel_delayable(&gatt_ccc_store.work);
 	}
 #endif
 

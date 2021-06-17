@@ -154,14 +154,14 @@ int get_value(const struct device *dev, uint32_t *ticks)
 	 * the HOUR_PM flag before we adjust for BCD.
 	 */
 
-	if (state.status_b & STATUS_B_24HR) {
+	if ((state.status_b & STATUS_B_24HR) != 0U) {
 		pm = false;
 	} else {
 		pm = ((state.hour & HOUR_PM) == HOUR_PM);
 		state.hour &= ~HOUR_PM;
 	}
 
-	if (!(state.status_b & STATUS_B_BIN)) {
+	if ((state.status_b & STATUS_B_BIN) == 0U) {
 		uint8_t *cp = (uint8_t *) &state;
 		int i;
 
@@ -208,5 +208,5 @@ static const struct counter_driver_api api = {
 	.get_value = get_value
 };
 
-DEVICE_DEFINE(counter_cmos, "CMOS", init, device_pm_control_nop, NULL, &info,
+DEVICE_DEFINE(counter_cmos, "CMOS", init, NULL, NULL, &info,
 		    POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEVICE, &api);

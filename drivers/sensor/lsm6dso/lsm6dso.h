@@ -16,7 +16,16 @@
 #include <drivers/gpio.h>
 #include <drivers/spi.h>
 #include <sys/util.h>
+#include <stmemsc.h>
 #include "lsm6dso_reg.h"
+
+#if DT_ANY_INST_ON_BUS_STATUS_OKAY(spi)
+#include <drivers/spi.h>
+#endif /* DT_ANY_INST_ON_BUS_STATUS_OKAY(spi) */
+
+#if DT_ANY_INST_ON_BUS_STATUS_OKAY(i2c)
+#include <drivers/i2c.h>
+#endif /* DT_ANY_INST_ON_BUS_STATUS_OKAY(i2c) */
 
 union axis3bit16_t {
 	int16_t i16bit[3];
@@ -92,24 +101,20 @@ union axis1bit16_t {
 #endif
 
 struct lsm6dso_config {
-	char *bus_name;
-	int (*bus_init)(const struct device *dev);
-#ifdef CONFIG_LSM6DSO_TRIGGER
-	const char *int_gpio_port;
-	uint8_t int_gpio_pin;
-	uint8_t int_gpio_flags;
-	uint8_t int_pin;
-#endif /* CONFIG_LSM6DSO_TRIGGER */
+	stmdev_ctx_t ctx;
+	union {
 #if DT_ANY_INST_ON_BUS_STATUS_OKAY(i2c)
-	uint16_t i2c_slv_addr;
-#elif DT_ANY_INST_ON_BUS_STATUS_OKAY(spi)
-	struct spi_config spi_conf;
-#if DT_INST_SPI_DEV_HAS_CS_GPIOS(0)
-	const char *gpio_cs_port;
-	uint8_t cs_gpio;
-	uint8_t cs_gpio_flags;
-#endif /* DT_INST_SPI_DEV_HAS_CS_GPIOS(0) */
-#endif /* DT_ANY_INST_ON_BUS_STATUS_OKAY(i2c) */
+		const struct stmemsc_cfg_i2c i2c;
+#endif
+#if DT_ANY_INST_ON_BUS_STATUS_OKAY(spi)
+		const struct stmemsc_cfg_spi spi;
+#endif
+	} stmemsc_cfg;
+#ifdef CONFIG_LSM6DSO_TRIGGER
+	const struct gpio_dt_spec gpio_drdy;
+	uint8_t int_pin;
+	bool trig_enabled;
+#endif /* CONFIG_LSM6DSO_TRIGGER */
 };
 
 union samples {
@@ -119,27 +124,10 @@ union samples {
 	};
 } __aligned(2);
 
-/* sensor data forward declaration (member definition is below) */
-struct lsm6dso_data;
-
-struct lsm6dso_tf {
-	int (*read_data)(struct lsm6dso_data *data, uint8_t reg_addr,
-			 uint8_t *value, uint8_t len);
-	int (*write_data)(struct lsm6dso_data *data, uint8_t reg_addr,
-			  uint8_t *value, uint8_t len);
-	int (*read_reg)(struct lsm6dso_data *data, uint8_t reg_addr,
-			uint8_t *value);
-	int (*write_reg)(struct lsm6dso_data *data, uint8_t reg_addr,
-			uint8_t value);
-	int (*update_reg)(struct lsm6dso_data *data, uint8_t reg_addr,
-			  uint8_t mask, uint8_t value);
-};
-
 #define LSM6DSO_SHUB_MAX_NUM_SLVS			2
 
 struct lsm6dso_data {
 	const struct device *dev;
-	const struct device *bus;
 	int16_t acc[3];
 	uint32_t acc_gain;
 	int16_t gyro[3];
@@ -157,15 +145,10 @@ struct lsm6dso_data {
 		int16_t y0;
 		int16_t y1;
 	} hts221;
+	bool shub_inited;
+	uint8_t num_ext_dev;
+	uint8_t shub_ext[LSM6DSO_SHUB_MAX_NUM_SLVS];
 #endif /* CONFIG_LSM6DSO_SENSORHUB */
-
-	stmdev_ctx_t *ctx;
-
-	#if DT_ANY_INST_ON_BUS_STATUS_OKAY(i2c)
-	stmdev_ctx_t ctx_i2c;
-	#elif DT_ANY_INST_ON_BUS_STATUS_OKAY(spi)
-	stmdev_ctx_t ctx_spi;
-	#endif
 
 	uint16_t accel_freq;
 	uint8_t accel_fs;
@@ -173,7 +156,6 @@ struct lsm6dso_data {
 	uint8_t gyro_fs;
 
 #ifdef CONFIG_LSM6DSO_TRIGGER
-	const struct device *gpio;
 	struct gpio_callback gpio_cb;
 	sensor_trigger_handler_t handler_drdy_acc;
 	sensor_trigger_handler_t handler_drdy_gyr;
@@ -187,18 +169,12 @@ struct lsm6dso_data {
 	struct k_work work;
 #endif
 #endif /* CONFIG_LSM6DSO_TRIGGER */
-
-#if DT_INST_SPI_DEV_HAS_CS_GPIOS(0)
-	struct spi_cs_control cs_ctrl;
-#endif
 };
 
-int lsm6dso_spi_init(const struct device *dev);
-int lsm6dso_i2c_init(const struct device *dev);
 #if defined(CONFIG_LSM6DSO_SENSORHUB)
 int lsm6dso_shub_init(const struct device *dev);
 int lsm6dso_shub_fetch_external_devs(const struct device *dev);
-int lsm6dso_shub_get_idx(enum sensor_channel type);
+int lsm6dso_shub_get_idx(const struct device *dev, enum sensor_channel type);
 int lsm6dso_shub_config(const struct device *dev, enum sensor_channel chan,
 			enum sensor_attribute attr,
 			const struct sensor_value *val);

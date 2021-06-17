@@ -145,7 +145,7 @@ static int ti_hdc_init(const struct device *dev)
 	}
 
 #if DT_INST_NODE_HAS_PROP(0, drdy_gpios)
-	k_sem_init(&drv_data->data_sem, 0, UINT_MAX);
+	k_sem_init(&drv_data->data_sem, 0, K_SEM_MAX_LIMIT);
 
 	/* setup data ready gpio interrupt */
 	drv_data->gpio = device_get_binding(
@@ -180,6 +180,6 @@ static int ti_hdc_init(const struct device *dev)
 
 static struct ti_hdc_data ti_hdc_data;
 
-DEVICE_DT_INST_DEFINE(0, ti_hdc_init, device_pm_control_nop, &ti_hdc_data,
+DEVICE_DT_INST_DEFINE(0, ti_hdc_init, NULL, &ti_hdc_data,
 		    NULL, POST_KERNEL, CONFIG_SENSOR_INIT_PRIORITY,
 		    &ti_hdc_driver_api);

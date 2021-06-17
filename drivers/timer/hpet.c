@@ -9,6 +9,7 @@
 #include <sys_clock.h>
 #include <spinlock.h>
 #include <irq.h>
+#include <linker/sections.h>
 
 #include <dt-bindings/interrupt-controller/intel-ioapic.h>
 
@@ -41,11 +42,12 @@ DEVICE_MMIO_TOPLEVEL_STATIC(hpet_regs, DT_DRV_INST(0));
 
 #define MIN_DELAY 1000
 
-static struct k_spinlock lock;
-static unsigned int max_ticks;
-static unsigned int cyc_per_tick;
-static unsigned int last_count;
+static __pinned_bss struct k_spinlock lock;
+static __pinned_bss unsigned int max_ticks;
+static __pinned_bss unsigned int cyc_per_tick;
+static __pinned_bss unsigned int last_count;
 
+__isr
 static void hpet_isr(const void *arg)
 {
 	ARG_UNUSED(arg);
@@ -90,9 +92,10 @@ static void hpet_isr(const void *arg)
 	}
 
 	k_spin_unlock(&lock, key);
-	z_clock_announce(IS_ENABLED(CONFIG_TICKLESS_KERNEL) ? dticks : 1);
+	sys_clock_announce(IS_ENABLED(CONFIG_TICKLESS_KERNEL) ? dticks : 1);
 }
 
+__pinned_func
 static void set_timer0_irq(unsigned int irq)
 {
 	/* 5-bit IRQ field starting at bit 9 */
@@ -106,12 +109,13 @@ static void set_timer0_irq(unsigned int irq)
 	TIMER0_CONF_REG = val;
 }
 
-int z_clock_driver_init(const struct device *device)
+__boot_func
+int sys_clock_driver_init(const struct device *dev)
 {
 	extern int z_clock_hw_cycles_per_sec;
 	uint32_t hz;
 
-	ARG_UNUSED(device);
+	ARG_UNUSED(dev);
 
 	DEVICE_MMIO_TOPLEVEL_MAP(hpet_regs, K_MEM_CACHE_NONE);
 
@@ -122,7 +126,7 @@ int z_clock_driver_init(const struct device *device)
 	irq_enable(DT_INST_IRQN(0));
 
 	/* CLK_PERIOD_REG is in femtoseconds (1e-15 sec) */
-	hz = (uint32_t)(1000000000000000ull / CLK_PERIOD_REG);
+	hz = (uint32_t)(1000000000000000ULL / CLK_PERIOD_REG);
 	z_clock_hw_cycles_per_sec = hz;
 	cyc_per_tick = hz / CONFIG_SYS_CLOCK_TICKS_PER_SEC;
 
@@ -146,6 +150,7 @@ int z_clock_driver_init(const struct device *device)
 	return 0;
 }
 
+__boot_func
 void smp_timer_init(void)
 {
 	/* Noop, the HPET is a single system-wide device and it's
@@ -154,7 +159,8 @@ void smp_timer_init(void)
 	 */
 }
 
-void z_clock_set_timeout(int32_t ticks, bool idle)
+__pinned_func
+void sys_clock_set_timeout(int32_t ticks, bool idle)
 {
 	ARG_UNUSED(idle);
 
@@ -191,7 +197,8 @@ void z_clock_set_timeout(int32_t ticks, bool idle)
 #endif
 }
 
-uint32_t z_clock_elapsed(void)
+__pinned_func
+uint32_t sys_clock_elapsed(void)
 {
 	if (!IS_ENABLED(CONFIG_TICKLESS_KERNEL)) {
 		return 0;
@@ -204,12 +211,14 @@ uint32_t z_clock_elapsed(void)
 	return ret;
 }
 
-uint32_t z_timer_cycle_get_32(void)
+__pinned_func
+uint32_t sys_clock_cycle_get_32(void)
 {
 	return MAIN_COUNTER_REG;
 }
 
-void z_clock_idle_exit(void)
+__pinned_func
+void sys_clock_idle_exit(void)
 {
 	GENERAL_CONF_REG |= GCONF_ENABLE;
 }

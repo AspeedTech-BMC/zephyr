@@ -150,7 +150,7 @@ static void store_iv(bool only_duration)
 
 static void store_seq(void)
 {
-	if (CONFIG_BT_MESH_SEQ_STORE_RATE &&
+	if (CONFIG_BT_MESH_SEQ_STORE_RATE > 1 &&
 	    (bt_mesh.seq % CONFIG_BT_MESH_SEQ_STORE_RATE)) {
 		return;
 	}
@@ -306,7 +306,7 @@ do_update:
 		bt_mesh.seq = 0U;
 	}
 
-	k_delayed_work_submit(&bt_mesh.ivu_timer, BT_MESH_IVU_TIMEOUT);
+	k_work_reschedule(&bt_mesh.ivu_timer, BT_MESH_IVU_TIMEOUT);
 
 	/* Notify other modules */
 	if (IS_ENABLED(CONFIG_BT_MESH_FRIEND)) {
@@ -388,7 +388,7 @@ static void bt_mesh_net_local(struct k_work *work)
 static const struct bt_mesh_net_cred *net_tx_cred_get(struct bt_mesh_net_tx *tx)
 {
 #if defined(CONFIG_BT_MESH_LOW_POWER)
-	if (tx->friend_cred && bt_mesh_lpn_established()) {
+	if (tx->friend_cred && bt_mesh.lpn.frnd) {
 		return &bt_mesh.lpn.cred[SUBNET_KEY_TX_IDX(tx->sub)];
 	}
 #endif
@@ -844,6 +844,10 @@ void bt_mesh_net_recv(struct net_buf_simple *data, int8_t rssi,
 
 static void ivu_refresh(struct k_work *work)
 {
+	if (!bt_mesh_is_provisioned()) {
+		return;
+	}
+
 	bt_mesh.ivu_duration = MIN(UINT8_MAX,
 	       bt_mesh.ivu_duration + BT_MESH_IVU_HOURS);
 
@@ -857,7 +861,7 @@ static void ivu_refresh(struct k_work *work)
 			store_iv(true);
 		}
 
-		k_delayed_work_submit(&bt_mesh.ivu_timer, BT_MESH_IVU_TIMEOUT);
+		k_work_reschedule(&bt_mesh.ivu_timer, BT_MESH_IVU_TIMEOUT);
 		return;
 	}
 
@@ -871,7 +875,7 @@ static void ivu_refresh(struct k_work *work)
 
 void bt_mesh_net_init(void)
 {
-	k_delayed_work_init(&bt_mesh.ivu_timer, ivu_refresh);
+	k_work_init_delayable(&bt_mesh.ivu_timer, ivu_refresh);
 
 	k_work_init(&bt_mesh.local_work, bt_mesh_net_local);
 }
@@ -1080,6 +1084,6 @@ void bt_mesh_net_clear(void)
 void bt_mesh_net_settings_commit(void)
 {
 	if (bt_mesh.ivu_duration < BT_MESH_IVU_MIN_HOURS) {
-		k_delayed_work_submit(&bt_mesh.ivu_timer, BT_MESH_IVU_TIMEOUT);
+		k_work_reschedule(&bt_mesh.ivu_timer, BT_MESH_IVU_TIMEOUT);
 	}
 }

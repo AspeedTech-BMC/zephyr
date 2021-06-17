@@ -490,6 +490,8 @@ static int ccs811_init(const struct device *dev)
 	}
 #endif
 
+	k_msleep(20);            /* t_START assuming recent power-on */
+
 	/* Reset the device.  This saves having to deal with detecting
 	 * and validating any errors or configuration inconsistencies
 	 * after a reset that left the device running.
@@ -512,7 +514,7 @@ static int ccs811_init(const struct device *dev)
 		}
 	}
 #endif
-	k_msleep(20);            /* t_START assuming recent power-on */
+	k_msleep(2);             /* t_START after reset */
 
 	/* Switch device to application mode */
 	ret = switch_to_app_mode(drv_data->i2c);
@@ -593,7 +595,7 @@ out:
 
 static struct ccs811_data ccs811_driver;
 
-DEVICE_DT_INST_DEFINE(0, ccs811_init, device_pm_control_nop,
+DEVICE_DT_INST_DEFINE(0, ccs811_init, NULL,
 		 &ccs811_driver, NULL,
 		 POST_KERNEL, CONFIG_SENSOR_INIT_PRIORITY,
 		 &ccs811_driver_api);

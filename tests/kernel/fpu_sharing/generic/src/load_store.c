@@ -50,7 +50,13 @@
 #else
 #include "float_regs_arm_other.h"
 #endif /* __GNUC__ */
-#elif defined(CONFIG_CPU_ARCV2)
+#elif defined(CONFIG_ARM64)
+#if defined(__GNUC__)
+#include "float_regs_arm64_gcc.h"
+#else
+#include "float_regs_arm64_other.h"
+#endif /* __GNUC__ */
+#elif defined(CONFIG_ISA_ARCV2)
 #if defined(__GNUC__)
 #include "float_regs_arc_gcc.h"
 #else
@@ -84,7 +90,7 @@ static volatile unsigned int load_store_low_count;
 static volatile unsigned int load_store_high_count;
 
 /* Indicates that the load/store test exited */
-static bool test_exited;
+static volatile bool test_exited;
 
 /* Semaphore for signaling end of test */
 static K_SEM_DEFINE(test_exit_sem, 0, 1);
@@ -136,10 +142,10 @@ static void load_store_low(void)
 		 * thread an opportunity to run when the low priority thread is
 		 * using the floating point registers.
 		 *
-		 * IMPORTANT: This logic requires that z_tick_get_32() not
+		 * IMPORTANT: This logic requires that sys_clock_tick_get_32() not
 		 * perform any floating point operations!
 		 */
-		while ((z_tick_get_32() % 5) != 0) {
+		while ((sys_clock_tick_get_32() % 5) != 0) {
 			/*
 			 * Use a volatile variable to prevent compiler
 			 * optimizing out the spin loop.

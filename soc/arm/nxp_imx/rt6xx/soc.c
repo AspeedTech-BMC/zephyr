@@ -63,7 +63,7 @@ extern void z_arm_secure_fault(void);
 extern void z_arm_svc(void);
 extern void z_arm_debug_monitor(void);
 extern void z_arm_pendsv(void);
-extern void z_clock_isr(void);
+extern void sys_clock_isr(void);
 extern void z_arm_exc_spurious(void);
 
 __imx_boot_ivt_section void (* const image_vector_table[])(void)  = {
@@ -87,7 +87,7 @@ __imx_boot_ivt_section void (* const image_vector_table[])(void)  = {
 	(void (*)())image_vector_table,		/* 0x34, imageLoadAddress. */
 	z_arm_pendsv,						/* 0x38 */
 #if defined(CONFIG_SYS_CLOCK_EXISTS)
-	z_clock_isr,						/* 0x3C */
+	sys_clock_isr,						/* 0x3C */
 #else
 	z_arm_exc_spurious,
 #endif
@@ -157,6 +157,15 @@ static ALWAYS_INLINE void clock_init(void)
 
 #if DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(flexcomm5), nxp_lpc_spi, okay)
 	CLOCK_AttachClk(kFFRO_to_FLEXCOMM5);
+#endif
+
+#if (DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(flexcomm1), nxp_lpc_i2s, okay))
+	/* attach AUDIO PLL clock to FLEXCOMM1 (I2S1) */
+	CLOCK_AttachClk(kAUDIO_PLL_to_FLEXCOMM1);
+#endif
+#if (DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(flexcomm3), nxp_lpc_i2s, okay))
+	/* attach AUDIO PLL clock to FLEXCOMM3 (I2S3) */
+	CLOCK_AttachClk(kAUDIO_PLL_to_FLEXCOMM3);
 #endif
 
 #endif /* CONFIG_SOC_MIMXRT685S_CM33 */

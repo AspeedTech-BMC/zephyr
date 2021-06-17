@@ -1,5 +1,92 @@
+.. _west-release-notes:
+
 West Release Notes
 ##################
+
+v0.11.0
+*******
+
+New features:
+
+- ``west update`` now supports ``--narrow``, ``--name-cache``, and
+  ``--path-cache`` options. These can be influenced by the ``update.narrow``,
+  ``update.name-cache``, and ``update.path-cache`` :ref:`west-config` options.
+  These can be used to optimize the speed of the update.
+- ``west update`` now supports a ``--fetch-opt`` option that will be passed to
+  the ``git fetch`` command used to fetch remote revisions when updating each
+  project.
+
+Bug fixes:
+
+- ``west update`` now synchronizes Git submodules in projects by default. This
+  avoids issues if the URL changes in the manifest file from when the submodule
+  was first initialized. This behavior can be disabled by setting the
+  ``update.sync-submodules`` configuration option to ``false``.
+
+Other changes:
+
+- the :ref:`west-apis-manifest` module has fixed docstrings for the Project
+  class
+
+v0.10.1
+*******
+
+New features:
+
+- The :ref:`west-init` command's ``--manifest-rev`` (``--mr``) option no longer
+  defaults to ``master``. Instead, the command will query the repository for
+  its default branch name and use that instead. This allows users to move from
+  ``master`` to ``main`` without breaking scripts that do not provide this
+  option.
+
+v0.10.0
+*******
+
+New features:
+
+- The ``name`` key in a project's :ref:`submodules list
+  <west-manifest-submodules>` is now optional.
+
+Bug fixes:
+
+- West now checks that the manifest schema version is one of the explicitly
+  allowed vlaues documented in :ref:`west-manifest-schema-version`. The old
+  behavior was just to check that the schema version was newer than the west
+  version where the ``manifest: version:`` key was introduced. This incorrectly
+  allowed invalid schema versions, like ``0.8.2``.
+
+Other changes:
+
+- A manifest file's ``group-filter`` is now propagated through an ``import``.
+  This is a change from how west v0.9.x handled this. In west v0.9.x, only the
+  top level manifest file's ``group-filter`` had any effect; the group filter
+  lists from any imported manifests were ignored.
+
+  Starting with west v0.10.0, the group filter lists from imported manifests
+  are also imported. For details, see :ref:`west-group-filter-imports`.
+
+  The new behavior will take effect if ``manifest: version:`` is not given or
+  is at least ``0.10``. The old behavior is still available in the top level
+  manifest file only with an explicit ``manifest: version: 0.9``. See
+  :ref:`west-manifest-schema-version` for more information on schema versions.
+
+  See `west pull request #482
+  <https://github.com/zephyrproject-rtos/west/pull/482>`_ for the motivation
+  for this change and additional context.
+
+v0.9.1
+******
+
+Bug fixes:
+
+- Commands like ``west manifest --resolve`` now correctly include group and
+  group filter information.
+
+Other changes:
+
+- West now warns if you combine ``import`` with ``group-filter``. Semantics for
+  this combination have changed starting with v0.10.x. See the v0.10.0 release
+  notes above for more information.
 
 v0.9.0
 ******
@@ -9,6 +96,12 @@ v0.9.0
    The ``west config`` fix described below comes at a cost: any comments or
    other manual edits in configuration files will be removed when setting a
    configuration option via that command or the ``west.configuration`` API.
+
+.. warning::
+
+   Combining the ``group-filter`` feature introduced in this release with
+   manifest imports is discouraged. The resulting behavior has changed in west
+   v0.10.
 
 New features:
 

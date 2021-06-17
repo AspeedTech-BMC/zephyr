@@ -32,28 +32,26 @@ config TRACING_NONE
 	help
 	  None of the available tracing formats is selected.
 
+config PERCEPIO_TRACERECORDER
+	bool "Percepio Tracealyzer support"
+	select THREAD_NAME
+	select INIT_STACKS
+	select THREAD_MONITOR
+	depends on ZEPHYR_TRACERECORDER_MODULE
+
 config SEGGER_SYSTEMVIEW
 	bool "Segger SystemView support"
 	select CONSOLE
 	select RTT_CONSOLE
 	select USE_SEGGER_RTT
 	select THREAD_MONITOR
+	select SEGGER_RTT_CUSTOM_LOCKING
 
 config TRACING_CTF
 	bool "Tracing via Common Trace Format support"
 	select TRACING_CORE
 	help
 	  Enable tracing to a Common Trace Format stream.
-
-config TRACING_CPU_STATS
-	bool "Enable CPU usage tracing"
-	select TRACING_CORE
-	help
-	  Module provides information about percent of CPU usage based on
-	  tracing hooks for threads switching in and out, interrupts enters
-	  and exits (only distinguishes between idle thread, non idle thread
-	  and scheduler). Use provided API or enable automatic logging to
-	  get values.
 
 config TRACING_TEST
 	bool "Tracing for test usage"
@@ -72,20 +70,6 @@ config TRACING_CTF_TIMESTAMP
 	help
 	  Timestamp prefix will be added to the beginning of CTF
 	  event internally.
-
-config TRACING_CPU_STATS_LOG
-	bool "Enable current CPU usage logging"
-	depends on TRACING_CPU_STATS
-	help
-	  Periodically displays information about CPU usage.
-
-config TRACING_CPU_STATS_INTERVAL
-	int "Logging interval for CPU measurements [ms]"
-	default 2000
-	depends on TRACING_CPU_STATS_LOG
-	help
-	  Time period of displaying information about CPU usage.
-
 
 choice
 	prompt "Tracing Method"
@@ -165,6 +149,21 @@ config TRACING_BACKEND_POSIX
 	help
 	  Use posix architecture to output tracing data to file system.
 
+config TRACING_BACKEND_RAM
+	bool "Enable RAM backend"
+	help
+	  Use a ram buffer to output tracing data which can
+	  be dumped to a file at runtime with a debugger.
+	  See gdb dump binary memory documentation for example.
+
+config RAM_TRACING_BUFFER_SIZE
+	int "Ram Tracing buffer size"
+	default 4096
+	depends on TRACING_BACKEND_RAM
+	help
+	  Size of the RAM trace buffer. Trace will be discarded if the
+	  length is exceeded.
+
 endchoice
 
 config TRACING_BACKEND_UART_NAME
@@ -198,12 +197,112 @@ config TRACING_CMD_BUFFER_SIZE
 	help
 	  Size of tracing command buffer.
 
+menu "Tracing Configuration"
+
+config SYSCALL_TRACING
+	bool "Enable tracing Syscalls"
+	default y
+	help
+	  Enable tracing Syscalls.
+
+config TRACING_THREAD
+	bool "Enable tracing Threads"
+	default y
+	help
+	  Enable tracing Threads.
+
+config TRACING_WORK
+	bool "Enable tracing Work"
+	default y
+	help
+	  Enable tracing Work and Work queue events
+
 config TRACING_ISR
 	bool "Enable tracing ISRs"
 	default y
 	help
 	  Enable tracing ISRs. This requires the backend to be
 	  very low-latency.
+
+config TRACING_SEMAPHORE
+	bool "Enable tracing Semaphores"
+	default y
+	help
+	  Enable tracing Semaphores.
+
+config TRACING_MUTEX
+	bool "Enable tracing Mutexes"
+	default y
+	help
+	  Enable tracing Mutexes.
+
+config TRACING_CONDVAR
+	bool "Enable tracing Condition Variables"
+	default y
+	help
+	  Enable tracing Condition Variables
+
+config TRACING_QUEUE
+	bool "Enable tracing Queues"
+	default y
+	help
+	  Enable tracing Queues.
+
+config TRACING_FIFO
+	bool "Enable tracing FIFO queues"
+	default y
+	help
+	  Enable tracing FIFO queues.
+
+config TRACING_LIFO
+	bool "Enable tracing LIFO queues"
+	default y
+	help
+	  Enable tracing LIFO queues.
+
+config TRACING_STACK
+	bool "Enable tracing Memory Stacks"
+	default y
+	help
+	  Enable tracing Memory Stacks.
+
+config TRACING_MESSAGE_QUEUE
+	bool "Enable tracing Message Queues"
+	default y
+	help
+	  Enable tracing Message Queues.
+
+config TRACING_MAILBOX
+	bool "Enable tracing Mailboxes"
+	default y
+	help
+	  Enable tracing Mailboxes.
+
+config TRACING_PIPE
+	bool "Enable tracing Pipes"
+	default y
+	help
+	  Enable tracing Pipes.
+
+config TRACING_HEAP
+	bool "Enable tracing Memory Heaps"
+	default y
+	help
+	  Enable tracing Memory Heaps.
+
+config TRACING_MEMORY_SLAB
+	bool "Enable tracing Memory Slabs"
+	default y
+	help
+	  Enable tracing Memory Slabs.
+
+config TRACING_TIMER
+	bool "Enable tracing Timers"
+	default y
+	help
+	  Enable tracing Timers.
+
+endmenu  # Tracing Configuration
 
 endif
 

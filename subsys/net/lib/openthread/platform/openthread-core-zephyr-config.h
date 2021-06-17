@@ -92,17 +92,59 @@
 #endif
 
 /**
+ * @def OPENTHREAD_CONFIG_MAC_SOFTWARE_TX_TIMING_ENABLE
+ *
+ * Define to 1 to enable software transmission target time logic.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_MAC_SOFTWARE_TX_TIMING_ENABLE
+#define OPENTHREAD_CONFIG_MAC_SOFTWARE_TX_TIMING_ENABLE                        \
+	(OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2)
+#endif
+
+/**
+ * @def OPENTHREAD_CONFIG_MAC_SOFTWARE_RX_TIMING_ENABLE
+ *
+ * Define to 1 to enable software reception target time logic.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_MAC_SOFTWARE_RX_TIMING_ENABLE
+#define OPENTHREAD_CONFIG_MAC_SOFTWARE_RX_TIMING_ENABLE                        \
+	(OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2)
+#endif
+
+/**
+ * @def OPENTHREAD_CONFIG_MAC_HEADER_IE_SUPPORT
+ *
+ * Define as 1 to support IEEE 802.15.4-2015 Header IE (Information Element) generation and parsing,
+ * it must be set to support following features:
+ *    1. Time synchronization service feature (i.e., OPENTHREAD_CONFIG_TIME_SYNC_ENABLE is set).
+ *    2. Thread 1.2.
+ *
+ * @note If it's enabled, platform must support interrupt context and concurrent access AES.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_MAC_HEADER_IE_SUPPORT
+#if OPENTHREAD_CONFIG_TIME_SYNC_ENABLE ||                                      \
+	(OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2)
+#define OPENTHREAD_CONFIG_MAC_HEADER_IE_SUPPORT 1
+#else
+#define OPENTHREAD_CONFIG_MAC_HEADER_IE_SUPPORT 0
+#endif
+#endif
+
+/**
  * @def OPENTHREAD_CONFIG_PLATFORM_USEC_TIMER_ENABLE
  *
  * Define to 1 if you want to enable microsecond backoff timer implemented
  * in platform.
  *
  */
-#ifdef CONFIG_OPENTHREAD_PLATFORM_USEC_TIMER_ENABLE
-#define OPENTHREAD_CONFIG_PLATFORM_USEC_TIMER_ENABLE 1
-#endif
+#define OPENTHREAD_CONFIG_PLATFORM_USEC_TIMER_ENABLE                           \
+	(OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE &&                          \
+	 (OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2))
 
-/* Zephyr does not use OpenThreads heap. mbedTLS will use heap memory allocated
+/* Zephyr does not use OpenThread's heap. mbedTLS will use heap memory allocated
  * by Zephyr. Here, we use some dummy values to prevent OpenThread warnings.
  */
 
@@ -170,16 +212,6 @@
  *
  */
 #define RADIO_CONFIG_SRC_MATCH_EXT_ENTRY_NUM 0
-
-/**
- * @def OPENTHREAD_CONFIG_NCP_BUFFER_SIZE
- *
- * The size of the NCP buffers.
- *
- */
-#ifdef CONFIG_OPENTHREAD_NCP_BUFFER_SIZE
-#define OPENTHREAD_CONFIG_NCP_BUFFER_SIZE CONFIG_OPENTHREAD_NCP_BUFFER_SIZE
-#endif
 
 /**
  * @def OPENTHREAD_CONFIG_PLAT_LOG_MACRO_NAME

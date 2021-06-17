@@ -167,9 +167,9 @@ static struct pinmux_driver_api api_funcs = {
 	.input = pinmux_input
 };
 
-static int pinmux_initialize(const struct device *device)
+static int pinmux_initialize(const struct device *dev)
 {
-	ARG_UNUSED(device);
+	ARG_UNUSED(dev);
 
 #if !CONFIG_BOOTLOADER_ESP_IDF
 	uint32_t pin;
@@ -187,6 +187,6 @@ static int pinmux_initialize(const struct device *device)
  * mux driver.
  */
 DEVICE_DT_INST_DEFINE(0, &pinmux_initialize,
-		    device_pm_control_nop, NULL, NULL,
+		    NULL, NULL, NULL,
 		    PRE_KERNEL_2, CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,
 		    &api_funcs);

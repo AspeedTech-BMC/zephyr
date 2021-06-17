@@ -62,6 +62,8 @@ extern "C" {
 enum net_ip_protocol {
 	IPPROTO_IP = 0,            /**< IP protocol (pseudo-val for setsockopt() */
 	IPPROTO_ICMP = 1,          /**< ICMP protocol   */
+	IPPROTO_IGMP = 2,          /**< IGMP protocol   */
+	IPPROTO_IPIP = 4,          /**< IPIP tunnels    */
 	IPPROTO_TCP = 6,           /**< TCP protocol    */
 	IPPROTO_UDP = 17,          /**< UDP protocol    */
 	IPPROTO_IPV6 = 41,         /**< IPv6 protocol   */
@@ -761,6 +763,18 @@ static inline bool net_ipv6_addr_cmp(const struct in6_addr *addr1,
 static inline bool net_ipv6_is_ll_addr(const struct in6_addr *addr)
 {
 	return UNALIGNED_GET(&addr->s6_addr16[0]) == htons(0xFE80);
+}
+
+/**
+ * @brief Check if the given IPv6 address is a unique local address.
+ *
+ * @param addr A valid pointer on an IPv6 address
+ *
+ * @return True if it is, false otherwise.
+ */
+static inline bool net_ipv6_is_ula_addr(const struct in6_addr *addr)
+{
+	return addr->s6_addr[0] == 0xFD;
 }
 
 /**

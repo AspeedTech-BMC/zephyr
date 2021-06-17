@@ -22,11 +22,12 @@
 #include "ticker/ticker.h"
 
 #include "pdu.h"
-#include "ll.h"
 
 #include "lll.h"
-#include "lll_vendor.h"
+#include "lll/lll_vendor.h"
+#include "lll/lll_adv_types.h"
 #include "lll_adv.h"
+#include "lll/lll_adv_pdu.h"
 #include "lll_scan.h"
 #include "lll_conn.h"
 #include "lll_filter.h"
@@ -40,6 +41,8 @@
 #include "ull_scan_internal.h"
 #include "ull_sched_internal.h"
 
+#include "ll.h"
+
 #define BT_DBG_ENABLED IS_ENABLED(CONFIG_BT_DEBUG_HCI_DRIVER)
 #define LOG_MODULE_NAME bt_ctlr_ull_scan
 #include "common/log.h"
@@ -47,7 +50,7 @@
 
 static int init_reset(void);
 static void ticker_cb(uint32_t ticks_at_expire, uint32_t remainder, uint16_t lazy,
-		      void *param);
+		      uint8_t force, void *param);
 static uint8_t disable(uint8_t handle);
 
 #if defined(CONFIG_BT_CTLR_ADV_EXT)
@@ -97,7 +100,11 @@ uint8_t ll_scan_params_set(uint8_t type, uint16_t interval, uint16_t window,
 
 	lll = &scan->lll;
 
+	/* NOTE: Pass invalid interval value to not start scanning using this
+	 *       scan instance.
+	 */
 	if (!interval) {
+		/* Set PHY to 0 to not start scanning on this instance */
 		lll->phy = 0U;
 
 		return 0;
@@ -351,9 +358,10 @@ uint8_t ull_scan_enable(struct ll_scan_set *scan)
 	uint32_t ticks_anchor;
 	uint32_t ret;
 
-	lll->chan = 0;
 	lll->init_addr_type = scan->own_addr_type;
 	ll_addr_get(lll->init_addr_type, lll->init_addr);
+	lll->chan = 0U;
+	lll->is_stop = 0U;
 
 	ull_hdr_init(&scan->ull);
 	lll_hdr_init(lll, scan);
@@ -362,23 +370,23 @@ uint8_t ull_scan_enable(struct ll_scan_set *scan)
 						SCAN_INT_UNIT_US);
 
 	/* TODO: active_to_start feature port */
-	scan->evt.ticks_active_to_start = 0U;
-	scan->evt.ticks_xtal_to_start =
+	scan->ull.ticks_active_to_start = 0U;
+	scan->ull.ticks_prepare_to_start =
 		HAL_TICKER_US_TO_TICKS(EVENT_OVERHEAD_XTAL_US);
-	scan->evt.ticks_preempt_to_start =
+	scan->ull.ticks_preempt_to_start =
 		HAL_TICKER_US_TO_TICKS(EVENT_OVERHEAD_PREEMPT_MIN_US);
 	if ((lll->ticks_window +
 	     HAL_TICKER_US_TO_TICKS(EVENT_OVERHEAD_START_US)) <
 	    (ticks_interval -
 	     HAL_TICKER_US_TO_TICKS(EVENT_OVERHEAD_XTAL_US))) {
-		scan->evt.ticks_slot =
+		scan->ull.ticks_slot =
 			(lll->ticks_window +
 			 HAL_TICKER_US_TO_TICKS(EVENT_OVERHEAD_START_US));
 	} else {
 		if (IS_ENABLED(CONFIG_BT_CTLR_SCAN_UNRESERVED)) {
-			scan->evt.ticks_slot = 0U;
+			scan->ull.ticks_slot = 0U;
 		} else {
-			scan->evt.ticks_slot = ticks_interval -
+			scan->ull.ticks_slot = ticks_interval -
 				HAL_TICKER_US_TO_TICKS(EVENT_OVERHEAD_XTAL_US);
 		}
 
@@ -386,8 +394,8 @@ uint8_t ull_scan_enable(struct ll_scan_set *scan)
 	}
 
 	if (IS_ENABLED(CONFIG_BT_CTLR_LOW_LAT)) {
-		ticks_slot_overhead = MAX(scan->evt.ticks_active_to_start,
-					  scan->evt.ticks_xtal_to_start);
+		ticks_slot_overhead = MAX(scan->ull.ticks_active_to_start,
+					  scan->ull.ticks_prepare_to_start);
 	} else {
 		ticks_slot_overhead = 0U;
 	}
@@ -400,7 +408,7 @@ uint8_t ull_scan_enable(struct ll_scan_set *scan)
 		uint32_t offset_us = 0U;
 
 		ull_sched_after_mstr_slot_get(TICKER_USER_ID_THREAD,
-					      (scan->evt.ticks_slot +
+					      (scan->ull.ticks_slot +
 					       ticks_slot_overhead),
 					      &ticks_ref, &offset_us);
 
@@ -424,7 +432,7 @@ uint8_t ull_scan_enable(struct ll_scan_set *scan)
 			   HAL_TICKER_REMAINDER((uint64_t)lll->interval *
 						SCAN_INT_UNIT_US),
 			   TICKER_NULL_LAZY,
-			   (scan->evt.ticks_slot + ticks_slot_overhead),
+			   (scan->ull.ticks_slot + ticks_slot_overhead),
 			   ticker_cb, scan,
 			   ull_ticker_status_give, (void *)&ret_cb);
 	ret = ull_ticker_status_take(ret, &ret_cb);
@@ -469,8 +477,10 @@ void ull_scan_done(struct node_rx_event_done *done)
 	uint8_t handle;
 	uint32_t ret;
 
-	lll = (void *)HDR_ULL2LLL(done->param);
-	scan = (void *)HDR_LLL2EVT(lll);
+	/* Get reference to ULL context */
+	scan = CONTAINER_OF(done->param, struct ll_scan_set, ull);
+	lll = &scan->lll;
+
 	if (likely(scan->duration_lazy || !lll->duration_reload ||
 		   lll->duration_expire)) {
 		return;
@@ -644,7 +654,7 @@ static int init_reset(void)
 }
 
 static void ticker_cb(uint32_t ticks_at_expire, uint32_t remainder,
-		      uint16_t lazy, void *param)
+		      uint16_t lazy, uint8_t force, void *param)
 {
 	static memq_link_t link;
 	static struct mayfly mfy = {0, 0, &link, NULL, lll_scan_prepare};
@@ -713,6 +723,7 @@ static void ticker_cb(uint32_t ticks_at_expire, uint32_t remainder,
 	p.remainder = remainder;
 	p.lazy = lazy;
 	p.param = lll;
+	p.force = force;
 	mfy.param = &p;
 
 	/* Kick LLL prepare */
@@ -830,7 +841,6 @@ static void ticker_op_ext_stop_cb(uint32_t status, void *param)
 	static struct mayfly mfy = {0, 0, &link, NULL, NULL};
 	struct ll_scan_set *scan;
 	struct ull_hdr *hdr;
-	uint32_t ret;
 
 	/* Ignore if race between thread and ULL */
 	if (status != TICKER_STATUS_SUCCESS) {
@@ -839,11 +849,20 @@ static void ticker_op_ext_stop_cb(uint32_t status, void *param)
 		return;
 	}
 
+	/* NOTE: We are in ULL_LOW which can be pre-empted by ULL_HIGH.
+	 *       As we are in the callback after successful stop of the
+	 *       ticker, the ULL reference count will not be modified
+	 *       further hence it is safe to check and act on either the need
+	 *       to call lll_disable or not.
+	 */
 	scan = param;
 	hdr = &scan->ull;
 	mfy.param = &scan->lll;
 	if (ull_ref_get(hdr)) {
+		uint32_t ret;
+
 		LL_ASSERT(!hdr->disabled_cb);
+
 		hdr->disabled_param = mfy.param;
 		hdr->disabled_cb = ext_disabled_cb;
 
@@ -852,6 +871,8 @@ static void ticker_op_ext_stop_cb(uint32_t status, void *param)
 				     TICKER_USER_ID_LLL, 0, &mfy);
 		LL_ASSERT(!ret);
 	} else {
+		uint32_t ret;
+
 		mfy.fp = ext_disabled_cb;
 		ret = mayfly_enqueue(TICKER_USER_ID_ULL_LOW,
 				     TICKER_USER_ID_ULL_HIGH, 0, &mfy);
@@ -869,7 +890,7 @@ static void ext_disabled_cb(void *param)
 	 * node_rx is already utilized to send terminate event on connection
 	 */
 	lll = (void *)param;
-	scan = (void *)HDR_LLL2EVT(lll);
+	scan = HDR_LLL2ULL(lll);
 	rx_hdr = (void *)scan->node_rx_scan_term;
 	if (!rx_hdr) {
 		return;

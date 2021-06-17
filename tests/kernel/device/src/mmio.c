@@ -28,15 +28,15 @@ const struct foo_single_config_info foo0_config = {
 	DEVICE_MMIO_ROM_INIT(DT_DRV_INST(0)),
 };
 
-int foo_single_init(const struct device *device)
+int foo_single_init(const struct device *dev)
 {
-	DEVICE_MMIO_MAP(device, K_MEM_CACHE_NONE);
+	DEVICE_MMIO_MAP(dev, K_MEM_CACHE_NONE);
 
 	return 0;
 }
 
 /* fake API pointer, we don't use it at all for this suite */
-DEVICE_DEFINE(foo0, "foo0", foo_single_init, device_pm_control_nop,
+DEVICE_DEFINE(foo0, "foo0", foo_single_init, NULL,
 		&foo0_data, &foo0_config,
 		POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,
 		(void *)0xDEADBEEF);
@@ -122,15 +122,15 @@ const struct foo_mult_config_info foo12_config = {
 #define DEV_DATA(dev)	((struct foo_mult_dev_data *)((dev)->data))
 #define DEV_CFG(dev)	((struct foo_mult_config_info *)((dev)->config))
 
-int foo_mult_init(const struct device *device)
+int foo_mult_init(const struct device *dev)
 {
-	DEVICE_MMIO_NAMED_MAP(device, courge, K_MEM_CACHE_NONE);
-	DEVICE_MMIO_NAMED_MAP(device, grault, K_MEM_CACHE_NONE);
+	DEVICE_MMIO_NAMED_MAP(dev, courge, K_MEM_CACHE_NONE);
+	DEVICE_MMIO_NAMED_MAP(dev, grault, K_MEM_CACHE_NONE);
 
 	return 0;
 }
 
-DEVICE_DEFINE(foo12, "foo12", foo_mult_init, device_pm_control_nop,
+DEVICE_DEFINE(foo12, "foo12", foo_mult_init, NULL,
 		&foo12_data, &foo12_config,
 		POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,
 		(void *)0xDEADBEEF);

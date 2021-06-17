@@ -73,12 +73,12 @@ static int pinmux_get(const struct device *dev, uint32_t pin, uint32_t *func)
 
 static int pinmux_pullup(const struct device *dev, uint32_t pin, uint8_t func)
 {
-	return -ENOSYS;
+	return -ENOTSUP;
 }
 
 static int pinmux_input(const struct device *dev, uint32_t pin, uint8_t func)
 {
-	return -ENOSYS;
+	return -ENOTSUP;
 }
 
 static struct pinmux_driver_api apis = {
@@ -88,11 +88,11 @@ static struct pinmux_driver_api apis = {
 	.input = pinmux_input
 };
 
-static int pinmux_init(const struct device *device)
+static int pinmux_init(const struct device *dev)
 {
-	ARG_UNUSED(device);
+	ARG_UNUSED(dev);
 	return 0;
 }
 
-DEVICE_DT_INST_DEFINE(0, &pinmux_init, device_pm_control_nop, NULL, NULL,
+DEVICE_DT_INST_DEFINE(0, &pinmux_init, NULL, NULL, NULL,
 		    PRE_KERNEL_1, CONFIG_PINMUX_INIT_PRIORITY, &apis);

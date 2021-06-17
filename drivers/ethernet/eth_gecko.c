@@ -612,7 +612,7 @@ static void eth_iface_init(struct net_if *iface)
 
 	/* Initialise TX/RX semaphores */
 	k_sem_init(&dev_data->tx_sem, 1, ETH_TX_BUF_COUNT);
-	k_sem_init(&dev_data->rx_sem, 0, UINT_MAX);
+	k_sem_init(&dev_data->rx_sem, 0, K_SEM_MAX_LIMIT);
 
 	/* Start interruption-poll thread */
 	k_thread_create(&dev_data->rx_thread, dev_data->rx_thread_stack,
@@ -668,5 +668,5 @@ static struct eth_gecko_dev_data eth0_data = {
 };
 
 ETH_NET_DEVICE_DT_INST_DEFINE(0, eth_init,
-		    device_pm_control_nop, &eth0_data, &eth0_config,
+		    NULL, &eth0_data, &eth0_config,
 		    CONFIG_ETH_INIT_PRIORITY, &eth_api, ETH_GECKO_MTU);

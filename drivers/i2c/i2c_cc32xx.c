@@ -332,8 +332,8 @@ static int i2c_cc32xx_init(const struct device *dev)
 	int error;
 	uint32_t regval;
 
-	k_sem_init(&data->mutex, 1, UINT_MAX);
-	k_sem_init(&data->transfer_complete, 0, UINT_MAX);
+	k_sem_init(&data->mutex, 1, K_SEM_MAX_LIMIT);
+	k_sem_init(&data->transfer_complete, 0, K_SEM_MAX_LIMIT);
 
 	/* In case of app restart: disable I2C module, clear NVIC interrupt */
 	/* Note: this was done *during* pinmux setup in SimpleLink SDK. */
@@ -382,7 +382,7 @@ static const struct i2c_cc32xx_config i2c_cc32xx_config = {
 
 static struct i2c_cc32xx_data i2c_cc32xx_data;
 
-DEVICE_DT_INST_DEFINE(0, &i2c_cc32xx_init, device_pm_control_nop,
+DEVICE_DT_INST_DEFINE(0, &i2c_cc32xx_init, NULL,
 		    &i2c_cc32xx_data, &i2c_cc32xx_config,
 		    POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEVICE,
 		    &i2c_cc32xx_driver_api);

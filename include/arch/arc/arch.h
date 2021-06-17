@@ -21,15 +21,18 @@
 #include <arch/common/ffs.h>
 #include <arch/arc/thread.h>
 #include <arch/common/sys_bitops.h>
-#ifdef CONFIG_CPU_ARCV2
+#include "sys-io-common.h"
+
 #include <arch/arc/v2/exc.h>
 #include <arch/arc/v2/irq.h>
-#include <arch/arc/v2/error.h>
 #include <arch/arc/v2/misc.h>
 #include <arch/arc/v2/aux_regs.h>
 #include <arch/arc/v2/arcv2_irq_unit.h>
 #include <arch/arc/v2/asm_inline.h>
 #include <arch/common/addr_types.h>
+#include <arch/arc/v2/error.h>
+
+#ifdef CONFIG_ISA_ARCV2
 #include "v2/sys_io.h"
 #ifdef CONFIG_ARC_CONNECT
 #include <arch/arc/v2/arc_connect.h>
@@ -45,20 +48,24 @@
 extern "C" {
 #endif
 
+#ifdef CONFIG_64BIT
+#define ARCH_STACK_PTR_ALIGN	8
+#else
 #define ARCH_STACK_PTR_ALIGN	4
+#endif /* CONFIG_64BIT */
 
 /* Indicate, for a minimally sized MPU region, how large it must be and what
  * its base address must be aligned to.
  *
  * For regions that are NOT the minimum size, this define has no semantics
  * on ARC MPUv2 as its regions must be power of two size and aligned to their
- * own size. On ARC MPUv3, region sizes are arbitrary and this just indicates
+ * own size. On ARC MPUv4, region sizes are arbitrary and this just indicates
  * the required size granularity.
  */
 #ifdef CONFIG_ARC_CORE_MPU
 #if CONFIG_ARC_MPU_VER == 2
 #define Z_ARC_MPU_ALIGN	2048
-#elif CONFIG_ARC_MPU_VER == 3
+#elif CONFIG_ARC_MPU_VER == 4
 #define Z_ARC_MPU_ALIGN	32
 #else
 #error "Unsupported MPU version"
@@ -244,7 +251,7 @@ BUILD_ASSERT(CONFIG_PRIVILEGED_STACK_SIZE % Z_ARC_MPU_ALIGN == 0,
 		"the size of the partition must be power of 2" \
 		" and greater than or equal to the mpu adddress alignment." \
 		"start address of the partition must align with size.")
-#elif CONFIG_ARC_MPU_VER == 3
+#elif CONFIG_ARC_MPU_VER == 4
 #define _ARCH_MEM_PARTITION_ALIGN_CHECK(start, size) \
 	BUILD_ASSERT((size) % Z_ARC_MPU_ALIGN == 0 && \
 		     (size) >= Z_ARC_MPU_ALIGN && \

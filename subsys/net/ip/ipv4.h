@@ -27,6 +27,7 @@
 #define NET_IPV4_OPTS_NOP  1   /* No operation */
 #define NET_IPV4_OPTS_RR   7   /* Record Route */
 #define NET_IPV4_OPTS_TS   68  /* Timestamp */
+#define NET_IPV4_OPTS_RA   148 /* Router Alert */
 
 /* IPv4 Options Timestamp flags */
 #define NET_IPV4_TS_OPT_TS_ONLY	0 /* Timestamp only */
@@ -34,6 +35,77 @@
 #define NET_IPV4_TS_OPT_TS_PRES	3 /* Timestamp prespecified hops*/
 
 #define NET_IPV4_HDR_OPTNS_MAX_LEN 40
+
+/* Fragment bits */
+#define NET_IPV4_MF BIT(0) /* More fragments  */
+#define NET_IPV4_DF BIT(1) /* Do not fragment */
+
+#define NET_IPV4_IGMP_QUERY     0x11 /* Membership query     */
+#define NET_IPV4_IGMP_REPORT_V1 0x12 /* v1 Membership report */
+#define NET_IPV4_IGMP_REPORT_V2 0x16 /* v2 Membership report */
+#define NET_IPV4_IGMP_LEAVE     0x17 /* v2 Leave group       */
+#define NET_IPV4_IGMP_REPORT_V3 0x22 /* v3 Membership report */
+
+struct net_ipv4_igmp_v2_query {
+	uint8_t type;
+	uint8_t max_rsp;
+	uint16_t chksum;
+	struct in_addr address;
+} __packed;
+
+struct net_ipv4_igmp_v2_report {
+	uint8_t type;
+	uint8_t max_rsp;
+	uint16_t chksum;
+	struct in_addr address;
+} __packed;
+
+/**
+ * @brief Create IPv4 packet in provided net_pkt with option to set all the
+ *        caller settable values.
+ *
+ * @param pkt Network packet
+ * @param src Source IPv4 address
+ * @param dst Destination IPv4 address
+ * @param tos Type of service
+ * @param id Fragment id
+ * @param flags Fragmentation flags
+ * @param offset Fragment offset
+ * @param ttl Time-to-live value
+ *
+ * @return 0 on success, negative errno otherwise.
+ */
+#if defined(CONFIG_NET_NATIVE_IPV4)
+int net_ipv4_create_full(struct net_pkt *pkt,
+			 const struct in_addr *src,
+			 const struct in_addr *dst,
+			 uint8_t tos,
+			 uint16_t id,
+			 uint8_t flags,
+			 uint16_t offset,
+			 uint8_t ttl);
+#else
+static inline int net_ipv4_create_full(struct net_pkt *pkt,
+				       const struct in_addr *src,
+				       const struct in_addr *dst,
+				       uint8_t tos,
+				       uint16_t id,
+				       uint8_t flags,
+				       uint16_t offset,
+				       uint8_t ttl)
+{
+	ARG_UNUSED(pkt);
+	ARG_UNUSED(src);
+	ARG_UNUSED(dst);
+	ARG_UNUSED(tos);
+	ARG_UNUSED(id);
+	ARG_UNUSED(flags);
+	ARG_UNUSED(offset);
+	ARG_UNUSED(ttl);
+
+	return -ENOTSUP;
+}
+#endif
 
 /**
  * @brief Create IPv4 packet in provided net_pkt.

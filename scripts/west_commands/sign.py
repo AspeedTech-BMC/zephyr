@@ -19,11 +19,10 @@ from build_helpers import find_build_dir, is_zephyr_build, \
     FIND_BUILD_DIR_DESCRIPTION
 from runners.core import BuildConfiguration
 from zcmake import CMakeCache
-from zephyr_ext_common import Forceable, load_dot_config, \
-    ZEPHYR_SCRIPTS
+from zephyr_ext_common import Forceable, ZEPHYR_SCRIPTS
 
 # This is needed to load edt.pickle files.
-sys.path.append(str(ZEPHYR_SCRIPTS / 'dts'))
+sys.path.append(str(ZEPHYR_SCRIPTS / 'dts' / 'python-devicetree' / 'src'))
 
 SIGN_DESCRIPTION = '''\
 This command automates some of the drudgery of creating signed Zephyr
@@ -151,11 +150,11 @@ class Sign(Forceable):
         self.check_force(is_zephyr_build(build_dir),
                          "build directory {} doesn't look like a Zephyr build "
                          'directory'.format(build_dir))
-        bcfg = BuildConfiguration(build_dir)
+        build_conf = BuildConfiguration(build_dir)
 
         # Decide on output formats.
         formats = []
-        bin_exists = 'CONFIG_BUILD_OUTPUT_BIN' in bcfg
+        bin_exists = build_conf.getboolean('CONFIG_BUILD_OUTPUT_BIN')
         if args.gen_bin:
             self.check_force(bin_exists,
                              '--bin given but CONFIG_BUILD_OUTPUT_BIN not set '
@@ -165,10 +164,9 @@ class Sign(Forceable):
         elif args.gen_bin is None and bin_exists:
             formats.append('bin')
 
-        hex_exists = 'CONFIG_BUILD_OUTPUT_HEX' in bcfg
+        hex_exists = build_conf.getboolean('CONFIG_BUILD_OUTPUT_HEX')
         if args.gen_hex:
             self.check_force(hex_exists,
-
                              '--hex given but CONFIG_BUILD_OUTPUT_HEX not set '
                              "in build directory's ({}) .config".
                              format(build_dir))
@@ -185,7 +183,7 @@ class Sign(Forceable):
         else:
             raise RuntimeError("can't happen")
 
-        signer.sign(self, build_dir, bcfg, formats)
+        signer.sign(self, build_dir, build_conf, formats)
 
 
 class Signer(abc.ABC):
@@ -195,19 +193,19 @@ class Signer(abc.ABC):
     it in the Sign.do_run() method.'''
 
     @abc.abstractmethod
-    def sign(self, command, build_dir, bcfg, formats):
+    def sign(self, command, build_dir, build_conf, formats):
         '''Abstract method to perform a signature; subclasses must implement.
 
         :param command: the Sign instance
         :param build_dir: the build directory
-        :param bcfg: BuildConfiguration for build directory
+        :param build_conf: BuildConfiguration for build directory
         :param formats: list of formats to generate ('bin', 'hex')
         '''
 
 
 class ImgtoolSigner(Signer):
 
-    def sign(self, command, build_dir, bcfg, formats):
+    def sign(self, command, build_dir, build_conf, formats):
         if not formats:
             return
 
@@ -216,23 +214,17 @@ class ImgtoolSigner(Signer):
 
         imgtool = self.find_imgtool(command, args)
         # The vector table offset is set in Kconfig:
-        vtoff = self.get_cfg(command, bcfg, 'CONFIG_ROM_START_OFFSET')
+        vtoff = self.get_cfg(command, build_conf, 'CONFIG_ROM_START_OFFSET')
         # Flash device write alignment and the partition's slot size
         # come from devicetree:
         flash = self.edt_flash_node(b, args.quiet)
         align, addr, size = self.edt_flash_params(flash)
 
-        dot_config_file = b / 'zephyr' / '.config'
-        if not dot_config_file.is_file():
-            log.die(f"no .config found at {dot_config_file}")
-
-        dot_config = load_dot_config(dot_config_file)
-
-        if dot_config.get('CONFIG_BOOTLOADER_MCUBOOT', 'n') != 'y':
+        if not build_conf.getboolean('CONFIG_BOOTLOADER_MCUBOOT'):
             log.wrn("CONFIG_BOOTLOADER_MCUBOOT is not set to y in "
-                    f"{dot_config_file}; this probably won't work")
+                    f"{build_conf.path}; this probably won't work")
 
-        kernel = dot_config.get('CONFIG_KERNEL_BIN_NAME', 'zephyr')
+        kernel = build_conf.get('CONFIG_KERNEL_BIN_NAME', 'zephyr')
 
         if 'bin' in formats:
             in_bin = b / 'zephyr' / f'{kernel}.bin'
@@ -310,9 +302,9 @@ class ImgtoolSigner(Signer):
         return [imgtool]
 
     @staticmethod
-    def get_cfg(command, bcfg, item):
+    def get_cfg(command, build_conf, item):
         try:
-            return bcfg[item]
+            return build_conf[item]
         except KeyError:
             command.check_force(
                 False, "build .config is missing a {} value".format(item))
@@ -411,7 +403,7 @@ class RimageSigner(Signer):
 
         log.die('Signing not supported for board ' + board)
 
-    def sign(self, command, build_dir, bcfg, formats):
+    def sign(self, command, build_dir, build_conf, formats):
         args = command.args
 
         if args.tool_path:

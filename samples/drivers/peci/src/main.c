@@ -90,7 +90,7 @@ int peci_get_tjmax(uint8_t *tjmax)
 		k_sleep(K_MSEC(1));
 		printk("\npeci_resp %x\n", peci_resp);
 		retries--;
-	} while ((peci_resp != PECI_RW_PKG_CFG_RSP_PASS) && (retries > 0));
+	} while ((peci_resp != PECI_CC_RSP_SUCCESS) && (retries > 0));
 
 	*tjmax = packet.rx_buffer.buf[3];
 
@@ -187,9 +187,9 @@ void main(void)
 		K_INHERIT_PERMS, K_FOREVER);
 
 #if DT_NODE_HAS_STATUS(DT_ALIAS(peci_0), okay)
-	peci_dev = device_get_binding(DT_LABEL(DT_ALIAS(peci_0)));
-	if (!peci_dev) {
-		printk("Err: PECI device not found\n");
+	peci_dev = DEVICE_DT_GET(DT_ALIAS(peci_0));
+	if (!device_is_ready(peci_dev)) {
+		printk("Err: PECI device is not ready\n");
 		return;
 	}
 

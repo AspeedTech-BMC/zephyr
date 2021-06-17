@@ -98,7 +98,7 @@ static int http_send_data(int sock, char *send_buf,
 		} while (remaining_len > 0);
 
 		data = va_arg(va, const char *);
-	};
+	}
 
 	va_end(va);
 
@@ -169,6 +169,8 @@ static int on_status(struct http_parser *parser, const char *at, size_t length)
 	len = MIN(length, sizeof(req->internal.response.http_status) - 1);
 	memcpy(req->internal.response.http_status, at, len);
 	req->internal.response.http_status[len] = 0;
+	req->internal.response.http_status_code =
+		(uint16_t)parser->status_code;
 
 	NET_DBG("HTTP response status %d %s", parser->status_code,
 		log_strdup(req->internal.response.http_status));
@@ -652,9 +654,9 @@ int http_client_req(int sock, struct http_request *req,
 
 	if (!K_TIMEOUT_EQ(req->internal.timeout, K_FOREVER) &&
 	    !K_TIMEOUT_EQ(req->internal.timeout, K_NO_WAIT)) {
-		k_delayed_work_init(&req->internal.work, http_timeout);
-		(void)k_delayed_work_submit(&req->internal.work,
-					    req->internal.timeout);
+		k_work_init_delayable(&req->internal.work, http_timeout);
+		(void)k_work_reschedule(&req->internal.work,
+					req->internal.timeout);
 	}
 
 	/* Request is sent, now wait data to be received */
@@ -667,7 +669,7 @@ int http_client_req(int sock, struct http_request *req,
 
 	if (!K_TIMEOUT_EQ(req->internal.timeout, K_FOREVER) &&
 	    !K_TIMEOUT_EQ(req->internal.timeout, K_NO_WAIT)) {
-		(void)k_delayed_work_cancel(&req->internal.work);
+		(void)k_work_cancel_delayable(&req->internal.work);
 	}
 
 	return total_sent;

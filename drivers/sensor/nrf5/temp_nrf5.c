@@ -119,7 +119,7 @@ static int temp_nrf5_init(const struct device *dev)
 		z_nrf_clock_control_get_onoff(CLOCK_CONTROL_NRF_SUBSYS_HF);
 	__ASSERT_NO_MSG(data->clk_mgr);
 
-	k_sem_init(&data->device_sync_sem, 0, UINT_MAX);
+	k_sem_init(&data->device_sync_sem, 0, K_SEM_MAX_LIMIT);
 	k_mutex_init(&data->mutex);
 
 	IRQ_CONNECT(
@@ -139,7 +139,7 @@ static struct temp_nrf5_data temp_nrf5_driver;
 
 DEVICE_DT_INST_DEFINE(0,
 		    temp_nrf5_init,
-		    device_pm_control_nop,
+		    NULL,
 		    &temp_nrf5_driver,
 		    NULL,
 		    POST_KERNEL,

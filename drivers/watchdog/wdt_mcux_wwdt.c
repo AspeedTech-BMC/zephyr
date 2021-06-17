@@ -97,8 +97,9 @@ static int mcux_wwdt_install_timeout(const struct device *dev,
 	}
 
 	if ((data->wwdt_config.timeoutValue < MIN_TIMEOUT) ||
-	    (data->wwdt_config.timeoutValue > data->wwdt_config.windowValue)) {
-		LOG_ERR("Invalid timeout");
+	    ((data->wwdt_config.windowValue != 0xFFFFFFU) &&
+	     (data->wwdt_config.timeoutValue <
+	      data->wwdt_config.windowValue))) {
 		return -EINVAL;
 	}
 
@@ -174,7 +175,7 @@ static const struct mcux_wwdt_config mcux_wwdt_config_0 = {
 static struct mcux_wwdt_data mcux_wwdt_data_0;
 
 DEVICE_DT_INST_DEFINE(0, &mcux_wwdt_init,
-		    device_pm_control_nop, &mcux_wwdt_data_0,
+		    NULL, &mcux_wwdt_data_0,
 		    &mcux_wwdt_config_0, POST_KERNEL,
 		    CONFIG_KERNEL_INIT_PRIORITY_DEVICE,
 		    &mcux_wwdt_api);

@@ -1366,7 +1366,7 @@ NET_DEVICE_INIT_INSTANCE(net_iface1_test,
 			 "iface1",
 			 iface1,
 			 net_iface_dev_init,
-			 device_pm_control_nop,
+			 NULL,
 			 &net_iface1_data,
 			 NULL,
 			 CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,
@@ -1379,7 +1379,7 @@ NET_DEVICE_INIT_INSTANCE(net_iface2_test,
 			 "iface2",
 			 iface2,
 			 net_iface_dev_init,
-			 device_pm_control_nop,
+			 NULL,
 			 &net_iface2_data,
 			 NULL,
 			 CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,
@@ -1429,7 +1429,7 @@ static void setup_udp_handler(const struct in6_addr *raddr,
 	remote_addr.sa_family = AF_INET6;
 
 	ret = net_udp_register(AF_INET6, &remote_addr, &local_addr,
-			       remote_port, local_port, udp_data_received,
+			       remote_port, local_port, NULL, udp_data_received,
 			       NULL, &handle);
 	zassert_equal(ret, 0, "Cannot register UDP handler");
 }

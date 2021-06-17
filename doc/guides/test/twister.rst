@@ -329,7 +329,7 @@ harness: <string>
     simple as a loopback wiring or a complete hardware test setup for
     sensor and IO testing.
     Usually pertains to external dependency domains but can be anything such as
-    console, sensor, net, keyboard, or Bluetooth.
+    console, sensor, net, keyboard, Bluetooth or pytest.
 
 harness_config: <harness configuration options>
     Extra harness configuration options to be used to select a board and/or
@@ -369,6 +369,11 @@ harness_config: <harness configuration options>
 
         Only one fixture can be defined per testcase.
 
+    pytest_root: <pytest dirctory> (default pytest)
+        Specify a pytest directory which need to excute when test case begin to running,
+        default pytest directory name is pytest, after pytest finished, twister will
+        check if this case pass or fail according the pytest report.
+
     The following is an example yaml file with a few harness_config options.
 
     ::
@@ -389,6 +394,18 @@ harness_config: <harness configuration options>
            test:
              tags: sensors
              depends_on: i2c
+
+    The following is an example yaml file with pytest harness_config options,
+    default pytest_root name "pytest" will be used if pytest_root not specified.
+    please refer the example in samples/subsys/testsuite/pytest/.
+
+    ::
+
+        tests:
+          pytest.example:
+            harness: pytest
+            harness_config:
+              pytest_root: [pytest directory name]
 
 filter: <expression>
     Filter whether the testcase should be run by evaluating an expression
@@ -516,13 +533,13 @@ command to produce the hardware map::
 The generated hardware map file (map.yml) will have the list of connected
 devices, for example::
 
-  - available: true
+  - connected: true
     id: OSHW000032254e4500128002ab98002784d1000097969900
     platform: unknown
     product: DAPLink CMSIS-DAP
     runner: pyocd
     serial: /dev/cu.usbmodem146114202
-  - available: true
+  - connected: true
     id: 000683759358
     platform: unknown
     product: J-Link
@@ -535,13 +552,13 @@ values, in the above example both the platform names and the runners need to be
 replaced with the correct values corresponding to the connected hardware. In
 this example we are using a reel_board and an nrf52840dk_nrf52840::
 
-  - available: true
+  - connected: true
     id: OSHW000032254e4500128002ab98002784d1000097969900
     platform: reel_board
     product: DAPLink CMSIS-DAP
     runner: pyocd
     serial: /dev/cu.usbmodem146114202
-  - available: true
+  - connected: true
     id: 000683759358
     platform: nrf52840dk_nrf52840
     product: J-Link
@@ -578,8 +595,7 @@ map file.
 
 Fixtures are defined in the hardware map file as a list::
 
-      - available: true
-        connected: true
+      - connected: true
         fixtures:
           - gpio_loopback
         id: 0240000026334e450015400f5e0e000b4eb1000097969900
@@ -602,16 +618,15 @@ It may be useful to annotate board descriptions in the hardware map file
 with additional information.  Use the "notes" keyword to do this.  For
 example::
 
-    - available: true
-      connected: false
+    - connected: false
       fixtures:
         - gpio_loopback
       id: 000683290670
-      notes: An nrf5340pdk_nrf5340 is detected as an nrf52840dk_nrf52840 with no serial
+      notes: An nrf5340dk_nrf5340 is detected as an nrf52840dk_nrf52840 with no serial
         port, and three serial ports with an unknown platform.  The board id of the serial
         ports is not the same as the board id of the the development kit.  If you regenerate
         this file you will need to update serial to reference the third port, and platform
-        to nrf5340pdk_nrf5340_cpuapp or another supported board target.
+        to nrf5340dk_nrf5340_cpuapp or another supported board target.
       platform: nrf52840dk_nrf52840
       product: J-Link
       runner: jlink
@@ -626,11 +641,47 @@ cases the detected ID is not the correct one to use, for example when
 using an external J-Link probe.  The "probe_id" keyword overrides the
 "id" keyword for this purpose.   For example::
 
-    - available: true
-      connected: false
+    - connected: false
       id: 0229000005d9ebc600000000000000000000000097969905
       platform: mimxrt1060_evk
       probe_id: 000609301751
       product: DAPLink CMSIS-DAP
       runner: jlink
       serial: null
+
+Quarantine
+++++++++++
+
+Twister allows using user-defined yaml files defining the list of tests to be put
+under quarantine. Such tests will be skipped and marked accordingly in the output
+reports. This feature is especially useful when running larger test suits, where
+a failure of one test can affect the execution of other tests (e.g. putting the
+physical board in a corrupted state).
+
+To use the quarantine feature one has to add the argument
+``--quarantine-list <PATH_TO_QUARANTINE_YAML>`` to a twister call.
+The current status of tests on the quarantine list can also be verified by adding
+``--quarantine-verify`` to the above argument. This will make twister skip all tests
+which are not on the given list.
+
+A quarantine yaml has to be a sequence of dictionaries. Each dictionary has to have
+"scenarios" and "platforms" entries listing combinations of scenarios and platforms
+to put under quarantine. In addition, an optional entry "comment" can be used, where
+some more details can be given (e.g. link to a reported issue). These comments will also
+be added to the output reports.
+
+An example of entries in a quarantine yaml::
+
+    - scenarios:
+        - sample.basic.helloworld
+      platforms:
+        - all
+      comment: "Link to the issue: https://github.com/zephyrproject-rtos/zephyr/pull/33287"
+
+    - scenarios:
+        - kernel.common
+        - kernel.common.misra
+        - kernel.common.nano64
+      platforms:
+        - qemu_cortex_m3
+        - native_posix

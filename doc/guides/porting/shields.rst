@@ -53,7 +53,7 @@ This should be done at two different level:
   :file:`BOARD.dts` should define a node alias for each connector interface.
   For example, for Arduino I2C:
 
-.. code-block:: DTS
+.. code-block:: devicetree
 
         #define arduino_i2c i2c1
 
@@ -64,7 +64,7 @@ This should be done at two different level:
 Note: With support of dtc v1.4.2, above will be replaced with the recently
 introduced overriding node element:
 
-.. code-block:: DTS
+.. code-block:: devicetree
 
         arduino_i2c:i2c1{};
 
@@ -144,7 +144,7 @@ GPIO nexus nodes
 ****************
 
 GPIOs accessed by the shield peripherals must be identified using the
-shield GPIO abstraction, for example from the ``arduino-r3-header``
+shield GPIO abstraction, for example from the ``arduino-header-r3``
 compatible.  Boards that provide the header must map the header pins
 to SOC-specific pins.  This is accomplished by including a `nexus
 node`_ that looks like the following into the board devicetree file:

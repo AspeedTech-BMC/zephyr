@@ -20,12 +20,8 @@ that has implied:
 5. Writing the PC-side deserializer/parser,
 6. Writing custom ad-hoc tools for filtering and presentation.
 
-An application can use one of the existing formats or define a custom
-format by overriding the macros declared
-in :zephyr_file:`include/tracing/tracing.h`.
-
-.. doxygengroup:: tracing_apis
-   :project: Zephyr
+An application can use one of the existing formats or define a custom format by
+overriding the macros declared in :zephyr_file:`include/tracing/tracing.h`.
 
 Different formats, transports and host tools are avialable and supported in
 Zephyr.
@@ -136,15 +132,14 @@ latest data from the internal RAM buffer can be loaded into SystemView::
 .. _SEGGER SystemView: https://www.segger.com/products/development-tools/systemview/
 
 
-CPU Stats
-=========
+Recent versions of `SEGGER SystemView`_ come with an API translation table for
+Zephyr which is incomplete and does not match the current level of support
+available in Zephyr. To use the latest Zephyr API description table, copy the
+file available in the tree to your local configuration directory to override the
+builtin table::
 
-A special tracing format which provides information about percentage of CPU
-usage based on tracing hooks for threads switching in and out, interrupts enters
-and exits (only distinguishes between idle thread, non idle thread and scheduler).
-
-Enable this format with the :option:`CONFIG_TRACING_CPU_STATS` option.
-
+        # On Linux and MacOS
+        cp ZEPHYR_BASE/subsys/tracing/sysview/SYSVIEW_Zephyr.txt ~/.config/SEGGER/
 
 Transport Backends
 ******************
@@ -155,6 +150,7 @@ The following backends are currently supported:
 * USB
 * File (Using native posix port)
 * RTT (With SystemView)
+* RAM (buffer to be retrieved by a debugger)
 
 Using Tracing
 *************
@@ -182,6 +178,20 @@ the tracing data::
 The resulting CTF output can be visualized using babeltrace or TraceCompass
 by pointing the tool to the ``data`` directory with the metadata and trace files.
 
+Using RAM backend
+=================
+
+For devices that do not have available I/O for tracing such as USB or UART but have
+enough RAM to collect trace datas, the ram backend can be enabled with configuration
+`CONFIG_TRACING_BACKEND_RAM`.
+Adjust `CONFIG_RAM_TRACING_BUFFER_SIZE` to be able to record enough traces for your needs.
+Then thanks to a runtime debugger such as gdb this buffer can be fetched from the target
+to an host computer::
+
+    (gdb) dump binary memory data/channel0_0 <ram_tracing_start> <ram_tracing_end>
+
+The resulting channel0_0 file have to be placed in a directory with the ``metadata``
+file like the other backend.
 
 Visualisation Tools
 *******************
@@ -310,3 +320,94 @@ Locking may not be needed if multiple independent channels are available.
         E.g. native_posix or board with multi-channel DMA. Lock-free.
 
         ``emit(a ## b ## c, thread_id);``
+
+
+API
+***
+
+
+Common
+======
+
+.. doxygengroup:: tracing_apis
+
+Threads
+=======
+
+.. doxygengroup:: thread_tracing_apis
+
+
+Work Queues
+===========
+
+.. doxygengroup:: work_tracing_apis
+
+
+Poll
+====
+
+.. doxygengroup:: poll_tracing_apis
+
+Semaphore
+=========
+
+.. doxygengroup:: sem_tracing_apis
+
+Mutex
+=====
+
+.. doxygengroup:: mutex_tracing_apis
+
+Condition Variables
+===================
+
+.. doxygengroup:: condvar_tracing_apis
+
+Queues
+======
+
+.. doxygengroup:: queue_tracing_apis
+
+FIFO
+====
+
+.. doxygengroup:: fifo_tracing_apis
+
+LIFO
+====
+.. doxygengroup:: lifo_tracing_apis
+
+Stacks
+======
+
+.. doxygengroup:: stack_tracing_apis
+
+Message Queues
+==============
+
+.. doxygengroup:: msgq_tracing_apis
+
+Mailbox
+=======
+
+.. doxygengroup:: mbox_tracing_apis
+
+Pipes
+======
+
+.. doxygengroup:: pipe_tracing_apis
+
+Heaps
+=====
+
+.. doxygengroup:: heap_tracing_apis
+
+Memory Slabs
+============
+
+.. doxygengroup:: mslab_tracing_apis
+
+Timers
+======
+
+.. doxygengroup:: timer_tracing_apis

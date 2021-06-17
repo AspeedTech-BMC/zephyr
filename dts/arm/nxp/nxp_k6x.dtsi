@@ -107,8 +107,35 @@
 			compatible = "nxp,kinetis-sim";
 			reg = <0x40047000 0x1060>;
 			label = "SIM";
-
 			#clock-cells = <3>;
+
+			core_clk {
+				compatible = "fixed-factor-clock";
+				clocks = <&mcg KINETIS_MCG_OUT_CLK>;
+				clock-div = <1>;
+				#clock-cells = <0>;
+			};
+
+			bus_clk {
+				compatible = "fixed-factor-clock";
+				clocks = <&mcg KINETIS_MCG_OUT_CLK>;
+				clock-div = <2>;
+				#clock-cells = <0>;
+			};
+
+			flexbus_clk {
+				compatible = "fixed-factor-clock";
+				clocks = <&mcg KINETIS_MCG_OUT_CLK>;
+				clock-div = <3>;
+				#clock-cells = <0>;
+			};
+
+			flash_clk {
+				compatible = "fixed-factor-clock";
+				clocks = <&mcg KINETIS_MCG_OUT_CLK>;
+				clock-div = <5>;
+				#clock-cells = <0>;
+			};
 		};
 
 		ftfe: flash-controller@40020000 {
@@ -236,35 +263,30 @@
 			compatible = "nxp,kinetis-pinmux";
 			reg = <0x40049000 0xd0>;
 			clocks = <&sim KINETIS_SIM_BUS_CLK 0x1038 9>;
-			label = "porta";
 		};
 
 		portb: pinmux@4004a000 {
 			compatible = "nxp,kinetis-pinmux";
 			reg = <0x4004a000 0xd0>;
 			clocks = <&sim KINETIS_SIM_BUS_CLK 0x1038 10>;
-			label = "portb";
 		};
 
 		portc: pinmux@4004b000 {
 			compatible = "nxp,kinetis-pinmux";
 			reg = <0x4004b000 0xd0>;
 			clocks = <&sim KINETIS_SIM_BUS_CLK 0x1038 11>;
-			label = "portc";
 		};
 
 		portd: pinmux@4004c000 {
 			compatible = "nxp,kinetis-pinmux";
 			reg = <0x4004c000 0xd0>;
 			clocks = <&sim KINETIS_SIM_BUS_CLK 0x1038 12>;
-			label = "portd";
 		};
 
 		porte: pinmux@4004d000 {
 			compatible = "nxp,kinetis-pinmux";
 			reg = <0x4004d000 0xd0>;
 			clocks = <&sim KINETIS_SIM_BUS_CLK 0x1038 13>;
-			label = "porte";
 		};
 
 		gpioa: gpio@400ff000 {
@@ -330,6 +352,7 @@
 			clocks = <&sim KINETIS_SIM_BUS_CLK 0x103C 12>;
 			#address-cells = <1>;
 			#size-cells = <0>;
+			status = "disabled";
 		};
 
 		spi1: spi@4002d000 {
@@ -405,6 +428,11 @@
 		adc0: adc@4003b000{
 			compatible = "nxp,kinetis-adc16";
 			reg = <0x4003b000 0x70>;
+			clocks = <&sim KINETIS_SIM_SIM_SOPT7 0 0xF>,
+				<&sim KINETIS_SIM_SIM_SOPT7 7 0x80>;
+			dmas = <&edma0 0 40>;
+			dma-names = "adc0";
+			clk-source = <0>;
 			interrupts = <39 0>;
 			label = "ADC_0";
 			status = "disabled";
@@ -414,6 +442,11 @@
 		adc1: adc@400bb000{
 			compatible = "nxp,kinetis-adc16";
 			reg = <0x400bb000 0x70>;
+			clocks = <&sim KINETIS_SIM_SIM_SOPT7 8 0xF00>,
+				<&sim KINETIS_SIM_SIM_SOPT7 15 0x8000>;
+			dmas = <&edma0 0 41>;
+			dma-names = "adc1";
+			clk-source = <0>;
 			interrupts = <73 0>;
 			label = "ADC_1";
 			status = "disabled";

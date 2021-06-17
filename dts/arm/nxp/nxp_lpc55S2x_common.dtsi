@@ -100,6 +100,22 @@
 		};
 	};
 
+	iocon: iocon@1000 {
+		compatible = "nxp,lpc-iocon";
+		reg = <0x1000 0x100>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges = <0x0 0x1000 0x100>;
+		pio0: pio0@0 {
+			compatible = "nxp,lpc-iocon-pio";
+			reg = <0x0 0x80>;
+		};
+		pio1: pio0@80 {
+			compatible = "nxp,lpc-iocon-pio";
+			reg = <0x80 0x80>;
+		};
+	};
+
 	gpio0: gpio@0 {
 		compatible = "nxp,lpc-gpio";
 		reg = <0x8c000 0x2488>;
@@ -107,6 +123,7 @@
 		label = "GPIO_0";
 		gpio-controller;
 		#gpio-cells = <2>;
+		port = <0>;
 	};
 
 	gpio1: gpio@1 {
@@ -116,6 +133,7 @@
 		label = "GPIO_1";
 		gpio-controller;
 		#gpio-cells = <2>;
+		port = <1>;
 	};
 
 	dma0: dma-controller@82000 {

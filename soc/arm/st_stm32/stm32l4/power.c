@@ -4,18 +4,27 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 #include <zephyr.h>
-#include <power/power.h>
+#include <pm/pm.h>
 #include <soc.h>
 #include <init.h>
 
+#include <stm32l4xx_ll_utils.h>
 #include <stm32l4xx_ll_bus.h>
 #include <stm32l4xx_ll_cortex.h>
 #include <stm32l4xx_ll_pwr.h>
 #include <stm32l4xx_ll_rcc.h>
 #include <stm32l4xx_ll_system.h>
+#include <clock_control/clock_stm32_ll_common.h>
 
 #include <logging/log.h>
 LOG_MODULE_DECLARE(soc, CONFIG_SOC_LOG_LEVEL);
+
+/* select MSI as wake-up system clock if configured, HSI otherwise */
+#if STM32_SYSCLK_SRC_MSI
+#define RCC_STOP_WAKEUPCLOCK_SELECTED LL_RCC_STOP_WAKEUPCLOCK_MSI
+#else
+#define RCC_STOP_WAKEUPCLOCK_SELECTED LL_RCC_STOP_WAKEUPCLOCK_HSI
+#endif
 
 /* Invoke Low Power/System Off specific Tasks */
 void pm_power_state_set(struct pm_state_info info)
@@ -26,48 +35,34 @@ void pm_power_state_set(struct pm_state_info info)
 	}
 
 	switch (info.substate_id) {
-	case 0:
-
-		/* this corresponds to the STOP0 mode: */
-#ifdef CONFIG_DEBUG
-		/* Enable the Debug Module during STOP mode */
-		LL_DBGMCU_EnableDBGStopMode();
-#endif /* CONFIG_DEBUG */
-		/* ensure HSI is the wake-up system clock */
-		LL_RCC_SetClkAfterWakeFromStop(LL_RCC_STOP_WAKEUPCLOCK_HSI);
+	case 1: /* this corresponds to the STOP0 mode: */
+		/* ensure the proper wake-up system clock */
+		LL_RCC_SetClkAfterWakeFromStop(RCC_STOP_WAKEUPCLOCK_SELECTED);
 		/* enter STOP0 mode */
 		LL_PWR_SetPowerMode(LL_PWR_MODE_STOP0);
 		LL_LPM_EnableDeepSleep();
 		/* enter SLEEP mode : WFE or WFI */
 		k_cpu_idle();
 		break;
-	case 1:
-		/* this corresponds to the STOP1 mode: */
-#ifdef CONFIG_DEBUG
-		/* Enable the Debug Module during STOP mode */
-		LL_DBGMCU_EnableDBGStopMode();
-#endif /* CONFIG_DEBUG */
-		/* ensure HSI is the wake-up system clock */
-		LL_RCC_SetClkAfterWakeFromStop(LL_RCC_STOP_WAKEUPCLOCK_HSI);
+	case 2: /* this corresponds to the STOP1 mode: */
+		/* ensure the proper wake-up system clock */
+		LL_RCC_SetClkAfterWakeFromStop(RCC_STOP_WAKEUPCLOCK_SELECTED);
 		/* enter STOP1 mode */
 		LL_PWR_SetPowerMode(LL_PWR_MODE_STOP1);
 		LL_LPM_EnableDeepSleep();
+		/* enter SLEEP mode : WFE or WFI */
 		k_cpu_idle();
 		break;
-	case 2:
-		/* this corresponds to the STOP2 mode: */
-#ifdef CONFIG_DEBUG
-		/* Enable the Debug Module during STOP mode */
-		LL_DBGMCU_EnableDBGStopMode();
-#endif /* CONFIG_DEBUG */
-		/* ensure HSI is the wake-up system clock */
-		LL_RCC_SetClkAfterWakeFromStop(LL_RCC_STOP_WAKEUPCLOCK_HSI);
+	case 3: /* this corresponds to the STOP2 mode: */
+		/* ensure the proper wake-up system clock */
+		LL_RCC_SetClkAfterWakeFromStop(RCC_STOP_WAKEUPCLOCK_SELECTED);
 #ifdef PWR_CR1_RRSTP
 		LL_PWR_DisableSRAM3Retention();
 #endif /* PWR_CR1_RRSTP */
 		/* enter STOP2 mode */
 		LL_PWR_SetPowerMode(LL_PWR_MODE_STOP2);
 		LL_LPM_EnableDeepSleep();
+		/* enter SLEEP mode : WFE or WFI */
 		k_cpu_idle();
 		break;
 	default:
@@ -84,11 +79,11 @@ void pm_power_state_exit_post_ops(struct pm_state_info info)
 		LOG_DBG("Unsupported power substate-id %u", info.state);
 	} else {
 		switch (info.substate_id) {
-		case 0:	/* STOP0 */
+		case 1:	/* STOP0 */
 			__fallthrough;
-		case 1:	/* STOP1 */
+		case 2:	/* STOP1 */
 			__fallthrough;
-		case 2:	/* STOP2 */
+		case 3:	/* STOP2 */
 			LL_LPM_DisableSleepOnExit();
 			LL_LPM_EnableSleep();
 			break;
@@ -97,6 +92,8 @@ void pm_power_state_exit_post_ops(struct pm_state_info info)
 				info.substate_id);
 			break;
 		}
+		/* need to restore the clock */
+		stm32_clock_control_init(NULL);
 	}
 
 	/*
@@ -110,16 +107,15 @@ void pm_power_state_exit_post_ops(struct pm_state_info info)
 /* Initialize STM32 Power */
 static int stm32_power_init(const struct device *dev)
 {
-	unsigned int ret;
-
 	ARG_UNUSED(dev);
-
-	ret = irq_lock();
 
 	/* enable Power clock */
 	LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_PWR);
 
-	irq_unlock(ret);
+#ifdef CONFIG_DEBUG
+	/* Enable the Debug Module during STOP mode */
+	LL_DBGMCU_EnableDBGStopMode();
+#endif /* CONFIG_DEBUG */
 
 	return 0;
 }

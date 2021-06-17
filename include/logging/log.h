@@ -71,6 +71,17 @@ extern "C" {
 #define LOG_DBG(...)    Z_LOG(LOG_LEVEL_DBG, __VA_ARGS__)
 
 /**
+ * @brief Unconditionally print raw log message.
+ *
+ * The result is same as if printk was used but it goes through logging
+ * infrastructure thus utilizes logging mode, e.g. deferred mode.
+ *
+ * @param ... A string optionally containing printk valid conversion specifier,
+ * followed by as many values as specifiers.
+ */
+#define LOG_PRINTK(...) Z_LOG_PRINTK(__VA_ARGS__)
+
+/**
  * @brief Writes an ERROR level message associated with the instance to the log.
  *
  * Message is associated with specific instance of the module which has
@@ -241,7 +252,6 @@ extern "C" {
 #define LOG_INST_HEXDUMP_DBG(_log_inst, _data, _length, _str)	\
 	Z_LOG_HEXDUMP_INSTANCE(LOG_LEVEL_DBG, _log_inst, _data, _length, _str)
 
-#ifndef CONFIG_LOG_MINIMAL
 /**
  * @brief Writes an formatted string to the log.
  *
@@ -253,7 +263,11 @@ extern "C" {
  * @param fmt Formatted string to output.
  * @param ap  Variable parameters.
  */
-void log_printk(const char *fmt, va_list ap);
+void z_log_printk(const char *fmt, va_list ap);
+static inline void log_printk(const char *fmt, va_list ap)
+{
+	z_log_printk(fmt, ap);
+}
 
 /** @brief Copy transient string to a buffer from internal, logger pool.
  *
@@ -272,18 +286,15 @@ void log_printk(const char *fmt, va_list ap);
  *	   a buffer from the pool (see CONFIG_LOG_STRDUP_MAX_STRING). In
  *	   some configurations, the original string pointer is returned.
  */
-char *log_strdup(const char *str);
-#else
-static inline void log_printk(const char *fmt, va_list ap)
-{
-	vprintk(fmt, ap);
-}
-
+char *z_log_strdup(const char *str);
 static inline char *log_strdup(const char *str)
 {
-	return (char *)str;
+	if (IS_ENABLED(CONFIG_LOG_MINIMAL) || IS_ENABLED(CONFIG_LOG2)) {
+		return (char *)str;
+	}
+
+	return z_log_strdup(str);
 }
-#endif /* CONFIG_LOG_MINIMAL */
 
 #ifdef __cplusplus
 }
@@ -427,6 +438,32 @@ static inline char *log_strdup(const char *str)
  */
 #define LOG_LEVEL_SET(level) static const uint32_t __log_level __unused = \
 				Z_LOG_RESOLVED_LEVEL(level, 0)
+
+/*
+ * Eclipse CDT parser is sometimes confused by logging API code and freezes the
+ * whole IDE. Following lines hides LOG_x macros from CDT.
+ */
+#if defined(__CDT_PARSER__)
+#undef LOG_ERR
+#undef LOG_WRN
+#undef LOG_INF
+#undef LOG_DBG
+
+#undef LOG_HEXDUMP_ERR
+#undef LOG_HEXDUMP_WRN
+#undef LOG_HEXDUMP_INF
+#undef LOG_HEXDUMP_DBG
+
+#define LOG_ERR(...) (void) 0
+#define LOG_WRN(...) (void) 0
+#define LOG_DBG(...) (void) 0
+#define LOG_INF(...) (void) 0
+
+#define LOG_HEXDUMP_ERR(...) (void) 0
+#define LOG_HEXDUMP_WRN(...) (void) 0
+#define LOG_HEXDUMP_DBG(...) (void) 0
+#define LOG_HEXDUMP_INF(...) (void) 0
+#endif
 
 /**
  * @}

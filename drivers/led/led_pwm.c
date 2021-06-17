@@ -24,7 +24,7 @@ LOG_MODULE_REGISTER(led_pwm, CONFIG_LED_LOG_LEVEL);
 #define DEV_DATA(dev)	((struct led_pwm_data *) ((dev)->data))
 
 struct led_pwm {
-	char *pwm_label;
+	const struct device *dev;
 	uint32_t channel;
 	uint32_t period;
 	pwm_flags_t flags;
@@ -36,14 +36,15 @@ struct led_pwm_config {
 };
 
 struct led_pwm_data {
-	const struct device *pwm;
+#ifdef CONFIG_PM_DEVICE
+	uint32_t pm_state;
+#endif
 };
 
 static int led_pwm_blink(const struct device *dev, uint32_t led,
 			 uint32_t delay_on, uint32_t delay_off)
 {
 	const struct led_pwm_config *config = DEV_CFG(dev);
-	struct led_pwm_data *data = DEV_DATA(dev);
 	const struct led_pwm *led_pwm;
 	uint32_t period_usec, pulse_usec;
 
@@ -63,7 +64,7 @@ static int led_pwm_blink(const struct device *dev, uint32_t led,
 
 	led_pwm = &config->led[led];
 
-	return pwm_pin_set_usec(data[led].pwm, led_pwm->channel,
+	return pwm_pin_set_usec(led_pwm->dev, led_pwm->channel,
 				period_usec, pulse_usec, led_pwm->flags);
 }
 
@@ -71,7 +72,6 @@ static int led_pwm_set_brightness(const struct device *dev,
 				  uint32_t led, uint8_t value)
 {
 	const struct led_pwm_config *config = DEV_CFG(dev);
-	struct led_pwm_data *data = DEV_DATA(dev);
 	const struct led_pwm *led_pwm;
 	uint32_t pulse;
 
@@ -83,7 +83,7 @@ static int led_pwm_set_brightness(const struct device *dev,
 
 	pulse = led_pwm->period * value / 100;
 
-	return pwm_pin_set_cycles(data[led].pwm, led_pwm->channel,
+	return pwm_pin_set_cycles(led_pwm->dev, led_pwm->channel,
 				  led_pwm->period, pulse, led_pwm->flags);
 }
 
@@ -100,7 +100,6 @@ static int led_pwm_off(const struct device *dev, uint32_t led)
 static int led_pwm_init(const struct device *dev)
 {
 	const struct led_pwm_config *config = DEV_CFG(dev);
-	struct led_pwm_data *data = DEV_DATA(dev);
 	int i;
 
 	if (!config->num_leds) {
@@ -112,16 +111,97 @@ static int led_pwm_init(const struct device *dev)
 	for (i = 0; i < config->num_leds; i++) {
 		const struct led_pwm *led = &config->led[i];
 
-		data[i].pwm = device_get_binding(led->pwm_label);
-		if (data->pwm == NULL) {
-			LOG_ERR("%s: device %s not found",
-				dev->name, led->pwm_label);
+		if (!device_is_ready(led->dev)) {
+			LOG_ERR("%s: pwm device not ready", dev->name);
 			return -ENODEV;
 		}
 	}
 
+#ifdef CONFIG_PM_DEVICE
+	struct led_pwm_data *data = DEV_DATA(dev);
+
+	data->pm_state = PM_DEVICE_STATE_ACTIVE;
+#endif
+
 	return 0;
 }
+
+#ifdef CONFIG_PM_DEVICE
+
+static int led_pwm_pm_get_state(const struct device *dev, uint32_t *state)
+{
+	struct led_pwm_data *data = DEV_DATA(dev);
+
+	unsigned int key = irq_lock();
+	*state = data->pm_state;
+	irq_unlock(key);
+
+	return 0;
+}
+
+static int led_pwm_pm_set_state(const struct device *dev, uint32_t new_state)
+{
+	const struct led_pwm_config *config = DEV_CFG(dev);
+	struct led_pwm_data *data = DEV_DATA(dev);
+	uint32_t old_state;
+	unsigned int key;
+
+	key = irq_lock();
+	old_state = data->pm_state;
+	irq_unlock(key);
+
+	if (old_state == new_state) {
+		/* leave unchanged */
+		return 0;
+	}
+
+	/* switch all underlying PWM devices to the new state */
+	for (size_t i = 0; i < config->num_leds; i++) {
+		const struct led_pwm *led_pwm = &config->led[i];
+
+		LOG_DBG("Switching PWM %p to state %" PRIu32, led_pwm->dev, new_state);
+		int err = pm_device_state_set(led_pwm->dev, new_state, NULL, NULL);
+
+		if (err) {
+			LOG_ERR("Cannot switch PWM %p power state", led_pwm->dev);
+		}
+	}
+
+	/* record the new state */
+	key = irq_lock();
+	data->pm_state = new_state;
+	irq_unlock(key);
+
+	return 0;
+}
+
+static int led_pwm_pm_control(const struct device *dev, uint32_t ctrl_command,
+			      uint32_t *state, pm_device_cb cb, void *arg)
+{
+	int err;
+
+	switch (ctrl_command) {
+	case PM_DEVICE_STATE_GET:
+		err = led_pwm_pm_get_state(dev, state);
+		break;
+
+	case PM_DEVICE_STATE_SET:
+		err = led_pwm_pm_set_state(dev, *state);
+		break;
+
+	default:
+		err = -ENOTSUP;
+		break;
+	}
+
+	if (cb) {
+		cb(dev, err, state, arg);
+	}
+
+	return err;
+}
+
+#endif /* CONFIG_PM_DEVICE */
 
 static const struct led_driver_api led_pwm_api = {
 	.on		= led_pwm_on,
@@ -132,7 +212,7 @@ static const struct led_driver_api led_pwm_api = {
 
 #define LED_PWM(led_node_id)						\
 {									\
-	.pwm_label	= DT_PWMS_LABEL(led_node_id),			\
+	.dev		= DEVICE_DT_GET(DT_PWMS_CTLR(led_node_id)),	\
 	.channel	= DT_PWMS_CHANNEL(led_node_id),			\
 	.period		= DT_PHA_OR(led_node_id, pwms, period, 100),	\
 	.flags		= DT_PHA_OR(led_node_id, pwms, flags,		\
@@ -141,25 +221,20 @@ static const struct led_driver_api led_pwm_api = {
 
 #define LED_PWM_DEVICE(id)					\
 								\
-const struct led_pwm led_pwm_##id[] = {				\
+static const struct led_pwm led_pwm_##id[] = {			\
 	DT_INST_FOREACH_CHILD(id, LED_PWM)			\
 };								\
 								\
-const struct led_pwm_config led_pwm_config_##id = {		\
+static const struct led_pwm_config led_pwm_config_##id = {	\
 	.num_leds	= ARRAY_SIZE(led_pwm_##id),		\
 	.led		= led_pwm_##id,				\
 };								\
 								\
-static struct led_pwm_data					\
-	led_pwm_data_##id[ARRAY_SIZE(led_pwm_##id)];		\
+static struct led_pwm_data led_pwm_data_##id;			\
 								\
-DEVICE_DEFINE(led_pwm_##id,					\
-		    DT_INST_PROP_OR(id, label, "LED_PWM_"#id),	\
-		    &led_pwm_init,				\
-		    device_pm_control_nop,			\
-		    &led_pwm_data_##id,				\
-		    &led_pwm_config_##id,			\
-		    POST_KERNEL, CONFIG_LED_INIT_PRIORITY,	\
-		    &led_pwm_api);
+DEVICE_DT_INST_DEFINE(id, &led_pwm_init, led_pwm_pm_control,	\
+		      &led_pwm_data_##id, &led_pwm_config_##id,	\
+		      POST_KERNEL, CONFIG_LED_INIT_PRIORITY,	\
+		      &led_pwm_api);
 
 DT_INST_FOREACH_STATUS_OKAY(LED_PWM_DEVICE)

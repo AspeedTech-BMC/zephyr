@@ -89,6 +89,8 @@
 #define WDT_NODE DT_INST(0, microchip_xec_watchdog)
 #elif DT_HAS_COMPAT_STATUS_OKAY(nuvoton_npcx_watchdog)
 #define WDT_NODE DT_INST(0, nuvoton_npcx_watchdog)
+#elif DT_HAS_COMPAT_STATUS_OKAY(ti_cc32xx_watchdog)
+#define WDT_NODE DT_INST(0, ti_cc32xx_watchdog)
 #endif
 
 #ifdef WDT_NODE
@@ -207,7 +209,7 @@ static int test_wdt_no_callback(void)
 	m_state = WDT_TEST_STATE_CHECK_RESET;
 	while (1) {
 		k_yield();
-	};
+	}
 }
 
 #if TEST_WDT_CALLBACK_1
@@ -261,7 +263,7 @@ static int test_wdt_callback_1(void)
 	m_state = WDT_TEST_STATE_CHECK_RESET;
 	while (1) {
 		k_yield();
-	};
+	}
 }
 #endif
 
@@ -323,7 +325,7 @@ static int test_wdt_callback_2(void)
 	while (1) {
 		wdt_feed(wdt, 0);
 		k_sleep(K_MSEC(100));
-	};
+	}
 }
 #endif
 

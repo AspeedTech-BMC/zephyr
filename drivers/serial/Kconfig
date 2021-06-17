@@ -136,4 +136,6 @@ source "drivers/serial/Kconfig.apbuart"
 
 source "drivers/serial/Kconfig.aspeed"
 
+source "drivers/serial/Kconfig.rcar"
+
 endif # SERIAL

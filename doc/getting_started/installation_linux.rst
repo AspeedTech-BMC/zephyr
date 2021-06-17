@@ -78,7 +78,7 @@ need one.
 
          sudo apt-get install --no-install-recommends git cmake ninja-build gperf \
            ccache dfu-util device-tree-compiler wget \
-           python3-dev python3-pip python3-setuptools python3-tk python3-wheel xz-utils file \
+           python3-dev python3-pip python3-setuptools python3-tk python3-wheel xz-utils file libpython3.8-dev \
            make gcc gcc-multilib g++-multilib libsdl2-dev
 
    .. group-tab:: Fedora
@@ -87,7 +87,7 @@ need one.
 
          sudo dnf group install "Development Tools" "C Development Tools and Libraries"
          dnf install git cmake ninja-build gperf ccache dfu-util dtc wget \
-           python3-pip python3-tkinter xz file glibc-devel.i686 libstdc++-devel.i686 \
+           python3-pip python3-tkinter xz file glibc-devel.i686 libstdc++-devel.i686 python38 \
            SDL2-devel
 
    .. group-tab:: Clear Linux
@@ -125,9 +125,9 @@ need one.
 CMake
 =====
 
-CMake version 3.13.1 or higher is required. Check what version you have by
-using ``cmake --version``. If you have an older version, there are several ways
-of obtaining a more recent one:
+A :ref:`recent CMake version <install-required-tools>` is required. Check what
+version you have by using ``cmake --version``. If you have an older version,
+there are several ways of obtaining a more recent one:
 
 * On Ubuntu, you can follow the instructions for adding the
   `kitware third-party apt repository <https://apt.kitware.com/>`_
@@ -187,16 +187,16 @@ versions.)
 DTC (Device Tree Compiler)
 ==========================
 
-A recent DTC version (1.4.6 or higher) is required. Check what version you
-have by using ``dtc --version``. If you have an older version, either install a
-more recent one by building from source, or use the one that is bundled in
-the :ref:`Zephyr SDK <zephyr_sdk>` by installing it.
+A :ref:`recent DTC version <install-required-tools>` is required. Check what
+version you have by using ``dtc --version``. If you have an older version,
+either install a more recent one by building from source, or use the one that is
+bundled in the :ref:`Zephyr SDK <zephyr_sdk>` by installing it.
 
 Python
 ======
 
-Python 3.6 or later is required. Check what version you have by using ``python3
---version``.
+A `modern Python 3 version <install-required-tools>` is required. Check what
+version you have by using ``python3 --version``.
 
 If you have an older version, you will need to install a more recent Python 3.
 You can build from source, or use a backport from your distribution's package
@@ -240,19 +240,19 @@ Follow these steps to install the Zephyr SDK:
 
    .. code-block:: console
 
-      wget https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.12.2/zephyr-sdk-0.12.2-x86_64-linux-setup.run
+      wget https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.12.4/zephyr-sdk-0.12.4-x86_64-linux-setup.run
 
-   (You can change *0.12.2* to another version if needed; the `Zephyr
+   (You can change *0.12.4* to another version if needed; the `Zephyr
    Downloads`_ page contains all available SDK releases.)
 
 #. Run the installation binary, installing the SDK at
-   :file:`~/zephyr-sdk-0.12.2`:
+   :file:`~/zephyr-sdk-0.12.4`:
 
    .. code-block:: console
 
       cd <sdk download directory>
-      chmod +x zephyr-sdk-0.12.2-x86_64-linux-setup.run
-      ./zephyr-sdk-0.12.2-x86_64-linux-setup.run -- -d ~/zephyr-sdk-0.12.2
+      chmod +x zephyr-sdk-0.12.4-x86_64-linux-setup.run
+      ./zephyr-sdk-0.12.4-x86_64-linux-setup.run -- -d ~/zephyr-sdk-0.12.4
 
    You can pick another directory if you want. If this fails, make sure
    Zephyr's dependencies were installed as described in `Install Requirements
@@ -272,7 +272,7 @@ installed it.
    * ``/usr/zephyr-sdk[-x.y.z]``
    * ``/usr/local/zephyr-sdk[-x.y.z]``
 
-   where ``[-x.y.z]`` is optional text, and can be any text, for example ``-0.12.2``.
+   where ``[-x.y.z]`` is optional text, and can be any text, for example ``-0.12.4``.
 
    If you install the Zephyr SDK outside any of those locations, then it is
    required to register the Zephyr SDK in the CMake package registry during
@@ -283,7 +283,7 @@ installed it.
    containing multiple Zephyr SDKs, allowing for automatic toolchain selection,
    for example: ``ZEPHYR_SDK_INSTALL_DIR=/company/tools``
 
-   * ``/company/tools/zephyr-sdk-0.12.2``
+   * ``/company/tools/zephyr-sdk-0.12.4``
    * ``/company/tools/zephyr-sdk-a.b.c``
    * ``/company/tools/zephyr-sdk-x.y.z``
 

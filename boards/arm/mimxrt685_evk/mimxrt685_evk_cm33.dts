@@ -60,6 +60,61 @@
 			label = "User LED_RED";
 		};
 	};
+
+	arduino_header: arduino-connector {
+		compatible = "arduino-header-r3";
+		#gpio-cells = <2>;
+		gpio-map-mask = <0xffffffff 0xffffffc0>;
+		gpio-map-pass-thru = <0 0x3f>;
+		gpio-map =	<0 0 &gpio0 5 0>,	/* A0 */
+				<1 0 &gpio0 6 0>,	/* A1 */
+				<2 0 &gpio0 19 0>,	/* A2 */
+				<3 0 &gpio0 20 0>,	/* A3 */
+				<4 0 &gpio0 17 0>,	/* A4 */
+				<5 0 &gpio0 18 0>,	/* A5 */
+				<6 0 &gpio0 30 0>,	/* D0 */
+				<7 0 &gpio0 29 0>,	/* D1 */
+				<8 0 &gpio0 28 0>,	/* D2 */
+				<9 0 &gpio0 27 0>,	/* D3 */
+				<10 0 &gpio1 0 0>,	/* D4 */
+				<11 0 &gpio1 10 0>,	/* D5 */
+				<12 0 &gpio1 2 0>,	/* D6 */
+				<13 0 &gpio1 8 0>,	/* D7 */
+				<14 0 &gpio1 9 0>,	/* D8 */
+				<15 0 &gpio1 7 0>,	/* D9 */
+				<16 0 &gpio1 6 0>,	/* D10 */
+				<17 0 &gpio1 5 0>,	/* D11 */
+				<18 0 &gpio1 4 0>,	/* D12 */
+				<19 0 &gpio1 3 0>,	/* D13 */
+				<20 0 &gpio0 17 0>,	/* D14 */
+				<21 0 &gpio0 18 0>;	/* D15 */
+	};
+
+	power-states {
+		idle: idle {
+			compatible = "zephyr,power-state";
+			power-state-name = "runtime-idle";
+			min-residency-us = <10>;
+		};
+		suspend: suspend {
+			compatible = "zephyr,power-state";
+			power-state-name = "suspend-to-idle";
+			min-residency-us = <1000>;
+		};
+	};
+};
+
+&cpu0 {
+	cpu-power-states = <&idle &suspend>;
+};
+
+/*
+ * RT600 EVK board uses OS timer as the kernel timer
+ * In case we need to switch to SYSTICK timer, then
+ * replace &os_timer with &systick
+ */
+&os_timer {
+	status = "okay";
 };
 
 &flexcomm0 {
@@ -91,6 +146,52 @@ arduino_spi: &flexcomm5 {
 	#size-cells = <0>;
 	dmas = <&dma0 10>, <&dma0 11>;
 	dma-names = "rx", "tx";
+};
+
+/* I2S receive channel */
+i2s0: &flexcomm1 {
+	status = "okay";
+	compatible = "nxp,lpc-i2s";
+	label = "I2S_0";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	dmas = <&dma0 2>;
+	dma-names = "rx";
+};
+
+/* I2S transmit channel */
+i2s1: &flexcomm3 {
+	status = "okay";
+	compatible = "nxp,lpc-i2s";
+	label = "I2S_1";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	dmas = <&dma0 7>;
+	dma-names = "tx";
+};
+
+&flexspi {
+	reg = <0x50134000 0x4000>, <0x18000000 DT_SIZE_M(64)>;
+	mx25um51345g: mx25um51345g@2 {
+		compatible = "nxp,imx-flexspi-mx25um51345g";
+		size = <536870912>;
+		label = "MX25UM51345G";
+		reg = <2>;
+		spi-max-frequency = <200000000>;
+		status = "okay";
+		jedec-id = [c2 81 3a];
+
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			storage_partition: partition@3f00000 {
+				label = "storage";
+				reg = <0x03f00000 DT_SIZE_M(1)>;
+			};
+		};
+	};
 };
 
 &gpio0 {

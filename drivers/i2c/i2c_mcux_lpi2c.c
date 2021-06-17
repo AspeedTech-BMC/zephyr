@@ -23,7 +23,7 @@ LOG_MODULE_REGISTER(mcux_lpi2c);
 
 struct mcux_lpi2c_config {
 	LPI2C_Type *base;
-	char *clock_name;
+	const struct device *clock_dev;
 	clock_control_subsys_t clock_subsys;
 	void (*irq_config_func)(const struct device *dev);
 	uint32_t bitrate;
@@ -32,6 +32,7 @@ struct mcux_lpi2c_config {
 
 struct mcux_lpi2c_data {
 	lpi2c_master_handle_t handle;
+	struct k_sem lock;
 	struct k_sem device_sync_sem;
 	status_t callback_status;
 };
@@ -40,10 +41,11 @@ static int mcux_lpi2c_configure(const struct device *dev,
 				uint32_t dev_config_raw)
 {
 	const struct mcux_lpi2c_config *config = dev->config;
+	struct mcux_lpi2c_data *data = dev->data;
 	LPI2C_Type *base = config->base;
-	const struct device *clock_dev;
 	uint32_t clock_freq;
 	uint32_t baudrate;
+	int ret;
 
 	if (!(I2C_MODE_MASTER & dev_config_raw)) {
 		return -EINVAL;
@@ -67,17 +69,18 @@ static int mcux_lpi2c_configure(const struct device *dev,
 		return -EINVAL;
 	}
 
-	clock_dev = device_get_binding(config->clock_name);
-	if (clock_dev == NULL) {
-		return -EINVAL;
-	}
-
-	if (clock_control_get_rate(clock_dev, config->clock_subsys,
+	if (clock_control_get_rate(config->clock_dev, config->clock_subsys,
 				   &clock_freq)) {
 		return -EINVAL;
 	}
 
+	ret = k_sem_take(&data->lock, K_FOREVER);
+	if (ret) {
+		return ret;
+	}
+
 	LPI2C_MasterSetBaudRate(base, clock_freq, baudrate);
+	k_sem_give(&data->lock);
 
 	return 0;
 }
@@ -118,11 +121,18 @@ static int mcux_lpi2c_transfer(const struct device *dev, struct i2c_msg *msgs,
 	LPI2C_Type *base = config->base;
 	lpi2c_master_transfer_t transfer;
 	status_t status;
+	int ret = 0;
+
+	ret = k_sem_take(&data->lock, K_FOREVER);
+	if (ret) {
+		return ret;
+	}
 
 	/* Iterate over all the messages */
 	for (int i = 0; i < num_msgs; i++) {
 		if (I2C_MSG_ADDR_10_BITS & msgs->flags) {
-			return -ENOTSUP;
+			ret = -ENOTSUP;
+			break;
 		}
 
 		/* Initialize the transfer descriptor */
@@ -152,7 +162,8 @@ static int mcux_lpi2c_transfer(const struct device *dev, struct i2c_msg *msgs,
 		 */
 		if (status != kStatus_Success) {
 			LPI2C_MasterTransferAbort(base, &data->handle);
-			return -EIO;
+			ret = -EIO;
+			break;
 		}
 
 		/* Wait for the transfer to complete */
@@ -163,20 +174,24 @@ static int mcux_lpi2c_transfer(const struct device *dev, struct i2c_msg *msgs,
 		 */
 		if (data->callback_status != kStatus_Success) {
 			LPI2C_MasterTransferAbort(base, &data->handle);
-			return -EIO;
+			ret = -EIO;
+			break;
 		}
 		if (msgs->len == 0) {
 			k_busy_wait(SCAN_DELAY_US(config->bitrate));
 			if (0 != (base->MSR & LPI2C_MSR_NDF_MASK)) {
 				LPI2C_MasterTransferAbort(base, &data->handle);
-				return -EIO;
+				ret = -EIO;
+				break;
 			}
 		}
 		/* Move to the next message */
 		msgs++;
 	}
 
-	return 0;
+	k_sem_give(&data->lock);
+
+	return ret;
 }
 
 static void mcux_lpi2c_isr(const struct device *dev)
@@ -193,19 +208,13 @@ static int mcux_lpi2c_init(const struct device *dev)
 	const struct mcux_lpi2c_config *config = dev->config;
 	struct mcux_lpi2c_data *data = dev->data;
 	LPI2C_Type *base = config->base;
-	const struct device *clock_dev;
 	uint32_t clock_freq, bitrate_cfg;
 	lpi2c_master_config_t master_config;
 	int error;
 
-	k_sem_init(&data->device_sync_sem, 0, UINT_MAX);
-
-	clock_dev = device_get_binding(config->clock_name);
-	if (clock_dev == NULL) {
-		return -EINVAL;
-	}
-
-	if (clock_control_get_rate(clock_dev, config->clock_subsys,
+	k_sem_init(&data->lock, 1, 1);
+	k_sem_init(&data->device_sync_sem, 0, K_SEM_MAX_LIMIT);
+	if (clock_control_get_rate(config->clock_dev, config->clock_subsys,
 				   &clock_freq)) {
 		return -EINVAL;
 	}
@@ -239,7 +248,7 @@ static const struct i2c_driver_api mcux_lpi2c_driver_api = {
 									\
 	static const struct mcux_lpi2c_config mcux_lpi2c_config_##n = {	\
 		.base = (LPI2C_Type *)DT_INST_REG_ADDR(n),		\
-		.clock_name = DT_INST_CLOCKS_LABEL(n),			\
+		.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(n)),	\
 		.clock_subsys =						\
 			(clock_control_subsys_t)DT_INST_CLOCKS_CELL(n, name),\
 		.irq_config_func = mcux_lpi2c_config_func_##n,		\
@@ -251,7 +260,7 @@ static const struct i2c_driver_api mcux_lpi2c_driver_api = {
 									\
 	static struct mcux_lpi2c_data mcux_lpi2c_data_##n;		\
 									\
-	DEVICE_DT_INST_DEFINE(n, &mcux_lpi2c_init, device_pm_control_nop,\
+	DEVICE_DT_INST_DEFINE(n, &mcux_lpi2c_init, NULL,		\
 			    &mcux_lpi2c_data_##n,			\
 			    &mcux_lpi2c_config_##n, POST_KERNEL,	\
 			    CONFIG_KERNEL_INIT_PRIORITY_DEVICE,		\

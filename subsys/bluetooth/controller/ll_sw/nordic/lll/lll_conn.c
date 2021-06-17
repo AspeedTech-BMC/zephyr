@@ -78,7 +78,7 @@ static uint8_t force_md_cnt;
 #define FORCE_MD_CNT_SET() \
 		do { \
 			if (force_md_cnt || \
-			    (trx_cnt >= ((CONFIG_BT_CTLR_TX_BUFFERS) - 1))) { \
+			    (trx_cnt >= ((CONFIG_BT_BUF_ACL_TX_COUNT) - 1))) { \
 				force_md_cnt = BT_CTLR_FORCE_MD_COUNT; \
 			} \
 		} while (0)
@@ -136,6 +136,7 @@ void lll_conn_prepare_reset(void)
 
 void lll_conn_abort_cb(struct lll_prepare_param *prepare_param, void *param)
 {
+	struct lll_conn *lll;
 	int err;
 
 	/* NOTE: This is not a prepare being cancelled */
@@ -154,6 +155,10 @@ void lll_conn_abort_cb(struct lll_prepare_param *prepare_param, void *param)
 	 */
 	err = lll_hfclock_off();
 	LL_ASSERT(err >= 0);
+
+	/* Accumulate the latency as event is aborted while being in pipeline */
+	lll = prepare_param->param;
+	lll->latency_prepare += (prepare_param->lazy + 1);
 
 	lll_done(param);
 }
@@ -339,6 +344,7 @@ lll_conn_isr_rx_exit:
 	if (is_rx_enqueue) {
 #if defined(CONFIG_SOC_COMPATIBLE_NRF52832) && \
 	defined(CONFIG_BT_CTLR_LE_ENC) && \
+	defined(HAL_RADIO_PDU_LEN_MAX) && \
 	(!defined(CONFIG_BT_CTLR_DATA_LENGTH_MAX) || \
 	 (CONFIG_BT_CTLR_DATA_LENGTH_MAX < (HAL_RADIO_PDU_LEN_MAX - 4)))
 		if (lll->enc_rx) {
@@ -349,6 +355,8 @@ lll_conn_isr_rx_exit:
 			memcpy((void *)pdu_data_rx->lldata,
 			       (void *)pkt_decrypt_data, pdu_data_rx->len);
 		}
+#elif !defined(HAL_RADIO_PDU_LEN_MAX)
+#error "Undefined HAL_RADIO_PDU_LEN_MAX."
 #endif
 
 		ull_pdu_rx_alloc();
@@ -489,10 +497,13 @@ void lll_conn_rx_pkt_set(struct lll_conn *lll)
 		radio_pkt_configure(8, (max_rx_octets + 4), (phy << 1) | 0x01);
 
 #if defined(CONFIG_SOC_COMPATIBLE_NRF52832) && \
+	defined(HAL_RADIO_PDU_LEN_MAX) && \
 	(!defined(CONFIG_BT_CTLR_DATA_LENGTH_MAX) || \
 	 (CONFIG_BT_CTLR_DATA_LENGTH_MAX < (HAL_RADIO_PDU_LEN_MAX - 4)))
 		radio_pkt_rx_set(radio_ccm_rx_pkt_set(&lll->ccm_rx, phy,
 						      radio_pkt_decrypt_get()));
+#elif !defined(HAL_RADIO_PDU_LEN_MAX)
+#error "Undefined HAL_RADIO_PDU_LEN_MAX."
 #else
 		radio_pkt_rx_set(radio_ccm_rx_pkt_set(&lll->ccm_rx, phy,
 						      node_rx->pdu));
@@ -673,6 +684,7 @@ static inline int isr_rx_pdu(struct lll_conn *lll, struct pdu_data *pdu_data_rx,
 {
 #if defined(CONFIG_SOC_COMPATIBLE_NRF52832) && \
 	defined(CONFIG_BT_CTLR_LE_ENC) && \
+	defined(HAL_RADIO_PDU_LEN_MAX) && \
 	(!defined(CONFIG_BT_CTLR_DATA_LENGTH_MAX) || \
 	 (CONFIG_BT_CTLR_DATA_LENGTH_MAX < (HAL_RADIO_PDU_LEN_MAX - 4)))
 	if (lll->enc_rx) {
@@ -682,6 +694,8 @@ static inline int isr_rx_pdu(struct lll_conn *lll, struct pdu_data *pdu_data_rx,
 		memcpy((void *)pdu_data_rx, (void *)pkt_decrypt,
 		       offsetof(struct pdu_data, lldata));
 	}
+#elif !defined(HAL_RADIO_PDU_LEN_MAX)
+#error "Undefined HAL_RADIO_PDU_LEN_MAX."
 #endif
 
 	/* Ack for tx-ed data */
@@ -755,6 +769,8 @@ static inline int isr_rx_pdu(struct lll_conn *lll, struct pdu_data *pdu_data_rx,
 				*tx_release = tx;
 
 				FORCE_MD_CNT_SET();
+			} else {
+				LL_ASSERT(0);
 			}
 
 			if (IS_ENABLED(CONFIG_BT_CENTRAL) && !lll->role &&

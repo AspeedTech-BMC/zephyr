@@ -21,6 +21,7 @@
 			device_type = "cpu";
 			compatible = "arm,cortex-m4f";
 			reg = <0>;
+			swo-ref-frequency = <32000000>;
 		};
 	};
 
@@ -393,7 +394,8 @@
 			reg = <0x40001000 0x1000>;
 			interrupts = <1 NRF_DEFAULT_IRQ_PRIORITY>;
 			status = "okay";
-			dfe-ant-num = <0>;
+			dfe-antenna-num = <0>;
+			dfe-pdu-antenna = <0xFF>;
 		};
 	};
 

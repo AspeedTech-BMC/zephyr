@@ -40,6 +40,8 @@ source "subsys/logging/Kconfig.template.log_config"
 
 source "drivers/adc/Kconfig.aspeed"
 
+source "drivers/adc/Kconfig.it8xxx2"
+
 source "drivers/adc/Kconfig.mcux"
 
 source "drivers/adc/Kconfig.nrfx"
@@ -57,5 +59,9 @@ source "drivers/adc/Kconfig.lmp90xxx"
 source "drivers/adc/Kconfig.mcp320x"
 
 source "drivers/adc/Kconfig.npcx"
+
+source "drivers/adc/Kconfig.cc32xx"
+
+source "drivers/adc/Kconfig.adc_emul"
 
 endif # ADC

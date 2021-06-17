@@ -78,50 +78,55 @@ void arch_new_thread(struct k_thread *thread, k_thread_stack_t *stack,
 		     void *p1, void *p2, void *p3);
 
 #ifdef CONFIG_USE_SWITCH
-/**
- * Cooperatively context switch
+/** Cooperative context switch primitive
  *
- * Architectures have considerable leeway on what the specific semantics of
- * the switch handles are, but optimal implementations should do the following
- * if possible:
+ * The action of arch_switch() should be to switch to a new context
+ * passed in the first argument, and save a pointer to the current
+ * context into the address passed in the second argument.
  *
- * 1) Push all thread state relevant to the context switch to the current stack
- * 2) Update the switched_from parameter to contain the current stack pointer,
- *    after all context has been saved. switched_from is used as an output-
- *    only parameter and its current value is ignored (and can be NULL, see
- *    below).
- * 3) Set the stack pointer to the value provided in switch_to
- * 4) Pop off all thread state from the stack we switched to and return.
+ * The actual type and interpretation of the switch handle is specified
+ * by the architecture.  It is the same data structure stored in the
+ * "switch_handle" field of a newly-created thread in arch_new_thread(),
+ * and passed to the kernel as the "interrupted" argument to
+ * z_get_next_switch_handle().
  *
- * Some arches may implement thread->switch handle as a pointer to the
- * thread itself, and save context somewhere in thread->arch. In this
- * case, on initial context switch from the dummy thread,
- * thread->switch handle for the outgoing thread is NULL. Instead of
- * dereferencing switched_from all the way to get the thread pointer,
- * subtract ___thread_t_switch_handle_OFFSET to obtain the thread
- * pointer instead.  That is, such a scheme would have behavior like
- * (in C pseudocode):
+ * Note that on SMP systems, the kernel uses the store through the
+ * second pointer as a synchronization point to detect when a thread
+ * context is completely saved (so another CPU can know when it is
+ * safe to switch).  This store must be done AFTER all relevant state
+ * is saved, and must include whatever memory barriers or cache
+ * management code is required to be sure another CPU will see the
+ * result correctly.
  *
- * void arch_switch(void *switch_to, void **switched_from)
- * {
- *     struct k_thread *new = switch_to;
- *     struct k_thread *old = CONTAINER_OF(switched_from, struct k_thread,
- *                                         switch_handle);
+ * The simplest implementation of arch_switch() is generally to push
+ * state onto the thread stack and use the resulting stack pointer as the
+ * switch handle.  Some architectures may instead decide to use a pointer
+ * into the thread struct as the "switch handle" type.  These can legally
+ * assume that the second argument to arch_switch() is the address of the
+ * switch_handle field of struct thread_base and can use an offset on
+ * this value to find other parts of the thread struct.  For example a (C
+ * pseudocode) implementation of arch_switch() might look like:
  *
- *     // save old context...
- *     *switched_from = old;
- *     // restore new context...
- * }
+ *   void arch_switch(void *switch_to, void **switched_from)
+ *   {
+ *       struct k_thread *new = switch_to;
+ *       struct k_thread *old = CONTAINER_OF(switched_from, struct k_thread,
+ *                                           switch_handle);
  *
- * Note that, regardless of the underlying handle representation, the
- * incoming switched_from pointer MUST be written through with a
- * non-NULL value after all relevant thread state has been saved.  The
- * kernel uses this as a synchronization signal to be able to wait for
- * switch completion from another CPU.
+ *       // save old context...
+ *       *switched_from = old;
+ *       // restore new context...
+ *   }
+ *
+ * Note that the kernel manages the switch_handle field for
+ * synchronization as described above.  So it is not legal for
+ * architecture code to assume that it has any particular value at any
+ * other time.  In particular it is not legal to read the field from the
+ * address passed in the second argument.
  *
  * @param switch_to Incoming thread's switch handle
  * @param switched_from Pointer to outgoing thread's switch handle storage
- *        location, which may be updated.
+ *        location, which must be updated.
  */
 static inline void arch_switch(void *switch_to, void **switched_from);
 #else
@@ -180,6 +185,25 @@ void arch_switch_to_main_thread(struct k_thread *main_thread, char *stack_ptr,
  * @retval -EINVAL If the floating point disabling could not be performed.
  */
 int arch_float_disable(struct k_thread *thread);
+
+/**
+ * @brief Enable floating point context preservation
+ *
+ * The function is used to enable the preservation of floating
+ * point context information for a particular thread.
+ * This API depends on each architecture implimentation. If the architecture
+ * does not support enableing, this API will always be failed.
+ *
+ * The @a options parameter indicates which floating point register sets will
+ * be used by the specified thread. Currently it is used by x86 only.
+ *
+ * @param thread  ID of thread.
+ * @param options architecture dependent options
+ *
+ * @retval 0       On success.
+ * @retval -EINVAL If the floating point enabling could not be performed.
+ */
+int arch_float_enable(struct k_thread *thread, unsigned int options);
 #endif /* CONFIG_FPU && CONFIG_FPU_SHARING */
 
 /** @} */
@@ -251,12 +275,12 @@ static inline bool arch_is_in_isr(void);
  * This API is part of infrastructure still under development and may
  * change.
  *
- * @param dest Page-aligned Destination virtual address to map
- * @param addr Page-aligned Source physical address to map
+ * @param virt Page-aligned Destination virtual address to map
+ * @param phys Page-aligned Source physical address to map
  * @param size Page-aligned size of the mapped memory region in bytes
  * @param flags Caching, access and control flags, see K_MAP_* macros
  */
-void arch_mem_map(void *dest, uintptr_t addr, size_t size, uint32_t flags);
+void arch_mem_map(void *virt, uintptr_t phys, size_t size, uint32_t flags);
 
 /**
  * Remove mappings for a provided virtual address range
@@ -285,6 +309,29 @@ void arch_mem_map(void *dest, uintptr_t addr, size_t size, uint32_t flags);
  * @param size Page-aligned region size
  */
 void arch_mem_unmap(void *addr, size_t size);
+
+/**
+ * Get the mapped physical memory address from virtual address.
+ *
+ * The function only needs to query the current set of page tables as
+ * the information it reports must be common to all of them if multiple
+ * page tables are in use. If multiple page tables are active it is unnecessary
+ * to iterate over all of them.
+ *
+ * Unless otherwise specified, virtual pages have the same mappings
+ * across all page tables. Calling this function on data pages that are
+ * exceptions to this rule (such as the scratch page) is undefined behavior.
+ * Just check the currently installed page tables and return the information
+ * in that.
+ *
+ * @param virt Page-aligned virtual address
+ * @param[out] phys Mapped physical address (can be NULL if only checking
+ *                  if virtual address is mapped)
+ *
+ * @retval 0 if mapping is found and valid
+ * @retval -EFAULT if virtual address is not mapped
+ */
+int arch_page_phys_get(void *virt, uintptr_t *phys);
 
 #ifdef CONFIG_ARCH_HAS_RESERVED_PAGE_FRAMES
 /**

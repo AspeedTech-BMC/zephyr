@@ -1,5 +1,14 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
+#if defined(CONFIG_NETWORKING)
+#ifndef NETWORK_RAM_SECTIONS
+#define NETWORK_RAM_SECTIONS \
+	Z_ITERABLE_SECTION_RAM(net_if, 4) \
+	Z_ITERABLE_SECTION_RAM(net_if_dev, 4) \
+	Z_ITERABLE_SECTION_RAM(net_l2, 4)
+#endif
+#endif /* NETWORKING */
+
 #if defined(CONFIG_GEN_SW_ISR_TABLE) && defined(CONFIG_DYNAMIC_INTERRUPTS)
 	SECTION_DATA_PROLOGUE(sw_isr_table,,)
 	{
@@ -11,33 +20,6 @@
 		. = ALIGN(CONFIG_ARCH_SW_ISR_TABLE_ALIGN);
 		*(_SW_ISR_TABLE_SECTION_SYMS)
 	} GROUP_DATA_LINK_IN(RAMABLE_REGION, ROMABLE_REGION)
-#endif
-
-/*
- * Space for storing per device init status and busy bitmap in case PM is
- * enabled. Since we do not know beforehand the number of devices,
- * we go through the below mechanism to allocate the required space.
- * Both are made of 1 bit per-device instance, so we compute the size of
- * of an entire bitfield, aligned on 32bits.
- */
-#define DEVICE_COUNT \
-	((__device_end - __device_start) / _DEVICE_STRUCT_SIZEOF)
-#define DEVICE_BITFIELD_SIZE	(((DEVICE_COUNT + 31) / 32) * 4)
-
-#define DEVICE_INIT_STATUS_BITFIELD() 		\
-		FILL(0x00);			\
-		__device_init_status_start = .; \
-		. = . + DEVICE_BITFIELD_SIZE;	\
-		__device_init_status_end = .;
-
-#ifdef CONFIG_PM_DEVICE
-#define DEVICE_BUSY_BITFIELD()			\
-		FILL(0x00);			\
-		__device_busy_start = .;	\
-		. = . + DEVICE_BITFIELD_SIZE;	\
-		__device_busy_end = .;
-#else
-#define DEVICE_BUSY_BITFIELD()
 #endif
 
 	SECTION_DATA_PROLOGUE(devices,,)
@@ -53,9 +35,16 @@
 		CREATE_OBJ_LEVEL(device, APPLICATION)
 		CREATE_OBJ_LEVEL(device, SMP)
 		__device_end = .;
-		DEVICE_INIT_STATUS_BITFIELD()
-		DEVICE_BUSY_BITFIELD()
 	} GROUP_DATA_LINK_IN(RAMABLE_REGION, ROMABLE_REGION)
+
+#if CONFIG_PM_DEVICE
+	SECTION_DATA_PROLOGUE(pm_device_slots, (NOLOAD),)
+	{
+		__pm_device_slots_start = .;
+		KEEP(*(".z_pm_device_slots"));
+		__pm_device_slots_end = .;
+	} GROUP_DATA_LINK_IN(RAMABLE_REGION, ROMABLE_REGION)
+#endif
 
 	SECTION_DATA_PROLOGUE(initshell,,)
 	{
@@ -111,9 +100,7 @@
 	} GROUP_DATA_LINK_IN(RAMABLE_REGION, ROMABLE_REGION)
 
 #if defined(CONFIG_NETWORKING)
-	Z_ITERABLE_SECTION_RAM(net_if, 4)
-	Z_ITERABLE_SECTION_RAM(net_if_dev, 4)
-	Z_ITERABLE_SECTION_RAM(net_l2, 4)
+	NETWORK_RAM_SECTIONS
 #endif /* NETWORKING */
 
 #if defined(CONFIG_UART_MUX)

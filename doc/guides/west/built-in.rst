@@ -52,10 +52,12 @@ and check out the ``v1.14.0`` release. This command creates
 <west-config>` to ``zephyr`` to record the location of the manifest
 repository in the workspace. The default manifest file location is used.
 
-The ``-m`` option defaults to
-``https://github.com/zephyrproject-rtos/zephyr``. The ``--mr`` option
-defaults to ``master``. The ``--mf`` option defaults to ``west.yml``. If no
-``directory`` is given, the current working directory is used.
+The ``-m`` option defaults to ``https://github.com/zephyrproject-rtos/zephyr``.
+The ``--mf`` option defaults to ``west.yml``. Since west v0.10.1, west will use
+the default branch in the manifest repository unless the ``--mr`` option
+is used to override it. (In prior versions, ``--mr`` defaulted to ``master``.)
+
+If no ``directory`` is given, the current working directory is used.
 
 **Option 2**: to create a workspace around an existing local manifest
 repository, use:
@@ -195,30 +197,44 @@ if you just want to disable a single group, e.g. ``--group-filter=-bar``.
 If a project in the manifest has a ``submodules`` key, the submodules are
 updated as follows, depending on the value of the ``submodules`` key.
 
-If the project has ``submodules: true``, west runs one of the following in
-the project repository, depending on whether you run ``west update``
-with the ``--rebase`` option or without it:
+If the project has ``submodules: true``, west first synchronizes the project's
+submodules with:
+
+.. code-block::
+
+   git submodule sync --recursive
+
+West then runs one of the following in the project repository, depending on
+whether you run ``west update`` with the ``--rebase`` option or without it:
 
 .. code-block::
 
    # without --rebase, e.g. "west update":
-   git submodule update init --checkout --recursive
+   git submodule update --init --checkout --recursive
 
    # with --rebase, e.g. "west update --rebase":
-   git submodule update init --rebase --recursive
+   git submodule update --init --rebase --recursive
 
 Otherwise, the project has ``submodules: <list-of-submodules>``. In this
-case, west runs one of the following in the project repository for each
-submodule path in the list, depending on whether you run ``west update``
-with the ``--rebase`` option or without it:
+case, west synchronizes the project's submodules with:
+
+.. code-block::
+
+   git submodule sync --recursive -- <submodule-path>
+
+Then it updates each submodule in the list as follows, depending on whether you
+run ``west update`` with the ``--rebase`` option or without it:
 
 .. code-block::
 
    # without --rebase, e.g. "west update":
-   git submodule update init --checkout --recursive <submodule-path>
+   git submodule update --init --checkout --recursive <submodule-path>
 
    # with --rebase, e.g. "west update --rebase":
-   git submodule update init --rebase --recursive <submodule-path>
+   git submodule update --init --rebase --recursive <submodule-path>
+
+The ``git submodule sync`` commands are skipped if the
+``update.sync-submodules`` :ref:`west-config` option is false.
 
 .. _west-built-in-misc:
 

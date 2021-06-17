@@ -107,13 +107,6 @@ static uint32_t mcux_pit_get_pending_int(const struct device *dev)
 	return ((flags & mask) == mask);
 }
 
-static uint32_t mcux_pit_get_max_relative_alarm(const struct device *dev)
-{
-	const struct mcux_pit_config *config = dev->config;
-
-	return config->info.max_top_value;
-}
-
 static void mcux_pit_isr(const struct device *dev)
 {
 	const struct mcux_pit_config *config = dev->config;
@@ -208,7 +201,6 @@ static const struct counter_driver_api mcux_pit_driver_api = {
 	.cancel_alarm = mcux_pit_cancel_alarm,
 	.get_pending_int = mcux_pit_get_pending_int,
 	.get_top_value = mcux_pit_get_top_value,
-	.get_max_relative_alarm = mcux_pit_get_max_relative_alarm,
 };
 
 /*
@@ -233,7 +225,7 @@ static const struct mcux_pit_config mcux_pit_config_0 = {
 	.irq_config_func = mcux_pit_irq_config_0,
 };
 
-DEVICE_DT_INST_DEFINE(0, &mcux_pit_init, device_pm_control_nop,
+DEVICE_DT_INST_DEFINE(0, &mcux_pit_init, NULL,
 		    &mcux_pit_data_0, &mcux_pit_config_0, POST_KERNEL,
 		    CONFIG_KERNEL_INIT_PRIORITY_DEVICE, &mcux_pit_driver_api);
 

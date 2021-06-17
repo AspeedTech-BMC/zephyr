@@ -253,21 +253,21 @@ static int gpio_esp32_manage_callback(const struct device *dev,
 	return gpio_manage_callback(&data->cb, callback, set);
 }
 
-static void gpio_esp32_fire_callbacks(const struct device *device)
+static void gpio_esp32_fire_callbacks(const struct device *dev)
 {
-	struct gpio_esp32_data *data = device->data;
+	struct gpio_esp32_data *data = dev->data;
 	uint32_t irq_status = *data->port.irq_status_reg;
 
 	*data->port.irq_ack_reg = irq_status;
 
-	gpio_fire_callbacks(&data->cb, device, irq_status);
+	gpio_fire_callbacks(&data->cb, dev, irq_status);
 }
 
 static void gpio_esp32_isr(const void *param);
 
-static int gpio_esp32_init(const struct device *device)
+static int gpio_esp32_init(const struct device *dev)
 {
-	struct gpio_esp32_data *data = device->data;
+	struct gpio_esp32_data *data = dev->data;
 	static bool isr_connected;
 
 	data->pinmux = DEVICE_DT_GET(DT_NODELABEL(pinmux));
@@ -342,7 +342,7 @@ static struct gpio_esp32_data gpio_1_data = { /* 32..39 */
 	}; \
 	DEVICE_DT_INST_DEFINE(_id,					\
 			    gpio_esp32_init,				\
-			    device_pm_control_nop,			\
+			    NULL,					\
 			    &gpio_##_id##_data, &gpio_##_id##_cfg,	\
 			    POST_KERNEL,				\
 			    CONFIG_KERNEL_INIT_PRIORITY_DEVICE,		\

@@ -433,9 +433,11 @@ static void espi_vw_generic_isr(const struct device *dev, struct npcx_wui *wui)
 		}
 	}
 
-	if (idx == ARRAY_SIZE(vw_in_tbl))
+	if (idx == ARRAY_SIZE(vw_in_tbl)) {
 		LOG_ERR("Unknown VW event! %d %d %d", wui->table,
 				wui->group, wui->bit);
+		return;
+	}
 
 	signal = vw_in_tbl[idx].sig;
 	if (signal == ESPI_VWIRE_SIGNAL_SLP_S3
@@ -841,7 +843,7 @@ static const struct espi_npcx_config espi_npcx_config = {
 	.alts_list = espi_alts,
 };
 
-DEVICE_DT_INST_DEFINE(0, &espi_npcx_init, device_pm_control_nop,
+DEVICE_DT_INST_DEFINE(0, &espi_npcx_init, NULL,
 		    &espi_npcx_data, &espi_npcx_config,
 		    PRE_KERNEL_2, CONFIG_ESPI_INIT_PRIORITY,
 		    &espi_npcx_driver_api);

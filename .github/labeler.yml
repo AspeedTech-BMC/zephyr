@@ -57,9 +57,9 @@
 "area: ARM":
   - "arch/arm/**/*"
   - "include/arch/arm/**/*"
-"area: ARM_64":
-  - "arch/arm/core/aarch64/**/*"
-  - "include/arch/arm/aarch64/**/*"
+"area: ARM64":
+  - "arch/arm64/**/*"
+  - "include/arch/arm64/**/*"
 "area: NIOS2":
   - "arch/nios2/**/*"
   - "include/arch/nios2/**/*"
@@ -102,6 +102,8 @@
   - "**/*bluetooth*"
 "area: Bluetooth Mesh":
   - "subsys/bluetooth/mesh/**/*"
+"area: Bluetooth Audio":
+  - "subsys/bluetooth/audio/**/*"
 "area: Bluetooth Controller":
   - "subsys/bluetooth/controller/**/*"
 "area: Bluetooth Host":
@@ -135,6 +137,11 @@
 "area: Shields":
   - "boards/shields/**"
   - "samples/shields/**"
+"area: Power Management":
+  - "subsys/pm/**/*"
+  - "include/pm/**/*"
+  - "tests/subsys/pm/**/*"
+  - "samples/subsys/pm/**/*"
 "platform: NXP":
   - "boards/arm/frdm*/**"
   - "boards/arm/hexiwear*/**"

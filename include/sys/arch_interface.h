@@ -216,6 +216,14 @@ typedef FUNC_NORETURN void (*arch_cpustart_t)(void *data);
  */
 void arch_start_cpu(int cpu_num, k_thread_stack_t *stack, int sz,
 		    arch_cpustart_t fn, void *arg);
+
+/**
+ * @brief Return CPU power status
+ *
+ * @param cpu_num Integer number of the CPU
+ */
+bool arch_cpu_active(int cpu_num);
+
 /** @} */
 
 
@@ -609,19 +617,6 @@ void arch_mem_domain_partition_remove(struct k_mem_domain *domain,
  */
 void arch_mem_domain_partition_add(struct k_mem_domain *domain,
 				   uint32_t partition_id);
-
-/**
- * @brief Remove the memory domain
- *
- * Architecture-specific hook to manage internal data structures or hardware
- * state when a memory domain has been destroyed.
- *
- * Thread assignments to the memory domain are only cleared after this function
- * runs.
- *
- * @param domain The memory domain structure which needs to be deleted.
- */
-void arch_mem_domain_destroy(struct k_mem_domain *domain);
 #endif /* CONFIG_ARCH_MEM_DOMAIN_SYNCHRONOUS_API */
 
 /**
@@ -825,7 +820,7 @@ void arch_gdb_step(void);
  * @{
  */
 
-#ifdef CONFIG_CACHE_MANAGEMENT
+#if defined(CONFIG_CACHE_MANAGEMENT) && defined(CONFIG_HAS_ARCH_CACHE)
 /**
  *
  * @brief Enable d-cache
@@ -895,7 +890,7 @@ int arch_icache_range(void *addr, size_t size, int op);
  *
  * @brief Get d-cache line size
  *
- * @see sys_dcache_line_size_get
+ * @see sys_cache_data_line_size_get
  */
 size_t arch_dcache_line_size_get(void);
 #endif /* CONFIG_DCACHE_LINE_SIZE_DETECT */
@@ -905,12 +900,12 @@ size_t arch_dcache_line_size_get(void);
  *
  * @brief Get i-cache line size
  *
- * @see sys_icache_line_size_get
+ * @see sys_cache_instr_line_size_get
  */
 size_t arch_icache_line_size_get(void);
 #endif /* CONFIG_ICACHE_LINE_SIZE_DETECT */
 
-#endif /* CONFIG_CACHE_MANAGEMENT */
+#endif /* CONFIG_CACHE_MANAGEMENT && CONFIG_HAS_ARCH_CACHE */
 
 /** @} */
 
@@ -918,7 +913,8 @@ size_t arch_icache_line_size_get(void);
 #include <timing/types.h>
 
 /**
- * @ingroup arch-interface timing_api
+ * @ingroup arch-timing
+ * @{
  */
 
 /**
@@ -1013,7 +1009,7 @@ uint64_t arch_timing_cycles_to_ns_avg(uint64_t cycles, uint32_t count);
  */
 uint32_t arch_timing_freq_get_mhz(void);
 
-/* @} */
+/** @} */
 
 #endif /* CONFIG_TIMING_FUNCTIONS */
 

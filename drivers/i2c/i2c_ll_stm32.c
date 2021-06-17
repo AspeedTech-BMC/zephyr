@@ -43,7 +43,7 @@ int i2c_stm32_runtime_configure(const struct device *dev, uint32_t config)
 	LL_RCC_GetSystemClocksFreq(&rcc_clocks);
 	clock = rcc_clocks.SYSCLK_Frequency;
 #else
-	if (clock_control_get_rate(device_get_binding(STM32_CLOCK_CONTROL_NAME),
+	if (clock_control_get_rate(DEVICE_DT_GET(STM32_CLOCK_CONTROL_NODE),
 			(clock_control_subsys_t *) &cfg->pclken, &clock) < 0) {
 		LOG_ERR("Failed call clock_control_get_rate");
 		return -EIO;
@@ -180,13 +180,13 @@ static const struct i2c_driver_api api_funcs = {
 
 static int i2c_stm32_init(const struct device *dev)
 {
-	const struct device *clock = device_get_binding(STM32_CLOCK_CONTROL_NAME);
+	const struct device *clock = DEVICE_DT_GET(STM32_CLOCK_CONTROL_NODE);
 	const struct i2c_stm32_config *cfg = DEV_CFG(dev);
 	uint32_t bitrate_cfg;
 	int ret;
 	struct i2c_stm32_data *data = DEV_DATA(dev);
 #ifdef CONFIG_I2C_STM32_INTERRUPT
-	k_sem_init(&data->device_sync_sem, 0, UINT_MAX);
+	k_sem_init(&data->device_sync_sem, 0, K_SEM_MAX_LIMIT);
 	cfg->irq_config_func(dev);
 #endif
 
@@ -206,7 +206,6 @@ static int i2c_stm32_init(const struct device *dev)
 	 */
 	k_sem_init(&data->bus_mutex, 1, 1);
 
-	__ASSERT_NO_MSG(clock);
 	if (clock_control_on(clock,
 		(clock_control_subsys_t *) &cfg->pclken) != 0) {
 		LOG_ERR("i2c: failure enabling clock");
@@ -242,9 +241,9 @@ static int i2c_stm32_init(const struct device *dev)
 	}
 #endif /* CONFIG_SOC_SERIES_STM32F3X) || CONFIG_SOC_SERIES_STM32F0X */
 
-#if defined(CONFIG_SOC_STM32F103X8) || defined(CONFIG_SOC_STM32F103XB)
+#if defined(CONFIG_SOC_SERIES_STM32F1X)
 	/*
-	 * Force i2c reset for STM32 (F101X8/B, F102X8/B), F103X8/B.
+	 * Force i2c reset for STM32F1 series.
 	 * So that they can enter master mode properly.
 	 * Issue described in ES096 2.14.7
 	 */
@@ -350,7 +349,7 @@ static const struct i2c_stm32_config i2c_stm32_cfg_##name = {		\
 static struct i2c_stm32_data i2c_stm32_dev_data_##name;			\
 									\
 DEVICE_DT_DEFINE(DT_NODELABEL(name), &i2c_stm32_init,			\
-		    device_pm_control_nop, &i2c_stm32_dev_data_##name,	\
+		    NULL, &i2c_stm32_dev_data_##name,			\
 		    &i2c_stm32_cfg_##name,				\
 		    POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEVICE,	\
 		    &api_funcs);					\

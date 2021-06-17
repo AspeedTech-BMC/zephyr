@@ -410,8 +410,8 @@ static int eswifi_socket_open(int family, int type, int proto)
 	socket->recv_cb = __process_received;
 	socket->recv_data = socket;
 
-	k_delayed_work_submit_to_queue(&eswifi->work_q, &socket->read_work,
-					K_MSEC(500));
+	k_work_reschedule_for_queue(&eswifi->work_q, &socket->read_work,
+				    K_MSEC(500));
 
 unlock:
 	eswifi_unlock(eswifi);
@@ -632,7 +632,7 @@ static int eswifi_off_getaddrinfo(const char *node, const char *service,
 
 	ai->ai_family = AF_INET;
 	ai->ai_socktype = hints ? hints->ai_socktype : SOCK_STREAM;
-	ai->ai_protocol = ai->ai_socktype == SOCK_STREAM ? IPPROTO_UDP : IPPROTO_TCP;
+	ai->ai_protocol = ai->ai_socktype == SOCK_STREAM ? IPPROTO_TCP : IPPROTO_UDP;
 
 	ai_addr->sin_family = ai->ai_family;
 	ai_addr->sin_port = htons(port);

@@ -9,70 +9,109 @@ menu "ARC Options"
 config ARCH
 	default "arc"
 
-choice
-	prompt "ARC core family"
-	default CPU_ARCEM
 
 config CPU_ARCEM
-	bool "ARC EM cores"
-	select CPU_ARCV2
+	bool
 	select ATOMIC_OPERATIONS_C
 	help
 	  This option signifies the use of an ARC EM CPU
 
 config CPU_ARCHS
-	bool "ARC HS cores"
-	select CPU_ARCV2
-	# FIXME: ATOMIC_OPERATIONS_BUILTIN still has some problem in arcmwdt
-	# toolchain, so choosing ATOMIC_OPERATIONS_C instead.
-	select ATOMIC_OPERATIONS_C if "$(ZEPHYR_TOOLCHAIN_VARIANT)" = "arcmwdt"
-	select ATOMIC_OPERATIONS_BUILTIN if "$(ZEPHYR_TOOLCHAIN_VARIANT)" != "arcmwdt"
+	bool
+	select ATOMIC_OPERATIONS_BUILTIN
 	help
 	  This option signifies the use of an ARC HS CPU
 
+
+choice
+	prompt "ARC Instruction Set"
+	default ISA_ARCV2
+
+config ISA_ARCV2
+	bool "ARC ISA v2"
+	select ARCH_HAS_STACK_PROTECTION if ARC_HAS_STACK_CHECKING || (ARC_MPU && ARC_MPU_VER !=2)
+	select ARCH_HAS_USERSPACE if ARC_MPU
+	select USE_SWITCH
+	select USE_SWITCH_SUPPORTED
+	help
+	  v2 ISA for the ARC-HS & ARC-EM cores
+
+config ISA_ARCV3
+	bool "ARC ISA v3"
+	select USE_SWITCH
+	select USE_SWITCH_SUPPORTED
+
 endchoice
+
+if ISA_ARCV2
 
 config CPU_EM4
 	bool
+	select CPU_ARCEM
 	help
 	  If y, the SoC uses an ARC EM4 CPU
 
 config CPU_EM4_DMIPS
 	bool
+	select CPU_ARCEM
 	help
 	  If y, the SoC uses an ARC EM4 DMIPS CPU
 
 config CPU_EM4_FPUS
 	bool
+	select CPU_ARCEM
 	help
 	  If y, the SoC uses an ARC EM4 DMIPS CPU with the single-precision
 	  floating-point extension
 
 config CPU_EM4_FPUDA
 	bool
+	select CPU_ARCEM
 	help
 	  If y, the SoC uses an ARC EM4 DMIPS CPU with single-precision
 	  floating-point and double assist instructions
 
 config CPU_EM6
 	bool
+	select CPU_ARCEM
 	help
 	  If y, the SoC uses an ARC EM6 CPU
+
+config CPU_HS3X
+	bool
+	select CPU_ARCHS
+	help
+	  If y, the SoC uses an ARC HS3x or HS4x CPU
+
+endif #ISA_ARCV2
+
+if ISA_ARCV3
+
+config CPU_HS6X
+	bool
+	select CPU_ARCHS
+	select 64BIT
+	help
+	  If y, the SoC uses an ARC HS6x CPU
+
+endif #ISA_ARCV3
 
 config FP_FPU_DA
 	bool
 
-menu "ARCv2 Family Options"
+menu "ARC CPU Options"
 
-config CPU_ARCV2
+config ARC_HAS_ZOL
 	bool
-	select ARCH_HAS_STACK_PROTECTION if ARC_HAS_STACK_CHECKING || ARC_MPU
-	select ARCH_HAS_USERSPACE if ARC_MPU
-	select USE_SWITCH
-	select USE_SWITCH_SUPPORTED
+	depends on ISA_ARCV2
 	default y
 	help
-	  This option signifies the use of a CPU of the ARCv2 family.
+	  ARCv2 CPUs have ZOL hardware loop mechanism which the ARCv3 ISA drops.
+	  Architecturally ZOL provides
+	  - LPcc instruction
+	  - LP_COUNT core reg
+	  - LP_START, LP_END aux regs
+	  Disabling this option removes usage of ZOL regs from code
 
 config NUM_IRQ_PRIO_LEVELS
 	int "Number of supported interrupt priority levels"
@@ -96,7 +135,7 @@ config NUM_IRQS
 
 config RGF_NUM_BANKS
 	int "Number of General Purpose Register Banks"
-	depends on CPU_ARCV2
+	depends on ARC_FIRQ
 	range 1 2
 	default 2
 	help
@@ -109,6 +148,7 @@ config RGF_NUM_BANKS
 
 config ARC_FIRQ
 	bool "FIRQ enable"
+	depends on ISA_ARCV2
 	default y
 	help
 	  Fast interrupts are supported (FIRQ). If FIRQ enabled, for interrupts
@@ -133,6 +173,7 @@ config ARC_FIRQ_STACK_SIZE
 
 config ARC_HAS_STACK_CHECKING
 	bool "ARC has STACK_CHECKING"
+	depends on ISA_ARCV2
 	default y
 	help
 	  ARC is configured with STACK_CHECKING which is a mechanism for
@@ -219,6 +260,7 @@ config ARC_HAS_ACCL_REGS
 
 config ARC_HAS_SECURE
 	bool "ARC has SecureShield"
+	depends on ISA_ARCV2
 	select CPU_HAS_TEE
 	select ARCH_HAS_TRUSTED_EXECUTION
 	help
@@ -306,3 +348,15 @@ config ARC_EXCEPTION_DEBUG
 	  strings.
 
 endmenu
+
+config MAIN_STACK_SIZE
+	default 4096 if 64BIT
+
+config TEST_EXTRA_STACKSIZE
+	default 1024 if 64BIT
+
+config CMSIS_THREAD_MAX_STACK_SIZE
+	default 1024 if 64BIT
+
+config CMSIS_V2_THREAD_MAX_STACK_SIZE
+	default 1024 if 64BIT

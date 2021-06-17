@@ -197,7 +197,7 @@ struct wncm14a2a_iface_ctx {
 	struct k_sem response_sem;
 
 	/* RSSI work */
-	struct k_delayed_work rssi_query_work;
+	struct k_work_delayable rssi_query_work;
 
 	/* modem data */
 	char mdm_manufacturer[MDM_MANUFACTURER_LENGTH];
@@ -390,7 +390,7 @@ static int send_data(struct wncm14a2a_socket *sock, struct net_pkt *pkt)
 
 	frag = pkt->frags;
 	/* use SOCKWRITE with binary mode formatting */
-	snprintk(buf, sizeof(buf), "AT@SOCKWRITE=%d,%u,1\r",
+	snprintk(buf, sizeof(buf), "AT@SOCKWRITE=%d,%zu,1\r",
 		 sock->socket_id, net_buf_frags_len(frag));
 	mdm_receiver_send(&ictx.mdm_ctx, buf, strlen(buf));
 
@@ -1091,7 +1091,7 @@ static void wncm14a2a_read_rx(struct net_buf **buf)
 					      read_rx_allocator,
 					      &mdm_recv_pool);
 		if (rx_len < bytes_read) {
-			LOG_ERR("Data was lost! read %u of %u!",
+			LOG_ERR("Data was lost! read %u of %zu!",
 				    rx_len, bytes_read);
 		}
 	}
@@ -1145,7 +1145,7 @@ static void wncm14a2a_rx(void)
 
 	while (true) {
 		/* wait for incoming data */
-		k_sem_take(&ictx.mdm_ctx.rx_sem, K_FOREVER);
+		(void)k_sem_take(&ictx.mdm_ctx.rx_sem, K_FOREVER);
 
 		wncm14a2a_read_rx(&rx_buf);
 
@@ -1322,9 +1322,8 @@ static void wncm14a2a_rssi_query_work(struct k_work *work)
 	}
 
 	/* re-start RSSI query work */
-	k_delayed_work_submit_to_queue(&wncm14a2a_workq,
-				       &ictx.rssi_query_work,
-				       K_SECONDS(RSSI_TIMEOUT_SECS));
+	k_work_reschedule_for_queue(&wncm14a2a_workq, &ictx.rssi_query_work,
+				    K_SECONDS(RSSI_TIMEOUT_SECS));
 }
 
 static void wncm14a2a_modem_reset(void)
@@ -1336,7 +1335,7 @@ static void wncm14a2a_modem_reset(void)
 
 restart:
 	/* stop RSSI delay work */
-	k_delayed_work_cancel(&ictx.rssi_query_work);
+	k_work_cancel_delayable(&ictx.rssi_query_work);
 
 	modem_pin_init();
 
@@ -1402,7 +1401,7 @@ restart:
 	       (ictx.mdm_ctx.data_rssi <= -1000 ||
 		ictx.mdm_ctx.data_rssi == 0)) {
 		/* stop RSSI delay work */
-		k_delayed_work_cancel(&ictx.rssi_query_work);
+		k_work_cancel_delayable(&ictx.rssi_query_work);
 		wncm14a2a_rssi_query_work(NULL);
 		k_sleep(K_SECONDS(2));
 	}
@@ -1460,10 +1459,9 @@ static int wncm14a2a_init(const struct device *dev)
 	k_sem_init(&ictx.response_sem, 0, 1);
 
 	/* initialize the work queue */
-	k_work_q_start(&wncm14a2a_workq,
-		       wncm14a2a_workq_stack,
-		       K_KERNEL_STACK_SIZEOF(wncm14a2a_workq_stack),
-		       K_PRIO_COOP(7));
+	k_work_queue_start(&wncm14a2a_workq, wncm14a2a_workq_stack,
+			   K_KERNEL_STACK_SIZEOF(wncm14a2a_workq_stack),
+			   K_PRIO_COOP(7), NULL);
 
 	ictx.last_socket_id = 0;
 
@@ -1503,7 +1501,7 @@ static int wncm14a2a_init(const struct device *dev)
 			NULL, NULL, NULL, K_PRIO_COOP(7), 0, K_NO_WAIT);
 
 	/* init RSSI query */
-	k_delayed_work_init(&ictx.rssi_query_work, wncm14a2a_rssi_query_work);
+	k_work_init_delayable(&ictx.rssi_query_work, wncm14a2a_rssi_query_work);
 
 	wncm14a2a_modem_reset();
 
@@ -1848,7 +1846,8 @@ static struct net_if_api api_funcs = {
 	.init	= offload_iface_init,
 };
 
-NET_DEVICE_OFFLOAD_INIT(modem_wncm14a2a, "MODEM_WNCM14A2A",
-			wncm14a2a_init, device_pm_control_nop, &ictx,
-			NULL, CONFIG_MODEM_WNCM14A2A_INIT_PRIORITY, &api_funcs,
-			MDM_MAX_DATA_LENGTH);
+NET_DEVICE_DT_INST_OFFLOAD_DEFINE(0, wncm14a2a_init, NULL,
+				  &ictx, NULL,
+				  CONFIG_MODEM_WNCM14A2A_INIT_PRIORITY,
+				  &api_funcs,
+				  MDM_MAX_DATA_LENGTH);

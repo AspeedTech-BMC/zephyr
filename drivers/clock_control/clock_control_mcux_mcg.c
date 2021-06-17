@@ -40,6 +40,9 @@ static int mcux_mcg_get_rate(const struct device *dev,
 	case KINETIS_MCG_FIXED_FREQ_CLK:
 		clock_name = kCLOCK_McgFixedFreqClk;
 		break;
+	case KINETIS_MCG_OUT_CLK:
+		*rate = CLOCK_GetOutClkFreq();
+		return 0;
 	default:
 		LOG_ERR("Unsupported clock name");
 		return -EINVAL;
@@ -63,7 +66,7 @@ static const struct clock_control_driver_api mcux_mcg_driver_api = {
 
 DEVICE_DT_INST_DEFINE(0,
 		    &mcux_mcg_init,
-		    device_pm_control_nop,
+		    NULL,
 		    NULL, NULL,
 		    PRE_KERNEL_1, CONFIG_KERNEL_INIT_PRIORITY_DEVICE,
 		    &mcux_mcg_driver_api);

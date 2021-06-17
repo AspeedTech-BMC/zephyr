@@ -127,6 +127,7 @@ static int random_byte_get(void)
 		} else {
 			retval = LL_RNG_ReadRandData32(
 						    entropy_stm32_rng_data.rng);
+			retval &= 0xFF;
 		}
 	}
 
@@ -248,12 +249,12 @@ static void stm32_rng_isr(const void *arg)
 	}
 }
 
-static int entropy_stm32_rng_get_entropy(const struct device *device,
+static int entropy_stm32_rng_get_entropy(const struct device *dev,
 					 uint8_t *buf,
 					 uint16_t len)
 {
 	/* Check if this API is called on correct driver instance. */
-	__ASSERT_NO_MSG(&entropy_stm32_rng_data == DEV_DATA(device));
+	__ASSERT_NO_MSG(&entropy_stm32_rng_data == DEV_DATA(dev));
 
 	while (len) {
 		uint16_t bytes;
@@ -411,8 +412,7 @@ static int entropy_stm32_rng_init(const struct device *dev)
 
 #endif /* CONFIG_SOC_SERIES_STM32L4X */
 
-	dev_data->clock = device_get_binding(STM32_CLOCK_CONTROL_NAME);
-	__ASSERT_NO_MSG(dev_data->clock != NULL);
+	dev_data->clock = DEVICE_DT_GET(STM32_CLOCK_CONTROL_NODE);
 
 	res = clock_control_on(dev_data->clock,
 		(clock_control_subsys_t *)&dev_cfg->pclken);
@@ -449,7 +449,7 @@ static const struct entropy_driver_api entropy_stm32_rng_api = {
 };
 
 DEVICE_DT_INST_DEFINE(0,
-		    entropy_stm32_rng_init, device_pm_control_nop,
+		    entropy_stm32_rng_init, NULL,
 		    &entropy_stm32_rng_data, &entropy_stm32_rng_config,
 		    PRE_KERNEL_1, CONFIG_KERNEL_INIT_PRIORITY_DEVICE,
 		    &entropy_stm32_rng_api);

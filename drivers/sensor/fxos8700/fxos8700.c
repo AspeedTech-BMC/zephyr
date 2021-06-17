@@ -497,7 +497,7 @@ static int fxos8700_init(const struct device *dev)
 		return -EIO;
 	}
 
-	k_sem_init(&data->sem, 0, UINT_MAX);
+	k_sem_init(&data->sem, 0, K_SEM_MAX_LIMIT);
 
 #if CONFIG_FXOS8700_TRIGGER
 	if (fxos8700_trigger_init(dev)) {
@@ -618,7 +618,7 @@ static const struct sensor_driver_api fxos8700_driver_api = {
 									\
 	DEVICE_DT_INST_DEFINE(n,					\
 			    fxos8700_init,				\
-			    device_pm_control_nop,			\
+			    NULL,					\
 			    &fxos8700_data_##n,				\
 			    &fxos8700_config_##n,			\
 			    POST_KERNEL,				\

@@ -10,11 +10,9 @@ module-str = kernel
 source "subsys/logging/Kconfig.template.log_config"
 
 config MULTITHREADING
-	bool "Multi-threading (DEPRECATED)"
+	bool "Multi-threading" if ARCH_HAS_SINGLE_THREAD_SUPPORT
 	default y
 	help
-	  Disabling this option is DEPRECATED.
-
 	  If disabled, only the main thread is available, so a main() function
 	  must be provided. Interrupts are available. Kernel objects will most
 	  probably not behave as expected, especially with regards to pending,
@@ -24,11 +22,6 @@ config MULTITHREADING
 	  Many drivers and subsystems will not work with this option
 	  set to 'n'; disable only when you REALLY know what you are
 	  doing.
-
-if !MULTITHREADING
-comment "*** WARNING ***"
-comment "Single threaded mode (MULTITHREADING option disabled) is deprecated"
-endif
 
 config NUM_COOP_PRIORITIES
 	int "Number of coop priorities" if MULTITHREADING
@@ -97,7 +90,11 @@ config PREEMPT_ENABLED
 
 config PRIORITY_CEILING
 	int "Priority inheritance ceiling"
-	default 0
+	default -127
+	help
+	  This defines the minimum priority value (i.e. the logically
+	  highest priority) that a thread will acquire as part of
+	  k_mutex priority inheritance.
 
 config NUM_METAIRQ_PRIORITIES
 	int "Number of very-high priority 'preemptor' threads"
@@ -332,20 +329,21 @@ config BOOT_DELAY
 	  all serial ports have DCD.
 
 config THREAD_MONITOR
-	bool "Thread monitoring [EXPERIMENTAL]"
+	bool "Thread monitoring"
 	help
 	  This option instructs the kernel to maintain a list of all threads
 	  (excluding those that have not yet started or have already
 	  terminated).
 
 config THREAD_NAME
-	bool "Thread name [EXPERIMENTAL]"
+	bool "Thread name"
 	help
 	  This option allows to set a name for a thread.
 
 config THREAD_MAX_NAME_LEN
 	int "Max length of a thread name"
 	default 32
+	default 64 if ZTEST
 	range 8 128
 	depends on THREAD_NAME
 	help
@@ -369,7 +367,7 @@ if THREAD_RUNTIME_STATS
 
 config THREAD_RUNTIME_STATS_USE_TIMING_FUNCTIONS
 	bool "Use timing functions to gather statistics"
-	select TIMING_FUNCTIONS
+	select TIMING_FUNCTIONS_NEED_AT_BOOT
 	help
 	  Use timing functions to gather thread runtime statistics.
 
@@ -396,6 +394,15 @@ config SYSTEM_WORKQUEUE_PRIORITY
 	  priority. This means that any work handler, once started, won't
 	  be preempted by any other thread until finished.
 
+config SYSTEM_WORKQUEUE_NO_YIELD
+	bool "Select whether system work queue yields"
+	help
+	  By default, the system work queue yields between each work item, to
+	  prevent other threads from being starved.  Selecting this removes
+	  this yield, which may be useful if the work queue thread is
+	  cooperative and a sequence of work items is expected to complete
+	  without yielding.
+
 endmenu
 
 menu "Atomic Operations"
@@ -406,7 +413,7 @@ config ATOMIC_OPERATIONS_BUILTIN
 	  the preferred method. However, support for all arches in GCC is
 	  incomplete.
 
-config ATOMIC_OPERATIONS_CUSTOM
+config ATOMIC_OPERATIONS_ARCH
 	bool
 	help
 	  Use when there isn't support for compiler built-ins, but you have
@@ -553,7 +560,7 @@ config SYS_CLOCK_TICKS_PER_SEC
 
 	  For asynchronous timekeeping, the kernel defines a "ticks" concept. A
 	  "tick" is the internal count in which the kernel does all its internal
-	  uptime and timeout bookeeping. Interrupts are expected to be delivered
+	  uptime and timeout bookkeeping. Interrupts are expected to be delivered
 	  on tick boundaries to the extent practical, and no fractional ticks
 	  are tracked.
 
@@ -744,7 +751,6 @@ config ARCH_MEM_DOMAIN_SYNCHRONOUS_API
 	  arch_mem_domain_thread_remove
 	  arch_mem_domain_partition_remove
 	  arch_mem_domain_partition_add
-	  arch_mem_domain_destroy
 
 	  It's important to note that although supervisor threads can be
 	  members of memory domains, they have no implications on supervisor
@@ -783,6 +789,14 @@ config SMP
 	help
 	  When true, kernel will be built with SMP support, allowing
 	  more than one CPU to schedule Zephyr tasks at a time.
+
+config SMP_BOOT_DELAY
+	bool "Delay booting secondary cores"
+	depends on SMP
+	help
+	  By default Zephyr will boot all available CPUs during start up.
+	  Select this option to skip this and allow architecture code boot
+	  secondary CPUs at a later time.
 
 config MP_NUM_CPUS
 	int "Number of CPUs/cores"
@@ -831,27 +845,6 @@ config KERNEL_COHERENCE
 	  mistakes, but not all circumstances can be tested.
 
 endmenu
-
-config TICKLESS_IDLE
-	# NB: This option is deprecated, see TICKLESS_KERNEL and
-	# https://github.com/zephyrproject-rtos/zephyr/pull/12234
-	bool "Tickless idle"
-	default y if PM || TICKLESS_CAPABLE
-	help
-	  This option suppresses periodic system clock interrupts whenever the
-	  kernel becomes idle. This permits the system to remain in a power
-	  saving state for extended periods without having to wake up to
-	  service each tick as it occurs.
-
-config TICKLESS_IDLE_THRESH
-	int "Tickless idle threshold"
-	default 3
-	depends on TICKLESS_IDLE
-	help
-	  This option enables clock interrupt suppression when the kernel idles
-	  for only a short period of time. It specifies the minimum number of
-	  ticks that must occur before the next kernel timer expires in order
-	  for suppression to happen.
 
 config TICKLESS_KERNEL
 	bool "Tickless kernel"

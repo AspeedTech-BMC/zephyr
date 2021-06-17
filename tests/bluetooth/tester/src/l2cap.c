@@ -19,15 +19,20 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #include "bttester.h"
 
 #define CONTROLLER_INDEX 0
-#define DATA_MTU 264
+#define DATA_MTU 256
+#define DATA_BUF_SIZE BT_L2CAP_SDU_BUF_SIZE(DATA_MTU)
 #define CHANNELS 2
 #define SERVERS 1
 
-NET_BUF_POOL_FIXED_DEFINE(data_pool, 1, DATA_MTU, NULL);
+NET_BUF_POOL_FIXED_DEFINE(data_pool, CHANNELS, DATA_BUF_SIZE, NULL);
+
+static bool authorize_flag;
+static uint8_t req_keysize;
 
 static struct channel {
 	uint8_t chan_id; /* Internal number that identifies L2CAP channel. */
 	struct bt_l2cap_le_chan le;
+	bool in_use;
 } channels[CHANNELS];
 
 /* TODO Extend to support multiple servers */
@@ -38,7 +43,7 @@ static struct net_buf *alloc_buf_cb(struct bt_l2cap_chan *chan)
 	return net_buf_alloc(&data_pool, K_FOREVER);
 }
 
-static uint8_t recv_cb_buf[DATA_MTU + sizeof(struct l2cap_data_received_ev)];
+static uint8_t recv_cb_buf[DATA_BUF_SIZE + sizeof(struct l2cap_data_received_ev)];
 
 static int recv_cb(struct bt_l2cap_chan *l2cap_chan, struct net_buf *buf)
 {
@@ -127,12 +132,14 @@ static struct channel *get_free_channel()
 	struct channel *chan;
 
 	for (i = 0U; i < CHANNELS; i++) {
-		if (channels[i].le.chan.state != BT_L2CAP_DISCONNECTED) {
+		if (channels[i].in_use) {
 			continue;
 		}
 
 		chan = &channels[i];
 		chan->chan_id = i;
+
+		channels[i].in_use = true;
 
 		return chan;
 	}
@@ -140,17 +147,20 @@ static struct channel *get_free_channel()
 	return NULL;
 }
 
+
 static void connect(uint8_t *data, uint16_t len)
 {
 	const struct l2cap_connect_cmd *cmd = (void *) data;
 	struct l2cap_connect_rp *rp;
 	struct bt_conn *conn;
-	struct channel *chan;
+	struct channel *chan = NULL;
+	struct bt_l2cap_chan *allocated_channels[5] = {};
 	uint16_t mtu = sys_le16_to_cpu(cmd->mtu);
-	uint8_t buf[sizeof(*rp) + 1];
+	uint8_t buf[sizeof(*rp) + CHANNELS];
+	uint8_t i = 0;
 	int err;
 
-	if (cmd->num > 1 || mtu > DATA_MTU) {
+	if (cmd->num > CHANNELS || mtu > DATA_MTU) {
 		goto fail;
 	}
 
@@ -159,29 +169,50 @@ static void connect(uint8_t *data, uint16_t len)
 		goto fail;
 	}
 
-	chan = get_free_channel();
-	if (!chan) {
-		goto fail;
-	}
-
-	chan->le.chan.ops = &l2cap_ops;
-	chan->le.rx.mtu = mtu;
-
-	err = bt_l2cap_chan_connect(conn, &chan->le.chan, cmd->psm);
-	if (err < 0) {
-		goto fail;
-	}
-
 	rp = (void *)buf;
-	rp->num = 1U;
-	rp->chan_id[0] = chan->chan_id;
+
+	for (i = 0U; i < cmd->num; i++) {
+		chan = get_free_channel();
+		if (!chan) {
+			goto fail;
+		}
+		chan->le.chan.ops = &l2cap_ops;
+		chan->le.rx.mtu = mtu;
+		rp->chan_id[i] = chan->chan_id;
+		allocated_channels[i] = &chan->le.chan;
+	}
+
+	if (cmd->num == 1) {
+		err = bt_l2cap_chan_connect(conn, &chan->le.chan, cmd->psm);
+		if (err < 0) {
+			goto fail;
+		}
+	} else if (cmd->num > 1) {
+#if defined(CONFIG_BT_L2CAP_ECRED)
+		err = bt_l2cap_ecred_chan_connect(conn, allocated_channels,
+							cmd->psm);
+		if (err < 0) {
+			goto fail;
+		}
+#endif
+	} else {
+		LOG_ERR("Invalid 'num' parameter value");
+		goto fail;
+	}
+
+	rp->num = cmd->num;
 
 	tester_send(BTP_SERVICE_ID_L2CAP, L2CAP_CONNECT, CONTROLLER_INDEX,
-		    (uint8_t *)rp, sizeof(buf));
+		    (uint8_t *)rp, sizeof(*rp) + rp->num);
 
 	return;
 
 fail:
+	for (i = 0U; i < ARRAY_SIZE(allocated_channels); i++) {
+		if (allocated_channels[i]) {
+			channels[allocated_channels[i]->ident].in_use = false;
+		}
+	}
 	tester_rsp(BTP_SERVICE_ID_L2CAP, L2CAP_CONNECT, CONTROLLER_INDEX,
 		   BTP_STATUS_FAILED);
 }
@@ -215,7 +246,7 @@ static void send_data(uint8_t *data, uint16_t len)
 	uint16_t data_len = sys_le16_to_cpu(cmd->data_len);
 
 	/* FIXME: For now, fail if data length exceeds buffer length */
-	if (data_len > DATA_MTU - BT_L2CAP_CHAN_SEND_RESERVE) {
+	if (data_len > DATA_MTU) {
 		goto fail;
 	}
 
@@ -225,7 +256,7 @@ static void send_data(uint8_t *data, uint16_t len)
 	}
 
 	buf = net_buf_alloc(&data_pool, K_FOREVER);
-	net_buf_reserve(buf, BT_L2CAP_CHAN_SEND_RESERVE);
+	net_buf_reserve(buf, BT_L2CAP_SDU_CHAN_SEND_RESERVE);
 
 	net_buf_add_mem(buf, cmd->data, data_len);
 	ret = bt_l2cap_chan_send(&chan->le.chan, buf);
@@ -281,6 +312,19 @@ static int accept(struct bt_conn *conn, struct bt_l2cap_chan **l2cap_chan)
 		return -ENOMEM;
 	}
 
+	if (bt_conn_enc_key_size(conn) < req_keysize) {
+		/* TSPX_psm_encryption_key_size_required */
+		req_keysize = 0;
+		return -EPERM;
+	} else if (authorize_flag) {
+		/* TSPX_psm_authorization_required
+		 * we never authorize this connection, so return error
+		 * everytime this psm is used
+		 */
+		authorize_flag = false;
+		return -EACCES;
+	}
+
 	chan->le.chan.ops = &l2cap_ops;
 	chan->le.rx.mtu = DATA_MTU;
 
@@ -310,7 +354,10 @@ static void listen(uint8_t *data, uint16_t len)
 
 	if (server->psm == 0x00F4) {
 		/* TSPX_psm_encryption_key_size_required */
-		server->sec_level = BT_SECURITY_L4;
+		req_keysize = 16;
+	} else if (server->psm == 0x00F3) {
+		/* TSPX_psm_authentication_required */
+		authorize_flag = true;
 	} else if (server->psm == 0x00F2) {
 		/* TSPX_psm_authentication_required */
 		server->sec_level = BT_SECURITY_L3;

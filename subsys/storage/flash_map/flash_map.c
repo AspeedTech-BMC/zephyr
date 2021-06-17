@@ -80,7 +80,7 @@ void flash_area_close(const struct flash_area *fa)
 static inline bool is_in_flash_area_bounds(const struct flash_area *fa,
 					   off_t off, size_t len)
 {
-	return (off <= fa->fa_size && off + len <= fa->fa_size);
+	return (off >= 0) && ((off + len) <= fa->fa_size);
 }
 
 #if defined(CONFIG_FLASH_PAGE_LAYOUT)
@@ -210,15 +210,7 @@ int flash_area_write(const struct flash_area *fa, off_t off, const void *src,
 
 	flash_dev = device_get_binding(fa->fa_dev_name);
 
-	rc = flash_write_protection_set(flash_dev, false);
-	if (rc) {
-		return rc;
-	}
-
 	rc = flash_write(flash_dev, fa->fa_off + off, (void *)src, len);
-
-	/* Ignore errors here - this does not affect write operation */
-	(void) flash_write_protection_set(flash_dev, true);
 
 	return rc;
 }
@@ -234,15 +226,7 @@ int flash_area_erase(const struct flash_area *fa, off_t off, size_t len)
 
 	flash_dev = device_get_binding(fa->fa_dev_name);
 
-	rc = flash_write_protection_set(flash_dev, false);
-	if (rc) {
-		return rc;
-	}
-
 	rc = flash_erase(flash_dev, fa->fa_off + off, len);
-
-	/* Ignore errors here - this does not affect write operation */
-	(void) flash_write_protection_set(flash_dev, true);
 
 	return rc;
 }

@@ -371,7 +371,7 @@ static inline int z_impl_i2c_transfer(const struct device *dev,
  * @retval 0 If successful
  * @retval -EBUSY If bus is not clear after recovery attempt.
  * @retval -EIO General input / output error.
- * @retval -ENOTSUP If bus recovery is not supported
+ * @retval -ENOSYS If bus recovery is not implemented
  */
 __syscall int i2c_recover_bus(const struct device *dev);
 
@@ -381,7 +381,7 @@ static inline int z_impl_i2c_recover_bus(const struct device *dev)
 		(const struct i2c_driver_api *)dev->api;
 
 	if (api->recover_bus == NULL) {
-		return -ENOTSUP;
+		return -ENOSYS;
 	}
 
 	return api->recover_bus(dev);
@@ -409,7 +409,7 @@ static inline int z_impl_i2c_recover_bus(const struct device *dev)
  * @retval 0 Is successful
  * @retval -EINVAL If parameters are invalid
  * @retval -EIO General input / output error.
- * @retval -ENOTSUP If slave mode is not supported
+ * @retval -ENOSYS If slave mode is not implemented
  */
 static inline int i2c_slave_register(const struct device *dev,
 				     struct i2c_slave_config *cfg)
@@ -418,7 +418,7 @@ static inline int i2c_slave_register(const struct device *dev,
 		(const struct i2c_driver_api *)dev->api;
 
 	if (api->slave_register == NULL) {
-		return -ENOTSUP;
+		return -ENOSYS;
 	}
 
 	return api->slave_register(dev, cfg);
@@ -438,7 +438,7 @@ static inline int i2c_slave_register(const struct device *dev,
  *
  * @retval 0 Is successful
  * @retval -EINVAL If parameters are invalid
- * @retval -ENOTSUP If slave mode is not supported
+ * @retval -ENOSYS If slave mode is not implemented
  */
 static inline int i2c_slave_unregister(const struct device *dev,
 				       struct i2c_slave_config *cfg)
@@ -447,7 +447,7 @@ static inline int i2c_slave_unregister(const struct device *dev,
 		(const struct i2c_driver_api *)dev->api;
 
 	if (api->slave_unregister == NULL) {
-		return -ENOTSUP;
+		return -ENOSYS;
 	}
 
 	return api->slave_unregister(dev, cfg);

@@ -36,10 +36,11 @@
 #define MDM_BASE_SOCKET_NUM		  0
 #define MDM_NETWORK_RETRY_COUNT		  10
 #define MDM_INIT_RETRY_COUNT		  10
+#define MDM_PDP_ACT_RETRY_COUNT		  3
 #define MDM_WAIT_FOR_RSSI_COUNT		  10
 #define MDM_WAIT_FOR_RSSI_DELAY		  K_SECONDS(2)
 #define BUF_ALLOC_TIMEOUT		  K_SECONDS(1)
-#define MDM_MAX_AT_RETRIES		  50
+#define MDM_MAX_BOOT_TIME		  K_SECONDS(50)
 
 /* Default lengths of certain things. */
 #define MDM_MANUFACTURER_LENGTH		  10
@@ -65,6 +66,9 @@ enum mdm_control_pins {
 #if DT_INST_NODE_HAS_PROP(0, mdm_dtr_gpios)
 	MDM_DTR,
 #endif
+#if DT_INST_NODE_HAS_PROP(0, mdm_wdisable_gpios)
+	MDM_WDISABLE,
+#endif
 };
 
 /* driver data */
@@ -85,7 +89,7 @@ struct modem_data {
 	struct modem_socket sockets[MDM_MAX_SOCKETS];
 
 	/* RSSI work */
-	struct k_delayed_work rssi_query_work;
+	struct k_work_delayable rssi_query_work;
 
 	/* modem data */
 	char mdm_manufacturer[MDM_MANUFACTURER_LENGTH];
@@ -135,6 +139,12 @@ static struct modem_pin modem_pins[] = {
 		  DT_INST_GPIO_PIN(0, mdm_dtr_gpios),
 		  DT_INST_GPIO_FLAGS(0, mdm_dtr_gpios) | GPIO_OUTPUT_LOW),
 #endif
+#if DT_INST_NODE_HAS_PROP(0, mdm_wdisable_gpios)
+	/* MDM_WDISABLE */
+	MODEM_PIN(DT_INST_GPIO_LABEL(0, mdm_wdisable_gpios),
+		  DT_INST_GPIO_PIN(0, mdm_wdisable_gpios),
+		  DT_INST_GPIO_FLAGS(0, mdm_wdisable_gpios) | GPIO_OUTPUT_LOW),
+#endif
 };
 
-#endif /* #ifndef QUECTEL_BG9X_H */
+#endif /* QUECTEL_BG9X_H */

@@ -28,11 +28,30 @@ static inline void clear_memmap(int index)
 	}
 }
 
-void z_multiboot_init(struct multiboot_info *info)
+void z_multiboot_init(struct multiboot_info *info_pa)
 {
-	if (info != NULL) {
-		memcpy(&multiboot_info, info, sizeof(*info));
+	struct multiboot_info *info;
+
+#if defined(CONFIG_ARCH_MAPS_ALL_RAM) || !defined(CONFIG_X86_MMU)
+	/*
+	 * Since the struct from bootloader resides in memory
+	 * and all memory is mapped, there is no need to
+	 * manually map it before accessing.
+	 *
+	 * Without MMU, all memory are identity-mapped already
+	 * so there is no need to map them again.
+	 */
+	info = info_pa;
+#else
+	z_phys_map((uint8_t **)&info, POINTER_TO_UINT(info_pa),
+		   sizeof(*info_pa), K_MEM_CACHE_NONE);
+#endif /* CONFIG_ARCH_MAPS_ALL_RAM */
+
+	if (info == NULL) {
+		return;
 	}
+
+	memcpy(&multiboot_info, info, sizeof(*info));
 
 #ifdef CONFIG_MULTIBOOT_MEMMAP
 	/*
@@ -42,12 +61,26 @@ void z_multiboot_init(struct multiboot_info *info)
 
 	if ((info->flags & MULTIBOOT_INFO_FLAGS_MMAP) &&
 	    (x86_memmap_source < X86_MEMMAP_SOURCE_MULTIBOOT_MMAP)) {
-		uint32_t address = info->mmap_addr;
+		uintptr_t address;
+		uintptr_t address_end;
 		struct multiboot_mmap *mmap;
 		int index = 0;
 		uint32_t type;
 
-		while ((address < (info->mmap_addr + info->mmap_length)) &&
+#if defined(CONFIG_ARCH_MAPS_ALL_RAM) || !defined(CONFIG_X86_MMU)
+		address = info->mmap_addr;
+#else
+		uint8_t *address_va;
+
+		z_phys_map(&address_va, info->mmap_addr, info->mmap_length,
+			   K_MEM_CACHE_NONE);
+
+		address = POINTER_TO_UINT(address_va);
+#endif /* CONFIG_ARCH_MAPS_ALL_RAM */
+
+		address_end = address + info->mmap_length;
+
+		while ((address < address_end) &&
 		       (index < CONFIG_X86_MEMMAP_ENTRIES)) {
 			mmap = UINT_TO_POINTER(address);
 
@@ -131,8 +164,8 @@ static int multiboot_framebuf_init(const struct device *dev)
 		adj_x = info->fb_width - CONFIG_MULTIBOOT_FRAMEBUF_X;
 		adj_y = info->fb_height - CONFIG_MULTIBOOT_FRAMEBUF_Y;
 		data->pitch = (info->fb_pitch / 4) + adj_x;
-		adj_x /= 2;
-		adj_y /= 2;
+		adj_x /= 2U;
+		adj_y /= 2U;
 		buffer = (uint32_t *) (uintptr_t) info->fb_addr_lo;
 		buffer += adj_x;
 		buffer += adj_y * data->pitch;
@@ -146,7 +179,7 @@ static int multiboot_framebuf_init(const struct device *dev)
 DEVICE_DEFINE(multiboot_framebuf,
 		    "FRAMEBUF",
 		    multiboot_framebuf_init,
-		    device_pm_control_nop,
+		    NULL,
 		    &multiboot_framebuf_data,
 		    NULL,
 		    PRE_KERNEL_1,

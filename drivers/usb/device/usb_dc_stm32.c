@@ -1,5 +1,3 @@
-/* USB device controller driver for STM32 devices */
-
 /*
  * Copyright (c) 2017 Christer Weinigel.
  * Copyright (c) 2017, I-SENSE group of ICCS
@@ -9,39 +7,11 @@
 
 /**
  * @file
- * @brief USB device controller driver for STM32 devices
+ * @brief USB device controller shim driver for STM32 devices
  *
  * This driver uses the STM32 Cube low level drivers to talk to the USB
  * device controller on the STM32 family of devices using the
  * STM32Cube HAL layer.
- *
- * There is a bit of an impedance mismatch between the Zephyr
- * usb_device and the STM32 Cube HAL layer where higher levels make
- * assumptions about the low level drivers that don't quite match how
- * the low level drivers actually work.
- *
- * The usb_dc_ep_read function expects to get the data it wants
- * immediately while the HAL_PCD_EP_Receive function only starts a
- * read transaction and the data won't be available until call to
- * HAL_PCD_DataOutStageCallback. To work around this I've
- * had to add an extra packet buffer in the driver which wastes memory
- * and also leads to an extra copy of all received data.  It would be
- * better if higher drivers could call start_read and get_read_count
- * in this driver directly.
- *
- * To enable the driver together with the CDC_ACM high level driver,
- * add the following to your board's defconfig:
- *
- * CONFIG_USB=y
- * CONFIG_USB_DC_STM32=y
- * CONFIG_USB_CDC_ACM=y
- * CONFIG_USB_DEVICE_STACK=y
- *
- * To use the USB device as a console, also add:
- *
- * CONFIG_UART_CONSOLE_ON_DEV_NAME="CDC_ACM"
- * CONFIG_USB_UART_CONSOLE=y
- * CONFIG_UART_LINE_CTRL=y
  */
 
 #include <soc.h>
@@ -215,7 +185,7 @@ void HAL_PCD_SOFCallback(PCD_HandleTypeDef *hpcd)
 
 static int usb_dc_stm32_clock_enable(void)
 {
-	const struct device *clk = device_get_binding(STM32_CLOCK_CONTROL_NAME);
+	const struct device *clk = DEVICE_DT_GET(STM32_CLOCK_CONTROL_NODE);
 	struct stm32_pclken pclken = {
 		.bus = USB_CLOCK_BUS,
 		.enr = USB_CLOCK_BITS,
@@ -228,7 +198,9 @@ static int usb_dc_stm32_clock_enable(void)
 	 * that instead.  Example reference manual RM0360 for
 	 * STM32F030x4/x6/x8/xC and STM32F070x6/xB.
 	 */
-#if defined(RCC_HSI48_SUPPORT) || defined(CONFIG_SOC_SERIES_STM32WBX)
+#if defined(RCC_HSI48_SUPPORT) || \
+	defined(CONFIG_SOC_SERIES_STM32WBX) || \
+	defined(CONFIG_SOC_SERIES_STM32H7X)
 
 	/*
 	 * In STM32L0 series, HSI48 requires VREFINT and its buffer
@@ -269,7 +241,7 @@ static int usb_dc_stm32_clock_enable(void)
 	 * device. For now, we only use MSI for USB if not already used as
 	 * system clock source.
 	 */
-#if defined(CONFIG_CLOCK_STM32_MSI_PLL_MODE) && !defined(CONFIG_CLOCK_STM32_SYSCLK_SRC_MSI)
+#if STM32_MSI_PLL_MODE && !STM32_SYSCLK_SRC_MSI
 	LL_RCC_MSI_Enable();
 	while (!LL_RCC_MSI_IsReady()) {
 		/* Wait for MSI to become ready */
@@ -284,7 +256,7 @@ static int usb_dc_stm32_clock_enable(void)
 	} else {
 		LOG_ERR("Unable to set USB clock source to PLL.");
 	}
-#endif /* CONFIG_CLOCK_STM32_MSI_PLL_MODE && !CONFIG_CLOCK_STM32_SYSCLK_SRC_MSI */
+#endif /* STM32_MSI_PLL_MODE && !STM32_SYSCLK_SRC_MSI */
 
 #elif defined(RCC_CFGR_OTGFSPRE)
 	/* On STM32F105 and STM32F107 parts the USB OTGFSCLK is derived from
@@ -351,7 +323,7 @@ static uint32_t usb_dc_stm32_get_maximum_speed(void)
 	if (!strncmp(USB_MAXIMUM_SPEED, "high-speed", 10)) {
 		speed = USB_OTG_SPEED_HIGH;
 	} else if (!strncmp(USB_MAXIMUM_SPEED, "full-speed", 10)) {
-#if USB_OTG_HS_EMB_PHY
+#if defined(CONFIG_SOC_SERIES_STM32H7X) || defined(USB_OTG_HS_EMB_PHY)
 		speed = USB_OTG_SPEED_HIGH_IN_FULL;
 #else
 		speed = USB_OTG_SPEED_FULL;
@@ -404,6 +376,27 @@ static int usb_dc_stm32_init(void)
 #ifdef CONFIG_USB_DEVICE_SOF
 	usb_dc_stm32_state.pcd.Init.Sof_enable = 1;
 #endif /* CONFIG_USB_DEVICE_SOF */
+
+#if defined(CONFIG_SOC_SERIES_STM32H7X)
+	/* Currently assuming FS mode. Need to disable the ULPI clock on USB2 and
+	 * enable the FS clock. Need to make this dependent on HS or FS config.
+	 */
+
+	LL_AHB1_GRP1_DisableClock(LL_AHB1_GRP1_PERIPH_USB2OTGHSULPI);
+	LL_AHB1_GRP1_DisableClockSleep(LL_AHB1_GRP1_PERIPH_USB2OTGHSULPI);
+
+	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_USB2OTGHS);
+	LL_AHB1_GRP1_EnableClockSleep(LL_AHB1_GRP1_PERIPH_USB2OTGHS);
+
+	LL_PWR_EnableUSBVoltageDetector();
+
+	/* Per AN2606: USBREGEN not supported when running in FS mode. */
+	LL_PWR_DisableUSBReg();
+	while (!LL_PWR_IsActiveFlag_USB()) {
+		LOG_INF("PWR not active yet");
+		k_sleep(K_MSEC(100));
+	}
+#endif
 
 	LOG_DBG("Pinctrl signals configuration");
 	status = stm32_dt_pinctrl_configure(usb_pinctrl,
@@ -627,13 +620,13 @@ int usb_dc_ep_configure(const struct usb_dc_ep_cfg_data * const ep_cfg)
 	uint8_t ep = ep_cfg->ep_addr;
 	struct usb_dc_stm32_ep_state *ep_state = usb_dc_stm32_get_ep_state(ep);
 
-	LOG_DBG("ep 0x%02x, previous ep_mps %u, ep_mps %u, ep_type %u",
-		ep_cfg->ep_addr, ep_state->ep_mps, ep_cfg->ep_mps,
-		ep_cfg->ep_type);
-
 	if (!ep_state) {
 		return -EINVAL;
 	}
+
+	LOG_DBG("ep 0x%02x, previous ep_mps %u, ep_mps %u, ep_type %u",
+		ep_cfg->ep_addr, ep_state->ep_mps, ep_cfg->ep_mps,
+		ep_cfg->ep_type);
 
 #ifdef USB
 	if (ep_cfg->ep_mps > ep_state->ep_pma_buf_len) {

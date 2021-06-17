@@ -1607,10 +1607,9 @@ static int dw1000_init(const struct device *dev)
 			  DWT_SYS_MASK_MRXSFDTO);
 
 	/* Initialize IRQ event work queue */
-	k_work_q_start(&dwt_work_queue,
-		       dwt_work_queue_stack,
-		       K_KERNEL_STACK_SIZEOF(dwt_work_queue_stack),
-		       CONFIG_SYSTEM_WORKQUEUE_PRIORITY);
+	k_work_queue_start(&dwt_work_queue, dwt_work_queue_stack,
+			   K_KERNEL_STACK_SIZEOF(dwt_work_queue_stack),
+			   CONFIG_SYSTEM_WORKQUEUE_PRIORITY, NULL);
 
 	k_work_init(&ctx->irq_cb_work, dwt_irq_work_handler);
 
@@ -1668,14 +1667,14 @@ static struct ieee802154_radio_api dwt_radio_api = {
 #define DWT_PSDU_LENGTH		(127 - DWT_FCS_LENGTH)
 
 #if defined(CONFIG_IEEE802154_RAW_MODE)
-DEVICE_DT_INST_DEFINE(0, dw1000_init, device_pm_control_nop,
+DEVICE_DT_INST_DEFINE(0, dw1000_init, NULL,
 		    &dwt_0_context, &dw1000_0_config,
 		    POST_KERNEL, CONFIG_IEEE802154_DW1000_INIT_PRIO,
 		    &dwt_radio_api);
 #else
 NET_DEVICE_DT_INST_DEFINE(0,
 		dw1000_init,
-		device_pm_control_nop,
+		NULL,
 		&dwt_0_context,
 		&dw1000_0_config,
 		CONFIG_IEEE802154_DW1000_INIT_PRIO,

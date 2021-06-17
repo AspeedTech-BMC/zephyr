@@ -6,7 +6,6 @@ name: Documentation GitHub Workflow
 on:
   pull_request:
     paths:
-    - 'Makefile'
     - 'doc/**'
     - '**.rst'
     - 'include/**'
@@ -14,10 +13,11 @@ on:
     - 'lib/libc/**'
     - 'subsys/testsuite/ztest/include/**'
     - 'tests/**'
-    - '.known-issues/doc/**'
     - '**/Kconfig*'
     - 'west.yml'
     - '.github/workflows/doc-build.yml'
+    - 'scripts/dts/**'
+    - 'scripts/requirements-doc.txt'
 
 jobs:
   doc-build:
@@ -44,10 +44,10 @@ jobs:
 
     - name: install-pip
       run: |
-        pip3 install setuptools wheel
+        sudo pip3 install -U setuptools wheel pip
         pip3 install -r scripts/requirements-base.txt
         pip3 install -r scripts/requirements-doc.txt
-        pip3 install west==0.9.0
+        pip3 install west==0.11.0
 
     - name: west setup
       run: |
@@ -56,7 +56,7 @@ jobs:
     - name: build-docs
       run: |
         source zephyr-env.sh
-        make htmldocs
+        SPHINXOPTS="-q -j auto" make -C doc htmldocs
         tar cvf htmldocs.tar --directory=./doc/_build html
 
     - name: upload-build
@@ -65,15 +65,3 @@ jobs:
       with:
         name: htmldocs.tar
         path: htmldocs.tar
-
-    - name: check-warns
-      run: |
-        if [ -s doc/_build/doc.warnings ]; then
-           docwarn=$(cat doc/_build/doc.warnings)
-           docwarn="${docwarn//'%'/'%25'}"
-           docwarn="${docwarn//$'\n'/'%0A'}"
-           docwarn="${docwarn//$'\r'/'%0D'}"
-           # We treat doc warnings as errors
-           echo "::error file=doc.warnings::$docwarn"
-           exit 1
-        fi

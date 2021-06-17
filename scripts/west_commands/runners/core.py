@@ -21,6 +21,7 @@ import shlex
 import shutil
 import signal
 import subprocess
+import re
 from typing import Dict, List, NamedTuple, NoReturn, Optional, Set, Type, \
     Union
 
@@ -128,7 +129,8 @@ class BuildConfiguration:
     def __init__(self, build_dir: str):
         self.build_dir = build_dir
         self.options: Dict[str, Union[str, int]] = {}
-        self._init()
+        self.path = os.path.join(self.build_dir, 'zephyr', '.config')
+        self._parse()
 
     def __contains__(self, item):
         return item in self.options
@@ -139,27 +141,47 @@ class BuildConfiguration:
     def get(self, option, *args):
         return self.options.get(option, *args)
 
-    def _init(self):
-        self._parse(os.path.join(self.build_dir, 'zephyr', '.config'))
+    def getboolean(self, option):
+        '''If a boolean option is explicitly set to y or n,
+        returns its value. Otherwise, falls back to False.
+        '''
+        return self.options.get(option, False)
 
-    def _parse(self, filename: str):
+    def _parse(self):
+        filename = self.path
+        opt_value = re.compile('^(?P<option>CONFIG_[A-Za-z0-9_]+)=(?P<value>.*)$')
+        not_set = re.compile('^# (?P<option>CONFIG_[A-Za-z0-9_]+) is not set$')
+
         with open(filename, 'r') as f:
             for line in f:
-                line = line.strip()
-                if not line or line.startswith('#'):
+                match = opt_value.match(line)
+                if match:
+                    value = match.group('value').rstrip()
+                    if value.startswith('"') and value.endswith('"'):
+                        # A string literal should have the quotes stripped,
+                        # but otherwise be left as is.
+                        value = value[1:-1]
+                    elif value == 'y':
+                        # The character 'y' is a boolean option
+                        # that is set to True.
+                        value = True
+                    else:
+                        # Neither a string nor 'y', so try to parse it
+                        # as an integer.
+                        try:
+                            base = 16 if value.startswith('0x') else 10
+                            self.options[match.group('option')] = int(value, base=base)
+                            continue
+                        except ValueError:
+                            pass
+
+                    self.options[match.group('option')] = value
                     continue
-                option, value = line.split('=', 1)
-                self.options[option] = self._parse_value(value)
 
-    @staticmethod
-    def _parse_value(value):
-        if value.startswith('"') or value.startswith("'"):
-            return value.split()
-        try:
-            return int(value, 0)
-        except ValueError:
-            return value
-
+                match = not_set.match(line)
+                if match:
+                    # '# CONFIG_FOO is not set' means a boolean option is false.
+                    self.options[match.group('option')] = False
 
 class MissingProgram(FileNotFoundError):
     '''FileNotFoundError subclass for missing program dependencies.
@@ -404,9 +426,9 @@ class ZephyrBinaryRunner(abc.ABC):
         if caps.flash_addr:
             parser.add_argument('--dt-flash', default='n', choices=_YN_CHOICES,
                                 action=_DTFlashAction,
-                                help='''If 'yes', use configuration generated
-                                by device tree (DT) to compute flash
-                                addresses.''')
+                                help='''If 'yes', try to use flash address
+                                information from devicetree when flash
+                                addresses are unknown (e.g. when flashing a .bin)''')
         else:
             parser.add_argument('--dt-flash', help=argparse.SUPPRESS)
 
@@ -448,28 +470,33 @@ class ZephyrBinaryRunner(abc.ABC):
                   args: argparse.Namespace) -> 'ZephyrBinaryRunner':
         '''Hook for instance creation from command line arguments.'''
 
-    @classmethod
-    def get_flash_address(cls, args: argparse.Namespace,
+    @staticmethod
+    def get_flash_address(args: argparse.Namespace,
                           build_conf: BuildConfiguration,
                           default: int = 0x0) -> int:
         '''Helper method for extracting a flash address.
 
-        If args.dt_flash is true, get the address from the
-        BoardConfiguration, build_conf. (If
-        CONFIG_HAS_FLASH_LOAD_OFFSET is n in that configuration, it
-        returns CONFIG_FLASH_BASE_ADDRESS. Otherwise, it returns
-        CONFIG_FLASH_BASE_ADDRESS + CONFIG_FLASH_LOAD_OFFSET.)
+        If args.dt_flash is true, returns the address obtained from
+        ZephyrBinaryRunner.flash_address_from_build_conf(build_conf).
 
         Otherwise (when args.dt_flash is False), the default value is
         returned.'''
         if args.dt_flash:
-            if build_conf['CONFIG_HAS_FLASH_LOAD_OFFSET']:
-                return (build_conf['CONFIG_FLASH_BASE_ADDRESS'] +
-                        build_conf['CONFIG_FLASH_LOAD_OFFSET'])
-            else:
-                return build_conf['CONFIG_FLASH_BASE_ADDRESS']
+            return ZephyrBinaryRunner.flash_address_from_build_conf(build_conf)
         else:
             return default
+
+    @staticmethod
+    def flash_address_from_build_conf(build_conf: BuildConfiguration):
+        '''If CONFIG_HAS_FLASH_LOAD_OFFSET is n in build_conf,
+        return the CONFIG_FLASH_BASE_ADDRESS value. Otherwise, return
+        CONFIG_FLASH_BASE_ADDRESS + CONFIG_FLASH_LOAD_OFFSET.
+        '''
+        if build_conf.getboolean('CONFIG_HAS_FLASH_LOAD_OFFSET'):
+            return (build_conf['CONFIG_FLASH_BASE_ADDRESS'] +
+                    build_conf['CONFIG_FLASH_LOAD_OFFSET'])
+        else:
+            return build_conf['CONFIG_FLASH_BASE_ADDRESS']
 
     def run(self, command: str, **kwargs):
         '''Runs command ('flash', 'debug', 'debugserver', 'attach').
@@ -487,8 +514,24 @@ class ZephyrBinaryRunner(abc.ABC):
 
         In case of an unsupported command, raise a ValueError.'''
 
+    @property
+    def build_conf(self) -> BuildConfiguration:
+        '''Get a BuildConfiguration for the build directory.'''
+        if not hasattr(self, '_build_conf'):
+            self._build_conf = BuildConfiguration(self.cfg.build_dir)
+        return self._build_conf
+
+    @property
+    def thread_info_enabled(self) -> bool:
+        '''Returns True if self.build_conf has
+        CONFIG_DEBUG_THREAD_INFO enabled. This supports the
+        CONFIG_OPENOCD_SUPPORT fallback as well for now.
+        '''
+        return (self.build_conf.getboolean('CONFIG_DEBUG_THREAD_INFO') or
+                self.build_conf.getboolean('CONFIG_OPENOCD_SUPPORT'))
+
     @staticmethod
-    def require(program: str):
+    def require(program: str) -> str:
         '''Require that a program is installed before proceeding.
 
         :param program: name of the program that is required,
@@ -498,9 +541,12 @@ class ZephyrBinaryRunner(abc.ABC):
         binary, this call succeeds. Otherwise, try to find the program
         by name on the system PATH.
 
-        On error, raises MissingProgram.'''
-        if shutil.which(program) is None:
+        If the program can be found, its path is returned.
+        Otherwise, raises MissingProgram.'''
+        ret = shutil.which(program)
+        if ret is None:
             raise MissingProgram(program)
+        return ret
 
     def run_server_and_client(self, server, client):
         '''Run a server that ignores SIGINT, and a client that handles it.
@@ -514,13 +560,19 @@ class ZephyrBinaryRunner(abc.ABC):
 
         It's useful to e.g. open a GDB server and client.'''
         server_proc = self.popen_ignore_int(server)
+        try:
+            self.run_client(client)
+        finally:
+            server_proc.terminate()
+            server_proc.wait()
+
+    def run_client(self, client):
+        '''Run a client that handles SIGINT.'''
         previous = signal.signal(signal.SIGINT, signal.SIG_IGN)
         try:
             self.check_call(client)
         finally:
             signal.signal(signal.SIGINT, previous)
-            server_proc.terminate()
-            server_proc.wait()
 
     def _log_cmd(self, cmd: List[str]):
         escaped = ' '.join(shlex.quote(s) for s in cmd)
@@ -529,7 +581,7 @@ class ZephyrBinaryRunner(abc.ABC):
         else:
             self.logger.info(escaped)
 
-    def call(self, cmd: List[str]) -> int:
+    def call(self, cmd: List[str], **kwargs) -> int:
         '''Subclass subprocess.call() wrapper.
 
         Subclasses should use this method to run command in a
@@ -539,9 +591,9 @@ class ZephyrBinaryRunner(abc.ABC):
         self._log_cmd(cmd)
         if _DRY_RUN:
             return 0
-        return subprocess.call(cmd)
+        return subprocess.call(cmd, **kwargs)
 
-    def check_call(self, cmd: List[str]):
+    def check_call(self, cmd: List[str], **kwargs):
         '''Subclass subprocess.check_call() wrapper.
 
         Subclasses should use this method to run command in a
@@ -551,7 +603,7 @@ class ZephyrBinaryRunner(abc.ABC):
         self._log_cmd(cmd)
         if _DRY_RUN:
             return
-        subprocess.check_call(cmd)
+        subprocess.check_call(cmd, **kwargs)
 
     def check_output(self, cmd: List[str], **kwargs) -> bytes:
         '''Subclass subprocess.check_output() wrapper.

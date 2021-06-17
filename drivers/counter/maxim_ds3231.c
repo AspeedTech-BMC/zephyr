@@ -1281,11 +1281,6 @@ static int ds3231_counter_set_top_value(const struct device *dev,
 	return -ENOTSUP;
 }
 
-static uint32_t ds3231_counter_get_max_relative_alarm(const struct device *dev)
-{
-	return UINT32_MAX;
-}
-
 static const struct counter_driver_api ds3231_api = {
 	.start = ds3231_counter_start,
 	.stop = ds3231_counter_stop,
@@ -1295,7 +1290,6 @@ static const struct counter_driver_api ds3231_api = {
 	.set_top_value = ds3231_counter_set_top_value,
 	.get_pending_int = ds3231_counter_get_pending_int,
 	.get_top_value = ds3231_counter_get_top_value,
-	.get_max_relative_alarm = ds3231_counter_get_max_relative_alarm,
 };
 
 static const struct ds3231_config ds3231_0_config = {
@@ -1323,7 +1317,7 @@ static struct ds3231_data ds3231_0_data;
 #error COUNTER_MAXIM_DS3231_INIT_PRIORITY must be greater than I2C_INIT_PRIORITY
 #endif
 
-DEVICE_DT_INST_DEFINE(0, ds3231_init, device_pm_control_nop, &ds3231_0_data,
+DEVICE_DT_INST_DEFINE(0, ds3231_init, NULL, &ds3231_0_data,
 		    &ds3231_0_config,
 		    POST_KERNEL, CONFIG_COUNTER_MAXIM_DS3231_INIT_PRIORITY,
 		    &ds3231_api);

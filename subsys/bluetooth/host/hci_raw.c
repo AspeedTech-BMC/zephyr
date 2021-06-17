@@ -11,6 +11,7 @@
 #include <sys/byteorder.h>
 
 #include <drivers/bluetooth/hci_driver.h>
+#include <bluetooth/buf.h>
 #include <bluetooth/hci_raw.h>
 #include <bluetooth/l2cap.h>
 
@@ -36,16 +37,17 @@ static uint8_t raw_mode = BT_HCI_RAW_MODE_H4;
 static uint8_t raw_mode;
 #endif
 
-NET_BUF_POOL_FIXED_DEFINE(hci_rx_pool, CONFIG_BT_RX_BUF_COUNT,
+#define BT_BUF_RX_COUNT MAX(CONFIG_BT_BUF_EVT_RX_COUNT, CONFIG_BT_BUF_ACL_RX_COUNT)
+NET_BUF_POOL_FIXED_DEFINE(hci_rx_pool, BT_BUF_RX_COUNT,
 			  BT_BUF_RX_SIZE, NULL);
-NET_BUF_POOL_FIXED_DEFINE(hci_cmd_pool, CONFIG_BT_HCI_CMD_COUNT,
-			  BT_BUF_RX_SIZE, NULL);
-NET_BUF_POOL_FIXED_DEFINE(hci_acl_pool, BT_HCI_ACL_COUNT,
-			  BT_BUF_ACL_SIZE, NULL);
+NET_BUF_POOL_FIXED_DEFINE(hci_cmd_pool, CONFIG_BT_BUF_CMD_TX_COUNT,
+			  BT_BUF_CMD_SIZE(CONFIG_BT_BUF_CMD_TX_SIZE), NULL);
+NET_BUF_POOL_FIXED_DEFINE(hci_acl_pool, CONFIG_BT_BUF_ACL_TX_COUNT,
+			  BT_BUF_ACL_SIZE(CONFIG_BT_BUF_ACL_TX_SIZE), NULL);
 #if defined(CONFIG_BT_ISO)
-NET_BUF_POOL_FIXED_DEFINE(hci_iso_pool, BT_ISO_TX_BUF_COUNT,
-			  BT_ISO_TX_MTU, NULL);
-#endif
+NET_BUF_POOL_FIXED_DEFINE(hci_iso_pool, CONFIG_BT_ISO_TX_BUF_COUNT,
+			  CONFIG_BT_ISO_TX_MTU, NULL);
+#endif /* CONFIG_BT_ISO */
 
 struct bt_dev_raw bt_dev;
 struct bt_hci_raw_cmd_ext *cmd_ext;
@@ -78,9 +80,10 @@ struct net_buf *bt_buf_get_rx(enum bt_buf_type type, k_timeout_t timeout)
 	switch (type) {
 	case BT_BUF_EVT:
 	case BT_BUF_ACL_IN:
+	case BT_BUF_ISO_IN:
 		break;
 	default:
-		BT_ERR("Invalid type: %u", type);
+		BT_ERR("Invalid rx type: %u", type);
 		return NULL;
 	}
 
@@ -112,7 +115,7 @@ struct net_buf *bt_buf_get_tx(enum bt_buf_type type, k_timeout_t timeout,
 	case BT_BUF_ISO_OUT:
 		pool = &hci_iso_pool;
 		break;
-#endif
+#endif /* CONFIG_BT_ISO */
 	case BT_BUF_H4:
 		if (IS_ENABLED(CONFIG_BT_HCI_RAW_H4) &&
 		    raw_mode == BT_HCI_RAW_MODE_H4) {
@@ -129,7 +132,8 @@ struct net_buf *bt_buf_get_tx(enum bt_buf_type type, k_timeout_t timeout,
 			case H4_ISO:
 				type = BT_BUF_ISO_OUT;
 				pool = &hci_iso_pool;
-#endif
+				break;
+#endif /* CONFIG_BT_ISO */
 			default:
 				LOG_ERR("Unknown H4 type %u", type);
 				return NULL;
@@ -142,7 +146,7 @@ struct net_buf *bt_buf_get_tx(enum bt_buf_type type, k_timeout_t timeout,
 		}
 		__fallthrough;
 	default:
-		BT_ERR("Invalid type: %u", type);
+		BT_ERR("Invalid tx type: %u", type);
 		return NULL;
 	}
 

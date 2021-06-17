@@ -15,10 +15,22 @@
 			interrupt-names = "usb";
 			num-bidir-endpoints = <8>;
 			ram-size = <1024>;
+			maximum-speed = "full-speed";
 			phys = <&usb_fs_phy>;
 			clocks = <&rcc STM32_CLOCK_BUS_APB1 0x04000000>;
 			status = "disabled";
 			label = "USB";
+		};
+
+		spi2: spi@40003800 {
+			compatible = "st,stm32-spi";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x40003800 0x400>;
+			interrupts = <36 5>;
+			clocks = <&rcc STM32_CLOCK_BUS_APB1 0x00004000>;
+			status = "disabled";
+			label = "SPI_2";
 		};
 	};
 

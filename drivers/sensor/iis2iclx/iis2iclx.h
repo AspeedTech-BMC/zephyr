@@ -15,6 +15,7 @@
 #include <zephyr/types.h>
 #include <drivers/gpio.h>
 #include <sys/util.h>
+#include <stmemsc.h>
 #include "iis2iclx_reg.h"
 
 #if DT_ANY_INST_ON_BUS_STATUS_OKAY(spi)
@@ -35,65 +36,29 @@
 #define SENSOR_DEG2RAD_DOUBLE			(SENSOR_PI_DOUBLE / 180)
 #define SENSOR_G_DOUBLE				(SENSOR_G / 1000000.0)
 
-#if CONFIG_IIS2ICLX_ACCEL_FS == 0
-	#define IIS2ICLX_ACCEL_FS_RUNTIME 1
-	#define IIS2ICLX_DEFAULT_ACCEL_FULLSCALE		0
-	#define IIS2ICLX_DEFAULT_ACCEL_SENSITIVITY	GAIN_UNIT_XL
-#elif CONFIG_IIS2ICLX_ACCEL_FS == 500
-	#define IIS2ICLX_DEFAULT_ACCEL_FULLSCALE		0
-	#define IIS2ICLX_DEFAULT_ACCEL_SENSITIVITY	GAIN_UNIT_XL
-#elif CONFIG_IIS2ICLX_ACCEL_FS == 1000
-	#define IIS2ICLX_DEFAULT_ACCEL_FULLSCALE		2
-	#define IIS2ICLX_DEFAULT_ACCEL_SENSITIVITY	(2.0 * GAIN_UNIT_XL)
-#elif CONFIG_IIS2ICLX_ACCEL_FS == 2000
-	#define IIS2ICLX_DEFAULT_ACCEL_FULLSCALE		3
-	#define IIS2ICLX_DEFAULT_ACCEL_SENSITIVITY	(4.0 * GAIN_UNIT_XL)
-#elif CONFIG_IIS2ICLX_ACCEL_FS == 3000
-	#define IIS2ICLX_DEFAULT_ACCEL_FULLSCALE		1
-	#define IIS2ICLX_DEFAULT_ACCEL_SENSITIVITY	(8.0 * GAIN_UNIT_XL)
-#endif
-
-#if (CONFIG_IIS2ICLX_ACCEL_ODR == 0)
-#define IIS2ICLX_ACCEL_ODR_RUNTIME 1
-#endif
-
-#if DT_ANY_INST_ON_BUS_STATUS_OKAY(spi)
-struct iis2iclx_spi_cfg {
-	struct spi_config spi_conf;
-	const char *cs_gpios_label;
-};
-#endif /* DT_ANY_INST_ON_BUS_STATUS_OKAY(spi) */
-
-union iis2iclx_bus_cfg {
-#if DT_ANY_INST_ON_BUS_STATUS_OKAY(i2c)
-	uint16_t i2c_slv_addr;
-#endif
-
-#if DT_ANY_INST_ON_BUS_STATUS_OKAY(spi)
-	const struct iis2iclx_spi_cfg *spi_cfg;
-#endif /* DT_ANY_INST_ON_BUS_STATUS_OKAY(spi) */
-};
-
 struct iis2iclx_config {
-	char *bus_name;
-	int (*bus_init)(const struct device *dev);
-	const union iis2iclx_bus_cfg bus_cfg;
+	stmdev_ctx_t ctx;
+	union {
+#if DT_ANY_INST_ON_BUS_STATUS_OKAY(i2c)
+		const struct stmemsc_cfg_i2c i2c;
+#endif
+#if DT_ANY_INST_ON_BUS_STATUS_OKAY(spi)
+		const struct stmemsc_cfg_spi spi;
+#endif
+	} stmemsc_cfg;
+	uint8_t odr;
+	uint8_t range;
 #ifdef CONFIG_IIS2ICLX_TRIGGER
-	const char *irq_dev_name;
-	uint8_t irq_pin;
-	uint8_t irq_flags;
+	bool trig_enabled;
 	uint8_t int_pin;
+	const struct gpio_dt_spec gpio_drdy;
 #endif /* CONFIG_IIS2ICLX_TRIGGER */
 };
-
-/* sensor data forward declaration (member definition is below) */
-struct iis2iclx_data;
 
 #define IIS2ICLX_SHUB_MAX_NUM_SLVS			2
 
 struct iis2iclx_data {
 	const struct device *dev;
-	const struct device *bus;
 	int16_t acc[2];
 	uint32_t acc_gain;
 #if defined(CONFIG_IIS2ICLX_ENABLE_TEMP)
@@ -111,22 +76,14 @@ struct iis2iclx_data {
 	} hts221;
 
 	bool shub_inited;
+	uint8_t num_ext_dev;
+	uint8_t shub_ext[IIS2ICLX_SHUB_MAX_NUM_SLVS];
 #endif /* CONFIG_IIS2ICLX_SENSORHUB */
-
-	stmdev_ctx_t *ctx;
-
-#if DT_ANY_INST_ON_BUS_STATUS_OKAY(i2c)
-	stmdev_ctx_t ctx_i2c;
-#endif
-#if DT_ANY_INST_ON_BUS_STATUS_OKAY(spi)
-	stmdev_ctx_t ctx_spi;
-#endif
 
 	uint16_t accel_freq;
 	uint8_t accel_fs;
 
 #ifdef CONFIG_IIS2ICLX_TRIGGER
-	const struct device *gpio;
 	struct gpio_callback gpio_cb;
 	sensor_trigger_handler_t handler_drdy_acc;
 	sensor_trigger_handler_t handler_drdy_temp;
@@ -139,18 +96,12 @@ struct iis2iclx_data {
 	struct k_work work;
 #endif
 #endif /* CONFIG_IIS2ICLX_TRIGGER */
-
-#if DT_ANY_INST_ON_BUS_STATUS_OKAY(spi)
-	struct spi_cs_control cs_ctrl;
-#endif /* DT_ANY_INST_ON_BUS_STATUS_OKAY(spi) */
 };
 
-int iis2iclx_spi_init(const struct device *dev);
-int iis2iclx_i2c_init(const struct device *dev);
 #if defined(CONFIG_IIS2ICLX_SENSORHUB)
 int iis2iclx_shub_init(const struct device *dev);
 int iis2iclx_shub_fetch_external_devs(const struct device *dev);
-int iis2iclx_shub_get_idx(enum sensor_channel type);
+int iis2iclx_shub_get_idx(const struct device *dev, enum sensor_channel type);
 int iis2iclx_shub_config(const struct device *dev, enum sensor_channel chan,
 			   enum sensor_attribute attr,
 			   const struct sensor_value *val);

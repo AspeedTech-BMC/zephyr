@@ -52,6 +52,7 @@ static inline uintptr_t esf_get_code(const z_arch_esf_t *esf)
 }
 
 #ifdef CONFIG_THREAD_STACK_INFO
+__pinned_func
 bool z_x86_check_stack_bounds(uintptr_t addr, size_t size, uint16_t cs)
 {
 	uintptr_t start, end;
@@ -70,7 +71,7 @@ bool z_x86_check_stack_bounds(uintptr_t addr, size_t size, uint16_t cs)
 		    z_interrupt_stacks[cpu_id]);
 		end = start + CONFIG_ISR_STACK_SIZE;
 #ifdef CONFIG_USERSPACE
-	} else if ((cs & 0x3U) == 0 &&
+	} else if ((cs & 0x3U) == 0U &&
 		   (_current->base.user_options & K_USER) != 0) {
 		/* The low two bits of the CS register is the privilege
 		 * level. It will be 0 in supervisor mode and 3 in user mode
@@ -105,6 +106,7 @@ struct stack_frame {
 
 #define MAX_STACK_FRAMES 8
 
+__pinned_func
 static void unwind_stack(uintptr_t base_ptr, uint16_t cs)
 {
 	struct stack_frame *frame;
@@ -170,10 +172,11 @@ static inline uintptr_t get_cr3(const z_arch_esf_t *esf)
 
 static inline pentry_t *get_ptables(const z_arch_esf_t *esf)
 {
-	return z_x86_virt_addr(get_cr3(esf));
+	return z_mem_virt_addr(get_cr3(esf));
 }
 
 #ifdef CONFIG_X86_64
+__pinned_func
 static void dump_regs(const z_arch_esf_t *esf)
 {
 	LOG_ERR("RAX: 0x%016lx RBX: 0x%016lx RCX: 0x%016lx RDX: 0x%016lx",
@@ -196,6 +199,7 @@ static void dump_regs(const z_arch_esf_t *esf)
 #endif
 }
 #else /* 32-bit */
+__pinned_func
 static void dump_regs(const z_arch_esf_t *esf)
 {
 	LOG_ERR("EAX: 0x%08x, EBX: 0x%08x, ECX: 0x%08x, EDX: 0x%08x",
@@ -215,6 +219,7 @@ static void dump_regs(const z_arch_esf_t *esf)
 }
 #endif /* CONFIG_X86_64 */
 
+__pinned_func
 static void log_exception(uintptr_t vector, uintptr_t code)
 {
 	switch (vector) {
@@ -284,6 +289,7 @@ static void log_exception(uintptr_t vector, uintptr_t code)
 	}
 }
 
+__pinned_func
 static void dump_page_fault(z_arch_esf_t *esf)
 {
 	uintptr_t err;
@@ -317,6 +323,7 @@ static void dump_page_fault(z_arch_esf_t *esf)
 }
 #endif /* CONFIG_EXCEPTION_DEBUG */
 
+__pinned_func
 FUNC_NORETURN void z_x86_fatal_error(unsigned int reason,
 				     const z_arch_esf_t *esf)
 {
@@ -339,6 +346,7 @@ FUNC_NORETURN void z_x86_fatal_error(unsigned int reason,
 	CODE_UNREACHABLE;
 }
 
+__pinned_func
 FUNC_NORETURN void z_x86_unhandled_cpu_exception(uintptr_t vector,
 						 const z_arch_esf_t *esf)
 {
@@ -358,6 +366,7 @@ static const struct z_exc_handle exceptions[] = {
 };
 #endif
 
+__pinned_func
 void z_x86_page_fault_handler(z_arch_esf_t *esf)
 {
 #ifdef CONFIG_DEMAND_PAGING
@@ -433,6 +442,7 @@ void z_x86_page_fault_handler(z_arch_esf_t *esf)
 	CODE_UNREACHABLE;
 }
 
+__pinned_func
 void z_x86_do_kernel_oops(const z_arch_esf_t *esf)
 {
 	uintptr_t reason;

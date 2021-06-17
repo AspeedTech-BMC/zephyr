@@ -6,14 +6,11 @@ User and Developer Guides
 .. toctree::
    :maxdepth: 1
 
-   getting-help.rst
    beyond-GSG.rst
    arch/index.rst
    bluetooth/index.rst
    build/index
    coding_guidelines/index
-   design_guidelines.rst
-   c_library
    ../README.rst
    documentation/index
    coccinelle.rst
@@ -24,7 +21,6 @@ User and Developer Guides
    device_mgmt/dfu
    dts/index
    emulator/index.rst
-   env_vars.rst
    coverage.rst
    kconfig/index
    modules.rst

@@ -33,7 +33,7 @@ CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC).
 
 For asynchronous timekeeping, the kernel defines a "ticks" concept.  A
 "tick" is the internal count in which the kernel does all its internal
-uptime and timeout bookeeping.  Interrupts are expected to be
+uptime and timeout bookkeeping.  Interrupts are expected to be
 delivered on tick boundaries to the extent practical, and no
 fractional ticks are tracked.  The choice of tick rate is configurable
 via :c:option:`CONFIG_SYS_CLOCK_TICKS_PER_SEC`.  Defaults on most
@@ -95,28 +95,28 @@ For example:
 * Kernel :c:struct:`k_timer` objects must specify delays for
   their duration and period.
 
-* The kernel ``k_delayed_work`` API provides a timeout parameter
+* The kernel :c:struct:`k_work_delayable` API provides a timeout parameter
   indicating when a work queue item will be added to the system queue.
 
-All these values are specified using a ``k_timeout_t`` value.  This is
+All these values are specified using a :c:struct:`k_timeout_t` value.  This is
 an opaque struct type that must be initialized using one of a family
-of kernel timeout macros.  The most common, ``K_MSEC()``, defines
+of kernel timeout macros.  The most common, :c:macro:`K_MSEC` , defines
 a time in milliseconds after the current time (strictly: the time at
 which the kernel receives the timeout value).
 
 Other options for timeout initialization follow the unit conventions
-described above: ``K_NSEC()``, ``K_USEC()``, ``K_TICKS()`` and
-``K_CYC()`` specify timeout values that will expire after specified
+described above: :c:macro:`K_NSEC()`, :c:macro:`K_USEC`, :c:macro:`K_TICKS` and
+:c:macro:`K_CYC()` specify timeout values that will expire after specified
 numbers of nanoseconds, microseconds, ticks and cycles, respectively.
 
-Precision of ``k_timeout_t`` values is configurable, with the default
+Precision of :c:struct:`k_timeout_t` values is configurable, with the default
 being 32 bits.  Large uptime counts in non-tick units will experience
 complicated rollover semantics, so it is expected that
 timing-sensitive applications with long uptimes will be configured to
 use a 64 bit timeout type.
 
 Finally, it is possible to specify timeouts as absolute times since
-system boot.  A timeout initialized with ``K_TIMEOUT_ABS_MS()``
+system boot.  A timeout initialized with :c:macro:`K_TIMEOUT_ABS_MS`
 indicates a timeout that will expire after the system uptime reaches
 the specified value.  There are likewise nanosecond, microsecond,
 cycles and ticks variants of this API.
@@ -127,16 +127,16 @@ Timing Internals
 Timeout Queue
 -------------
 
-All Zephyr ``k_timeout_t`` events specified using the API above are
+All Zephyr :c:struct:`k_timeout_t` events specified using the API above are
 managed in a single, global queue of events.  Each event is stored in
 a double-linked list, with an attendant delta count in ticks from the
 previous event.  The action to take on an event is specified as a
 callback function pointer provided by the subsystem requesting the
 event, along with a :c:struct:`_timeout` tracking struct that is
 expected to be embedded within subsystem-defined data structures (for
-example: a ``struct wait_q``, or a ``k_tid_t`` thread struct).
+example: a :c:struct:`wait_q` struct, or a :c:struct:`k_tid_t` thread struct).
 
-Note that all variant units passed via a ``k_timeout_t`` are converted
+Note that all variant units passed via a :c:struct:`k_timeout_t` are converted
 to ticks once on insertion into the list.  There no
 multiple-conversion steps internal to the kernel, so precision is
 guaranteed at the tick level no matter how many events exist or how
@@ -155,7 +155,7 @@ Kernel timing at the tick level is driven by a timer driver with a
 comparatively simple API.
 
 * The driver is expected to be able to "announce" new ticks to the
-  kernel via the ``z_clock_announce()`` call, which passes an integer
+  kernel via the :c:func:`sys_clock_announce` call, which passes an integer
   number of ticks that have elapsed since the last announce call (or
   system boot).  These calls can occur at any time, but the driver is
   expected to attempt to ensure (to the extent practical given
@@ -164,7 +164,7 @@ comparatively simple API.
   be correct over time and subject to minimal skew vs. other counters
   and real world time.
 
-* The driver is expected to provide a ``z_clock_set_timeout()`` call
+* The driver is expected to provide a :c:func:`sys_clock_set_timeout` call
   to the kernel which indicates how many ticks may elapse before the
   kernel must receive an announce call to trigger registered timeouts.
   It is legal to announce new ticks before that moment (though they
@@ -175,10 +175,10 @@ comparatively simple API.
   implementations of this function are subject to bugs where the
   fractional tick gets "reset" incorrectly and causes clock skew.
 
-* The driver is expected to provide a ``z_clock_elapsed()`` call which
+* The driver is expected to provide a :c:func:`sys_clock_elapsed` call which
   provides a current indication of how many ticks have elapsed (as
   compared to a real world clock) since the last call to
-  ``z_clock_announce()``, which the kernel needs to test newly
+  :c:func:`sys_clock_announce`, which the kernel needs to test newly
   arriving timeouts for expiration.
 
 Note that a natural implementation of this API results in a "tickless"
@@ -188,15 +188,16 @@ provide irregular interrupts.  But a traditional, "ticked" or "dumb"
 counter driver can be trivially implemented also:
 
 * The driver can receive interrupts at a regular rate corresponding to
-  the OS tick rate, calling z_clock_anounce() with an argument of one
+  the OS tick rate, calling :c:func:`sys_clock_announce` with an argument of one
   each time.
 
-* The driver can ignore calls to ``z_clock_set_timeout()``, as every
+* The driver can ignore calls to :c:func:`sys_clock_set_timeout`, as every
   tick will be announced regardless of timeout status.
 
-* The driver can return zero for every call to ``z_clock_elapsed()``
+* The driver can return zero for every call to :c:func:`sys_clock_elapsed`
   as no more than one tick can be detected as having elapsed (because
   otherwise an interrupt would have been received).
+
 
 SMP Details
 -----------
@@ -211,7 +212,7 @@ and minimal.  But some notes are important to detail:
   have every timer interrupt handled on a single processor.  Existing
   SMP architectures implement symmetric timer drivers.
 
-* The ``z_clock_announce()`` call is expected to be globally
+* The :c:func:`sys_clock_announce` call is expected to be globally
   synchronized at the driver level.  The kernel does not do any
   per-CPU tracking, and expects that if two timer interrupts fire near
   simultaneously, that only one will provide the current tick count to
@@ -225,10 +226,10 @@ and minimal.  But some notes are important to detail:
   driver, not the kernel.
 
 * The next timeout value passed back to the driver via
-  :c:func:`z_clock_set_timeout` is done identically for every CPU.
+  :c:func:`sys_clock_set_timeout` is done identically for every CPU.
   So by default, every CPU will see simultaneous timer interrupts for
   every event, even though by definition only one of them should see a
-  non-zero ticks argument to ``z_clock_announce()``.  This is probably
+  non-zero ticks argument to :c:func:`sys_clock_announce`.  This is probably
   a correct default for timing sensitive applications (because it
   minimizes the chance that an errant ISR or interrupt lock will delay
   a timeout), but may be a performance problem in some cases.  The
@@ -246,7 +247,7 @@ tracked independently on each CPU in an SMP context.
 
 Because there may be no other hardware available to drive timeslicing,
 Zephyr multiplexes the existing timer driver.  This means that the
-value passed to :c:func:`z_clock_set_timeout` may be clamped to a
+value passed to :c:func:`sys_clock_set_timeout` may be clamped to a
 smaller value than the current next timeout when a time sliced thread
 is currently scheduled.
 
@@ -266,7 +267,7 @@ acceptable.
 
 One complexity is :c:macro:`K_FOREVER`.  Subsystems that might have
 been able to accept this value to their millisecond API in the past no
-longer can, becauase it is no longer an intergral type.  Such code
+longer can, because it is no longer an intergral type.  Such code
 will need to use a different, integer-valued token to represent
 "forever".  :c:macro:`K_NO_WAIT` has the same typesafety concern too,
 of course, but as it is (and has always been) simply a numerical zero,
@@ -310,7 +311,7 @@ code.  For example, consider this design:
 
 This code requires that the timeout value be inspected, which is no
 longer possible.  For situations like this, the new API provides an
-internal :c:func:`z_timeout_end_calc` routine that converts an
+internal :c:func:`sys_clock_timeout_end_calc` routine that converts an
 arbitrary timeout to the uptime value in ticks at which it will
 expire.  So such a loop might look like:
 
@@ -320,7 +321,7 @@ expire.  So such a loop might look like:
     void my_wait_for_event(struct my_subsys *obj, k_timeout_t timeout_in_ms)
     {
         /* Compute the end time from the timeout */
-        uint64_t end = z_timeout_end_calc(timeout_in_ms);
+        uint64_t end = sys_clock_timeout_end_calc(timeout_in_ms);
 
         while (end > k_uptime_ticks()) {
             if (is_event_complete(obj)) {
@@ -332,7 +333,7 @@ expire.  So such a loop might look like:
         }
     }
 
-Note that :c:func:`z_timeout_end_calc` returns values in units of
+Note that :c:func:`sys_clock_timeout_end_calc` returns values in units of
 ticks, to prevent conversion aliasing, is always presented at 64 bit
 uptime precision to prevent rollover bugs, handles special
 :c:macro:`K_FOREVER` naturally (as ``UINT64_MAX``), and works
@@ -341,7 +342,7 @@ identically for absolute timeouts as well as conventional ones.
 But some care is still required for subsystems that use it.  Note that
 delta timeouts need to be interpreted relative to a "current time",
 and obviously that time is the time of the call to
-:c:func:`z_timeout_end_calc`.  But the user expects that the time is
+:c:func:`sys_clock_timeout_end_calc`.  But the user expects that the time is
 the time they passed the timeout to you.  Care must be taken to call
 this function just once, as synchronously as possible to the timeout
 creation in user code.  It should not be used on a "stored" timeout

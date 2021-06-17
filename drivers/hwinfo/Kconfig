@@ -108,4 +108,12 @@ config HWINFO_ASPEED
 	help
 	  Enable ASPEED hwinfo driver.
 
+config HWINFO_GECKO
+	bool "GECKO hwinfo"
+	default y
+	depends on SOC_FAMILY_EXX32
+	select HWINFO_HAS_DRIVER
+	help
+	  Enable Silabs GECKO hwinfo driver.
+
 endif

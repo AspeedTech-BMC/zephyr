@@ -247,8 +247,7 @@ static int stm32_ipcc_mailbox_init(const struct device *dev)
 	const struct device *clk;
 	uint32_t i;
 
-	clk = device_get_binding(STM32_CLOCK_CONTROL_NAME);
-	__ASSERT_NO_MSG(clk);
+	clk = DEVICE_DT_GET(STM32_CLOCK_CONTROL_NODE);
 
 	/* enable clock */
 	if (clock_control_on(clk,
@@ -297,7 +296,7 @@ static const struct stm32_ipcc_mailbox_config stm32_ipcc_mailbox_0_config = {
 
 DEVICE_DT_INST_DEFINE(0,
 		    &stm32_ipcc_mailbox_init,
-		    device_pm_control_nop,
+		    NULL,
 		    &stm32_IPCC_data, &stm32_ipcc_mailbox_0_config,
 		    POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,
 		    &stm32_ipcc_mailbox_driver_api);

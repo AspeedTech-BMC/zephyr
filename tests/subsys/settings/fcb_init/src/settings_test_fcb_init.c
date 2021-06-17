@@ -8,7 +8,7 @@
 #include <ztest.h>
 
 #include <zephyr.h>
-#include <power/reboot.h>
+#include <sys/reboot.h>
 #include <string.h>
 
 #include <settings/settings.h>
@@ -104,9 +104,6 @@ void test_prepare_storage(void)
 		zassert_true(err == 0, "Can't open storage flash area");
 
 		dev = flash_area_get_device(fa);
-
-		err = flash_write_protection_set(dev, false);
-		zassert_true(err == 0, "can't unprotect flash");
 
 		(void)memset(new_val, (~ERASED_VAL) & 0xFF,
 			     FLASH_WRITE_BLOCK_SIZE);

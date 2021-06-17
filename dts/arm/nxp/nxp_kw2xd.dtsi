@@ -59,8 +59,28 @@
 			compatible = "nxp,kinetis-sim";
 			reg = <0x40047000 0x1060>;
 			label = "SIM";
-
 			#clock-cells = <3>;
+
+			core_clk {
+				compatible = "fixed-factor-clock";
+				clocks = <&mcg KINETIS_MCG_OUT_CLK>;
+				clock-div = <1>;
+				#clock-cells = <0>;
+			};
+
+			bus_clk {
+				compatible = "fixed-factor-clock";
+				clocks = <&mcg KINETIS_MCG_OUT_CLK>;
+				clock-div = <1>;
+				#clock-cells = <0>;
+			};
+
+			flash_clk {
+				compatible = "fixed-factor-clock";
+				clocks = <&mcg KINETIS_MCG_OUT_CLK>;
+				clock-div = <2>;
+				#clock-cells = <0>;
+			};
 		};
 
 		ftfl: flash-controller@40020000 {
@@ -143,35 +163,43 @@
 			compatible = "nxp,kinetis-pinmux";
 			reg = <0x40049000 0xd0>;
 			clocks = <&sim KINETIS_SIM_BUS_CLK 0x1038 9>;
-			label = "porta";
 		};
 
 		portb: pinmux@4004a000 {
 			compatible = "nxp,kinetis-pinmux";
 			reg = <0x4004a000 0xd0>;
 			clocks = <&sim KINETIS_SIM_BUS_CLK 0x1038 10>;
-			label = "portb";
+
+			SPI1_PCS0_PTB10: spi1_pcs0_ptb10 {
+				nxp,kinetis-port-pins = < 10 2 >;
+			};
+			SPI1_SCK_PTB11: spi1_sck_ptb11 {
+				nxp,kinetis-port-pins = < 11 2 >;
+			};
+			SPI1_SOUT_PTB16: spi1_sout_ptb16 {
+				nxp,kinetis-port-pins = < 16 2 >;
+			};
+			SPI1_SIN_PTB17: spi1_sin_ptb17 {
+				nxp,kinetis-port-pins = < 17 2 >;
+			};
 		};
 
 		portc: pinmux@4004b000 {
 			compatible = "nxp,kinetis-pinmux";
 			reg = <0x4004b000 0xd0>;
 			clocks = <&sim KINETIS_SIM_BUS_CLK 0x1038 11>;
-			label = "portc";
 		};
 
 		portd: pinmux@4004c000 {
 			compatible = "nxp,kinetis-pinmux";
 			reg = <0x4004c000 0xd0>;
 			clocks = <&sim KINETIS_SIM_BUS_CLK 0x1038 12>;
-			label = "portd";
 		};
 
 		porte: pinmux@4004d000 {
 			compatible = "nxp,kinetis-pinmux";
 			reg = <0x4004d000 0xd0>;
 			clocks = <&sim KINETIS_SIM_BUS_CLK 0x1038 13>;
-			label = "porte";
 		};
 
 		gpioa: gpio@400ff000 {
@@ -249,6 +277,9 @@
 
 			#address-cells = <1>;
 			#size-cells = <0>;
+
+			pinctrl-0 = <&SPI1_PCS0_PTB10 &SPI1_SCK_PTB11
+				     &SPI1_SOUT_PTB16 &SPI1_SIN_PTB17>;
 
 			mcr20a@0 {
 				compatible = "nxp,mcr20a";

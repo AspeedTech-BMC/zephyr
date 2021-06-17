@@ -254,7 +254,7 @@ static int fxas21002_init(const struct device *dev)
 		return -EIO;
 	}
 
-	k_sem_init(&data->sem, 0, UINT_MAX);
+	k_sem_init(&data->sem, 0, K_SEM_MAX_LIMIT);
 
 #if CONFIG_FXAS21002_TRIGGER
 	if (fxas21002_trigger_init(dev)) {
@@ -310,7 +310,7 @@ static const struct fxas21002_config fxas21002_config = {
 
 static struct fxas21002_data fxas21002_data;
 
-DEVICE_DT_INST_DEFINE(0, fxas21002_init, device_pm_control_nop,
+DEVICE_DT_INST_DEFINE(0, fxas21002_init, NULL,
 		    &fxas21002_data, &fxas21002_config,
 		    POST_KERNEL, CONFIG_SENSOR_INIT_PRIORITY,
 		    &fxas21002_driver_api);

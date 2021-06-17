@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2017 Intel Corporation
+ * Copyright (c) 2021 Espressif Systems (Shanghai) Co., Ltd.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -59,10 +60,10 @@ struct i2c_esp32_cmd {
 struct i2c_esp32_data {
 	uint32_t dev_config;
 	uint16_t address;
+	uint32_t err_status;
 
 	struct k_sem fifo_sem;
 	struct k_sem transfer_sem;
-	const struct device *clock_dev;
 };
 
 typedef void (*irq_connect_cb)(void);
@@ -71,7 +72,7 @@ struct i2c_esp32_config {
 	int index;
 
 	irq_connect_cb connect_irq;
-	const char *clock_name;
+	const struct device *clock_dev;
 
 	const struct {
 		int sda_out;
@@ -141,7 +142,6 @@ static int i2c_esp32_configure_speed(const struct device *dev,
 	};
 
 	const struct i2c_esp32_config *config = dev->config;
-	struct i2c_esp32_data *data = dev->data;
 
 	uint32_t sys_clk_freq = 0;
 	uint32_t freq_hz = speed_to_freq_tbl[speed];
@@ -151,7 +151,7 @@ static int i2c_esp32_configure_speed(const struct device *dev,
 		return -ENOTSUP;
 	}
 
-	if (clock_control_get_rate(data->clock_dev,
+	if (clock_control_get_rate(config->clock_dev,
 				   config->peripheral_id,
 				   &sys_clk_freq)) {
 		return -EINVAL;
@@ -205,7 +205,7 @@ static int i2c_esp32_configure(const struct device *dev, uint32_t dev_config)
 		return ret;
 	}
 
-	clock_control_on(data->clock_dev, config->peripheral_id);
+	clock_control_on(config->clock_dev, config->peripheral_id);
 
 	/* MSB or LSB first is configurable for both TX and RX */
 	if (config->mode.tx_lsb_first) {
@@ -295,19 +295,10 @@ static int i2c_esp32_transmit(const struct device *dev)
 {
 	const struct i2c_esp32_config *config = dev->config;
 	struct i2c_esp32_data *data = dev->data;
-	uint32_t status;
 
 	/* Start transmission and wait for the ISR to give the semaphore */
 	sys_set_bit(I2C_CTR_REG(config->index), I2C_TRANS_START_S);
 	if (k_sem_take(&data->fifo_sem, K_MSEC(I2C_ESP32_TIMEOUT_MS)) < 0) {
-		return -ETIMEDOUT;
-	}
-
-	status = sys_read32(I2C_INT_RAW_REG(config->index));
-	if (status & (I2C_ARBITRATION_LOST_INT_RAW | I2C_ACK_ERR_INT_RAW)) {
-		return -EIO;
-	}
-	if (status & I2C_TIME_OUT_INT_RAW) {
 		return -ETIMEDOUT;
 	}
 
@@ -318,6 +309,8 @@ static int i2c_esp32_wait(const struct device *dev,
 			  volatile struct i2c_esp32_cmd *wait_cmd)
 {
 	const struct i2c_esp32_config *config = dev->config;
+	struct i2c_esp32_data *data = dev->data;
+	uint32_t status;
 	int counter = 0;
 	int ret;
 
@@ -336,6 +329,16 @@ static int i2c_esp32_wait(const struct device *dev,
 		if (ret < 0) {
 			return ret;
 		}
+	}
+
+	status = data->err_status;
+	if (status & (I2C_ARBITRATION_LOST_INT_RAW | I2C_ACK_ERR_INT_RAW)) {
+		data->err_status = 0;
+		return -EIO;
+	}
+	if (status & I2C_TIME_OUT_INT_RAW) {
+		data->err_status = 0;
+		return -ETIMEDOUT;
 	}
 
 	return 0;
@@ -549,21 +552,31 @@ static int i2c_esp32_transfer(const struct device *dev, struct i2c_msg *msgs,
 	return ret;
 }
 
-static void i2c_esp32_isr(const struct device *device)
+static void i2c_esp32_isr(const struct device *dev)
 {
 	const int fifo_give_mask = I2C_ACK_ERR_INT_ST |
 				   I2C_TIME_OUT_INT_ST |
 				   I2C_TRANS_COMPLETE_INT_ST |
 				   I2C_ARBITRATION_LOST_INT_ST;
-	const struct i2c_esp32_config *config = device->config;
+	const struct i2c_esp32_config *config = dev->config;
+	uint32_t status = sys_read32(I2C_INT_STATUS_REG(config->index));
 
-	if (sys_read32(I2C_INT_STATUS_REG(config->index)) & fifo_give_mask) {
-		struct i2c_esp32_data *data = device->data;
+	if (status & fifo_give_mask) {
+		struct i2c_esp32_data *data = dev->data;
 
 		/* Only give the semaphore if a watched interrupt happens.
 		 * Error checking is performed at the other side of the
 		 * semaphore, by reading the status register.
 		 */
+		if (status & I2C_ACK_ERR_INT_ST) {
+			data->err_status |= I2C_ACK_ERR_INT_ST;
+		}
+		if (status & I2C_ARBITRATION_LOST_INT_ST) {
+			data->err_status |= I2C_ARBITRATION_LOST_INT_ST;
+		}
+		if (status & I2C_TIME_OUT_INT_ST) {
+			data->err_status |= I2C_TIME_OUT_INT_ST;
+		}
 		k_sem_give(&data->fifo_sem);
 	}
 
@@ -588,7 +601,7 @@ static void i2c_esp32_connect_irq_0(void)
 static const struct i2c_esp32_config i2c_esp32_config_0 = {
 	.index = 0,
 	.connect_irq = i2c_esp32_connect_irq_0,
-	.clock_name = DT_INST_CLOCKS_LABEL(0),
+	.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(0)),
 	.peripheral_id = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(0, offset),
 	.sig = {
 		.sda_out = I2CEXT0_SDA_OUT_IDX,
@@ -616,7 +629,7 @@ static const struct i2c_esp32_config i2c_esp32_config_0 = {
 
 static struct i2c_esp32_data i2c_esp32_data_0;
 
-DEVICE_DT_INST_DEFINE(0, &i2c_esp32_init, device_pm_control_nop,
+DEVICE_DT_INST_DEFINE(0, &i2c_esp32_init, NULL,
 		    &i2c_esp32_data_0, &i2c_esp32_config_0,
 		    POST_KERNEL, CONFIG_I2C_INIT_PRIORITY,
 		    &i2c_esp32_driver_api);
@@ -632,7 +645,7 @@ static void i2c_esp32_connect_irq_1(void)
 static const struct i2c_esp32_config i2c_esp32_config_1 = {
 	.index = 1,
 	.connect_irq = i2c_esp32_connect_irq_1,
-	.clock_name = DT_INST_CLOCKS_LABEL(1),
+	.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(1)),
 	.peripheral_id = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(1, offset),
 	.sig = {
 		.sda_out = I2CEXT1_SDA_OUT_IDX,
@@ -660,7 +673,7 @@ static const struct i2c_esp32_config i2c_esp32_config_1 = {
 
 static struct i2c_esp32_data i2c_esp32_data_1;
 
-DEVICE_DT_INST_DEFINE(1, &i2c_esp32_init, device_pm_control_nop,
+DEVICE_DT_INST_DEFINE(1, &i2c_esp32_init, NULL,
 		    &i2c_esp32_data_1, &i2c_esp32_config_1,
 		    POST_KERNEL, CONFIG_I2C_INIT_PRIORITY,
 		    &i2c_esp32_driver_api);
@@ -671,9 +684,6 @@ static int i2c_esp32_init(const struct device *dev)
 	const struct i2c_esp32_config *config = dev->config;
 	struct i2c_esp32_data *data = dev->data;
 	uint32_t bitrate_cfg = i2c_map_dt_bitrate(config->bitrate);
-	data->clock_dev = device_get_binding(config->clock_name);
-
-	__ASSERT_NO_MSG(data->clock_dev);
 
 	unsigned int key = irq_lock();
 

@@ -30,16 +30,16 @@ static int dev_init(const struct device *dev)
 	return 0;
 }
 
-DEVICE_DT_DEFINE(TEST_GPIO, dev_init, device_pm_control_nop,
+DEVICE_DT_DEFINE(TEST_GPIO, dev_init, NULL,
 		 NULL, NULL, PRE_KERNEL_1, 90, NULL);
-DEVICE_DT_DEFINE(TEST_I2C, dev_init, device_pm_control_nop,
+DEVICE_DT_DEFINE(TEST_I2C, dev_init, NULL,
 		 NULL, NULL, POST_KERNEL, 10, NULL);
-DEVICE_DT_DEFINE(TEST_DEVA, dev_init, device_pm_control_nop,
+DEVICE_DT_DEFINE(TEST_DEVA, dev_init, NULL,
 		 NULL, NULL, POST_KERNEL, 20, NULL);
 /* NB: Intentional init devb before required gpiox */
-DEVICE_DT_DEFINE(TEST_DEVB, dev_init, device_pm_control_nop,
+DEVICE_DT_DEFINE(TEST_DEVB, dev_init, NULL,
 		 NULL, NULL, POST_KERNEL, 30, NULL);
-DEVICE_DT_DEFINE(TEST_GPIOX, dev_init, device_pm_control_nop,
+DEVICE_DT_DEFINE(TEST_GPIOX, dev_init, NULL,
 		 NULL, NULL, POST_KERNEL, 40, NULL);
 
 #define DEV_HDL(node_id) device_handle_get(DEVICE_DT_GET(node_id))
@@ -74,43 +74,98 @@ static bool check_handle(device_handle_t hdl,
 	return false;
 }
 
+struct requires_context {
+	uint8_t ndevs;
+	const struct device *rdevs[2];
+};
+
+static int requires_visitor(const struct device *dev,
+			    void *context)
+{
+	struct requires_context *ctx = context;
+	const struct device **rdp = ctx->rdevs;
+
+	while (rdp < (ctx->rdevs + ctx->ndevs)) {
+		if (*rdp == NULL) {
+			*rdp = dev;
+			return 0;
+		}
+
+		++rdp;
+	}
+
+	return -ENOSPC;
+}
+
 static void test_requires(void)
 {
 	size_t nhdls = 0;
 	const device_handle_t *hdls;
 	const struct device *dev;
+	struct requires_context ctx = { 0 };
 
 	/* TEST_GPIO: no req */
 	dev = device_get_binding(DT_LABEL(TEST_GPIO));
 	zassert_equal(dev, DEVICE_DT_GET(TEST_GPIO), NULL);
-	hdls = device_get_requires_handles(dev, &nhdls);
+	hdls = device_required_handles_get(dev, &nhdls);
 	zassert_equal(nhdls, 0, NULL);
+	zassert_equal(0, device_required_foreach(dev, requires_visitor, &ctx),
+		      NULL);
 
 	/* TEST_I2C: no req */
 	dev = device_get_binding(DT_LABEL(TEST_I2C));
 	zassert_equal(dev, DEVICE_DT_GET(TEST_I2C), NULL);
-	hdls = device_get_requires_handles(dev, &nhdls);
+	hdls = device_required_handles_get(dev, &nhdls);
 	zassert_equal(nhdls, 0, NULL);
+	zassert_equal(0, device_required_foreach(dev, requires_visitor, &ctx),
+		      NULL);
 
 	/* TEST_DEVA: TEST_I2C GPIO */
 	dev = device_get_binding(DT_LABEL(TEST_DEVA));
 	zassert_equal(dev, DEVICE_DT_GET(TEST_DEVA), NULL);
-	hdls = device_get_requires_handles(dev, &nhdls);
+	hdls = device_required_handles_get(dev, &nhdls);
 	zassert_equal(nhdls, 2, NULL);
 	zassert_true(check_handle(DEV_HDL(TEST_I2C), hdls, nhdls), NULL);
 	zassert_true(check_handle(DEV_HDL(TEST_GPIO), hdls, nhdls), NULL);
 
+	/* Visit fails if not enough space */
+	ctx = (struct requires_context){
+		.ndevs = 1,
+	};
+	zassert_equal(-ENOSPC, device_required_foreach(dev, requires_visitor, &ctx),
+		      NULL);
+
+	/* Visit succeeds if enough space. */
+	ctx = (struct requires_context){
+		.ndevs = 2,
+	};
+	zassert_equal(2, device_required_foreach(dev, requires_visitor, &ctx),
+		      NULL);
+	zassert_true((ctx.rdevs[0] == device_from_handle(DEV_HDL(TEST_I2C)))
+		      || (ctx.rdevs[1] == device_from_handle(DEV_HDL(TEST_I2C))),
+		     NULL);
+	zassert_true((ctx.rdevs[0] == device_from_handle(DEV_HDL(TEST_GPIO)))
+		      || (ctx.rdevs[1] == device_from_handle(DEV_HDL(TEST_GPIO))),
+		     NULL);
+
 	/* TEST_GPIOX: TEST_I2C */
 	dev = device_get_binding(DT_LABEL(TEST_GPIOX));
 	zassert_equal(dev, DEVICE_DT_GET(TEST_GPIOX), NULL);
-	hdls = device_get_requires_handles(dev, &nhdls);
+	hdls = device_required_handles_get(dev, &nhdls);
 	zassert_equal(nhdls, 1, NULL);
 	zassert_true(check_handle(DEV_HDL(TEST_I2C), hdls, nhdls), NULL);
+	ctx = (struct requires_context){
+		.ndevs = 3,
+	};
+	zassert_equal(1, device_required_foreach(dev, requires_visitor, &ctx),
+		      NULL);
+	zassert_true(ctx.rdevs[0] == device_from_handle(DEV_HDL(TEST_I2C)),
+		     NULL);
 
 	/* TEST_DEVB: TEST_I2C TEST_GPIOX */
 	dev = device_get_binding(DT_LABEL(TEST_DEVB));
 	zassert_equal(dev, DEVICE_DT_GET(TEST_DEVB), NULL);
-	hdls = device_get_requires_handles(dev, &nhdls);
+	hdls = device_required_handles_get(dev, &nhdls);
 	zassert_equal(nhdls, 2, NULL);
 	zassert_true(check_handle(DEV_HDL(TEST_I2C), hdls, nhdls), NULL);
 	zassert_true(check_handle(DEV_HDL(TEST_GPIOX), hdls, nhdls), NULL);

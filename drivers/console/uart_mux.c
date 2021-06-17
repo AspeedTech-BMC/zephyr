@@ -374,7 +374,7 @@ static int init_real_uart(const struct device *mux, const struct device *uart,
 		real_uart->mux = gsm_mux_create(mux);
 
 		LOG_DBG("Initializing UART %s and GSM mux %p",
-			real_uart->uart->name, real_uart->mux);
+			real_uart->uart->name, (void *)real_uart->mux);
 
 		if (!real_uart->mux) {
 			real_uart->uart = NULL;
@@ -826,7 +826,7 @@ int uart_mux_recv(const struct device *mux, struct gsm_dlci *dlci,
 	struct uart_mux_dev_data *dev_data = DEV_DATA(mux);
 	size_t wrote = 0;
 
-	LOG_DBG("%s: dlci %p data %p len %zd", mux->name, dlci,
+	LOG_DBG("%s: dlci %p data %p len %zd", mux->name, (void *)dlci,
 		data, len);
 
 	if (IS_ENABLED(CONFIG_UART_MUX_VERBOSE_DEBUG)) {
@@ -886,7 +886,7 @@ void uart_mux_foreach(uart_mux_cb_t cb, void *user_data)
 	DEVICE_DEFINE(uart_mux_##x,					  \
 			    CONFIG_UART_MUX_DEVICE_NAME "_" #x,		  \
 			    &uart_mux_init,				  \
-			    device_pm_control_nop,			  \
+			    NULL,					  \
 			    &uart_mux_dev_data_##x,			  \
 			    &uart_mux_config_##x,			  \
 			    POST_KERNEL,				  \
@@ -897,13 +897,13 @@ UTIL_LISTIFY(CONFIG_UART_MUX_DEVICE_COUNT, DEFINE_UART_MUX_CFG_DATA, _)
 UTIL_LISTIFY(CONFIG_UART_MUX_DEVICE_COUNT, DEFINE_UART_MUX_DEV_DATA, _)
 UTIL_LISTIFY(CONFIG_UART_MUX_DEVICE_COUNT, DEFINE_UART_MUX_DEVICE, _)
 
-static int init_uart_mux(const struct device *device)
+static int init_uart_mux(const struct device *dev)
 {
-	ARG_UNUSED(device);
+	ARG_UNUSED(dev);
 
-	k_work_q_start(&uart_mux_workq, uart_mux_stack,
-		       K_KERNEL_STACK_SIZEOF(uart_mux_stack),
-		       K_PRIO_COOP(UART_MUX_WORKQ_PRIORITY));
+	k_work_queue_start(&uart_mux_workq, uart_mux_stack,
+			   K_KERNEL_STACK_SIZEOF(uart_mux_stack),
+			   K_PRIO_COOP(UART_MUX_WORKQ_PRIORITY), NULL);
 	k_thread_name_set(&uart_mux_workq.thread, "uart_mux_workq");
 
 	return 0;

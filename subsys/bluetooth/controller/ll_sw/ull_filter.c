@@ -20,28 +20,33 @@
 #include "util/mayfly.h"
 
 #include "pdu.h"
-#include "ll.h"
 
 #include "lll.h"
+#include "lll/lll_adv_types.h"
 #include "lll_adv.h"
+#include "lll/lll_adv_pdu.h"
 #include "lll_scan.h"
 #include "lll_conn.h"
 #include "lll_filter.h"
 
 #include "ull_adv_types.h"
 #include "ull_scan_types.h"
+#include "ull_conn_types.h"
 #include "ull_filter.h"
 
 #include "ull_internal.h"
 #include "ull_adv_internal.h"
 #include "ull_scan_internal.h"
+#include "ull_conn_internal.h"
 
-#define ADDR_TYPE_ANON 0xFF
+#include "ll.h"
 
 #define BT_DBG_ENABLED IS_ENABLED(CONFIG_BT_DEBUG_HCI_DRIVER)
 #define LOG_MODULE_NAME bt_ctlr_ull_filter
 #include "common/log.h"
 #include "hal/debug.h"
+
+#define ADDR_TYPE_ANON 0xFF
 
 /* Hardware whitelist */
 static struct lll_filter wl_filter;
@@ -103,7 +108,7 @@ static struct lll_filter rl_filter;
 static uint32_t rpa_timeout_ms;
 static int64_t rpa_last_ms;
 
-static struct k_delayed_work rpa_work;
+static struct k_work_delayable rpa_work;
 
 #define LIST_MATCH(list, i, type, addr) (list[i].taken && \
 		    (list[i].id_addr_type == (type & 0x1)) && \
@@ -135,6 +140,11 @@ static uint32_t filter_remove(struct lll_filter *filter, uint8_t addr_type,
 static void filter_insert(struct lll_filter *filter, int index, uint8_t addr_type,
 			   uint8_t *bdaddr);
 static void filter_clear(struct lll_filter *filter);
+
+#if defined(CONFIG_BT_CTLR_PRIVACY) && \
+	defined(CONFIG_BT_CTLR_CHECK_SAME_PEER_CONN)
+static void conn_rpa_update(uint8_t rl_idx);
+#endif /* CONFIG_BT_CTLR_PRIVACY && CONFIG_BT_CTLR_CHECK_SAME_PEER_CONN */
 
 #if defined(CONFIG_BT_CTLR_SW_DEFERRED_PRIVACY)
 static void prpa_cache_clear(void);
@@ -371,6 +381,9 @@ void ll_rl_crpa_set(uint8_t id_addr_type, uint8_t *id_addr, uint8_t rl_idx, uint
 		if (rl_idx < ARRAY_SIZE(rl) && rl[rl_idx].taken) {
 			memcpy(rl[rl_idx].curr_rpa.val, crpa,
 			       sizeof(bt_addr_t));
+#if defined(CONFIG_BT_CTLR_CHECK_SAME_PEER_CONN)
+			conn_rpa_update(rl_idx);
+#endif /* CONFIG_BT_CTLR_CHECK_SAME_PEER_CONN) */
 		}
 	}
 }
@@ -638,13 +651,13 @@ void ull_filter_reset(bool init)
 	prpa_cache_clear();
 #endif
 	if (init) {
-		k_delayed_work_init(&rpa_work, rpa_timeout);
+		k_work_init_delayable(&rpa_work, rpa_timeout);
 #if defined(CONFIG_BT_CTLR_SW_DEFERRED_PRIVACY)
 		k_work_init(&(resolve_work.prpa_work), prpa_cache_resolve);
 		k_work_init(&(t_work.target_work), target_resolve);
 #endif
 	} else {
-		k_delayed_work_cancel(&rpa_work);
+		k_work_cancel_delayable(&rpa_work);
 	}
 #else
 	filter_clear(&wl_filter);
@@ -757,10 +770,10 @@ bool ull_filter_lll_rl_addr_allowed(uint8_t id_addr_type, uint8_t *id_addr, uint
 {
 	uint8_t i, j;
 
-	/* If AR is disabled or we matched an IRK then we're all set. No hw
+	/* We matched an IRK then we're all set. No hw
 	 * filters are used in this case.
 	 */
-	if (!rl_enable || *rl_idx != FILTER_IDX_NONE) {
+	if (*rl_idx != FILTER_IDX_NONE) {
 		return true;
 	}
 
@@ -808,7 +821,7 @@ bool ull_filter_lll_rl_enabled(void)
 uint8_t ull_filter_deferred_resolve(bt_addr_t *rpa, resolve_callback_t cb)
 {
 	if (rl_enable) {
-		if (!k_work_pending(&(resolve_work.prpa_work))) {
+		if (!k_work_is_pending(&(resolve_work.prpa_work))) {
 			/* copy input param to work variable */
 			memcpy(resolve_work.rpa.val, rpa->val, sizeof(bt_addr_t));
 			resolve_work.cb = cb;
@@ -826,7 +839,7 @@ uint8_t ull_filter_deferred_targeta_resolve(bt_addr_t *rpa, uint8_t rl_idx,
 					 resolve_callback_t cb)
 {
 	if (rl_enable) {
-		if (!k_work_pending(&(t_work.target_work))) {
+		if (!k_work_is_pending(&(t_work.target_work))) {
 			/* copy input param to work variable */
 			memcpy(t_work.rpa.val, rpa->val, sizeof(bt_addr_t));
 			t_work.cb = cb;
@@ -1007,18 +1020,18 @@ static int rl_access_check(bool check_ar)
 static void rpa_timeout(struct k_work *work)
 {
 	ull_filter_rpa_update(true);
-	k_delayed_work_submit(&rpa_work, K_MSEC(rpa_timeout_ms));
+	k_work_schedule(&rpa_work, K_MSEC(rpa_timeout_ms));
 }
 
 static void rpa_refresh_start(void)
 {
 	BT_DBG("");
-	k_delayed_work_submit(&rpa_work, K_MSEC(rpa_timeout_ms));
+	k_work_schedule(&rpa_work, K_MSEC(rpa_timeout_ms));
 }
 
 static void rpa_refresh_stop(void)
 {
-	k_delayed_work_cancel(&rpa_work);
+	k_work_cancel_delayable(&rpa_work);
 }
 
 #else /* !CONFIG_BT_CTLR_PRIVACY */
@@ -1080,6 +1093,27 @@ static void filter_clear(struct lll_filter *filter)
 	filter->addr_type_bitmask = 0;
 }
 
+#if defined(CONFIG_BT_CTLR_PRIVACY) && \
+	defined(CONFIG_BT_CTLR_CHECK_SAME_PEER_CONN)
+static void conn_rpa_update(uint8_t rl_idx)
+{
+	uint16_t handle;
+
+	for (handle = 0U; handle < CONFIG_BT_MAX_CONN; handle++) {
+		struct ll_conn *conn = ll_connected_get(handle);
+
+		/* The RPA of the connection matches the RPA that was just resolved */
+		if (conn &&
+		    conn->peer_addr_type < 2U &&
+		    !memcmp(conn->peer_addr, rl[rl_idx].curr_rpa.val, BDADDR_SIZE)) {
+			memcpy(conn->peer_addr, rl[rl_idx].id_addr.val, BDADDR_SIZE);
+			conn->peer_addr_type += 2U;
+			break;
+		}
+	}
+}
+#endif /* CONFIG_BT_CTLR_PRIVACY && CONFIG_BT_CTLR_CHECK_SAME_PEER_CONN */
+
 #if defined(CONFIG_BT_CTLR_SW_DEFERRED_PRIVACY)
 static void target_resolve(struct k_work *work)
 {
@@ -1115,8 +1149,8 @@ static void target_resolve(struct k_work *work)
 	if (twork->cb) {
 		mfy.fp = twork->cb;
 		mfy.param = (void *) ((unsigned int) j);
-		mayfly_enqueue(TICKER_USER_ID_THREAD,
-			       TICKER_USER_ID_LLL, 1, &mfy);
+		(void)mayfly_enqueue(TICKER_USER_ID_THREAD,
+				     TICKER_USER_ID_LLL, 1, &mfy);
 	}
 }
 
@@ -1168,6 +1202,9 @@ static void prpa_cache_resolve(struct k_work *work)
 			 */
 			memcpy(rl[j].curr_rpa.val, search_rpa->val,
 			       sizeof(bt_addr_t));
+#if defined(CONFIG_BT_CTLR_CHECK_SAME_PEER_CONN)
+			conn_rpa_update(j);
+#endif /* CONFIG_BT_CTLR_CHECK_SAME_PEER_CONN */
 		}
 
 	} else {
@@ -1182,8 +1219,8 @@ static void prpa_cache_resolve(struct k_work *work)
 	if (rwork->cb) {
 		mfy.fp = rwork->cb;
 		mfy.param = (void *) ((unsigned int) j);
-		mayfly_enqueue(TICKER_USER_ID_THREAD,
-			       TICKER_USER_ID_LLL, 1, &mfy);
+		(void)mayfly_enqueue(TICKER_USER_ID_THREAD,
+				     TICKER_USER_ID_LLL, 1, &mfy);
 	}
 }
 

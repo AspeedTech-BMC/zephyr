@@ -226,7 +226,7 @@ static int mcp23s17_config(const struct device *dev,
 	if ((flags & GPIO_OPEN_DRAIN) != 0U) {
 		ret = -ENOTSUP;
 		goto done;
-	};
+	}
 
 	ret = setup_pin_dir(dev, pin, flags);
 	if (ret) {
@@ -442,7 +442,7 @@ static int mcp23s17_init(const struct device *dev)
 									\
 	/* This has to init after SPI master */				\
 	DEVICE_DT_INST_DEFINE(inst, mcp23s17_init,			\
-			    device_pm_control_nop,			\
+			    NULL,					\
 			    &mcp23s17_##inst##_drvdata,			\
 			    &mcp23s17_##inst##_config,			\
 			    POST_KERNEL,				\

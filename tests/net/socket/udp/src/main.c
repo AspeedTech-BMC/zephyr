@@ -704,6 +704,35 @@ void test_v6_sendmsg_recvfrom_connected(void)
 	zassert_equal(rv, 0, "close failed");
 }
 
+void test_so_type(void)
+{
+	struct sockaddr_in bind_addr4;
+	struct sockaddr_in6 bind_addr6;
+	int sock1, sock2, rv;
+	int optval;
+	socklen_t optsize = sizeof(optval);
+
+	prepare_sock_udp_v4(CONFIG_NET_CONFIG_MY_IPV4_ADDR, 55555,
+			    &sock1, &bind_addr4);
+	prepare_sock_udp_v6(CONFIG_NET_CONFIG_MY_IPV6_ADDR, 55555,
+			    &sock2, &bind_addr6);
+
+	rv = getsockopt(sock1, SOL_SOCKET, SO_TYPE, &optval, &optsize);
+	zassert_equal(rv, 0, "getsockopt failed (%d)", errno);
+	zassert_equal(optval, SOCK_DGRAM, "getsockopt got invalid type");
+	zassert_equal(optsize, sizeof(optval), "getsockopt got invalid size");
+
+	rv = getsockopt(sock2, SOL_SOCKET, SO_TYPE, &optval, &optsize);
+	zassert_equal(rv, 0, "getsockopt failed (%d)", errno);
+	zassert_equal(optval, SOCK_DGRAM, "getsockopt got invalid type");
+	zassert_equal(optsize, sizeof(optval), "getsockopt got invalid size");
+
+	rv = close(sock1);
+	zassert_equal(rv, 0, "close failed");
+	rv = close(sock2);
+	zassert_equal(rv, 0, "close failed");
+}
+
 void test_so_txtime(void)
 {
 	struct sockaddr_in bind_addr4;
@@ -816,6 +845,72 @@ void test_so_rcvtimeo(void)
 	zassert_equal(rv, 0, "close failed");
 }
 
+void test_so_sndtimeo(void)
+{
+	struct sockaddr_in bind_addr4;
+	struct sockaddr_in6 bind_addr6;
+	int sock1, sock2, rv;
+
+	struct timeval optval = {
+		.tv_sec = 2,
+		.tv_usec = 500000,
+	};
+
+	prepare_sock_udp_v4(CONFIG_NET_CONFIG_MY_IPV4_ADDR, 55555,
+			    &sock1, &bind_addr4);
+	prepare_sock_udp_v6(CONFIG_NET_CONFIG_MY_IPV6_ADDR, 55555,
+			    &sock2, &bind_addr6);
+
+	rv = bind(sock1, (struct sockaddr *)&bind_addr4, sizeof(bind_addr4));
+	zassert_equal(rv, 0, "bind failed");
+
+	rv = bind(sock2, (struct sockaddr *)&bind_addr6, sizeof(bind_addr6));
+	zassert_equal(rv, 0, "bind failed");
+
+	rv = setsockopt(sock1, SOL_SOCKET, SO_SNDTIMEO, &optval,
+			sizeof(optval));
+	zassert_equal(rv, 0, "setsockopt failed (%d)", errno);
+
+	optval.tv_usec = 0;
+	rv = setsockopt(sock2, SOL_SOCKET, SO_SNDTIMEO, &optval,
+			sizeof(optval));
+	zassert_equal(rv, 0, "setsockopt failed");
+
+	rv = close(sock1);
+	zassert_equal(rv, 0, "close failed");
+	rv = close(sock2);
+	zassert_equal(rv, 0, "close failed");
+}
+
+void test_so_protocol(void)
+{
+	struct sockaddr_in bind_addr4;
+	struct sockaddr_in6 bind_addr6;
+	int sock1, sock2, rv;
+	int optval;
+	socklen_t optsize = sizeof(optval);
+
+	prepare_sock_udp_v4(CONFIG_NET_CONFIG_MY_IPV4_ADDR, 55555,
+			    &sock1, &bind_addr4);
+	prepare_sock_udp_v6(CONFIG_NET_CONFIG_MY_IPV6_ADDR, 55555,
+			    &sock2, &bind_addr6);
+
+	rv = getsockopt(sock1, SOL_SOCKET, SO_PROTOCOL, &optval, &optsize);
+	zassert_equal(rv, 0, "getsockopt failed (%d)", errno);
+	zassert_equal(optval, IPPROTO_UDP, "getsockopt got invalid protocol");
+	zassert_equal(optsize, sizeof(optval), "getsockopt got invalid size");
+
+	rv = getsockopt(sock2, SOL_SOCKET, SO_PROTOCOL, &optval, &optsize);
+	zassert_equal(rv, 0, "getsockopt failed (%d)", errno);
+	zassert_equal(optval, IPPROTO_UDP, "getsockopt got invalid protocol");
+	zassert_equal(optsize, sizeof(optval), "getsockopt got invalid size");
+
+	rv = close(sock1);
+	zassert_equal(rv, 0, "close failed");
+	rv = close(sock2);
+	zassert_equal(rv, 0, "close failed");
+}
+
 static void comm_sendmsg_with_txtime(int client_sock,
 				     struct sockaddr *client_addr,
 				     socklen_t client_addrlen,
@@ -920,16 +1015,27 @@ static int eth_fake_init(const struct device *dev)
 	return 0;
 }
 
-ETH_NET_DEVICE_INIT(eth_fake, "eth_fake", eth_fake_init, device_pm_control_nop,
+ETH_NET_DEVICE_INIT(eth_fake, "eth_fake", eth_fake_init, NULL,
 		    &eth_fake_data, NULL, CONFIG_ETH_INIT_PRIORITY,
 		    &eth_fake_api_funcs, NET_ETH_MTU);
+
+static void iface_cb(struct net_if *iface, void *user_data)
+{
+	struct net_if **my_iface = user_data;
+
+	if (net_if_l2(iface) == &NET_L2_GET_NAME(ETHERNET)) {
+		if (PART_OF_ARRAY(NET_IF_GET_NAME(eth_fake, 0), iface)) {
+			*my_iface = iface;
+		}
+	}
+}
 
 static void test_setup_eth(void)
 {
 	struct net_if_addr *ifaddr;
 	int ret;
 
-	eth_iface = net_if_get_first_by_type(&NET_L2_GET_NAME(ETHERNET));
+	net_if_foreach(iface_cb, &eth_iface);
 	zassert_not_null(eth_iface, "No ethernet interface found");
 
 	ifaddr = net_if_ipv6_addr_add(eth_iface, &my_addr1,
@@ -1018,6 +1124,94 @@ void test_v6_sendmsg_with_txtime(void)
 	test_started = false;
 }
 
+void test_msg_trunc(int sock_c, int sock_s, struct sockaddr *addr_c,
+		    socklen_t addrlen_c, struct sockaddr *addr_s,
+		    socklen_t addrlen_s)
+{
+	int rv;
+	uint8_t rx_buf[sizeof(TEST_STR_SMALL) - 1];
+
+	rv = bind(sock_s, addr_s, addrlen_s);
+	zassert_equal(rv, 0, "server bind failed");
+
+	rv = bind(sock_c, addr_c, addrlen_c);
+	zassert_equal(rv, 0, "client bind failed");
+
+	rv = connect(sock_c, addr_s, addrlen_s);
+	zassert_equal(rv, 0, "connect failed");
+
+	/* MSG_TRUNC */
+
+	rv = send(sock_c, BUF_AND_SIZE(TEST_STR_SMALL), 0);
+	zassert_equal(rv, sizeof(TEST_STR_SMALL) - 1, "send failed");
+
+	memset(rx_buf, 0, sizeof(rx_buf));
+	rv = recv(sock_s, rx_buf, 2, ZSOCK_MSG_TRUNC);
+	zassert_equal(rv, sizeof(TEST_STR_SMALL) - 1, "MSG_TRUNC flag failed");
+	zassert_mem_equal(rx_buf, TEST_STR_SMALL, 2, "invalid rx data");
+	zassert_equal(rx_buf[2], 0, "received more than requested");
+
+	/* The remaining data should've been discarded */
+	rv = recv(sock_s, rx_buf, sizeof(rx_buf), ZSOCK_MSG_DONTWAIT);
+	zassert_equal(rv, -1, "consecutive recv should've failed");
+	zassert_equal(errno, EAGAIN, "incorrect errno value");
+
+	/* MSG_TRUNC & MSG_PEEK combo */
+
+	rv = send(sock_c, BUF_AND_SIZE(TEST_STR_SMALL), 0);
+	zassert_equal(rv, sizeof(TEST_STR_SMALL) - 1, "send failed");
+
+	memset(rx_buf, 0, sizeof(rx_buf));
+	rv = recv(sock_s, rx_buf, 2, ZSOCK_MSG_TRUNC | ZSOCK_MSG_PEEK);
+	zassert_equal(rv, sizeof(TEST_STR_SMALL) - 1, "MSG_TRUNC flag failed");
+
+	/* The packet should still be available due to MSG_PEEK */
+	rv = recv(sock_s, rx_buf, sizeof(rx_buf), ZSOCK_MSG_TRUNC);
+	zassert_equal(rv, sizeof(TEST_STR_SMALL) - 1,
+		      "recv after MSG_PEEK failed");
+	zassert_mem_equal(rx_buf, BUF_AND_SIZE(TEST_STR_SMALL),
+			  "invalid rx data");
+
+	rv = close(sock_c);
+	zassert_equal(rv, 0, "close failed");
+	rv = close(sock_s);
+	zassert_equal(rv, 0, "close failed");
+}
+
+void test_v4_msg_trunc(void)
+{
+	int client_sock;
+	int server_sock;
+	struct sockaddr_in client_addr;
+	struct sockaddr_in server_addr;
+
+	prepare_sock_udp_v4(CONFIG_NET_CONFIG_MY_IPV4_ADDR, ANY_PORT,
+			    &client_sock, &client_addr);
+	prepare_sock_udp_v4(CONFIG_NET_CONFIG_MY_IPV4_ADDR, SERVER_PORT,
+			    &server_sock, &server_addr);
+
+	test_msg_trunc(client_sock, server_sock,
+		       (struct sockaddr *)&client_addr, sizeof(client_addr),
+		       (struct sockaddr *)&server_addr, sizeof(server_addr));
+}
+
+void test_v6_msg_trunc(void)
+{
+	int client_sock;
+	int server_sock;
+	struct sockaddr_in6 client_addr;
+	struct sockaddr_in6 server_addr;
+
+	prepare_sock_udp_v6(CONFIG_NET_CONFIG_MY_IPV6_ADDR, ANY_PORT,
+			    &client_sock, &client_addr);
+	prepare_sock_udp_v6(CONFIG_NET_CONFIG_MY_IPV6_ADDR, SERVER_PORT,
+			    &server_sock, &server_addr);
+
+	test_msg_trunc(client_sock, server_sock,
+		       (struct sockaddr *)&client_addr, sizeof(client_addr),
+		       (struct sockaddr *)&server_addr, sizeof(server_addr));
+}
+
 void test_main(void)
 {
 	k_thread_system_pool_assign(k_current_get());
@@ -1028,9 +1222,12 @@ void test_main(void)
 			 ztest_unit_test(test_v6_sendto_recvfrom),
 			 ztest_unit_test(test_v4_bind_sendto),
 			 ztest_unit_test(test_v6_bind_sendto),
+			 ztest_unit_test(test_so_type),
 			 ztest_unit_test(test_so_priority),
 			 ztest_unit_test(test_so_txtime),
 			 ztest_unit_test(test_so_rcvtimeo),
+			 ztest_unit_test(test_so_sndtimeo),
+			 ztest_unit_test(test_so_protocol),
 			 ztest_unit_test(test_v4_sendmsg_recvfrom),
 			 ztest_user_unit_test(test_v4_sendmsg_recvfrom),
 			 ztest_unit_test(test_v4_sendmsg_recvfrom_no_aux_data),
@@ -1043,7 +1240,9 @@ void test_main(void)
 			 ztest_user_unit_test(test_v6_sendmsg_recvfrom_connected),
 			 ztest_unit_test(test_setup_eth),
 			 ztest_unit_test(test_v6_sendmsg_with_txtime),
-			 ztest_user_unit_test(test_v6_sendmsg_with_txtime)
+			 ztest_user_unit_test(test_v6_sendmsg_with_txtime),
+			 ztest_unit_test(test_v4_msg_trunc),
+			 ztest_unit_test(test_v6_msg_trunc)
 		);
 
 	ztest_run_test_suite(socket_udp);

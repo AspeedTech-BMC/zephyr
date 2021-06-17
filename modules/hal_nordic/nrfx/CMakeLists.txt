@@ -1,3 +1,8 @@
+# Copyright (c) 2021 Nordic Semiconductor ASA
+# SPDX-License-Identifier: Apache-2.0
+
+zephyr_library()
+
 set(NRFX_DIR ${ZEPHYR_CURRENT_MODULE_DIR}/nrfx)
 set(INC_DIR ${NRFX_DIR}/drivers/include)
 set(SRC_DIR ${NRFX_DIR}/drivers/src)
@@ -24,6 +29,7 @@ zephyr_compile_definitions_ifdef(CONFIG_SOC_NRF9160             NRF9160_XXAA)
 
 # Connect Kconfig compilation option for Non-Secure software with option required by MDK/nrfx
 zephyr_compile_definitions_ifdef(CONFIG_ARM_NONSECURE_FIRMWARE NRF_TRUSTZONE_NONSECURE)
+zephyr_compile_definitions_ifdef(CONFIG_LOG_BACKEND_SWO ENABLE_SWO)
 
 zephyr_library_sources_ifdef(CONFIG_SOC_SERIES_NRF51X  ${MDK_DIR}/system_nrf51.c)
 zephyr_library_sources_ifdef(CONFIG_SOC_NRF52805       ${MDK_DIR}/system_nrf52805.c)

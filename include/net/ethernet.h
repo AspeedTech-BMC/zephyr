@@ -347,8 +347,17 @@ struct ethernet_lldp {
 };
 #endif /* CONFIG_NET_LLDP */
 
+enum ethernet_flags {
+	ETH_CARRIER_UP,
+};
+
 /** Ethernet L2 context that is needed for VLAN */
 struct ethernet_context {
+	/** Flags representing ethernet state, which are accessed from multiple
+	 * threads.
+	 */
+	atomic_t flags;
+
 #if defined(CONFIG_NET_VLAN)
 	struct ethernet_vlan vlan[NET_VLAN_MAX_COUNT];
 
@@ -360,19 +369,16 @@ struct ethernet_context {
 	ATOMIC_DEFINE(interfaces, NET_VLAN_MAX_COUNT);
 #endif
 
-	struct {
-		/** Carrier ON/OFF handler worker. This is used to create
-		 * network interface UP/DOWN event when ethernet L2 driver
-		 * notices carrier ON/OFF situation. We must not create another
-		 * network management event from inside management handler thus
-		 * we use worker thread to trigger the UP/DOWN event.
-		 */
-		struct k_work work;
+	/** Carrier ON/OFF handler worker. This is used to create
+	 * network interface UP/DOWN event when ethernet L2 driver
+	 * notices carrier ON/OFF situation. We must not create another
+	 * network management event from inside management handler thus
+	 * we use worker thread to trigger the UP/DOWN event.
+	 */
+	struct k_work carrier_work;
 
-		/** Network interface that is detecting carrier ON/OFF event.
-		 */
-		struct net_if *iface;
-	} carrier_mgmt;
+	/** Network interface. */
+	struct net_if *iface;
 
 #if defined(CONFIG_NET_LLDP)
 	struct ethernet_lldp lldp[NET_VLAN_MAX_COUNT];
@@ -415,8 +421,11 @@ struct ethernet_context {
 	int8_t vlan_enabled;
 #endif
 
+	/** Is network carrier up */
+	bool is_net_carrier_up : 1;
+
 	/** Is this context already initialized */
-	bool is_init;
+	bool is_init : 1;
 };
 
 /**
@@ -675,8 +684,8 @@ static inline bool net_eth_get_vlan_status(struct net_if *iface)
  * @param drv_name The name this instance of the driver exposes to
  * the system.
  * @param init_fn Address to the init function of the driver.
- * @param pm_control_fn Pointer to device_pm_control function.
- * Can be empty function (device_pm_control_nop) if not implemented.
+ * @param pm_control_fn Pointer to pm_control function.
+ * Can be NULL if not implemented.
  * @param data Pointer to the device's private data.
  * @param cfg The address to the structure containing the
  * configuration information for this instance of the driver.
@@ -699,8 +708,8 @@ static inline bool net_eth_get_vlan_status(struct net_if *iface)
  *
  * @param node_id The devicetree node identifier.
  * @param init_fn Address to the init function of the driver.
- * @param pm_control_fn Pointer to device_pm_control function.
- * Can be empty function (device_pm_control_nop) if not implemented.
+ * @param pm_control_fn Pointer to pm_control function.
+ * Can be NULL if not implemented.
  * @param data Pointer to the device's private data.
  * @param cfg The address to the structure containing the
  * configuration information for this instance of the driver.
@@ -712,7 +721,7 @@ static inline bool net_eth_get_vlan_status(struct net_if *iface)
 #define ETH_NET_DEVICE_DT_DEFINE(node_id, init_fn, pm_control_fn, data,	\
 			       cfg, prio, api, mtu)			\
 	Z_ETH_NET_DEVICE_INIT(node_id, Z_DEVICE_DT_DEV_NAME(node_id),	\
-			      DT_PROP_OR(node_id, label, NULL),		\
+			      DT_PROP_OR(node_id, label, ""),		\
 			      init_fn, pm_control_fn, data, cfg, prio,	\
 			      api, mtu)
 

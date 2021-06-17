@@ -156,7 +156,7 @@ On nRF5340 and nRF9160:
 =======================
 
 Build Zephyr with a non-secure configuration
-(``-DBOARD=nrf5340pdk_nrf5340_cpuappns`` or ``-DBOARD=nrf9160dk_nrf9160ns``).
+(``-DBOARD=nrf5340dk_nrf5340_cpuappns`` or ``-DBOARD=nrf9160dk_nrf9160ns``).
 
    Example, for nRF9160, using ``cmake`` and ``ninja``
 
@@ -184,6 +184,28 @@ Finally, flash the concatenated TF-M + Zephyr binary.
 
       ninja flash
 
+On BL5340:
+==========
+
+Build Zephyr with a non-secure configuration
+(``-DBOARD=bl5340_dvk_cpuappns``).
+
+   Example using ``cmake`` and ``ninja``
+
+   .. code-block:: bash
+
+      cd <ZEPHYR_ROOT>/samples/tfm_integration/psa_level_1/
+      rm -rf build
+      mkdir build && cd build
+      cmake -GNinja -DBOARD=bl5340_dvk_cpuappns ..
+
+Flash the concatenated TF-M + Zephyr binary.
+
+   Example using ``west``
+
+   .. code-block:: bash
+
+      west flash --hex-file tfm_merged.hex
 
 Sample Output
 =============

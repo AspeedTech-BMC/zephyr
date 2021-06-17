@@ -33,14 +33,14 @@ struct mgmt_event_wait {
 	struct net_if *iface;
 };
 
-static K_SEM_DEFINE(network_event, 0, UINT_MAX);
+static K_SEM_DEFINE(network_event, 0, K_SEM_MAX_LIMIT);
 static K_SEM_DEFINE(net_mgmt_lock, 1, 1);
 
 K_KERNEL_STACK_DEFINE(mgmt_stack, CONFIG_NET_MGMT_EVENT_STACK_SIZE);
 static struct k_thread mgmt_thread_data;
 static struct mgmt_event_entry events[CONFIG_NET_MGMT_EVENT_QUEUE_SIZE];
 static uint32_t global_event_mask;
-static sys_slist_t event_callbacks;
+static sys_slist_t event_callbacks = SYS_SLIST_STATIC_INIT(&event_callbacks);
 static int16_t in_event;
 static int16_t out_event;
 
@@ -239,7 +239,7 @@ static void mgmt_thread(void)
 			NET_DBG("Some event got probably lost (%u)",
 				k_sem_count_get(&network_event));
 
-			k_sem_init(&network_event, 0, UINT_MAX);
+			k_sem_init(&network_event, 0, K_SEM_MAX_LIMIT);
 			k_sem_give(&net_mgmt_lock);
 
 			continue;
@@ -377,19 +377,23 @@ int net_mgmt_event_wait_on_iface(struct net_if *iface,
 
 void net_mgmt_event_init(void)
 {
-	sys_slist_init(&event_callbacks);
-	global_event_mask = 0U;
-
 	in_event = -1;
 	out_event = -1;
 
 	(void)memset(events, 0, CONFIG_NET_MGMT_EVENT_QUEUE_SIZE *
 			sizeof(struct mgmt_event_entry));
 
+#if IS_ENABLED(CONFIG_NET_TC_THREAD_COOPERATIVE)
+/* Lowest priority cooperative thread */
+#define THREAD_PRIORITY K_PRIO_COOP(CONFIG_NUM_COOP_PRIORITIES - 1)
+#else
+#define THREAD_PRIORITY K_PRIO_PREEMPT(CONFIG_NUM_PREEMPT_PRIORITIES - 1)
+#endif
+
 	k_thread_create(&mgmt_thread_data, mgmt_stack,
 			K_KERNEL_STACK_SIZEOF(mgmt_stack),
 			(k_thread_entry_t)mgmt_thread, NULL, NULL, NULL,
-			CONFIG_NET_MGMT_EVENT_THREAD_PRIO, 0, K_NO_WAIT);
+			THREAD_PRIORITY, 0, K_NO_WAIT);
 	k_thread_name_set(&mgmt_thread_data, "net_mgmt");
 
 	NET_DBG("Net MGMT initialized: queue of %u entries, stack size of %u",

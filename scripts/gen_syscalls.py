@@ -168,7 +168,7 @@ def wrapper_defs(func_name, func_type, args):
     if ret64:
         mrsh_args.append("(uintptr_t)&ret64")
 
-    decl_arglist = ", ".join([" ".join(argrec) for argrec in args])
+    decl_arglist = ", ".join([" ".join(argrec) for argrec in args]) or "void"
 
     wrap = "extern %s z_impl_%s(%s);\n" % (func_type, func_name, decl_arglist)
     wrap += "static inline %s %s(%s)\n" % (func_type, func_name, decl_arglist)
@@ -192,6 +192,12 @@ def wrapper_defs(func_name, func_type, args):
     invoke = ("arch_syscall_invoke%d(%s)"
               % (len(mrsh_args),
                  ", ".join(mrsh_args + [syscall_id])))
+
+    # Coverity does not understand syscall mechanism
+    # and will already complain when any function argument
+    # is not of exact size as uintptr_t. So tell Coverity
+    # to ignore this particular rule here.
+    wrap += "\t\t/* coverity[OVERRUN] */\n"
 
     if ret64:
         wrap += "\t\t" + "(void)%s;\n" % invoke

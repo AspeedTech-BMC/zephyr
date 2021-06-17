@@ -52,7 +52,7 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
 /* irq */
 #define LITEETH_IRQ		DT_INST_IRQN(0)
-#define LITEETH_IRQ_PRIORITY	CONFIG_ETH_LITEETH_0_IRQ_PRI
+#define LITEETH_IRQ_PRIORITY	DT_INST_IRQ(0, priority)
 
 #define MAX_TX_FAILURE 100
 
@@ -125,7 +125,8 @@ static void eth_rx(const struct device *port)
 	struct net_pkt *pkt;
 	struct eth_liteeth_dev_data *context = port->data;
 
-	unsigned int key, r;
+	int r;
+	unsigned int key;
 	uint16_t len = 0;
 
 	key = irq_lock();
@@ -254,7 +255,7 @@ static const struct ethernet_api eth_api = {
 	.send = eth_tx
 };
 
-NET_DEVICE_DT_INST_DEFINE(0, eth_initialize, device_pm_control_nop,
+NET_DEVICE_DT_INST_DEFINE(0, eth_initialize, NULL,
 		&eth_data, &eth_config, CONFIG_ETH_INIT_PRIORITY, &eth_api,
 		ETHERNET_L2, NET_L2_GET_CTX_TYPE(ETHERNET_L2), NET_ETH_MTU);
 

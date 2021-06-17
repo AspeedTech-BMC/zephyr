@@ -122,8 +122,8 @@ noted for users who do not want heap allocations within their application:
    dynamically allocated at runtime and a usable pointer to them returned to
    the caller.
 
-The relevant API is :c:func:`k_thread_resource_pool_assign` which assigns
-a k_mem_pool to draw these allocations from for the target thread.
+The relevant API is :c:func:`k_thread_heap_assign` which assigns
+a k_heap to draw these allocations from for the target thread.
 
 If the system heap is enabled, then the system heap may be used with
 :c:func:`k_thread_system_pool_assign`, but it is preferable for different
@@ -256,7 +256,7 @@ BSS.
 
 The build system will ensure that the base address of my_partition will
 be properly aligned, and the total size of the region conforms to the memory
-management hardware requirments, adding padding if necessary.
+management hardware requirements, adding padding if necessary.
 
 If multiple partitions are being created, a variadic preprocessor macro can be
 used as provided in ``app_macro_support.h``:
@@ -441,4 +441,3 @@ API Reference
 The following memory domain APIs are provided by :zephyr_file:`include/kernel.h`:
 
 .. doxygengroup:: mem_domain_apis
-   :project: Zephyr

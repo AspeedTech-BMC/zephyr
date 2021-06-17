@@ -27,6 +27,12 @@
 
 #define TIMESRC_OSCERCLK        (2)
 
+#define CLOCK_NODEID(clk) \
+	DT_CHILD(DT_INST(0, nxp_kinetis_sim), clk)
+
+#define CLOCK_DIVIDER(clk) \
+	DT_PROP_OR(CLOCK_NODEID(clk), clock_div, 1) - 1
+
 static const osc_config_t oscConfig = {
 	.freq = CONFIG_OSC_XTAL0_FREQ,
 	.capLoad = 0,
@@ -56,10 +62,10 @@ static const mcg_pll_config_t pll0Config = {
 static const sim_clock_config_t simConfig = {
 	.pllFllSel = DT_PROP(DT_INST(0, nxp_kinetis_sim), pllfll_select),
 	.er32kSrc = DT_PROP(DT_INST(0, nxp_kinetis_sim), er32k_select),
-	.clkdiv1 = SIM_CLKDIV1_OUTDIV1(CONFIG_K22_CORE_CLOCK_DIVIDER - 1) |
-		   SIM_CLKDIV1_OUTDIV2(CONFIG_K22_BUS_CLOCK_DIVIDER - 1) |
-		   SIM_CLKDIV1_OUTDIV3(CONFIG_K22_FLEXBUS_CLOCK_DIVIDER - 1) |
-		   SIM_CLKDIV1_OUTDIV4(CONFIG_K22_FLASH_CLOCK_DIVIDER - 1),
+	.clkdiv1 = SIM_CLKDIV1_OUTDIV1(CLOCK_DIVIDER(core_clk)) |
+		   SIM_CLKDIV1_OUTDIV2(CLOCK_DIVIDER(bus_clk)) |
+		   SIM_CLKDIV1_OUTDIV3(CLOCK_DIVIDER(flexbus_clk)) |
+		   SIM_CLKDIV1_OUTDIV4(CLOCK_DIVIDER(flash_clk)),
 };
 
 /**
@@ -117,32 +123,12 @@ static int fsl_frdm_k22f_init(const struct device *arg)
 	ARG_UNUSED(arg);
 
 	unsigned int oldLevel; /* old interrupt lock level */
-#if !defined(CONFIG_ARM_MPU)
-#if defined(SYSMPU)
-	uint32_t temp_reg;
-#endif
-#endif /* !CONFIG_ARM_MPU */
 
 	/* disable interrupts */
 	oldLevel = irq_lock();
 
 	/* release I/O power hold to allow normal run state */
 	PMC->REGSC |= PMC_REGSC_ACKISO_MASK;
-
-#if !defined(CONFIG_ARM_MPU)
-	/*
-	 * Disable memory protection and clear slave port errors.
-	 * Note that the K22F does not implement the optional ARMv7-M memory
-	 * protection unit (MPU), specified by the architecture (PMSAv7), in the
-	 * Cortex-M4 core.  Instead, the processor includes its own MPU module.
-	 */
-#if defined(SYSMPU)
-	temp_reg = SYSMPU->CESR;
-	temp_reg &= ~SYSMPU_CESR_VLD_MASK;
-	temp_reg |= SYSMPU_CESR_SPERR_MASK;
-	SYSMPU->CESR = temp_reg;
-#endif
-#endif /* !CONFIG_ARM_MPU */
 
 	/* Initialize PLL/system clock to 120 MHz */
 	clock_init();

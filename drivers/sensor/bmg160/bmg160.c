@@ -290,7 +290,7 @@ int bmg160_init(const struct device *dev)
 		return -EINVAL;
 	}
 
-	k_sem_init(&bmg160->sem, 1, UINT_MAX);
+	k_sem_init(&bmg160->sem, 1, K_SEM_MAX_LIMIT);
 
 	if (bmg160_read_byte(dev, BMG160_REG_CHIPID, &chip_id) < 0) {
 		LOG_DBG("Failed to read chip id.");
@@ -346,7 +346,7 @@ const struct bmg160_device_config bmg160_config = {
 #endif
 };
 
-DEVICE_DT_INST_DEFINE(0, bmg160_init, device_pm_control_nop,
+DEVICE_DT_INST_DEFINE(0, bmg160_init, NULL,
 		    &bmg160_data,
 		    &bmg160_config, POST_KERNEL, CONFIG_SENSOR_INIT_PRIORITY,
 		    &bmg160_api);

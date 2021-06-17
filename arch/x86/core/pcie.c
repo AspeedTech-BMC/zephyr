@@ -97,7 +97,7 @@ static inline void pcie_mm_conf(pcie_bdf_t bdf, unsigned int reg,
 
 /*
  * Helper function for exported configuration functions. Configuration access
- * ain't atomic, so spinlock to keep drivers from clobbering each other.
+ * is not atomic, so spinlock to keep drivers from clobbering each other.
  */
 static inline void pcie_io_conf(pcie_bdf_t bdf, unsigned int reg,
 				bool write, uint32_t *data)
@@ -144,7 +144,7 @@ static inline void pcie_conf(pcie_bdf_t bdf, unsigned int reg,
 
 uint32_t pcie_conf_read(pcie_bdf_t bdf, unsigned int reg)
 {
-	uint32_t data = 0;
+	uint32_t data = 0U;
 
 	pcie_conf(bdf, reg, false, &data);
 	return data;

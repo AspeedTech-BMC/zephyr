@@ -77,7 +77,7 @@ LOG_MODULE_REGISTER(can_mcux_flexcan);
 
 struct mcux_flexcan_config {
 	CAN_Type *base;
-	char *clock_name;
+	const struct device *clock_dev;
 	clock_control_subsys_t clock_subsys;
 	int clk_source;
 	uint32_t bitrate;
@@ -123,14 +123,8 @@ struct mcux_flexcan_data {
 static int mcux_flexcan_get_core_clock(const struct device *dev, uint32_t *rate)
 {
 	const struct mcux_flexcan_config *config = dev->config;
-	const struct device *clock_dev;
 
-	clock_dev = device_get_binding(config->clock_name);
-	if (clock_dev == NULL) {
-		return -EIO;
-	}
-
-	return clock_control_get_rate(clock_dev, config->clock_subsys, rate);
+	return clock_control_get_rate(config->clock_dev, config->clock_subsys, rate);
 }
 
 static int mcux_flexcan_set_timing(const struct device *dev,
@@ -140,6 +134,7 @@ static int mcux_flexcan_set_timing(const struct device *dev,
 	ARG_UNUSED(timing_data);
 	struct mcux_flexcan_data *data = dev->data;
 	const struct mcux_flexcan_config *config = dev->config;
+	uint8_t sjw_backup = data->timing.sjw;
 	flexcan_timing_config_t timing_tmp;
 
 	if (!timing) {
@@ -147,6 +142,9 @@ static int mcux_flexcan_set_timing(const struct device *dev,
 	}
 
 	data->timing = *timing;
+	if (timing->sjw == CAN_SJW_NO_CHANGE) {
+		data->timing.sjw = sjw_backup;
+	}
 
 	timing_tmp.preDivider = data->timing.prescaler - 1U;
 	timing_tmp.rJumpwidth = data->timing.sjw - 1U;
@@ -784,7 +782,7 @@ static const struct can_driver_api mcux_flexcan_driver_api = {
 									\
 	static const struct mcux_flexcan_config mcux_flexcan_config_##id = { \
 		.base = (CAN_Type *)DT_INST_REG_ADDR(id),		\
-		.clock_name = DT_INST_CLOCKS_LABEL(id),			\
+		.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(id)),	\
 		.clock_subsys = (clock_control_subsys_t)		\
 			DT_INST_CLOCKS_CELL(id, name),			\
 		.clk_source = DT_INST_PROP(id, clk_source),		\
@@ -800,7 +798,7 @@ static const struct can_driver_api mcux_flexcan_driver_api = {
 	static struct mcux_flexcan_data mcux_flexcan_data_##id;		\
 									\
 	DEVICE_DT_INST_DEFINE(id, &mcux_flexcan_init,			\
-			device_pm_control_nop, &mcux_flexcan_data_##id,	\
+			NULL, &mcux_flexcan_data_##id,	\
 			&mcux_flexcan_config_##id, POST_KERNEL,		\
 			CONFIG_KERNEL_INIT_PRIORITY_DEVICE,		\
 			&mcux_flexcan_driver_api);			\
@@ -841,7 +839,7 @@ DT_INST_FOREACH_STATUS_OKAY(FLEXCAN_DEVICE_INIT_MCUX)
 	}								\
 									\
 	NET_DEVICE_INIT(socket_can_flexcan_##id, SOCKET_CAN_NAME_##id,	\
-		socket_can_init_##id, device_pm_control_nop,		\
+		socket_can_init_##id, NULL,				\
 		&socket_can_context_##id, NULL,				\
 		CONFIG_KERNEL_INIT_PRIORITY_DEVICE, &socket_can_api,	\
 		CANBUS_RAW_L2, NET_L2_GET_CTX_TYPE(CANBUS_RAW_L2),	\

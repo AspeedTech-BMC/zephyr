@@ -167,5 +167,35 @@ Zephyr application folder, and reference them in the ``prj.conf`` file via the
      lose this key file, you will be unable to sign any future firmware images,
      and it will no longer be possible to update your devices in the field!
 
+After the built-in signing code has run, it creates a tfm_merged.hex file that
+contains all the binaries, bl2, tfm_s, and the zephyr app.
+
 .. _PSA Certified Level 1:
   https://www.psacertified.org/security-certification/psa-certified-level-1/
+
+Custom CMake arguments
+======================
+
+When building a Zephyr application with TF-M it might be necessary to control
+the CMake arguments passed to the TF-M build.
+
+Zephyr TF-M build offers several Kconfig options for controlling the build, but
+doesn't cover every CMake argument supported by the TF-M build system.
+
+The ``TFM_CMAKE_OPTIONS`` property on the ``zephyr_property_target`` can be used
+to pass custom CMake arguments to the TF-M build system.
+
+To pass the CMake argument ``-DFOO=bar`` to the TF-M build system, place the
+following CMake snippet in your CMakeLists.txt file.
+
+   .. code-block:: cmake
+
+     set_property(TARGET zephyr_property_target
+                  APPEND PROPERTY TFM_CMAKE_OPTIONS
+                  -DFOO=bar
+     )
+
+.. note::
+   The ``TFM_CMAKE_OPTIONS`` is a list so it is possible to append multiple
+   options. Also CMake generator expressions are supported, such as
+   ``$<1:-DFOO=bar>``

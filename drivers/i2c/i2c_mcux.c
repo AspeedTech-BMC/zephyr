@@ -193,7 +193,7 @@ static int i2c_mcux_init(const struct device *dev)
 	int error;
 
 	k_sem_init(&data->lock, 1, 1);
-	k_sem_init(&data->device_sync_sem, 0, UINT_MAX);
+	k_sem_init(&data->device_sync_sem, 0, K_SEM_MAX_LIMIT);
 
 	clock_freq = CLOCK_GetFreq(config->clock_source);
 	I2C_MasterGetDefaultConfig(&master_config);
@@ -231,7 +231,7 @@ static const struct i2c_driver_api i2c_mcux_driver_api = {
 	static struct i2c_mcux_data i2c_mcux_data_ ## n;		\
 									\
 	DEVICE_DT_INST_DEFINE(n,					\
-			&i2c_mcux_init, device_pm_control_nop,		\
+			&i2c_mcux_init, NULL,				\
 			&i2c_mcux_data_ ## n,				\
 			&i2c_mcux_config_ ## n, POST_KERNEL,		\
 			CONFIG_KERNEL_INIT_PRIORITY_DEVICE,		\

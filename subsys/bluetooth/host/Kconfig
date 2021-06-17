@@ -13,63 +13,6 @@ config BT_HCI_HOST
 	depends on !BT_HCI_RAW
 	select POLL
 
-config BT_HCI_CMD_COUNT
-	int "Number of HCI command buffers"
-	default 2
-	range 2 64
-	help
-	  Number of buffers available for HCI commands.
-
-config BT_RX_BUF_COUNT
-	int "Number of HCI RX buffers"
-	default NET_BUF_RX_COUNT if NET_L2_BT
-	default 3 if BT_RECV_IS_RX_THREAD
-	default 20 if (BT_MESH && !(BT_DISCARDABLE_BUF_COUNT > 0))
-	default 10
-	range 2 255
-	help
-	  Number of buffers available for incoming ACL packets or HCI events
-	  from the controller.
-
-config BT_RX_BUF_LEN
-	int "Maximum supported HCI RX buffer length"
-	default 264 if BT_BREDR
-	default 258 if BT_EXT_ADV
-	default 77 if BT_MESH_PROXY
-	default 76
-	range 73 2000
-	help
-	  Maximum data size for each HCI RX buffer. This size includes
-	  everything starting with the ACL or HCI event headers. Note that
-	  buffer sizes are always rounded up to the nearest multiple of 4,
-	  so if this Kconfig value is something else then there will be some
-	  wasted space. The minimum of 73 has been taken for LE SC which has
-	  an L2CAP MTU of 65 bytes. On top of this there's the L2CAP header
-	  (4 bytes) and the ACL header (also 4 bytes) which yields 73 bytes.
-
-config BT_DISCARDABLE_BUF_COUNT
-	int "Number of discardable event buffers"
-	range 1 255
-	default 20 if BT_MESH
-	default 3
-	depends on BT_H4 || BT_RPMSG || BT_CTLR
-	help
-	  Number of buffers in a separate buffer pool for events which
-	  the HCI driver considers discardable. Examples of such events
-	  could be e.g. Advertising Reports. The benefit of having such
-	  a pool means that the if there is a heavy inflow of such events
-	  it will not cause the allocation for other critical events to
-	  block and may even eliminate deadlocks in some cases.
-
-config BT_DISCARDABLE_BUF_SIZE
-	int "Size of discardable event buffers"
-	range 45 257
-	default 257 if BT_BREDR || BT_EXT_ADV
-	default 45
-	help
-	  Size of buffers in the separate discardable event buffer pool.
-	  The minimum size is set based on the Advertising Report. Setting
-	  the buffer size different than BT_RX_BUF_LEN can save memory.
 
 config BT_HCI_TX_STACK_SIZE
 	# NOTE: This value is derived from other symbols and should only be
@@ -91,7 +34,8 @@ config BT_HCI_TX_STACK_SIZE
 	help
 	  Stack size needed for executing bt_send with specified driver.
 	  NOTE: This is an advanced setting and should not be changed unless
-	  absolutely necessary
+	  absolutely necessary.  To change this you must first select
+	  BT_HCI_TX_STACK_SIZE_WITH_PROMPT.
 
 config BT_HCI_TX_STACK_SIZE_WITH_PROMPT
 	bool "Override HCI Tx thread stack size"
@@ -100,7 +44,7 @@ config BT_HCI_ECC_STACK_SIZE
 	# NOTE: This value is derived from other symbols and should only be
 	# changed if required by architecture
 	int "HCI ECC thread stack size"
-	default 1100
+	default 1140
 	help
 	  NOTE: This is an advanced setting and should not be changed unless
 	  absolutely necessary
@@ -118,6 +62,7 @@ config BT_HCI_RESERVE
 	default 1 if BT_SPI
 	default 1 if BT_STM32_IPM
 	default 1 if BT_USERCHAN
+	default 1 if BT_ESP32
 	# Even if no driver is selected the following default is still
 	# needed e.g. for unit tests.
 	default 0
@@ -163,8 +108,6 @@ config BT_DRIVER_RX_HIGH_PRIO
 
 if BT_HCI_HOST
 
-source "subsys/bluetooth/host/audio/Kconfig"
-
 config BT_HOST_CRYPTO
 	# Hidden option that compiles in random number generation and AES
 	# encryption support using TinyCrypt library if this is not provided
@@ -197,6 +140,7 @@ config BT_SETTINGS
 if BT_SETTINGS
 config BT_SETTINGS_CCC_LAZY_LOADING
 	bool "Load CCC values from settings when peer connects"
+	depends on BT_CONN
 	default y
 	help
 	  Load Client Configuration Characteristic setting right after a bonded
@@ -206,6 +150,7 @@ config BT_SETTINGS_CCC_LAZY_LOADING
 
 config BT_SETTINGS_CCC_STORE_ON_WRITE
 	bool "Store CCC value immediately after it has been written"
+	depends on BT_CONN
 	help
 	  Store Client Configuration Characteristic value right after it has
 	  been updated.
@@ -246,16 +191,6 @@ config BT_WHITELIST
 	  bt_conn_create_aute_le API.
 
 if BT_CONN
-
-config BT_ACL_RX_COUNT
-	int "Number of incoming ACL data buffers"
-	default BT_CTLR_RX_BUFFERS if BT_CTLR
-	default NET_BUF_RX_COUNT if NET_L2_BT
-	default 6
-	range 1 64
-	depends on BT_HCI_ACL_FLOW_CONTROL
-	help
-	  Number of buffers available for incoming ACL data.
 
 config BT_CONN_TX_MAX
 	int "Maximum number of pending TX buffers with a callback"
@@ -431,7 +366,6 @@ config BT_FIXED_PASSKEY
 
 config BT_USE_DEBUG_KEYS
 	bool "Enable Security Manager Debug Mode"
-	depends on BT_TINYCRYPT_ECC
 	help
 	  This option places Security Manager in a Debug Mode. In this mode
 	  predefined Diffie-Hellman private/public key pair is used as described
@@ -500,6 +434,15 @@ config BT_KEYS_SAVE_AGING_COUNTER_ON_PAIRING
 	  With this option enabled, aging counter will be stored in settings every
 	  time a successful pairing occurs. This increases flash wear out but offers
 	  a more correct finding of the oldest unused pairing info.
+
+config BT_SMP_MIN_ENC_KEY_SIZE
+	int
+	prompt "Minimum encryption key size accepted in octets" if !BT_SMP_SC_ONLY
+	range 7 16
+	default 7
+	default 16 if BT_SMP_SC_ONLY
+	help
+	  This option sets the minimum encryption key size accepted during pairing.
 
 endif # BT_SMP
 
@@ -609,6 +552,13 @@ config BT_DF
 	  It will allow to: get information about antennae, configure
 	  Constant Tone Extension, transmit CTE and sample incoming CTE.
 
+config BT_DF_CONNECTIONLESS_CTE_RX
+	bool "Enable support for receive of CTE in connectionless mode"
+	depends on BT_DF
+	help
+	  Enable support for reception and sampling of Constant Tone Extension
+	  in connectionless mode.
+
 config BT_DEBUG_DF
 	bool "Bluetooth Direction Finding debug"
 	depends on BT_DF
@@ -667,6 +617,12 @@ config BT_DEBUG_CONN
 	help
 	  This option enables debug support for Bluetooth
 	  connection handling.
+
+config BT_DEBUG_ISO
+	bool "ISO channel debug"
+	help
+	  Use this option to enable ISO channels debug logs for the
+	  Bluetooth Audio functionality.
 
 config BT_DEBUG_KEYS
 	bool "Bluetooth security keys debug"
@@ -750,6 +706,17 @@ config BT_DEBUG_SERVICE
 
 endif # BT_DEBUG
 
+config BT_LOG_SNIFFER_INFO
+	bool "Bluetooth log information for sniffer"
+	help
+	  This option enables the Bluetooth stack to log information such as
+	  DH private key and LTK keys, which can be used by sniffers to decrypt
+	  the connection without the use of Debug keys.
+
+	  WARNING: This option prints out private security keys such as
+	  the Long Term Key.
+	  Use of this feature in production is strongly discouraged
+
 config BT_TESTING
 	bool "Bluetooth Testing"
 	help
@@ -793,11 +760,10 @@ config BT_RFCOMM
 
 config BT_RFCOMM_L2CAP_MTU
 	int "L2CAP MTU for RFCOMM frames"
-	default BT_L2CAP_RX_MTU if BT_HCI_ACL_FLOW_CONTROL
-	default BT_RX_BUF_LEN
 	depends on BT_RFCOMM
-	range BT_L2CAP_RX_MTU 32767 if BT_HCI_ACL_FLOW_CONTROL
-	range BT_RX_BUF_LEN 32767
+	# RX MTU will be truncated to account for the L2CAP PDU header.
+	default BT_BUF_ACL_RX_SIZE
+	range 23 32767
 	help
 	  Maximum size of L2CAP PDU for RFCOMM frames.
 

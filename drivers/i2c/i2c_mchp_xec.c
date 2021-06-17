@@ -12,7 +12,7 @@
 #include <errno.h>
 #include <drivers/i2c.h>
 #include <logging/log.h>
-LOG_MODULE_REGISTER(i2c_mchp);
+LOG_MODULE_REGISTER(i2c_mchp, CONFIG_I2C_LOG_LEVEL);
 
 #define SPEED_100KHZ_BUS    0
 #define SPEED_400KHZ_BUS    1
@@ -654,7 +654,7 @@ static int i2c_xec_init(const struct device *dev)
 		.girq_bit = DT_INST_PROP(n, girq_bit),			\
 		.irq_config_func = i2c_xec_irq_config_func_##n,		\
 	};								\
-	DEVICE_DT_INST_DEFINE(n, &i2c_xec_init, device_pm_control_nop,	\
+	DEVICE_DT_INST_DEFINE(n, &i2c_xec_init, NULL,			\
 		&i2c_xec_data_##n, &i2c_xec_config_##n,			\
 		POST_KERNEL, CONFIG_I2C_INIT_PRIORITY,			\
 		&i2c_xec_driver_api);					\

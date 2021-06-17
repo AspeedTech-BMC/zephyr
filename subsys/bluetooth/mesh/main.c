@@ -69,17 +69,11 @@ int bt_mesh_provision(const uint8_t net_key[16], uint16_t net_idx,
 	 * FIXME:
 	 * Should net_key and iv_index be over-ridden?
 	 */
-	if (IS_ENABLED(CONFIG_BT_MESH_CDB)) {
+	if (IS_ENABLED(CONFIG_BT_MESH_CDB) &&
+	    atomic_test_bit(bt_mesh_cdb.flags, BT_MESH_CDB_VALID)) {
 		const struct bt_mesh_comp *comp;
 		const struct bt_mesh_prov *prov;
 		struct bt_mesh_cdb_node *node;
-
-		if (!atomic_test_bit(bt_mesh_cdb.flags,
-				     BT_MESH_CDB_VALID)) {
-			BT_ERR("No valid network");
-			atomic_clear_bit(bt_mesh.flags, BT_MESH_VALID);
-			return -EINVAL;
-		}
 
 		comp = bt_mesh_comp_get();
 		if (comp == NULL) {
@@ -117,7 +111,7 @@ int bt_mesh_provision(const uint8_t net_key[16], uint16_t net_idx,
 		atomic_clear_bit(bt_mesh.flags, BT_MESH_VALID);
 
 		if (IS_ENABLED(CONFIG_BT_MESH_PB_GATT) && pb_gatt_enabled) {
-			bt_mesh_proxy_prov_enable();
+			(void)bt_mesh_proxy_prov_enable();
 		}
 
 		return err;
@@ -174,7 +168,11 @@ void bt_mesh_reset(void)
 
 	memset(bt_mesh.flags, 0, sizeof(bt_mesh.flags));
 
-	k_delayed_work_cancel(&bt_mesh.ivu_timer);
+	/* If this fails, the work handler will return early on the next
+	 * execution, as the device is not provisioned. If the device is
+	 * reprovisioned, the timer is always restarted.
+	 */
+	(void)k_work_cancel_delayable(&bt_mesh.ivu_timer);
 
 	bt_mesh_cfg_reset();
 	bt_mesh_trans_reset();
@@ -227,7 +225,10 @@ static void model_suspend(struct bt_mesh_model *mod, struct bt_mesh_elem *elem,
 {
 	if (mod->pub && mod->pub->update) {
 		mod->pub->count = 0U;
-		k_delayed_work_cancel(&mod->pub->timer);
+		/* If this fails, the work handler will check the suspend call
+		 * and exit without transmitting.
+		 */
+		(void)k_work_cancel_delayable(&mod->pub->timer);
 	}
 }
 
@@ -268,8 +269,8 @@ static void model_resume(struct bt_mesh_model *mod, struct bt_mesh_elem *elem,
 		int32_t period_ms = bt_mesh_model_pub_period_get(mod);
 
 		if (period_ms) {
-			k_delayed_work_submit(&mod->pub->timer,
-					      K_MSEC(period_ms));
+			k_work_reschedule(&mod->pub->timer,
+					  K_MSEC(period_ms));
 		}
 	}
 }

@@ -8,7 +8,7 @@
 #include <zephyr.h>
 #include <sys/sys_io.h>
 #include <sys/__assert.h>
-#include <power/power.h>
+#include <pm/pm.h>
 #include <soc.h>
 
 /*
@@ -53,8 +53,15 @@ void soc_deep_sleep_enable(void)
 	PCR_REGS->SYS_SLP_CTRL = MCHP_PCR_SYS_SLP_HEAVY;
 }
 
+/*
+ * Clear PCR Sleep control sleep all causing HW to de-assert all peripheral
+ * SLP_EN signals. HW will does this automatically only if it vectors to an
+ * ISR after wake. We are masking ISR's from running until we restore
+ * peripheral state therefore we force HW to de-assert the SLP_EN signals.
+ */
 void soc_deep_sleep_disable(void)
 {
+	PCR_REGS->SYS_SLP_CTRL = 0U;
 	SCB->SCR &= ~(1ul << 2); /* disable Cortex-M4 SLEEPDEEP */
 }
 
@@ -145,19 +152,19 @@ static void deep_sleep_save_uarts(void)
 	uart_activate[0] = UART0_REGS->ACTV;
 	if (uart_activate[0]) {
 		while ((UART0_REGS->LSR & MCHP_UART_LSR_TEMT) == 0) {
-		};
+		}
 	}
 	UART0_REGS->ACTV = 0;
 	uart_activate[1] = UART1_REGS->ACTV;
 	if (uart_activate[1]) {
 		while ((UART1_REGS->LSR & MCHP_UART_LSR_TEMT) == 0) {
-		};
+		}
 	}
 	UART1_REGS->ACTV = 0;
 	uart_activate[2] = UART2_REGS->ACTV;
 	if (uart_activate[2]) {
 		while ((UART2_REGS->LSR & MCHP_UART_LSR_TEMT) == 0) {
-		};
+		}
 	}
 	UART2_REGS->ACTV = 0;
 }

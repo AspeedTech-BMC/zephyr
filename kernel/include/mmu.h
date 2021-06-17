@@ -28,7 +28,7 @@
 #define Z_PHYS_RAM_START	((uintptr_t)CONFIG_SRAM_BASE_ADDRESS)
 #define Z_PHYS_RAM_SIZE		((size_t)KB(CONFIG_SRAM_SIZE))
 #define Z_PHYS_RAM_END		(Z_PHYS_RAM_START + Z_PHYS_RAM_SIZE)
-#define Z_NUM_PAGE_FRAMES	(Z_PHYS_RAM_SIZE / CONFIG_MMU_PAGE_SIZE)
+#define Z_NUM_PAGE_FRAMES	(Z_PHYS_RAM_SIZE / (size_t)CONFIG_MMU_PAGE_SIZE)
 
 /** End virtual address of virtual address space */
 #define Z_VIRT_RAM_START	((uint8_t *)CONFIG_KERNEL_VM_BASE)
@@ -41,14 +41,14 @@
 #define Z_KERNEL_VIRT_SIZE	(Z_KERNEL_VIRT_END - Z_KERNEL_VIRT_START)
 
 #define Z_VM_OFFSET	 ((CONFIG_KERNEL_VM_BASE + CONFIG_KERNEL_VM_OFFSET) - \
-			  CONFIG_SRAM_BASE_ADDRESS)
+			  (CONFIG_SRAM_BASE_ADDRESS + CONFIG_SRAM_OFFSET))
 
 /* Only applies to boot RAM mappings within the Zephyr image that have never
  * been remapped or paged out. Never use this unless you know exactly what you
  * are doing.
  */
-#define Z_BOOT_VIRT_TO_PHYS(virt) ((uintptr_t)(((uint8_t *)virt) + Z_VM_OFFSET))
-#define Z_BOOT_PHYS_TO_VIRT(phys) ((uint8_t *)(((uintptr_t)phys) - Z_VM_OFFSET))
+#define Z_BOOT_VIRT_TO_PHYS(virt) ((uintptr_t)(((uint8_t *)virt) - Z_VM_OFFSET))
+#define Z_BOOT_PHYS_TO_VIRT(phys) ((uint8_t *)(((uintptr_t)phys) + Z_VM_OFFSET))
 
 #ifdef CONFIG_ARCH_MAPS_ALL_RAM
 #define Z_FREE_VM_START	Z_BOOT_PHYS_TO_VIRT(Z_PHYS_RAM_END)
@@ -118,27 +118,27 @@ struct z_page_frame {
 
 static inline bool z_page_frame_is_pinned(struct z_page_frame *pf)
 {
-	return (pf->flags & Z_PAGE_FRAME_PINNED) != 0;
+	return (pf->flags & Z_PAGE_FRAME_PINNED) != 0U;
 }
 
 static inline bool z_page_frame_is_reserved(struct z_page_frame *pf)
 {
-	return (pf->flags & Z_PAGE_FRAME_RESERVED) != 0;
+	return (pf->flags & Z_PAGE_FRAME_RESERVED) != 0U;
 }
 
 static inline bool z_page_frame_is_mapped(struct z_page_frame *pf)
 {
-	return (pf->flags & Z_PAGE_FRAME_MAPPED) != 0;
+	return (pf->flags & Z_PAGE_FRAME_MAPPED) != 0U;
 }
 
 static inline bool z_page_frame_is_busy(struct z_page_frame *pf)
 {
-	return (pf->flags & Z_PAGE_FRAME_BUSY) != 0;
+	return (pf->flags & Z_PAGE_FRAME_BUSY) != 0U;
 }
 
 static inline bool z_page_frame_is_backed(struct z_page_frame *pf)
 {
-	return (pf->flags & Z_PAGE_FRAME_BACKED) != 0;
+	return (pf->flags & Z_PAGE_FRAME_BACKED) != 0U;
 }
 
 static inline bool z_page_frame_is_evictable(struct z_page_frame *pf)
@@ -152,12 +152,12 @@ static inline bool z_page_frame_is_evictable(struct z_page_frame *pf)
  */
 static inline bool z_page_frame_is_available(struct z_page_frame *page)
 {
-	return page->flags == 0;
+	return page->flags == 0U;
 }
 
 static inline void z_assert_phys_aligned(uintptr_t phys)
 {
-	__ASSERT(phys % CONFIG_MMU_PAGE_SIZE == 0,
+	__ASSERT(phys % CONFIG_MMU_PAGE_SIZE == 0U,
 		 "physical address 0x%lx is not page-aligned", phys);
 	(void)phys;
 }
@@ -193,9 +193,9 @@ static inline struct z_page_frame *z_phys_to_page_frame(uintptr_t phys)
 
 static inline void z_mem_assert_virtual_region(uint8_t *addr, size_t size)
 {
-	__ASSERT((uintptr_t)addr % CONFIG_MMU_PAGE_SIZE == 0,
+	__ASSERT((uintptr_t)addr % CONFIG_MMU_PAGE_SIZE == 0U,
 		 "unaligned addr %p", addr);
-	__ASSERT(size % CONFIG_MMU_PAGE_SIZE == 0,
+	__ASSERT(size % CONFIG_MMU_PAGE_SIZE == 0U,
 		 "unaligned size %zu", size);
 	__ASSERT(addr + size > addr,
 		 "region %p size %zu zero or wraps around", addr, size);
@@ -230,150 +230,6 @@ extern size_t z_free_page_count;
 #endif
 
 #ifdef CONFIG_DEMAND_PAGING
-/*
- * Eviction algorihm APIs
- */
-
-/**
- * Select a page frame for eviction
- *
- * The kernel will invoke this to choose a page frame to evict if there
- * are no free page frames.
- *
- * This function will never be called before the initial z_eviction_init().
- *
- * This function is invoked with interrupts locked.
- *
- * @param [out] Whether the page to evict is dirty
- * @return The page frame to evict
- */
-struct z_page_frame *z_eviction_select(bool *dirty);
-
-/**
- * Initialization function
- *
- * Called at POST_KERNEL to perform any necessary initialization tasks for the
- * eviction algorithm. z_eviction_select() is guaranteed to never be called
- * until this has returned, and this will only be called once.
- */
-void z_eviction_init(void);
-
-/*
- * Backing store APIs
- */
-
-/**
- * Reserve or fetch a storage location for a data page loaded into a page frame
- *
- * The returned location token must be unique to the mapped virtual address.
- * This location will be used in the backing store to page out data page
- * contents for later retrieval. The location value must be page-aligned.
- *
- * This function may be called multiple times on the same data page. If its
- * page frame has its Z_PAGE_FRAME_BACKED bit set, it is expected to return
- * the previous backing store location for the data page containing a cached
- * clean copy. This clean copy may be updated on page-out, or used to
- * discard clean pages without needing to write out their contents.
- *
- * If the backing store is full, some other backing store location which caches
- * a loaded data page may be selected, in which case its associated page frame
- * will have the Z_PAGE_FRAME_BACKED bit cleared (as it is no longer cached).
- *
- * pf->addr will indicate the virtual address the page is currently mapped to.
- * Large, sparse backing stores which can contain the entire address space
- * may simply generate location tokens purely as a function of pf->addr with no
- * other management necessary.
- *
- * This function distinguishes whether it was called on behalf of a page
- * fault. A free backing store location must always be reserved in order for
- * page faults to succeed. If the page_fault parameter is not set, this
- * function should return -ENOMEM even if one location is available.
- *
- * This function is invoked with interrupts locked.
- *
- * @param addr Virtual address to obtain a storage location
- * @param [out] location storage location token
- * @param page_fault Whether this request was for a page fault
- * @return 0 Success
- * @return -ENOMEM Backing store is full
- */
-int z_backing_store_location_get(struct z_page_frame *pf, uintptr_t *location,
-				 bool page_fault);
-
-/**
- * Free a backing store location
- *
- * Any stored data may be discarded, and the location token associated with
- * this address may be re-used for some other data page.
- *
- * This function is invoked with interrupts locked.
- *
- * @param location Location token to free
- */
-void z_backing_store_location_free(uintptr_t location);
-
-/**
- * Copy a data page from Z_SCRATCH_PAGE to the specified location
- *
- * Immediately before this is called, Z_SCRATCH_PAGE will be mapped read-write
- * to the intended source page frame for the calling context.
- *
- * Calls to this and z_backing_store_page_in() will always be serialized,
- * but interrupts may be enabled.
- *
- * @param location Location token for the data page, for later retrieval
- */
-void z_backing_store_page_out(uintptr_t location);
-
-/**
- * Copy a data page from the provided location to Z_SCRATCH_PAGE.
- *
- * Immediately before this is called, Z_SCRATCH_PAGE will be mapped read-write
- * to the intended destination page frame for the calling context.
- *
- * Calls to this and z_backing_store_page_out() will always be serialized,
- * but interrupts may be enabled.
- *
- * @param location Location token for the data page
- */
-void z_backing_store_page_in(uintptr_t location);
-
-/**
- * Update internal accounting after a page-in
- *
- * This is invoked after z_backing_store_page_in() and interrupts have been
- * re-locked, making it safe to access the z_page_frame data. The location
- * value will be the same passed to z_backing_store_page_in().
- *
- * The primary use-case for this is to update custom fields for the backing
- * store in the page frame, to reflect where the data should be evicted to
- * if it is paged out again. This may be a no-op in some implementations.
- *
- * If the backing store caches paged-in data pages, this is the appropriate
- * time to set the Z_PAGE_FRAME_BACKED bit. The kernel only skips paging
- * out clean data pages if they are noted as clean in the page tables and the
- * Z_PAGE_FRAME_BACKED bit is set in their associated page frame.
- *
- * @param pf Page frame that was loaded in
- * @param location Location of where the loaded data page was retrieved
- */
-void z_backing_store_page_finalize(struct z_page_frame *pf, uintptr_t location);
-
-/**
- * Backing store initialization function.
- *
- * The implementation may expect to receive page in/out calls as soon as this
- * returns, but not before that. Called at POST_KERNEL.
- *
- * This function is expected to do two things:
- * - Initialize any internal data structures and accounting for the backing
- *   store.
- * - If the backing store already contains all or some loaded kernel data pages
- *   at boot time, Z_PAGE_FRAME_BACKED should be appropriately set for their
- *   associated page frames, and any internal accounting set up appropriately.
- */
-void z_backing_store_init(void);
-
 /*
  * Core kernel demand paging APIs
  */

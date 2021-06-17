@@ -23,8 +23,9 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #include <usb/usb_device.h>
 #endif
 
+#include <openthread/ncp.h>
 #include <openthread-system.h>
-#include <openthread/platform/uart.h>
+#include <utils/uart.h>
 
 #include "platform-zephyr.h"
 
@@ -111,10 +112,21 @@ static void uart_callback(const struct device *dev, void *user_data)
 			uart_rx_handle(dev);
 		}
 
-		if (uart_irq_tx_ready(dev)) {
+		if (uart_irq_tx_ready(dev) &&
+		    atomic_get(&ot_uart.tx_busy) == 1) {
 			uart_tx_handle(dev);
 		}
 	}
+}
+
+void otPlatUartReceived(const uint8_t *aBuf, uint16_t aBufLength)
+{
+	otNcpHdlcReceive(aBuf, aBufLength);
+}
+
+void otPlatUartSendDone(void)
+{
+	otNcpHdlcSendDone();
 }
 
 void platformUartProcess(otInstance *aInstance)
@@ -143,7 +155,7 @@ void platformUartProcess(otInstance *aInstance)
 		otPlatUartSendDone();
 		ot_uart.tx_finished = 0;
 	}
-};
+}
 
 otError otPlatUartEnable(void)
 {
@@ -158,10 +170,43 @@ otError otPlatUartEnable(void)
 	uart_irq_callback_user_data_set(ot_uart.dev,
 					uart_callback,
 					(void *)&ot_uart);
+
+#ifdef CONFIG_OPENTHREAD_COPROCESSOR_SPINEL_ON_UART_ACM
+	{
+		int ret;
+		uint32_t dtr = 0U;
+
+		ret = usb_enable(NULL);
+		if (ret != 0) {
+			LOG_ERR("Failed to enable USB");
+			return OT_ERROR_FAILED;
+		}
+
+		LOG_INF("Waiting for host to be ready to communicate");
+
+		/* Data Terminal Ready - check if host is ready to communicate */
+		while (!dtr) {
+			ret = uart_line_ctrl_get(ot_uart.dev,
+						 UART_LINE_CTRL_DTR, &dtr);
+			if (ret) {
+				LOG_ERR("Failed to get Data Terminal Ready line state: %d",
+					ret);
+				continue;
+			}
+			k_msleep(100);
+		}
+
+		/* Data Carrier Detect Modem - mark connection as established */
+		(void)uart_line_ctrl_set(ot_uart.dev, UART_LINE_CTRL_DCD, 1);
+		/* Data Set Ready - the NCP SoC is ready to communicate */
+		(void)uart_line_ctrl_set(ot_uart.dev, UART_LINE_CTRL_DSR, 1);
+	}
+#endif /* CONFIG_OPENTHREAD_COPROCESSOR_SPINEL_ON_UART_ACM */
+
 	uart_irq_rx_enable(ot_uart.dev);
 
 	return OT_ERROR_NONE;
-};
+}
 
 otError otPlatUartDisable(void)
 {
@@ -176,8 +221,7 @@ otError otPlatUartDisable(void)
 	uart_irq_tx_disable(ot_uart.dev);
 	uart_irq_rx_disable(ot_uart.dev);
 	return OT_ERROR_NONE;
-};
-
+}
 
 otError otPlatUartSend(const uint8_t *aBuf, uint16_t aBufLength)
 {
@@ -185,10 +229,10 @@ otError otPlatUartSend(const uint8_t *aBuf, uint16_t aBufLength)
 		return OT_ERROR_FAILED;
 	}
 
-	write_buffer = aBuf;
-	write_length = aBufLength;
+	if (atomic_cas(&(ot_uart.tx_busy), 0, 1)) {
+		write_buffer = aBuf;
+		write_length = aBufLength;
 
-	if (atomic_set(&(ot_uart.tx_busy), 1) == 0) {
 		if (is_panic_mode) {
 			/* In panic mode all data have to be send immediately
 			 * without using interrupts
@@ -197,10 +241,11 @@ otError otPlatUartSend(const uint8_t *aBuf, uint16_t aBufLength)
 		} else {
 			uart_irq_tx_enable(ot_uart.dev);
 		}
+		return OT_ERROR_NONE;
 	}
 
-	return OT_ERROR_NONE;
-};
+	return OT_ERROR_BUSY;
+}
 
 otError otPlatUartFlush(void)
 {
