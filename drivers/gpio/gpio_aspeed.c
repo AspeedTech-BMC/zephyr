@@ -9,10 +9,12 @@
 #include <kernel.h>
 #include <device.h>
 #include <drivers/gpio.h>
+#include <drivers/pinmux.h>
 #include <soc.h>
 
 #include "gpio_utils.h"
 #include "gpio_aspeed.h"
+#include "sig_id.h"
 
 #define LOG_LEVEL CONFIG_GPIO_LOG_LEVEL
 #include <logging/log.h>
@@ -33,6 +35,8 @@ struct gpio_aspeed_data {
 	struct gpio_driver_data common;
 	/* list of callbacks */
 	sys_slist_t cb;
+	/* pinmux device */
+	const struct device *pinmux;
 };
 
 uint16_t gpio_offset_data[] = {
@@ -270,7 +274,13 @@ static int gpio_aspeed_config(const struct device *dev,
 {
 	int ret;
 	uint32_t io_flags;
+	struct gpio_aspeed_data *data = DEV_DATA(dev);
+	uint8_t pin_offset = DEV_CFG(dev)->pin_offset;
 
+	ret = pinmux_pin_set(data->pinmux, pin_offset + pin, SIG_GPIO);
+	if (ret) {
+		return ret;
+	}
 	/* Does not support disconnected pin, and
 	 * not supporting both input/output at same time.
 	 */
@@ -329,10 +339,10 @@ static const struct gpio_driver_api gpio_aspeed_driver = {
 
 int gpio_aspeed_init(const struct device *dev)
 {
-	ARG_UNUSED(dev);
+	struct gpio_aspeed_data *data = DEV_DATA(dev);
 
 	gpio_aspeed_init_cmd_src_sel(dev);
-
+	data->pinmux = DEVICE_DT_GET(DT_NODELABEL(pinmux));
 	if (nr_isr_devs == 0) {
 
 		IRQ_CONNECT(DT_IRQN(DT_PARENT(DT_DRV_INST(0))),
