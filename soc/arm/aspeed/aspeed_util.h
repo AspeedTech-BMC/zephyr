@@ -31,25 +31,26 @@
 
 #define DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
 
-#define reg_read_poll_timeout(map, reg, val, cond, sleep_tick, timeout_tick)	    \
-	({									    \
-		uint32_t __timeout_tick = (timeout_tick);			    \
-		uint32_t __start = sys_clock_tick_get_32();			    \
-		int __ret = 0;							    \
-		for (;;) {							    \
-			val.value = map->reg.value;				    \
-			if (cond) {						    \
-				break;						    \
-			}							    \
-			if ((sys_clock_tick_get_32() - __start) > __timeout_tick) { \
-				__ret = -ETIMEDOUT;				    \
-				break;						    \
-			}							    \
-			if (sleep_tick) {					    \
-				k_sleep(K_TICKS(sleep_tick));			    \
-			}							    \
-		}								    \
-		__ret;								    \
+#define reg_read_poll_timeout(map, reg, val, cond, sleep_ms, timeout_ms)	     \
+	({									     \
+		uint32_t __timeout_tick = timeout_ms * sys_clock_hw_cycles_per_sec() \
+					  / MSEC_PER_SEC;			     \
+		uint32_t __start = sys_clock_tick_get_32();			     \
+		int __ret = 0;							     \
+		for (;;) {							     \
+			val.value = map->reg.value;				     \
+			if (cond) {						     \
+				break;						     \
+			}							     \
+			if ((sys_clock_tick_get_32() - __start) > __timeout_tick) {  \
+				__ret = -ETIMEDOUT;				     \
+				break;						     \
+			}							     \
+			if (sleep_ms) {						     \
+				k_msleep(sleep_ms);				     \
+			}							     \
+		}								     \
+		__ret;								     \
 	})
 
 /* Common reset control device name for all ASPEED SOC family */
