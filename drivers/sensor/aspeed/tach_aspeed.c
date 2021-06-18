@@ -54,9 +54,8 @@ static int tach_aspeed_sample_fetch(const struct device *dev, enum sensor_channe
 	tach_reg->tach_general.value = tach_general.value;
 	ret = reg_read_poll_timeout(
 		tach_reg, tach_status, tach_status,
-		(tach_status.fields.tach_full_measurement &&
-		 tach_status.fields.tach_value_updated_since_last_read),
-		DEV_DATA(dev)->sample_period, DEV_DATA(dev)->sample_period * 3);
+		tach_status.fields.tach_full_measurement,
+		0, DEV_DATA(dev)->sample_period);
 	if (ret) {
 		return ret;
 	}
