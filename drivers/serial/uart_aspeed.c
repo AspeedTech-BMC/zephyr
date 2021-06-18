@@ -130,6 +130,7 @@ struct uart_aspeed_config {
 	uint32_t dev_idx;
 
 	uintptr_t base;
+	const struct device *clock_dev;
 	const clock_control_subsys_t clk_id;
 
 	bool virt;
@@ -170,7 +171,7 @@ static int uart_aspeed_poll_in(const struct device *dev, unsigned char *c)
 			rc = 0;
 			sys_write32((rptr + 1) % UDMA_RX_RBSZ, udma_base + UDMA_CHX_RX_RD_PTR(dev_cfg->dma_ch));
 		}
-	} else   {
+	} else {
 
 		if (sys_read32(dev_cfg->base + UART_LSR) & UART_LSR_DR) {
 			*c = (unsigned char)sys_read32(dev_cfg->base + UART_RDR);
@@ -200,7 +201,7 @@ static void uart_aspeed_poll_out(const struct device *dev,
 
 		data->tx_rb[wptr] = c;
 		sys_write32((wptr + 1) % UDMA_TX_RBSZ, udma_base + UDMA_CHX_TX_WR_PTR(dev_cfg->dma_ch));
-	} else   {
+	} else {
 		while (!(sys_read32(dev_cfg->base + UART_LSR) & UART_LSR_TEMT));
 		sys_write32(c, dev_cfg->base + UART_THR);
 	}
@@ -241,7 +242,7 @@ static int uart_aspeed_configure(const struct device *dev,
 	key = k_spin_lock(&data->lock);
 
 	/* set divisor for baudrate */
-	clock_control_get_rate(device_get_binding(ASPEED_CLK_CTRL_NAME),
+	clock_control_get_rate(dev_cfg->clock_dev,
 			       dev_cfg->clk_id, &clk_rate);
 	divisor = clk_rate / (16 * uart_cfg->baudrate);
 
@@ -378,7 +379,7 @@ static int uart_aspeed_init(const struct device *dev)
 	struct uart_aspeed_config *dev_cfg = (struct uart_aspeed_config *)dev->config;
 	struct uart_config *uart_cfg = &data->uart_cfg;
 
-	clock_control_on(device_get_binding(ASPEED_CLK_CTRL_NAME),
+	clock_control_on(dev_cfg->clock_dev,
 			 dev_cfg->clk_id);
 
 	uart_dma_init(dev);
@@ -397,7 +398,7 @@ static int uart_aspeed_init(const struct device *dev)
 		      VUART_GCRA_VUART_EN |
 		      ((dev_cfg->virt_sirq_pol) ? VUART_GCRA_SIRQ_POLARITY : 0);
 		sys_write32(reg, dev_cfg->base + VUART_GCRA);
-	} else   {
+	} else {
 		uart_cfg->baudrate = 115200;
 		uart_cfg->parity = UART_CFG_PARITY_NONE;
 		uart_cfg->stop_bits = UART_CFG_STOP_BITS_1;
@@ -455,6 +456,7 @@ static const struct uart_driver_api uart_aspeed_driver_api = {
 	static const struct uart_aspeed_config uart_aspeed_config_##n = {	  \
 		.dev_idx = n,							  \
 		.base = DT_INST_REG_ADDR(n),					  \
+		.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(n)),		  \
 		.clk_id = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(n, clk_id), \
 		.virt = DT_INST_PROP_OR(n, virtual, 0),				  \
 		.virt_port = DT_INST_PROP_OR(n, virtual_port, 0),		  \

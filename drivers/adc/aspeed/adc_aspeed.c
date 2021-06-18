@@ -28,7 +28,6 @@ LOG_MODULE_REGISTER(adc_aspeed);
 struct adc_aspeed_data {
 	struct adc_context ctx;
 	const struct device *dev;
-	const struct device *clock_dev;
 	uint32_t channels;
 	uint32_t clk_rate;
 	uint32_t sampling_rate;
@@ -46,7 +45,7 @@ struct adc_aspeed_data {
 
 struct adc_aspeed_cfg {
 	struct adc_register_s *base;
-	char *clk_name;
+	const struct device *clock_dev;
 	const reset_control_subsys_t rst_id;
 	const uint16_t ref_voltage_mv;
 };
@@ -117,7 +116,7 @@ static int adc_aspeed_set_rate(const struct device *dev, uint32_t rate)
 	 * ADC clock = ADC src clock / (divisor_of_adc_clock + 1)
 	 * ADC sampling rate = ADC clock / 12
 	 */
-	clock_control_get_rate(priv->clock_dev, NULL, &clk_src);
+	clock_control_get_rate(config->clock_dev, NULL, &clk_src);
 	divisor = (clk_src / rate) - 1;
 	if (divisor >= BIT(16)) {
 		LOG_ERR("clock freq %d out of range\n", rate);
@@ -395,7 +394,6 @@ static int adc_aspeed_init(const struct device *dev)
 	int ret;
 	k_tid_t tid;
 
-	priv->clock_dev = device_get_binding(config->clk_name);
 	priv->dev = dev;
 
 	k_sem_init(&priv->acq_sem, 0, 1);
@@ -447,7 +445,7 @@ static struct adc_driver_api adc_aspeed_api = {
 	};								       \
 	static const struct adc_aspeed_cfg adc_aspeed_cfg_##n = {	       \
 		.base = (struct adc_register_s *)DT_INST_REG_ADDR(n),	       \
-		.clk_name = DT_INST_CLOCKS_LABEL(n),			       \
+		.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(n)),	       \
 		.rst_id = (reset_control_subsys_t)DT_INST_RESETS_CELL(n,       \
 								      rst_id), \
 		.ref_voltage_mv = DT_INST_PROP_OR(n, ref_voltage_mv, 2500),    \

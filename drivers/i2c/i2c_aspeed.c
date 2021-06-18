@@ -290,6 +290,7 @@ struct i2c_aspeed_config {
 	uint32_t bitrate;
 	int multi_master;
 	int smbus_alert;
+	const struct device *clock_dev;
 	const clock_control_subsys_t clk_id;
 	uint32_t ac_timing;
 	void (*irq_config_func)(const struct device *dev);
@@ -1666,7 +1667,6 @@ static int i2c_aspeed_init(const struct device *dev)
 {
 	struct i2c_aspeed_config *config = DEV_CFG(dev);
 	struct i2c_aspeed_data *data = DEV_DATA(dev);
-	const struct device *clock_dev = device_get_binding(ASPEED_CLK_CTRL_NAME);
 	uint32_t i2c_base = DEV_BASE(dev);
 	uint32_t bitrate_cfg;
 	int error;
@@ -1682,7 +1682,7 @@ static int i2c_aspeed_init(const struct device *dev)
 
 	config->multi_master = 0;
 	config->mode = DMA_MODE;
-	clock_control_get_rate(clock_dev, config->clk_id, &config->clk_src);
+	clock_control_get_rate(config->clock_dev, config->clk_id, &config->clk_src);
 	printk("==================================\n");
 	LOG_DBG("clk src %d, div mode %d, multi-master %d, xfer mode %d\n",
 		config->clk_src, config->clk_div_mode, config->multi_master, config->mode);
@@ -1784,6 +1784,7 @@ static const struct i2c_driver_api i2c_aspeed_driver_api = {
 		.base = DT_INST_REG_ADDR(n),					  \
 		.irq_config_func = i2c_aspeed_config_func_##n,			  \
 		.bitrate = DT_INST_PROP(n, clock_frequency),			  \
+		.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(n)),		  \
 		.clk_id = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(n, clk_id), \
 	};									  \
 										  \

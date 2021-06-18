@@ -31,6 +31,7 @@ struct pwm_aspeed_data {
 
 struct pwm_aspeed_cfg {
 	pwm_register_t *base;
+	const struct device *clock_dev;
 	const clock_control_subsys_t clk_id;
 	const reset_control_subsys_t rst_id;
 };
@@ -44,12 +45,10 @@ static int pwm_aspeed_init(const struct device *dev)
 {
 	struct pwm_aspeed_data *priv = DEV_DATA(dev);
 	const struct pwm_aspeed_cfg *config = DEV_CFG(dev);
-	const struct device *clock_dev =
-		device_get_binding(ASPEED_CLK_CTRL_NAME);
 	const struct device *reset_dev =
 		device_get_binding(ASPEED_RST_CTRL_NAME);
 
-	clock_control_get_rate(clock_dev, config->clk_id,
+	clock_control_get_rate(config->clock_dev, config->clk_id,
 			       &priv->clk_src);
 	/* Fixed period divisor = 256 */
 	priv->clk_src /= (PWM_ASPEED_FIXED_PERIOD + 1);
@@ -205,6 +204,7 @@ static const struct pwm_driver_api pwm_aspeed_api = {
 	static const struct pwm_aspeed_cfg pwm_aspeed_cfg_##n = {	       \
 		.base = (pwm_register_t *)DT_REG_ADDR(			       \
 			DT_PARENT(DT_DRV_INST(n))),			       \
+		.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(n)),	       \
 		.clk_id = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(n,       \
 								      clk_id), \
 		.rst_id = (reset_control_subsys_t)DT_INST_RESETS_CELL(n,       \

@@ -20,6 +20,7 @@ LOG_MODULE_REGISTER(tach_aspeed);
 
 struct tach_aspeed_cfg {
 	tach_register_t *base;
+	const struct device *clock_dev;
 	const clock_control_subsys_t clk_id;
 	const reset_control_subsys_t rst_id;
 	uint8_t tach_ch;
@@ -120,11 +121,9 @@ static int tach_aspeed_get_sample_period(const struct device *dev)
 
 static int tach_aspeed_get_tach_freq(const struct device *dev)
 {
-	const struct device *clock_dev =
-		device_get_binding(ASPEED_CLK_CTRL_NAME);
 	uint32_t clk_src;
 
-	clock_control_get_rate(clock_dev, DEV_CFG(dev)->clk_id, &clk_src);
+	clock_control_get_rate(DEV_CFG(dev)->clock_dev, DEV_CFG(dev)->clk_id, &clk_src);
 	/* divide = 2^(tacho_div*2) */
 	DEV_DATA(dev)->tach_freq =
 		clk_src / (1 << (DEV_CFG(dev)->tach_div << 1));
@@ -155,17 +154,19 @@ static const struct sensor_driver_api tach_aspeed_api = {
 
 #define TACH_ENUM(node_id) node_id,
 
-#define TACH_ASPEED_DEV_CFG(node_id) {									 \
-		.base = (tach_register_t *)(DT_REG_ADDR(						 \
-						    DT_GPARENT(node_id)) + 0x10 * DT_REG_ADDR(node_id)), \
-		.clk_id = (clock_control_subsys_t)DT_CLOCKS_CELL(DT_PARENT(node_id),			 \
-								 clk_id),				 \
-		.rst_id = (reset_control_subsys_t)DT_RESETS_CELL(DT_PARENT(node_id),			 \
-								 rst_id),				 \
-		.tach_ch = DT_REG_ADDR(node_id),							 \
-		.pulse_pr = DT_PROP(node_id, pulse_pr),							 \
-		.min_rpm = DT_PROP(node_id, min_rpm),							 \
-		.tach_div = DT_PROP(node_id, tach_div),							 \
+#define TACH_ASPEED_DEV_CFG(node_id) {						     \
+		.base = (tach_register_t *)(DT_REG_ADDR(			     \
+						    DT_GPARENT(node_id)) +	     \
+					    0x10 * DT_REG_ADDR(node_id)),	     \
+		.clock_dev = DEVICE_DT_GET(DT_CLOCKS_CTLR(DT_PARENT(node_id))),	     \
+		.clk_id = (clock_control_subsys_t)DT_CLOCKS_CELL(DT_PARENT(node_id), \
+								 clk_id),	     \
+		.rst_id = (reset_control_subsys_t)DT_RESETS_CELL(DT_PARENT(node_id), \
+								 rst_id),	     \
+		.tach_ch = DT_REG_ADDR(node_id),				     \
+		.pulse_pr = DT_PROP(node_id, pulse_pr),				     \
+		.min_rpm = DT_PROP(node_id, min_rpm),				     \
+		.tach_div = DT_PROP(node_id, tach_div),				     \
 },
 
 #define TACH_ASPEED_DEV_DATA(node_id) {},

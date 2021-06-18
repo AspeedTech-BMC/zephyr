@@ -14,7 +14,7 @@
 LOG_MODULE_REGISTER(fixed_factor_clock);
 
 struct fixed_factor_clock_cfg {
-	char *clk_name;
+	const struct device *clock_dev;
 	const clock_control_subsys_t clk_id;
 	const uint32_t clk_div;
 	const uint32_t clk_mult;
@@ -29,9 +29,8 @@ static int fixed_factor_clock_control_get_rate(
 {
 	uint32_t src_rate;
 	const struct fixed_factor_clock_cfg *config = DEV_CFG(dev);
-	const struct device *clock_dev = device_get_binding(config->clk_name);
 
-	clock_control_get_rate(clock_dev, DEV_CFG(dev)->clk_id, &src_rate);
+	clock_control_get_rate(config->clock_dev, DEV_CFG(dev)->clk_id, &src_rate);
 
 	LOG_DBG("source rate = %d, mult = %d, div = %d\n", src_rate,
 		config->clk_mult, config->clk_div);
@@ -51,7 +50,7 @@ static const struct clock_control_driver_api fixed_factor_clk_api = {
 
 #define FIXED_FACTOR_CLOCK_INIT(n)						  \
 	static const struct fixed_factor_clock_cfg fixed_factor_clock_cfg_##n = { \
-		.clk_name = DT_INST_CLOCKS_LABEL(n),				  \
+		.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(n)),		  \
 		.clk_id = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(n, clk_id), \
 		.clk_div = DT_PROP_OR(DT_DRV_INST(n), clock_div, 1),		  \
 		.clk_mult = DT_PROP_OR(DT_DRV_INST(n), clock_mult, 1),		  \

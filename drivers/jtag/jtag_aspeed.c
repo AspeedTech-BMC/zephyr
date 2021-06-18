@@ -117,6 +117,7 @@ struct jtag_aspeed_data {
 
 struct jtag_aspeed_cfg {
 	struct jtag_register_s *base;
+	const struct device *clock_dev;
 	const clock_control_subsys_t clk_id;
 	const reset_control_subsys_t rst_id;
 	void (*irq_config_func)(const struct device *dev);
@@ -339,10 +340,9 @@ int jtag_aspeed_freq_get(const struct device *dev, uint32_t *freq)
 {
 	const struct jtag_aspeed_cfg *config = DEV_CFG(dev);
 	struct jtag_register_s *jtag_register = config->base;
-	const struct device *clk_dev = device_get_binding(ASPEED_CLK_CTRL_NAME);
 	uint32_t src_clk, div;
 
-	clock_control_get_rate(clk_dev, config->clk_id, &src_clk);
+	clock_control_get_rate(config->clock_dev, config->clk_id, &src_clk);
 	div = jtag_register->tck_control.fields.tck_divisor;
 	*freq = src_clk / (div + 1);
 	return 0;
@@ -351,14 +351,13 @@ int jtag_aspeed_freq_set(const struct device *dev, uint32_t freq)
 {
 	const struct jtag_aspeed_cfg *config = DEV_CFG(dev);
 	struct jtag_register_s *jtag_register = config->base;
-	const struct device *clk_dev = device_get_binding(ASPEED_CLK_CTRL_NAME);
 	uint32_t src_clk, div, diff;
 	union tck_control_s tck_control;
 
 	if (freq > JTAG_ASPEED_MAX_FREQUENCY) {
 		return -EINVAL;
 	}
-	clock_control_get_rate(clk_dev, config->clk_id, &src_clk);
+	clock_control_get_rate(config->clock_dev, config->clk_id, &src_clk);
 	div = DIV_ROUND_UP(src_clk, freq);
 	diff = abs(src_clk - div * freq);
 	if (diff > abs(src_clk - (div - 1) * freq)) {
@@ -596,6 +595,7 @@ static struct jtag_driver_api jtag_aspeed_api = {
 	static void jtag_aspeed_config_func_##n(const struct device *dev);     \
 	static const struct jtag_aspeed_cfg jtag_aspeed_cfg_##n = {	       \
 		.base = (struct jtag_register_s *)DT_INST_REG_ADDR(n),	       \
+		.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(n)),	       \
 		.clk_id = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(n,       \
 								      clk_id), \
 		.rst_id = (reset_control_subsys_t)DT_INST_RESETS_CELL(n,       \

@@ -52,8 +52,6 @@
 		__ret;								    \
 	})
 
-/* Common clock control device name for all ASPEED SOC family */
-#define ASPEED_CLK_CTRL_NAME DT_INST_CLOCKS_LABEL(0)
 /* Common reset control device name for all ASPEED SOC family */
 #define ASPEED_RST_CTRL_NAME DT_INST_RESETS_LABEL(0)
 
