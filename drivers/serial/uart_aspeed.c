@@ -29,76 +29,76 @@ LOG_MODULE_REGISTER(uart, LOG_LEVEL_ERR);
 #define UART_MSR 0x18
 
 /* UART_FCR */
-#define UART_FCR_TRIG_MASK	GENMASK(7, 6)
-#define UART_FCR_TRIG_SHIFT	6
-#define UART_FCR_TX_RST		BIT(2)
-#define UART_FCR_RX_RST		BIT(1)
-#define UART_FCR_EN		BIT(0)
+#define UART_FCR_TRIG_MASK      GENMASK(7, 6)
+#define UART_FCR_TRIG_SHIFT     6
+#define UART_FCR_TX_RST         BIT(2)
+#define UART_FCR_RX_RST         BIT(1)
+#define UART_FCR_EN             BIT(0)
 
 /* UART_LCR */
-#define UART_LCR_DLAB		BIT(7)
-#define UART_LCR_PARITY_MODE	BIT(4)
-#define UART_LCR_PARITY_EN	BIT(3)
-#define UART_LCR_STOP		BIT(2)
-#define UART_LCR_CLS_MASK	GENMASK(1, 0)
-#define UART_LCR_CLS_SHIFT	0
+#define UART_LCR_DLAB           BIT(7)
+#define UART_LCR_PARITY_MODE    BIT(4)
+#define UART_LCR_PARITY_EN      BIT(3)
+#define UART_LCR_STOP           BIT(2)
+#define UART_LCR_CLS_MASK       GENMASK(1, 0)
+#define UART_LCR_CLS_SHIFT      0
 
 /* UART_LSR */
-#define UART_LSR_TEMT	BIT(6)
-#define UART_LSR_THRE	BIT(5)
-#define UART_LSR_BI	BIT(4)
-#define UART_LSR_FE	BIT(3)
-#define UART_LSR_PE	BIT(2)
-#define UART_LSR_OE	BIT(1)
-#define UART_LSR_DR	BIT(0)
+#define UART_LSR_TEMT   BIT(6)
+#define UART_LSR_THRE   BIT(5)
+#define UART_LSR_BI     BIT(4)
+#define UART_LSR_FE     BIT(3)
+#define UART_LSR_PE     BIT(2)
+#define UART_LSR_OE     BIT(1)
+#define UART_LSR_DR     BIT(0)
 
 /* VUART registers */
-#define VUART_GCRA	0x20
-#define VUART_GCRB	0x24
-#define VUART_ADDRL	0x28
-#define VUART_ADDRH	0x2c
+#define VUART_GCRA      0x20
+#define VUART_GCRB      0x24
+#define VUART_ADDRL     0x28
+#define VUART_ADDRH     0x2c
 
 /* VUART_GCRA */
-#define VUART_GCRA_DISABLE_HOST_TX_DISCARD	BIT(5)
-#define VUART_GCRA_SIRQ_POLARITY		BIT(1)
-#define VUART_GCRA_VUART_EN			BIT(0)
+#define VUART_GCRA_DISABLE_HOST_TX_DISCARD      BIT(5)
+#define VUART_GCRA_SIRQ_POLARITY                BIT(1)
+#define VUART_GCRA_VUART_EN                     BIT(0)
 
 /* VUART_GCRB */
-#define VUART_GCRB_HOST_SIRQ_MASK		GENMASK(7, 4)
-#define VUART_GCRB_HOST_SIRQ_SHIFT		4
+#define VUART_GCRB_HOST_SIRQ_MASK               GENMASK(7, 4)
+#define VUART_GCRB_HOST_SIRQ_SHIFT              4
 
 /* UDMA registers */
-#define UDMA_TX_DMA_EN		0x00
-#define UDMA_RX_DMA_EN		0x04
-#define UDMA_MISC		0x08
-#define UDMA_TIMEOUT_TIMER	0x0c
-#define UDMA_TX_DMA_RST		0x20
-#define UDMA_RX_DMA_RST		0x24
-#define UDMA_CHX_OFF(x)		((x) * 0x20)
-#define UDMA_CHX_TX_RD_PTR(x)	(0x40 + UDMA_CHX_OFF(x))
-#define UDMA_CHX_TX_WR_PTR(x)	(0x44 + UDMA_CHX_OFF(x))
-#define UDMA_CHX_TX_BUF_BASE(x)	(0x48 + UDMA_CHX_OFF(x))
-#define UDMA_CHX_TX_CTRL(x)	(0x4c + UDMA_CHX_OFF(x))
-#define UDMA_CHX_RX_RD_PTR(x)	(0x50 + UDMA_CHX_OFF(x))
-#define UDMA_CHX_RX_WR_PTR(x)	(0x54 + UDMA_CHX_OFF(x))
-#define UDMA_CHX_RX_BUF_BASE(x)	(0x58 + UDMA_CHX_OFF(x))
-#define UDMA_CHX_RX_CTRL(x)	(0x5c + UDMA_CHX_OFF(x))
+#define UDMA_TX_DMA_EN          0x00
+#define UDMA_RX_DMA_EN          0x04
+#define UDMA_MISC               0x08
+#define UDMA_TIMEOUT_TIMER      0x0c
+#define UDMA_TX_DMA_RST         0x20
+#define UDMA_RX_DMA_RST         0x24
+#define UDMA_CHX_OFF(x)         ((x) * 0x20)
+#define UDMA_CHX_TX_RD_PTR(x)   (0x40 + UDMA_CHX_OFF(x))
+#define UDMA_CHX_TX_WR_PTR(x)   (0x44 + UDMA_CHX_OFF(x))
+#define UDMA_CHX_TX_BUF_BASE(x) (0x48 + UDMA_CHX_OFF(x))
+#define UDMA_CHX_TX_CTRL(x)     (0x4c + UDMA_CHX_OFF(x))
+#define UDMA_CHX_RX_RD_PTR(x)   (0x50 + UDMA_CHX_OFF(x))
+#define UDMA_CHX_RX_WR_PTR(x)   (0x54 + UDMA_CHX_OFF(x))
+#define UDMA_CHX_RX_BUF_BASE(x) (0x58 + UDMA_CHX_OFF(x))
+#define UDMA_CHX_RX_CTRL(x)     (0x5c + UDMA_CHX_OFF(x))
 
 /* UDMA_MISC */
-#define UDMA_MISC_RX_BUFSZ_MASK		GENMASK(3, 2)
-#define UDMA_MISC_RX_BUFSZ_SHIFT	2
-#define UDMA_MISC_TX_BUFSZ_MASK		GENMASK(1, 0)
-#define UDMA_MISC_TX_BUFSZ_SHIFT	0
+#define UDMA_MISC_RX_BUFSZ_MASK         GENMASK(3, 2)
+#define UDMA_MISC_RX_BUFSZ_SHIFT        2
+#define UDMA_MISC_TX_BUFSZ_MASK         GENMASK(1, 0)
+#define UDMA_MISC_TX_BUFSZ_SHIFT        0
 
 /* UDMA_CHX_TX_CTRL */
-#define UDMA_TX_CTRL_TMOUT_DISABLE	BIT(4)
-#define UDMA_TX_CTRL_BUFSZ_MASK		GENMASK(3, 0)
-#define UDMA_TX_CTRL_BUFSZ_SHIFT	0
+#define UDMA_TX_CTRL_TMOUT_DISABLE      BIT(4)
+#define UDMA_TX_CTRL_BUFSZ_MASK         GENMASK(3, 0)
+#define UDMA_TX_CTRL_BUFSZ_SHIFT        0
 
 /* UDMA_CHX_RX_CTRL */
-#define UDMA_RX_CTRL_TMOUT_DISABLE	BIT(4)
-#define UDMA_RX_CTRL_BUFSZ_MASK		GENMASK(3, 0)
-#define UDMA_RX_CTRL_BUFSZ_SHIFT	0
+#define UDMA_RX_CTRL_TMOUT_DISABLE      BIT(4)
+#define UDMA_RX_CTRL_BUFSZ_MASK         GENMASK(3, 0)
+#define UDMA_RX_CTRL_BUFSZ_SHIFT        0
 
 enum udma_buffer_size_code {
 	UDMA_BUFSZ_1KB,
@@ -117,9 +117,9 @@ enum udma_buffer_size_code {
 	UDMA_BUFSZ_16384KB,
 };
 
-#define UDMA_MAX_CHANNEL	14
-#define UDMA_TX_RBSZ		0x400
-#define UDMA_RX_RBSZ		0x400
+#define UDMA_MAX_CHANNEL        14
+#define UDMA_TX_RBSZ            0x400
+#define UDMA_RX_RBSZ            0x400
 
 static bool udma_init = false;
 static uintptr_t udma_base = DT_REG_ADDR_BY_IDX(DT_INST(0, aspeed_udma), 0);
@@ -170,8 +170,7 @@ static int uart_aspeed_poll_in(const struct device *dev, unsigned char *c)
 			rc = 0;
 			sys_write32((rptr + 1) % UDMA_RX_RBSZ, udma_base + UDMA_CHX_RX_RD_PTR(dev_cfg->dma_ch));
 		}
-	}
-	else {
+	} else   {
 
 		if (sys_read32(dev_cfg->base + UART_LSR) & UART_LSR_DR) {
 			*c = (unsigned char)sys_read32(dev_cfg->base + UART_RDR);
@@ -185,7 +184,7 @@ static int uart_aspeed_poll_in(const struct device *dev, unsigned char *c)
 }
 
 static void uart_aspeed_poll_out(const struct device *dev,
-					   unsigned char c)
+				 unsigned char c)
 {
 	struct uart_aspeed_data *data = (struct uart_aspeed_data *)dev->data;
 	struct uart_aspeed_config *dev_cfg = (struct uart_aspeed_config *)dev->config;
@@ -201,8 +200,7 @@ static void uart_aspeed_poll_out(const struct device *dev,
 
 		data->tx_rb[wptr] = c;
 		sys_write32((wptr + 1) % UDMA_TX_RBSZ, udma_base + UDMA_CHX_TX_WR_PTR(dev_cfg->dma_ch));
-	}
-	else {
+	} else   {
 		while (!(sys_read32(dev_cfg->base + UART_LSR) & UART_LSR_TEMT));
 		sys_write32(c, dev_cfg->base + UART_THR);
 	}
@@ -227,7 +225,7 @@ static int uart_aspeed_err_check(const struct device *dev)
 }
 
 static int uart_aspeed_configure(const struct device *dev,
-				  const struct uart_config *uart_cfg)
+				 const struct uart_config *uart_cfg)
 {
 	int rc = 0;
 	uint32_t reg;
@@ -236,14 +234,15 @@ static int uart_aspeed_configure(const struct device *dev,
 	struct uart_aspeed_data *data = (struct uart_aspeed_data *)dev->data;
 	struct uart_aspeed_config *dev_cfg = (struct uart_aspeed_config *)dev->config;
 
-	if (dev_cfg->virt)
+	if (dev_cfg->virt) {
 		return 0;
+	}
 
 	key = k_spin_lock(&data->lock);
 
 	/* set divisor for baudrate */
 	clock_control_get_rate(device_get_binding(ASPEED_CLK_CTRL_NAME),
-			dev_cfg->clk_id, &clk_rate);
+			       dev_cfg->clk_id, &clk_rate);
 	divisor = clk_rate / (16 * uart_cfg->baudrate);
 
 	reg = sys_read32(dev_cfg->base + UART_LCR);
@@ -319,7 +318,7 @@ out:
 };
 
 static int uart_aspeed_config_get(const struct device *dev,
-		struct uart_config *uart_cfg)
+				  struct uart_config *uart_cfg)
 {
 	struct uart_aspeed_data *data = (struct uart_aspeed_data *)dev->data;
 
@@ -337,8 +336,9 @@ static int uart_dma_init(const struct device *dev)
 	int i;
 	uint32_t reg;
 
-	if (udma_init)
+	if (udma_init) {
 		return 0;
+	}
 
 	sys_write32(0x0, udma_base + UDMA_TX_DMA_EN);
 	sys_write32(0x0, udma_base + UDMA_RX_DMA_EN);
@@ -397,8 +397,7 @@ static int uart_aspeed_init(const struct device *dev)
 		      VUART_GCRA_VUART_EN |
 		      ((dev_cfg->virt_sirq_pol) ? VUART_GCRA_SIRQ_POLARITY : 0);
 		sys_write32(reg, dev_cfg->base + VUART_GCRA);
-	}
-	else {
+	} else   {
 		uart_cfg->baudrate = 115200;
 		uart_cfg->parity = UART_CFG_PARITY_NONE;
 		uart_cfg->stop_bits = UART_CFG_STOP_BITS_1;
@@ -408,8 +407,9 @@ static int uart_aspeed_init(const struct device *dev)
 		rc = uart_aspeed_configure(dev, uart_cfg);
 	}
 
-	if (!dev_cfg->dma)
-	    return rc;
+	if (!dev_cfg->dma) {
+		return rc;
+	}
 
 	data->tx_rb = udma_tx_rb[dev_cfg->dma_ch];
 	data->tx_rb_addr = TO_PHY_ADDR(data->tx_rb);
@@ -448,28 +448,28 @@ static const struct uart_driver_api uart_aspeed_driver_api = {
 	.config_get = uart_aspeed_config_get,
 };
 
-#define UART_ASPEED_INIT(n)								\
-											\
-	static struct uart_aspeed_data uart_aspeed_data_##n;				\
-											\
-	static const struct uart_aspeed_config uart_aspeed_config_##n = {		\
-		.dev_idx = n,								\
-		.base = DT_INST_REG_ADDR(n),						\
-		.clk_id = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(n, clk_id),	\
-		.virt = DT_INST_PROP_OR(n, virtual, 0),					\
-		.virt_port = DT_INST_PROP_OR(n, virtual_port, 0),			\
-		.virt_sirq = DT_INST_PROP_OR(n, virtual_sirq, 0),			\
-		.virt_sirq_pol = DT_INST_PROP_OR(n, virtual_sirq_polarity, 0),		\
-		.dma = DT_INST_PROP_OR(n, dma, 0),					\
-		.dma_ch = DT_INST_PROP_OR(n, dma_channel, 0),				\
-	};										\
-											\
-	DEVICE_DT_INST_DEFINE(n,							\
-			      &uart_aspeed_init,					\
-			      device_pm_control_nop,					\
-			      &uart_aspeed_data_##n, &uart_aspeed_config_##n,		\
-			      PRE_KERNEL_1,						\
-			      CONFIG_KERNEL_INIT_PRIORITY_DEVICE,			\
+#define UART_ASPEED_INIT(n)							  \
+										  \
+	static struct uart_aspeed_data uart_aspeed_data_##n;			  \
+										  \
+	static const struct uart_aspeed_config uart_aspeed_config_##n = {	  \
+		.dev_idx = n,							  \
+		.base = DT_INST_REG_ADDR(n),					  \
+		.clk_id = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(n, clk_id), \
+		.virt = DT_INST_PROP_OR(n, virtual, 0),				  \
+		.virt_port = DT_INST_PROP_OR(n, virtual_port, 0),		  \
+		.virt_sirq = DT_INST_PROP_OR(n, virtual_sirq, 0),		  \
+		.virt_sirq_pol = DT_INST_PROP_OR(n, virtual_sirq_polarity, 0),	  \
+		.dma = DT_INST_PROP_OR(n, dma, 0),				  \
+		.dma_ch = DT_INST_PROP_OR(n, dma_channel, 0),			  \
+	};									  \
+										  \
+	DEVICE_DT_INST_DEFINE(n,						  \
+			      &uart_aspeed_init,				  \
+			      NULL,						  \
+			      &uart_aspeed_data_##n, &uart_aspeed_config_##n,	  \
+			      PRE_KERNEL_1,					  \
+			      CONFIG_KERNEL_INIT_PRIORITY_DEVICE,		  \
 			      &uart_aspeed_driver_api);
 
 DT_INST_FOREACH_STATUS_OKAY(UART_ASPEED_INIT)

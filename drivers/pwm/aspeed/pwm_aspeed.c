@@ -210,7 +210,7 @@ static const struct pwm_driver_api pwm_aspeed_api = {
 		.rst_id = (reset_control_subsys_t)DT_INST_RESETS_CELL(n,       \
 								      rst_id), \
 	};								       \
-	DEVICE_DT_INST_DEFINE(n, pwm_aspeed_init, device_pm_control_nop,       \
+	DEVICE_DT_INST_DEFINE(n, pwm_aspeed_init, NULL,			       \
 			      &pwm_aspeed_data_##n, &pwm_aspeed_cfg_##n,       \
 			      POST_KERNEL,				       \
 			      CONFIG_KERNEL_INIT_PRIORITY_DEVICE,	       \

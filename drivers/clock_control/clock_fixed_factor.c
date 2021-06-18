@@ -57,8 +57,8 @@ static const struct clock_control_driver_api fixed_factor_clk_api = {
 		.clk_mult = DT_PROP_OR(DT_DRV_INST(n), clock_mult, 1),		  \
 	};									  \
 	DEVICE_DT_INST_DEFINE(n,						  \
-			      fixed_factor_clock_init,						  \
-			      device_pm_control_nop,				  \
+			      fixed_factor_clock_init,				  \
+			      NULL,						  \
 			      NULL,						  \
 			      &fixed_factor_clock_cfg_##n,			  \
 			      PRE_KERNEL_1, CONFIG_KERNEL_INIT_PRIORITY_DEVICE,	  \

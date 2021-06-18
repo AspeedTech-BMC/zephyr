@@ -18,8 +18,8 @@ struct clock_aspeed_config {
 	uintptr_t base;
 };
 
-#define DEV_CFG(dev)					\
-	((const struct clock_aspeed_config * const)	\
+#define DEV_CFG(dev)				   \
+	((const struct clock_aspeed_config *const) \
 	 (dev)->config)
 
 static int aspeed_clock_control_on(const struct device *dev,
@@ -28,8 +28,9 @@ static int aspeed_clock_control_on(const struct device *dev,
 	uint32_t clk_gate = (uint32_t)sub_system;
 	uint32_t addr = DEV_CFG(dev)->base + 0x84;
 
-	if (clk_gate >= ASPEED_CLK_GRP_2_OFFSET)
+	if (clk_gate >= ASPEED_CLK_GRP_2_OFFSET) {
 		return 0;
+	}
 
 	if (clk_gate >= ASPEED_CLK_GRP_1_OFFSET) {
 		clk_gate -= ASPEED_CLK_GRP_1_OFFSET;
@@ -47,8 +48,9 @@ static int aspeed_clock_control_off(const struct device *dev,
 	uint32_t clk_gate = (uint32_t)sub_system;
 	uint32_t addr = DEV_CFG(dev)->base + 0x80;
 
-	if (clk_gate >= ASPEED_CLK_GRP_2_OFFSET)
+	if (clk_gate >= ASPEED_CLK_GRP_2_OFFSET) {
 		return 0;
+	}
 
 	if (clk_gate >= ASPEED_CLK_GRP_1_OFFSET) {
 		clk_gate -= ASPEED_CLK_GRP_1_OFFSET;
@@ -61,9 +63,9 @@ static int aspeed_clock_control_off(const struct device *dev,
 }
 
 static int aspeed_clock_control_get_rate(
-					const struct device *dev,
-				    clock_control_subsys_t sub_system,
-				    uint32_t *rate)
+	const struct device *dev,
+	clock_control_subsys_t sub_system,
+	uint32_t *rate)
 {
 	uint32_t clk_id = (uint32_t)sub_system;
 
@@ -115,13 +117,13 @@ static const struct clock_aspeed_config clock_aspeed_cfg = {
 	.base = DT_REG_ADDR(DT_NODELABEL(syscon)),
 };
 
-#define ASPEED_CLOCK_INIT(n) \
-	\
-DEVICE_DT_INST_DEFINE(n, \
-		    &aspeed_clock_control_init, \
-		    device_pm_control_nop, \
-		    NULL, &clock_aspeed_cfg, \
-		    PRE_KERNEL_1, CONFIG_KERNEL_INIT_PRIORITY_DEVICE, \
-		    &aspeed_clk_api);
+#define ASPEED_CLOCK_INIT(n)							\
+										\
+	DEVICE_DT_INST_DEFINE(n,						\
+			      &aspeed_clock_control_init,			\
+			      NULL,						\
+			      NULL, &clock_aspeed_cfg,				\
+			      PRE_KERNEL_1, CONFIG_KERNEL_INIT_PRIORITY_DEVICE,	\
+			      &aspeed_clk_api);
 
 DT_INST_FOREACH_STATUS_OKAY(ASPEED_CLOCK_INIT)

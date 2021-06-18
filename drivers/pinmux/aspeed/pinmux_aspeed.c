@@ -303,7 +303,7 @@ static const struct pinmux_aspeed_config pinmux_aspeed_config = {
 };
 
 
-DEVICE_DT_INST_DEFINE(0, &pinmux_aspeed_init, device_pm_control_nop,
+DEVICE_DT_INST_DEFINE(0, &pinmux_aspeed_init, NULL,
 		      NULL, &pinmux_aspeed_config,
 		      PRE_KERNEL_1, CONFIG_PINMUX_INIT_PRIORITY,
 		      &pinmux_aspeed_driver_api);

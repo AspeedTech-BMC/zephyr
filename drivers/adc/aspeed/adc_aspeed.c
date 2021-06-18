@@ -452,7 +452,7 @@ static struct adc_driver_api adc_aspeed_api = {
 								      rst_id), \
 		.ref_voltage_mv = DT_INST_PROP_OR(n, ref_voltage_mv, 2500),    \
 	};								       \
-	DEVICE_DT_INST_DEFINE(n, adc_aspeed_init, device_pm_control_nop,       \
+	DEVICE_DT_INST_DEFINE(n, adc_aspeed_init, NULL,			       \
 			      &adc_aspeed_data_##n, &adc_aspeed_cfg_##n,       \
 			      POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEVICE, \
 			      &adc_aspeed_api);

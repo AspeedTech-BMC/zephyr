@@ -1791,7 +1791,7 @@ static const struct i2c_driver_api i2c_aspeed_driver_api = {
 										  \
 	DEVICE_DT_INST_DEFINE(n,						  \
 			      &i2c_aspeed_init,					  \
-			      device_pm_control_nop,				  \
+			      NULL,						  \
 			      &i2c_aspeed_data_##n, &i2c_aspeed_config_##n,	  \
 			      POST_KERNEL,					  \
 			      CONFIG_KERNEL_INIT_PRIORITY_DEVICE,		  \

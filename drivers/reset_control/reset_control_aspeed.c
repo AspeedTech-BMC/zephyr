@@ -17,8 +17,8 @@ struct reset_aspeed_config {
 	uintptr_t base;
 };
 
-#define DEV_CFG(dev)					\
-	((const struct reset_aspeed_config * const)	\
+#define DEV_CFG(dev)				   \
+	((const struct reset_aspeed_config *const) \
 	 (dev)->config)
 
 #define GET_ASSERT_OFFSET(rst_id) ((rst_id >> 16) & 0xff)
@@ -27,10 +27,11 @@ struct reset_aspeed_config {
 
 
 static int aspeed_reset_control_deassert(const struct device *dev,
-			      reset_control_subsys_t sub_system)
+					 reset_control_subsys_t sub_system)
 {
 	uint32_t rst_id = (uint32_t) sub_system;
 	uint32_t scu_base = DEV_CFG(dev)->base;
+
 	sys_write32(BIT(GET_RST_BIT(rst_id)),
 		    scu_base + GET_DEASSERT_OFFSET(rst_id));
 	LOG_DBG("Deassert offset:0x%08x bit:%d", GET_DEASSERT_OFFSET(rst_id),
@@ -39,10 +40,11 @@ static int aspeed_reset_control_deassert(const struct device *dev,
 }
 
 static int aspeed_reset_control_assert(const struct device *dev,
-			       reset_control_subsys_t sub_system)
+				       reset_control_subsys_t sub_system)
 {
 	uint32_t rst_id = (uint32_t) sub_system;
 	uint32_t scu_base = DEV_CFG(dev)->base;
+
 	sys_write32(BIT(GET_RST_BIT(rst_id)),
 		    scu_base + GET_ASSERT_OFFSET(rst_id));
 	LOG_DBG("Assert offset:0x%08x bit:%d", GET_ASSERT_OFFSET(rst_id),
@@ -65,12 +67,12 @@ static const struct reset_aspeed_config reset_aspeed_cfg = {
 	.base = DT_REG_ADDR(DT_NODELABEL(syscon)),
 };
 
-#define ASPEED_RESET_INIT(n) \
-DEVICE_DT_INST_DEFINE(n, \
-		    &aspeed_reset_control_init, \
-		    device_pm_control_nop, \
-		    NULL, &reset_aspeed_cfg, \
-		    PRE_KERNEL_1, CONFIG_KERNEL_INIT_PRIORITY_DEVICE, \
-		    &aspeed_rst_api);
+#define ASPEED_RESET_INIT(n)							\
+	DEVICE_DT_INST_DEFINE(n,						\
+			      &aspeed_reset_control_init,			\
+			      NULL,						\
+			      NULL, &reset_aspeed_cfg,				\
+			      PRE_KERNEL_1, CONFIG_KERNEL_INIT_PRIORITY_DEVICE,	\
+			      &aspeed_rst_api);
 
 DT_INST_FOREACH_STATUS_OKAY(ASPEED_RESET_INIT)

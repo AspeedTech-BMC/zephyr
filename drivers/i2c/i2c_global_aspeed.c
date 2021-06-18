@@ -25,8 +25,8 @@ struct i2c_global_config {
 	const reset_control_subsys_t rst_id;
 };
 
-#define DEV_CFG(dev)					\
-	((const struct i2c_global_config * const)	\
+#define DEV_CFG(dev)				 \
+	((const struct i2c_global_config *const) \
 	 (dev)->config)
 
 
@@ -38,9 +38,9 @@ static int i2c_global_init(const struct device *dev)
 	const struct device *reset_dev = device_get_binding(ASPEED_RST_CTRL_NAME);
 
 	reset_control_deassert(reset_dev, DEV_CFG(dev)->rst_id);
-	//TODO check delay
+	/* TODO check delay */
 	sys_read32(i2c_global_base + 0x0C);
-//	k_usleep(10);
+	/* k_usleep(10); */
 	sys_write32(0x14, i2c_global_base + 0x0C);
 
 	return 0;
@@ -53,7 +53,7 @@ static const struct i2c_global_config i2c_aspeed_config = {
 };
 
 
-DEVICE_DT_INST_DEFINE(0, &i2c_global_init, device_pm_control_nop,
-	NULL, &i2c_aspeed_config,
-	POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEVICE,
-	NULL);
+DEVICE_DT_INST_DEFINE(0, &i2c_global_init, NULL,
+		      NULL, &i2c_aspeed_config,
+		      POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEVICE,
+		      NULL);

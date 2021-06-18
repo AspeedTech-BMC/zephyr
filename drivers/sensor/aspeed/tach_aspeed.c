@@ -171,7 +171,7 @@ static const struct sensor_driver_api tach_aspeed_api = {
 #define TACH_ASPEED_DEV_DATA(node_id) {},
 
 #define TACH_ASPEED_DT_DEFINE(node_id)						\
-	DEVICE_DT_DEFINE(node_id, tach_aspeed_init, device_pm_control_nop,	\
+	DEVICE_DT_DEFINE(node_id, tach_aspeed_init, NULL,			\
 			 &tach_aspeed_data[node_id], &tach_aspeed_cfg[node_id],	\
 			 POST_KERNEL,						\
 			 CONFIG_KERNEL_INIT_PRIORITY_DEVICE,			\

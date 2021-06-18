@@ -17,21 +17,21 @@ LOG_MODULE_REGISTER(clock_control_aspeed);
 
 
 static int aspeed_clock_control_on(const struct device *dev,
-			      clock_control_subsys_t sub_system)
+				   clock_control_subsys_t sub_system)
 {
 	return 0;
 }
 
 static int aspeed_clock_control_off(const struct device *dev,
-			       clock_control_subsys_t sub_system)
+				    clock_control_subsys_t sub_system)
 {
 	return 0;
 }
 
 static int aspeed_clock_control_get_rate(
-					const struct device *dev,
-				    clock_control_subsys_t sub_system,
-				    uint32_t *rate)
+	const struct device *dev,
+	clock_control_subsys_t sub_system,
+	uint32_t *rate)
 {
 	uint32_t clk_id = (uint32_t) sub_system;
 
@@ -79,13 +79,13 @@ static const struct clock_control_driver_api aspeed_clk_api = {
 	.get_rate = aspeed_clock_control_get_rate,
 };
 
-#define ASPEED_CLOCK_INIT(n) \
-	\
-DEVICE_DT_INST_DEFINE(n, \
-		    &aspeed_clock_control_init, \
-		    device_pm_control_nop, \
-		    NULL, NULL, \
-		    PRE_KERNEL_1, CONFIG_KERNEL_INIT_PRIORITY_DEVICE, \
-		    &aspeed_clk_api);
+#define ASPEED_CLOCK_INIT(n)							\
+										\
+	DEVICE_DT_INST_DEFINE(n,						\
+			      &aspeed_clock_control_init,			\
+			      NULL,						\
+			      NULL, NULL,					\
+			      PRE_KERNEL_1, CONFIG_KERNEL_INIT_PRIORITY_DEVICE,	\
+			      &aspeed_clk_api);
 
 DT_INST_FOREACH_STATUS_OKAY(ASPEED_CLOCK_INIT)

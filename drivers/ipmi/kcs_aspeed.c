@@ -15,49 +15,49 @@
 LOG_MODULE_REGISTER(kcs_aspeed, CONFIG_LOG_DEFAULT_LEVEL);
 
 /* LPC registers */
-#define HICR0		0x000
-#define   HICR0_LPC3E		BIT(7)
-#define   HICR0_LPC2E		BIT(6)
-#define   HICR0_LPC1E		BIT(5)
-#define HICR2		0x008
-#define   HICR2_IBFIF3		BIT(3)
-#define   HICR2_IBFIF2		BIT(2)
-#define   HICR2_IBFIF1		BIT(1)
-#define HICR4		0x010
-#define   HICR4_LADR12AS	BIT(7)
-#define   HICR4_KCSENBL		BIT(2)
-#define LADR3H		0x014
-#define LADR3L		0x018
-#define LADR12H		0x01c
-#define LADR12L		0x020
-#define IDR1		0x024
-#define IDR2		0x028
-#define IDR3		0x02c
-#define ODR1		0x030
-#define ODR2		0x034
-#define ODR3		0x038
-#define STR1		0x03c
-#define STR2		0x040
-#define STR3		0x044
-#define HICRB		0x100
-#define   HICRB_ENSNP1D		BIT(15)
-#define   HICRB_ENSNP0D		BIT(14)
-#define   HICRB_IBFIF4		BIT(1)
-#define   HICRB_LPC4E		BIT(0)
-#define LADR4		0x110
-#define IDR4		0x114
-#define ODR4		0x118
-#define STR4		0x11C
-#define  STR4_STAT_MASK		GENMASK(7, 6)
-#define  STR4_STAT_SHIFT	6
+#define HICR0           0x000
+#define   HICR0_LPC3E           BIT(7)
+#define   HICR0_LPC2E           BIT(6)
+#define   HICR0_LPC1E           BIT(5)
+#define HICR2           0x008
+#define   HICR2_IBFIF3          BIT(3)
+#define   HICR2_IBFIF2          BIT(2)
+#define   HICR2_IBFIF1          BIT(1)
+#define HICR4           0x010
+#define   HICR4_LADR12AS        BIT(7)
+#define   HICR4_KCSENBL         BIT(2)
+#define LADR3H          0x014
+#define LADR3L          0x018
+#define LADR12H         0x01c
+#define LADR12L         0x020
+#define IDR1            0x024
+#define IDR2            0x028
+#define IDR3            0x02c
+#define ODR1            0x030
+#define ODR2            0x034
+#define ODR3            0x038
+#define STR1            0x03c
+#define STR2            0x040
+#define STR3            0x044
+#define HICRB           0x100
+#define   HICRB_ENSNP1D         BIT(15)
+#define   HICRB_ENSNP0D         BIT(14)
+#define   HICRB_IBFIF4          BIT(1)
+#define   HICRB_LPC4E           BIT(0)
+#define LADR4           0x110
+#define IDR4            0x114
+#define ODR4            0x118
+#define STR4            0x11C
+#define  STR4_STAT_MASK         GENMASK(7, 6)
+#define  STR4_STAT_SHIFT        6
 
 /* misc. constant */
-#define KCS_DUMMY_ZERO	0x0
-#define KCS_BUF_SIZE	0x100
+#define KCS_DUMMY_ZERO  0x0
+#define KCS_BUF_SIZE    0x100
 
 static uintptr_t lpc_base;
-#define LPC_RD(reg)		sys_read32(lpc_base + reg)
-#define LPC_WR(val, reg)	sys_write32(val, lpc_base + reg)
+#define LPC_RD(reg)             sys_read32(lpc_base + reg)
+#define LPC_WR(val, reg)        sys_write32(val, lpc_base + reg)
 
 enum kcs_aspeed_chan {
 	KCS_CH1 = 1,
@@ -91,12 +91,12 @@ struct kcs_aspeed_config {
 };
 
 /* IPMI 2.0 - Table 9-1, KCS Interface Status Register Bits */
-#define KCS_STR_STATE_MASK	GENMASK(7, 6)
-#define	KCS_STR_STATE_SHIFT	6
-#define	KCS_STR_CMD_DAT		BIT(3)
-#define	KCS_STR_SMS_ATN		BIT(2)
-#define	KCS_STR_IBF		BIT(1)
-#define	KCS_STR_OBF		BIT(0)
+#define KCS_STR_STATE_MASK      GENMASK(7, 6)
+#define KCS_STR_STATE_SHIFT     6
+#define KCS_STR_CMD_DAT         BIT(3)
+#define KCS_STR_SMS_ATN         BIT(2)
+#define KCS_STR_IBF             BIT(1)
+#define KCS_STR_OBF             BIT(0)
 
 /* IPMI 2.0 - Table 9-2, KCS Interface State Bits */
 enum kcs_state {
@@ -109,20 +109,20 @@ enum kcs_state {
 
 /* IPMI 2.0 - Table 9-3, KCS Interface Control Codes */
 enum kcs_cmd_code {
-	KCS_CMD_GET_STATUS_ABORT	= 0x60,
-	KCS_CMD_WRITE_START		= 0x61,
-	KCS_CMD_WRITE_END		= 0x62,
-	KCS_CMD_READ_BYTE		= 0x68,
+	KCS_CMD_GET_STATUS_ABORT        = 0x60,
+	KCS_CMD_WRITE_START             = 0x61,
+	KCS_CMD_WRITE_END               = 0x62,
+	KCS_CMD_READ_BYTE               = 0x68,
 	KCS_CMD_NUM
 };
 
 /* IPMI 2.0 - Table 9-4, KCS Interface Status Codes */
 enum kcs_error_code {
-	KCS_NO_ERROR			= 0x00,
-	KCS_ABORTED_BY_COMMAND		= 0x01,
-	KCS_ILLEGAL_CONTROL_CODE	= 0x02,
-	KCS_LENGTH_ERROR		= 0x06,
-	KCS_UNSPECIFIED_ERROR		= 0xff
+	KCS_NO_ERROR                    = 0x00,
+	KCS_ABORTED_BY_COMMAND          = 0x01,
+	KCS_ILLEGAL_CONTROL_CODE        = 0x02,
+	KCS_LENGTH_ERROR                = 0x06,
+	KCS_UNSPECIFIED_ERROR           = 0xff
 };
 
 /* IPMI 2.0 - Figure 9. KCS Phase in Transfer Flow Chart */
@@ -197,8 +197,9 @@ static void kcs_handle_cmd(struct kcs_aspeed_data *kcs)
 		break;
 
 	case KCS_CMD_GET_STATUS_ABORT:
-		if (kcs->error == KCS_NO_ERROR)
+		if (kcs->error == KCS_NO_ERROR) {
 			kcs->error = KCS_ABORTED_BY_COMMAND;
+		}
 
 		kcs->phase = KCS_PHASE_ABORT_ERROR1;
 		break;
@@ -244,8 +245,9 @@ static void kcs_handle_data(struct kcs_aspeed_data *kcs)
 		break;
 
 	case KCS_PHASE_READ:
-		if (kcs->obuf_idx == kcs->obuf_data_sz)
+		if (kcs->obuf_idx == kcs->obuf_data_sz) {
 			kcs_set_state(kcs, KCS_STATE_IDLE);
+		}
 
 		data = kcs_read_data(kcs);
 		if (data != KCS_CMD_READ_BYTE) {
@@ -291,10 +293,11 @@ static void kcs_aspeed_isr(const struct device *dev)
 
 	stat = LPC_RD(kcs->str);
 	if (stat & KCS_STR_IBF) {
-		if (stat & KCS_STR_CMD_DAT)
+		if (stat & KCS_STR_CMD_DAT) {
 			kcs_handle_cmd(kcs);
-		else
+		} else {
 			kcs_handle_data(kcs);
+		}
 	}
 }
 
@@ -409,14 +412,17 @@ int kcs_aspeed_read(const struct device *dev,
 	int ret;
 	struct kcs_aspeed_data *kcs = (struct kcs_aspeed_data *)dev->data;
 
-	if (kcs == NULL || buf == NULL)
+	if (kcs == NULL || buf == NULL) {
 		return -EINVAL;
+	}
 
-	if (buf_sz < kcs->ibuf_idx)
+	if (buf_sz < kcs->ibuf_idx) {
 		return -ENOSPC;
+	}
 
-	if (!kcs->ibuf_avail)
+	if (!kcs->ibuf_avail) {
 		return -ENODATA;
+	}
 
 	if (kcs->phase != KCS_PHASE_WRITE_DONE) {
 		kcs_force_abort(kcs);
@@ -439,11 +445,13 @@ int kcs_aspeed_write(const struct device *dev,
 	struct kcs_aspeed_data *kcs = (struct kcs_aspeed_data *)dev->data;
 
 	/* a minimum response size is 3: netfn + cmd + cmplt_code */
-	if (buf_sz < 3 || buf_sz > KCS_BUF_SIZE)
+	if (buf_sz < 3 || buf_sz > KCS_BUF_SIZE) {
 		return -EINVAL;
+	}
 
-	if (kcs->phase != KCS_PHASE_WAIT_READ)
+	if (kcs->phase != KCS_PHASE_WAIT_READ) {
 		return -EPERM;
+	}
 
 	kcs->phase = KCS_PHASE_READ;
 	kcs->obuf_idx = 1;
@@ -460,8 +468,9 @@ static int kcs_aspeed_init(const struct device *dev)
 	struct kcs_aspeed_data *kcs = (struct kcs_aspeed_data *)dev->data;
 	struct kcs_aspeed_config *cfg = (struct kcs_aspeed_config *)dev->config;
 
-	if (!lpc_base)
+	if (!lpc_base) {
 		lpc_base = cfg->base;
+	}
 
 	kcs->ibuf_idx = 0;
 	kcs->ibuf_avail = 0;
@@ -498,34 +507,34 @@ static int kcs_aspeed_init(const struct device *dev)
 	return 0;
 }
 
-#define KCS_ASPEED_INIT(n)								\
-	static struct kcs_aspeed_data kcs_aspeed_data_##n;				\
-											\
-	static void kcs_aspeed_irq_config_func_##n(const struct device *dev)		\
-	{										\
-		ARG_UNUSED(dev);							\
-											\
-		IRQ_CONNECT(DT_INST_IRQN(n),						\
-			    DT_INST_IRQ(n, priority),					\
-			    kcs_aspeed_isr, DEVICE_DT_INST_GET(n), 0);			\
-											\
-		irq_enable(DT_INST_IRQN(n));						\
-	}										\
-											\
-	static const struct kcs_aspeed_config kcs_aspeed_config_##n = {			\
-		.base = DT_REG_ADDR(DT_PARENT(DT_DRV_INST(n))),				\
-		.chan = DT_INST_PROP(n, chan),						\
-		.addr = DT_INST_PROP(n, addr),						\
-		.irq_config_func = kcs_aspeed_irq_config_func_##n,			\
-	};										\
-											\
-	DEVICE_DT_INST_DEFINE(n,							\
-			      kcs_aspeed_init,						\
-			      device_pm_control_nop,					\
-			      &kcs_aspeed_data_##n,					\
-			      &kcs_aspeed_config_##n,					\
-			      POST_KERNEL,						\
-			      CONFIG_KERNEL_INIT_PRIORITY_DEVICE,			\
+#define KCS_ASPEED_INIT(n)						     \
+	static struct kcs_aspeed_data kcs_aspeed_data_##n;		     \
+									     \
+	static void kcs_aspeed_irq_config_func_##n(const struct device *dev) \
+	{								     \
+		ARG_UNUSED(dev);					     \
+									     \
+		IRQ_CONNECT(DT_INST_IRQN(n),				     \
+			    DT_INST_IRQ(n, priority),			     \
+			    kcs_aspeed_isr, DEVICE_DT_INST_GET(n), 0);	     \
+									     \
+		irq_enable(DT_INST_IRQN(n));				     \
+	}								     \
+									     \
+	static const struct kcs_aspeed_config kcs_aspeed_config_##n = {	     \
+		.base = DT_REG_ADDR(DT_PARENT(DT_DRV_INST(n))),		     \
+		.chan = DT_INST_PROP(n, chan),				     \
+		.addr = DT_INST_PROP(n, addr),				     \
+		.irq_config_func = kcs_aspeed_irq_config_func_##n,	     \
+	};								     \
+									     \
+	DEVICE_DT_INST_DEFINE(n,					     \
+			      kcs_aspeed_init,				     \
+			      NULL,					     \
+			      &kcs_aspeed_data_##n,			     \
+			      &kcs_aspeed_config_##n,			     \
+			      POST_KERNEL,				     \
+			      CONFIG_KERNEL_INIT_PRIORITY_DEVICE,	     \
 			      NULL);
 
 DT_INST_FOREACH_STATUS_OKAY(KCS_ASPEED_INIT)

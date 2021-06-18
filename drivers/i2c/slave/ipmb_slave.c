@@ -41,17 +41,17 @@ struct i2c_ipmb_slave_config {
 };
 
 /* convenience defines */
-#define DEV_CFG(dev)							\
-	((const struct i2c_ipmb_slave_config * const)			\
-		(dev)->config)
-#define DEV_DATA(dev)							\
-	((struct i2c_ipmb_slave_data * const)(dev)->data)
+#define DEV_CFG(dev)				     \
+	((const struct i2c_ipmb_slave_config *const) \
+	 (dev)->config)
+#define DEV_DATA(dev) \
+	((struct i2c_ipmb_slave_data *const)(dev)->data)
 
 static int ipmb_slave_write_requested(struct i2c_slave_config *config)
 {
 	struct i2c_ipmb_slave_data *data = CONTAINER_OF(config,
-						struct i2c_ipmb_slave_data,
-						config);
+							struct i2c_ipmb_slave_data,
+							config);
 
 	/* check the max msg length */
 	if (data->cur_msg_count < data->max_msg_count) {
@@ -88,18 +88,19 @@ static int ipmb_slave_write_requested(struct i2c_slave_config *config)
 
 
 static int ipmb_slave_write_received(struct i2c_slave_config *config,
-				       uint8_t val)
+				     uint8_t val)
 {
 	struct i2c_ipmb_slave_data *data = CONTAINER_OF(config,
-						struct i2c_ipmb_slave_data,
-						config);
+							struct i2c_ipmb_slave_data,
+							config);
 
 	if (data->buffer != NULL) {
 
 		uint8_t *buf = (uint8_t *)(&(data->buffer->msg));
 
-		if (data->buffer_idx >= sizeof(struct ipmb_msg)-1)
+		if (data->buffer_idx >= sizeof(struct ipmb_msg) - 1) {
 			return 1;
+		}
 
 		LOG_DBG("ipmb: write received, val=0x%x", val);
 
@@ -114,8 +115,8 @@ static int ipmb_slave_write_received(struct i2c_slave_config *config,
 static int ipmb_slave_stop(struct i2c_slave_config *config)
 {
 	struct i2c_ipmb_slave_data *data = CONTAINER_OF(config,
-						struct i2c_ipmb_slave_data,
-						config);
+							struct i2c_ipmb_slave_data,
+							config);
 
 	if (data->buffer != NULL) {
 
@@ -220,7 +221,7 @@ static int i2c_ipmb_slave_init(const struct device *dev)
 		device_get_binding(cfg->controller_dev_name);
 	if (!data->i2c_controller) {
 		LOG_ERR("i2c controller not found: %s",
-			    cfg->controller_dev_name);
+			cfg->controller_dev_name);
 		return -EINVAL;
 	}
 
@@ -234,25 +235,25 @@ static int i2c_ipmb_slave_init(const struct device *dev)
 	return 0;
 }
 
-#define I2C_IPMB_INIT(inst)						\
-	static struct i2c_ipmb_slave_data				\
-		i2c_ipmb_slave_##inst##_dev_data;			\
-									\
-									\
-	static const struct i2c_ipmb_slave_config			\
-		i2c_ipmb_slave_##inst##_cfg = {			\
-		.controller_dev_name = DT_INST_BUS_LABEL(inst),		\
-		.address = DT_INST_REG_ADDR(inst),			\
-		.ipmb_msg_length = DT_INST_PROP(inst, size),		\
-	};								\
-									\
-	DEVICE_DT_INST_DEFINE(inst,					\
-			    &i2c_ipmb_slave_init,			\
-			    device_pm_control_nop,			\
-			    &i2c_ipmb_slave_##inst##_dev_data,	\
-			    &i2c_ipmb_slave_##inst##_cfg,		\
-			    POST_KERNEL,				\
-			    CONFIG_I2C_SLAVE_INIT_PRIORITY,		\
-			    &api_ipmb_funcs);
+#define I2C_IPMB_INIT(inst)					 \
+	static struct i2c_ipmb_slave_data			 \
+		i2c_ipmb_slave_##inst##_dev_data;		 \
+								 \
+								 \
+	static const struct i2c_ipmb_slave_config		 \
+		i2c_ipmb_slave_##inst##_cfg = {			 \
+		.controller_dev_name = DT_INST_BUS_LABEL(inst),	 \
+		.address = DT_INST_REG_ADDR(inst),		 \
+		.ipmb_msg_length = DT_INST_PROP(inst, size),	 \
+	};							 \
+								 \
+	DEVICE_DT_INST_DEFINE(inst,				 \
+			      &i2c_ipmb_slave_init,		 \
+			      NULL,				 \
+			      &i2c_ipmb_slave_##inst##_dev_data, \
+			      &i2c_ipmb_slave_##inst##_cfg,	 \
+			      POST_KERNEL,			 \
+			      CONFIG_I2C_SLAVE_INIT_PRIORITY,	 \
+			      &api_ipmb_funcs);
 
 DT_INST_FOREACH_STATUS_OKAY(I2C_IPMB_INIT)

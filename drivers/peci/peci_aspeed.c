@@ -345,7 +345,7 @@ static const struct peci_driver_api peci_aspeed_driver = {
 										     \
 	static struct peci_aspeed_data peci_aspeed_data_##inst;			     \
 										     \
-	DEVICE_DT_INST_DEFINE(inst, peci_aspeed_init, device_pm_control_nop,	     \
+	DEVICE_DT_INST_DEFINE(inst, peci_aspeed_init, NULL,			     \
 			      &peci_aspeed_data_##inst,				     \
 			      &peci_aspeed_cfg_##inst, POST_KERNEL,		     \
 			      CONFIG_PECI_INIT_PRIORITY,			     \

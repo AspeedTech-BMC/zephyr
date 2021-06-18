@@ -602,7 +602,7 @@ static struct jtag_driver_api jtag_aspeed_api = {
 								      rst_id), \
 		.irq_config_func = jtag_aspeed_config_func_##n,		       \
 	};								       \
-	DEVICE_DT_INST_DEFINE(n, jtag_aspeed_init, device_pm_control_nop,      \
+	DEVICE_DT_INST_DEFINE(n, jtag_aspeed_init, NULL,		       \
 			      &jtag_aspeed_data_##n, &jtag_aspeed_cfg_##n,     \
 			      POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEVICE, \
 			      &jtag_aspeed_api);			       \

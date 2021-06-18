@@ -358,22 +358,23 @@ int gpio_aspeed_init(const struct device *dev)
 
 	return 0;
 }
-#define ASPEED_GPIO_DEVICE_INIT(inst)									      \
-	static const struct gpio_aspeed_config gpio_aspeed_cfg_##inst = {				      \
-		.common = {										      \
-			.port_pin_mask =								      \
-				GPIO_PORT_PIN_MASK_FROM_DT_INST(inst) & ~(DT_INST_PROP(inst, gpio_reserved)), \
-		},											      \
-		.base = (gpio_register_t *)DT_REG_ADDR(DT_PARENT(DT_DRV_INST(inst))),			      \
-		.pin_offset = DT_INST_PROP(inst, pin_offset),						      \
-	};												      \
-													      \
-	static struct gpio_aspeed_data gpio_aspeed_data_##inst;						      \
-													      \
-	DEVICE_DT_INST_DEFINE(inst, gpio_aspeed_init, device_pm_control_nop,				      \
-			      &gpio_aspeed_data_##inst,							      \
-			      &gpio_aspeed_cfg_##inst, POST_KERNEL,					      \
-			      CONFIG_GPIO_ASPEED_INIT_PRIORITY,						      \
+#define ASPEED_GPIO_DEVICE_INIT(inst)						      \
+	static const struct gpio_aspeed_config gpio_aspeed_cfg_##inst = {	      \
+		.common = {							      \
+			.port_pin_mask =					      \
+				GPIO_PORT_PIN_MASK_FROM_DT_INST(inst) &		      \
+				~(DT_INST_PROP(inst, gpio_reserved)),		      \
+		},								      \
+		.base = (gpio_register_t *)DT_REG_ADDR(DT_PARENT(DT_DRV_INST(inst))), \
+		.pin_offset = DT_INST_PROP(inst, pin_offset),			      \
+	};									      \
+										      \
+	static struct gpio_aspeed_data gpio_aspeed_data_##inst;			      \
+										      \
+	DEVICE_DT_INST_DEFINE(inst, gpio_aspeed_init, NULL,			      \
+			      &gpio_aspeed_data_##inst,				      \
+			      &gpio_aspeed_cfg_##inst, POST_KERNEL,		      \
+			      CONFIG_GPIO_ASPEED_INIT_PRIORITY,			      \
 			      &gpio_aspeed_driver);
 
 DT_INST_FOREACH_STATUS_OKAY(ASPEED_GPIO_DEVICE_INIT)
