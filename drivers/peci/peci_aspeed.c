@@ -14,7 +14,7 @@
 #include <drivers/clock_control.h>
 #include <drivers/reset_control.h>
 #ifdef CONFIG_PECI_ASPEED_INTERRUPT_DRIVEN
-#include <cmsis_rtos_v2/cmsis_os2.h>
+#include <portability/cmsis_os2.h>
 #endif
 
 #include "peci_aspeed.h"

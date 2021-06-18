@@ -22,7 +22,7 @@
 LOG_MODULE_REGISTER(jtag_aspeed);
 #include "jtag_aspeed.h"
 
-#include <cmsis_rtos_v2/cmsis_os2.h>
+#include <portability/cmsis_os2.h>
 #include <drivers/clock_control.h>
 #include <drivers/reset_control.h>
 

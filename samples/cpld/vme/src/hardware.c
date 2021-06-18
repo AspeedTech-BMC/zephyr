@@ -13,7 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "vmopcode.h"
-#include <cmsis_rtos_v2/cmsis_os2.h>
+#include <portability/cmsis_os2.h>
 #include <drivers/jtag.h>
 
 const struct device *jtag_dev;
