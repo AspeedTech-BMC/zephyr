@@ -31,23 +31,25 @@
 
 #define DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
 
-#define reg_read_poll_timeout(map, reg, val, cond, sleep_tick, timeout_tick) \
-	({								     \
-		uint32_t __timeout_tick = (timeout_tick);		     \
-		uint32_t __start = z_tick_get_32();			     \
-		int __ret = 0;						     \
-		for (;;) {						     \
-			val.value = map->reg.value;			     \
-			if (cond)					     \
-				break;					     \
-			if ((z_tick_get_32() - __start) > __timeout_tick) {  \
-				__ret = -ETIMEDOUT;			     \
-				break;					     \
-			}						     \
-			if (sleep_tick)					     \
-				k_sleep(K_TICKS(sleep_tick));		     \
-		}							     \
-		__ret;							     \
+#define reg_read_poll_timeout(map, reg, val, cond, sleep_tick, timeout_tick)	    \
+	({									    \
+		uint32_t __timeout_tick = (timeout_tick);			    \
+		uint32_t __start = sys_clock_tick_get_32();			    \
+		int __ret = 0;							    \
+		for (;;) {							    \
+			val.value = map->reg.value;				    \
+			if (cond) {						    \
+				break;						    \
+			}							    \
+			if ((sys_clock_tick_get_32() - __start) > __timeout_tick) { \
+				__ret = -ETIMEDOUT;				    \
+				break;						    \
+			}							    \
+			if (sleep_tick) {					    \
+				k_sleep(K_TICKS(sleep_tick));			    \
+			}							    \
+		}								    \
+		__ret;								    \
 	})
 
 /* Common clock control device name for all ASPEED SOC family */
