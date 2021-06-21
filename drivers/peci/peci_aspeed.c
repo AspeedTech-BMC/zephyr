@@ -27,6 +27,7 @@ LOG_MODULE_REGISTER(peci_aspeed);
 
 struct peci_aspeed_config {
 	peci_register_t *base;
+	const struct device *clock_dev;
 	const clock_control_subsys_t clk_id;
 	const reset_control_subsys_t rst_id;
 	bool byte_mode_64;
@@ -70,14 +71,14 @@ static int peci_aspeed_init(const struct device *dev)
 {
 	LOG_DBG("%s", __FUNCTION__);
 	peci_register_t *peci_register = DEV_CFG(dev)->base;
-	const struct device *clock_dev = device_get_binding(ASPEED_CLK_CTRL_NAME);
 	const struct device *reset_dev = device_get_binding(ASPEED_RST_CTRL_NAME);
 	control_register_t control;
 
 #ifdef CONFIG_PECI_ASPEED_INTERRUPT_DRIVEN
 	DEV_DATA(dev)->evt_id = osEventFlagsNew(NULL);
 #endif
-	clock_control_get_rate(clock_dev, DEV_CFG(dev)->clk_id, &DEV_DATA(dev)->clk_src);
+	clock_control_get_rate(DEV_CFG(dev)->clock_dev, DEV_CFG(dev)->clk_id,
+			       &DEV_DATA(dev)->clk_src);
 	/* Reset PECI interface */
 	reset_control_assert(reset_dev, DEV_CFG(dev)->rst_id);
 	reset_control_deassert(reset_dev, DEV_CFG(dev)->rst_id);
@@ -336,6 +337,7 @@ static const struct peci_driver_api peci_aspeed_driver = {
 #define ASPEED_PECI_DEVICE_INIT(inst)						     \
 	static const struct peci_aspeed_config peci_aspeed_cfg_##inst = {	     \
 		.base = (peci_register_t *)DT_INST_REG_ADDR(inst),		     \
+		.clock_dev =  DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(inst)),		     \
 		.clk_id = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(inst, clk_id), \
 		.rst_id = (reset_control_subsys_t)DT_INST_RESETS_CELL(inst, rst_id), \
 		.rd_sampling_point = DT_INST_PROP(inst, rd_sampling_point),	     \
