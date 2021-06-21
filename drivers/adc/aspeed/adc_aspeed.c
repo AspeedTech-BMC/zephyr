@@ -60,6 +60,7 @@ static uint32_t aspeed_adc_read_raw(const struct device *dev, uint32_t channel)
 	struct adc_register_s *adc_register = config->base;
 	uint32_t raw_data;
 
+	k_usleep(priv->sampling_rate);
 	raw_data =
 		(channel & 0x1) ?
 		adc_register->adc_data[channel >> 1].fields.data_even :
@@ -73,6 +74,7 @@ static uint32_t aspeed_adc_battery_read(const struct device *dev,
 					uint32_t channel)
 {
 	const struct adc_aspeed_cfg *config = DEV_CFG(dev);
+	struct adc_aspeed_data *priv = DEV_DATA(dev);
 	struct adc_register_s *adc_register = config->base;
 	uint32_t raw_data;
 	union adc_engine_control_s engine_ctrl;
@@ -81,8 +83,8 @@ static uint32_t aspeed_adc_battery_read(const struct device *dev,
 	engine_ctrl.fields.channel_7_selection = Ch7_BATTERY_MODE;
 	engine_ctrl.fields.enable_battery_sensing = 1;
 	adc_register->engine_ctrl.value = engine_ctrl.value;
-	/* After enable battery sensing need to wait 3*12T for adc stable */
-	k_msleep(1);
+	/* After enable battery sensing need to wait 12*12T for adc stable */
+	k_usleep(12 * priv->sampling_rate);
 	raw_data = aspeed_adc_read_raw(dev, channel);
 	engine_ctrl.fields.channel_7_selection = Ch7_NORMAL_MODE;
 	engine_ctrl.fields.enable_battery_sensing = 0;
@@ -122,8 +124,9 @@ static int adc_aspeed_set_rate(const struct device *dev, uint32_t rate)
 		LOG_ERR("clock freq %d out of range\n", rate);
 		return -ERANGE;
 	}
-	priv->sampling_rate = clk_src / ((divisor + 1) * ASPEED_CLOCKS_PER_SAMPLE);
-	LOG_DBG("sampling rate = %d\n", priv->sampling_rate);
+	priv->sampling_rate = ((divisor + 1) * ASPEED_CLOCKS_PER_SAMPLE) *
+			      (clk_src / USEC_PER_SEC);
+	LOG_DBG("sampling rate = %dus\n", priv->sampling_rate);
 	adc_clk_ctrl.value = adc_register->adc_clk_ctrl.value;
 	adc_clk_ctrl.fields.divisor_of_adc_clock = divisor;
 	adc_register->adc_clk_ctrl.value = adc_clk_ctrl.value;
@@ -146,7 +149,7 @@ static void aspeed_adc_calibration(const struct device *dev)
 	engine_ctrl.fields.compensating_sensing_mode = 1;
 	engine_ctrl.fields.channel_enable = BIT(0);
 	adc_register->engine_ctrl.value = engine_ctrl.value;
-	k_msleep(1);
+	k_usleep(priv->sampling_rate);
 	for (index = 0; index < ASPEED_CV_SAMPLE_TIMES; index++)
 		raw_data += adc_register->adc_data[0].fields.data_odd;
 	raw_data /= ASPEED_CV_SAMPLE_TIMES;
