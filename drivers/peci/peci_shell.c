@@ -135,7 +135,7 @@ static int cmd_gettemp(const struct shell *shell, size_t argc, char **argv)
 
 SHELL_STATIC_SUBCMD_SET_CREATE(
 	peci_cmds,
-	SHELL_CMD_ARG(init, NULL, "<device> <freq>", cmd_init, 3,
+	SHELL_CMD_ARG(init, NULL, "<device> <kbps>", cmd_init, 3,
 		      0),
 	SHELL_CMD_ARG(ping, NULL, "<device> <addr>", cmd_ping, 3,
 		      0),
