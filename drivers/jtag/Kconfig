@@ -26,4 +26,4 @@ source "subsys/logging/Kconfig.template.log_config"
 
 source "drivers/jtag/Kconfig.aspeed"
 
-endif # IPMI
+endif
