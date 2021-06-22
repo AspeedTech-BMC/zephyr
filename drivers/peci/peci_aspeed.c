@@ -261,13 +261,12 @@ static int peci_aspeed_transfer(const struct device *dev, struct peci_msg *msg)
 		}
 	}
 	/* Toggle command fire */
-	peci_register->command.value &= ~BIT(0);
 	peci_register->command.value |= BIT(0);
 #ifdef CONFIG_PECI_ASPEED_INTERRUPT_DRIVEN
 	int ret;
 	ret = osEventFlagsWait(peci_data->evt_id, BIT(PECI_INT_CMD_DONE), osFlagsWaitAll,
 			       DEV_CFG(dev)->cmd_timeout_ms);
-	osEventFlagsClear(peci_data->evt_id, ret);
+	peci_register->command.value &= ~BIT(0);
 	if (ret != BIT(PECI_INT_CMD_DONE)) {
 		if (ret < 0) {
 			if (ret == osFlagsErrorTimeout) {
