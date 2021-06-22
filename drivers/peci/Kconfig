@@ -10,6 +10,13 @@ menuconfig PECI
 
 if PECI
 
+config PECI_SHELL
+	bool "Enable PECI Shell"
+	default y
+	depends on SHELL
+	help
+	  Enable PECI Shell for testing.
+
 source "drivers/peci/Kconfig.xec"
 source "drivers/peci/Kconfig.aspeed"
 
