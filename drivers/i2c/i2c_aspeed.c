@@ -1652,6 +1652,7 @@ int aspeed_i2c_slave_irq(const struct device *dev)
 
 static void i2c_aspeed_isr(const struct device *dev)
 {
+#ifdef CONFIG_I2C_SLAVE
 	uint32_t i2c_base = DEV_BASE(dev);
 
 	if (sys_read32(i2c_base + AST_I2CC_FUN_CTRL) & AST_I2CC_SLAVE_EN) {
@@ -1659,6 +1660,7 @@ static void i2c_aspeed_isr(const struct device *dev)
 			return;
 		}
 	}
+#endif
 
 	aspeed_i2c_master_irq(dev);
 }
