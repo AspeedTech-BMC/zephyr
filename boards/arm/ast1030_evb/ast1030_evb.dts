@@ -205,7 +205,7 @@
 
 &i2c0 {
 	status = "okay";
-
+	pinctrl-0 = <&pinctrl_i2c0_default>;
 	eeprom@40 {
 		compatible = "atmel,at24";
 		reg = <0x40>;
@@ -227,26 +227,32 @@
 };
 
 &i2c1 {
+	pinctrl-0 = <&pinctrl_i2c1_default>;
 	status = "okay";
 };
 
 &i2c2 {
+	pinctrl-0 = <&pinctrl_i2c2_default>;
 	status = "okay";
 };
 
 &i2c3 {
+	pinctrl-0 = <&pinctrl_i2c3_default>;
 	status = "okay";
 };
 
 &i2c4 {
+	pinctrl-0 = <&pinctrl_i2c4_default>;
 	status = "okay";
 };
 
 &i2c5 {
+	pinctrl-0 = <&pinctrl_i2c5_default>;
 	status = "okay";
 };
 
 &i2c6 {
+	pinctrl-0 = <&pinctrl_i2c6_default>;
 	status = "okay";
 };
 
