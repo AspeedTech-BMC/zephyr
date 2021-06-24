@@ -360,7 +360,7 @@ static void usb_aspeed_init(void)
 	reset_control_subsys_t rst_id;
 	int i;
 
-	LOG_INF("init");
+	LOG_DBG("init");
 
 	reset_dev = device_get_binding(ASPEED_RST_CTRL_NAME);
 	rst_id = (reset_control_subsys_t)DT_RESETS_CELL(DT_NODELABEL(udc), rst_id);
@@ -597,7 +597,8 @@ int usb_dc_ep_configure(const struct usb_dc_ep_cfg_data * const cfg)
 	if (!dev_data.attached)
 		return -ENODEV;
 
-	LOG_INF("ep config: addr:0x%x, mps:0x%x, type:0x%x", cfg->ep_addr, cfg->ep_mps, cfg->ep_type);
+	LOG_DBG("ep config: addr:0x%x, mps:0x%x, type:0x%x",
+		cfg->ep_addr, cfg->ep_mps, cfg->ep_type);
 
 	ep_conf = EP_SET_MAX_PKT(cfg->ep_mps);
 	ep_num = USB_EP_GET_IDX(cfg->ep_addr);
@@ -866,7 +867,7 @@ int usb_dc_ep_write(const uint8_t ep, const uint8_t *const data,
 	int ep_num;
 	int tx_len;
 
-	LOG_INF("[Write] ep:0x%x, data:0x%x, data_len:0x%x, ret_bytes:0x%x",
+	LOG_DBG("[Write] ep:0x%x, data:0x%x, data_len:0x%x, ret_bytes:0x%x",
 		ep, (uint32_t)data, data_len, *ret_bytes);
 
 	if (!data)
@@ -1019,7 +1020,7 @@ int usb_dc_ep_read_wait(uint8_t ep, uint8_t *data, uint32_t max_data_len,
 	int data_len;
 	int ep_num;
 
-	LOG_INF("[Read Wait] ep:0x%x, data:0x%x, max_data_len:0x%x, read_bytes:0x%x",
+	LOG_DBG("[Read Wait] ep:0x%x, data:0x%x, max_data_len:0x%x, read_bytes:0x%x",
 		(uint32_t)ep, (uint32_t)data, max_data_len, *read_bytes);
 
 	if (!data)
@@ -1079,7 +1080,7 @@ int usb_dc_ep_read_wait(uint8_t ep, uint8_t *data, uint32_t max_data_len,
 
 		if (read_bytes) {
 			*read_bytes = byte_to_copy;
-			LOG_INF("ep[%d] read 0x%x bytes", ep_num, (uint32_t)*read_bytes);
+			LOG_DBG("ep[%d] read 0x%x bytes", ep_num, (uint32_t)*read_bytes);
 		}
 	}
 
@@ -1104,7 +1105,7 @@ int usb_dc_ep_read_continue(uint8_t ep)
 	uint32_t ep_num = USB_EP_GET_IDX(ep);
 	uint32_t ep_reg;
 
-	LOG_INF("ep_read_continue, ep:0x%x", ep);
+	LOG_DBG("ep_read_continue, ep:0x%x", ep);
 
 	if (ep_num >= NUM_OF_EP_MAX) {
 		return -EINVAL;

@@ -8,4 +8,14 @@ menuconfig USB
 	help
 	  Enable USB drivers.
 
+if SHELL && USB
+
+config SHELL_CMDS_USB
+	bool "Enable USB shell commands"
+	default y if (!SHELL_MINIMAL && USB)
+	help
+	  Enable usb shell commands to test driver.
+
+endif # SHELL && USB
+
 source "drivers/usb/device/Kconfig"
