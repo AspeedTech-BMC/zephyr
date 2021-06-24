@@ -218,141 +218,141 @@
 		};
 
 
-		uart0: serial@7e783000 {
+		uart1: serial@7e783000 {
 			compatible = "aspeed,uart";
 			reg = <0x7e783000 0x1000>;
 			interrupts = <INTR_UART1 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_UART1>;
 			status = "disabled";
-			label = "UART_0";
+			label = "UART_1";
 		};
 
-		uart1: serial@7e78d000 {
+		uart2: serial@7e78d000 {
 			compatible = "aspeed,uart";
 			reg = <0x7e78d000 0x100>;
 			interrupts = <INTR_UART2 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_UART2>;
 			status = "disabled";
-			label = "UART_1";
+			label = "UART_2";
 		};
 
-		uart2: serial@7e78e000 {
+		uart3: serial@7e78e000 {
 			compatible = "aspeed,uart";
 			reg = <0x7e78e000 0x100>;
 			interrupts = <INTR_UART3 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_UART3>;
 			status = "disabled";
-			label = "UART_2";
+			label = "UART_3";
 		};
 
-		uart3: serial@7e78f000 {
+		uart4: serial@7e78f000 {
 			compatible = "aspeed,uart";
 			reg = <0x7e78f000 0x100>;
 			interrupts = <INTR_UART4 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_UART4>;
 			status = "disabled";
-			label = "UART_3";
+			label = "UART_4";
 		};
 
-		uart4: serial@7e784000 {
+		uart5: serial@7e784000 {
 			compatible = "aspeed,uart";
 			reg = <0x7e784000 0x1000>;
 			interrupts = <INTR_UART5 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_UART5>;
 			status = "disabled";
-			label = "UART_4";
+			label = "UART_5";
 		};
 
-		uart5: serial@7e790000 {
+		uart6: serial@7e790000 {
 			compatible = "aspeed,uart";
 			reg = <0x7e790000 0x100>;
 			interrupts = <INTR_UART6 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_UART6>;
 			status = "disabled";
-			label = "UART_5";
+			label = "UART_6";
 		};
 
-		uart6: serial@7e790100 {
+		uart7: serial@7e790100 {
 			compatible = "aspeed,uart";
 			reg = <0x7e790100 0x100>;
 			interrupts = <INTR_UART7 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_UART7>;
 			status = "disabled";
-			label = "UART_6";
+			label = "UART_7";
 		};
 
-		uart7: serial@7e790200 {
+		uart8: serial@7e790200 {
 			compatible = "aspeed,uart";
 			reg = <0x7e790200 0x100>;
 			interrupts = <INTR_UART8 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_UART8>;
 			status = "disabled";
-			label = "UART_7";
+			label = "UART_8";
 		};
 
-		uart8: serial@7e790300 {
+		uart9: serial@7e790300 {
 			compatible = "aspeed,uart";
 			reg = <0x7e790300 0x100>;
 			interrupts = <INTR_UART9 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_UART9>;
 			status = "disabled";
-			label = "UART_8";
+			label = "UART_9";
 		};
 
-		uart9: serial@7e790400 {
+		uart10: serial@7e790400 {
 			compatible = "aspeed,uart";
 			reg = <0x7e790400 0x100>;
 			interrupts = <INTR_UART10 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_UART10>;
 			status = "disabled";
-			label = "UART_9";
+			label = "UART_10";
 		};
 
-		uart10: serial@7e790500 {
+		uart11: serial@7e790500 {
 			compatible = "aspeed,uart";
 			reg = <0x7e790500 0x100>;
 			interrupts = <INTR_UART11 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_UART11>;
 			status = "disabled";
-			label = "UART_10";
+			label = "UART_11";
 		};
 
-		uart11: serial@7e790600 {
+		uart12: serial@7e790600 {
 			compatible = "aspeed,uart";
 			reg = <0x7e790600 0x100>;
 			interrupts = <INTR_UART12 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_UART12>;
 			status = "disabled";
-			label = "UART_11";
+			label = "UART_12";
 		};
 
-		uart12: serial@7e790700 {
+		uart13: serial@7e790700 {
 			compatible = "aspeed,uart";
 			reg = <0x7e790700 0x100>;
 			interrupts = <INTR_UART13 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_UART13>;
 			status = "disabled";
-			label = "UART_12";
+			label = "UART_13";
 		};
 
-		vuart0: serial@7e787000 {
+		vuart1: serial@7e787000 {
 			compatible = "aspeed,uart";
 			reg = <0x7e787000 0x100>;
 			interrupts = <INTR_VUART1 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_APB1>;
 			virtual = <1>;
 			status = "disabled";
-			label = "VUART_0";
+			label = "VUART_1";
 		};
 
-		vuart1: serial@7e788000 {
+		vuart2: serial@7e788000 {
 			compatible = "aspeed,uart";
 			reg = <0x7e788000 0x100>;
 			interrupts = <INTR_VUART2 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_APB1>;
 			virtual = <1>;
 			status = "disabled";
-			label = "VUART_1";
+			label = "VUART_2";
 		};
 
 		udma: udma@7e79e000 {

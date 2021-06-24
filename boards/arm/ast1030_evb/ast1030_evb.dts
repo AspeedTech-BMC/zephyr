@@ -12,8 +12,8 @@
 	compatible = "aspeed,bic-ast1030", "aspeed,ast1030";
 
 	chosen {
-		zephyr,console = &uart4;
-		zephyr,shell = &uart4;
+		zephyr,console = &uart5;
+		zephyr,shell = &uart5;
 		zephyr,sram = &sram0;
 		zephyr,flash = &flash0;
 	};
@@ -27,7 +27,7 @@
 	reg = <0 DT_SIZE_K(448)>, <0x70000 DT_SIZE_K(320)>;
 };
 
-&uart4 {
+&uart5 {
 	status = "okay";
 };
 

@@ -12,8 +12,8 @@
 	compatible = "aspeed,bmc-ast2600", "aspeed,ast2600";
 
 	chosen {
-		zephyr,console = &uart10;
-		zephyr,shell = &uart10;
+		zephyr,console = &uart11;
+		zephyr,shell = &uart11;
 		zephyr,sram = &sdram0;
 		zephyr,flash = &flash0;
 	};
@@ -27,6 +27,6 @@
 	reg = <0 DT_SIZE_K(16384)>, <0x1000000 DT_SIZE_K(16384)>;
 };
 
-&uart10 {
+&uart11 {
 	status = "okay";
 };

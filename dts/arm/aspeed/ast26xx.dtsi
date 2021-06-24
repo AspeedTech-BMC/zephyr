@@ -55,13 +55,13 @@
 			};
 		};
 
-		uart10: serial@7e790500 {
+		uart11: serial@7e790500 {
 			compatible = "aspeed,uart";
 			reg = <0x7e790500 0x100>;
 			interrupts = <INTR_UART11 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_GATE_UART11CLK>;
 			status = "disabled";
-			label = "UART_10";
+			label = "UART_11";
 		};
 
 		udma: udma@7e79e000 {
