@@ -6,6 +6,7 @@
 config UART_ASPEED
 	bool "ASPEED ns16550a serial driver"
 	select SERIAL_HAS_DRIVER
+	select SERIAL_SUPPORT_INTERRUPT
 	depends on SOC_FAMILY_ASPEED
 	help
 	  This option enables the UART driver for ASPEED family of
