@@ -66,6 +66,7 @@
 
 		udma: udma@7e79e000 {
 			compatible = "aspeed,udma";
+			interrupts = <INTR_UARTDMA AST10X0_IRQ_DEFAULT_PRIORITY>;
 			reg = <0x7e79e000 0x1000>;
 		};
 
