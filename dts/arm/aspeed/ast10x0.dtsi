@@ -255,7 +255,7 @@
 		};
 
 		uart5: serial@7e784000 {
-			compatible = "aspeed,uart";
+			compatible = "ns16550";
 			reg = <0x7e784000 0x1000>;
 			interrupts = <INTR_UART5 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_UART5>;
