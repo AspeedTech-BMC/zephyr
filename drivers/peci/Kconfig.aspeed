@@ -9,6 +9,7 @@ config PECI_ASPEED
 
 config PECI_ASPEED_INTERRUPT_DRIVEN
 	bool "ASPEED PECI driver interrupt support"
+	default y
 	depends on CMSIS_RTOS_V2
 	depends on PECI_ASPEED
 	help
