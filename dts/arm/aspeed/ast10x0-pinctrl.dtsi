@@ -71,4 +71,16 @@
 	pinctrl_tach13_default: tach13_default {};
 	pinctrl_tach14_default: tach14_default {};
 	pinctrl_tach15_default: tach15_default {};
+	pinctrl_uart1_default: uart1_default {};
+	pinctrl_uart2_default: uart2_default {};
+	pinctrl_uart3_default: uart3_default {};
+	pinctrl_uart4_default: uart4_default {};
+	pinctrl_uart6_default: uart6_default {};
+	pinctrl_uart7_default: uart7_default {};
+	pinctrl_uart8_default: uart8_default {};
+	pinctrl_uart9_default: uart9_default {};
+	pinctrl_uart10_default: uart10_default {};
+	pinctrl_uart11_default: uart11_default {};
+	pinctrl_uart12_default: uart12_default {};
+	pinctrl_uart13_default: uart13_default {};
 };

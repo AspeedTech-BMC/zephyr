@@ -224,6 +224,7 @@
 			interrupts = <INTR_UART1 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_UART1>;
 			status = "disabled";
+			pinctrl-0 = <&pinctrl_uart1_default>;
 			label = "UART_1";
 		};
 
@@ -233,6 +234,7 @@
 			interrupts = <INTR_UART2 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_UART2>;
 			status = "disabled";
+			pinctrl-0 = <&pinctrl_uart2_default>;
 			label = "UART_2";
 		};
 
@@ -242,6 +244,7 @@
 			interrupts = <INTR_UART3 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_UART3>;
 			status = "disabled";
+			pinctrl-0 = <&pinctrl_uart3_default>;
 			label = "UART_3";
 		};
 
@@ -251,6 +254,7 @@
 			interrupts = <INTR_UART4 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_UART4>;
 			status = "disabled";
+			pinctrl-0 = <&pinctrl_uart4_default>;
 			label = "UART_4";
 		};
 
@@ -269,6 +273,7 @@
 			interrupts = <INTR_UART6 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_UART6>;
 			status = "disabled";
+			pinctrl-0 = <&pinctrl_uart6_default>;
 			label = "UART_6";
 		};
 
@@ -278,6 +283,7 @@
 			interrupts = <INTR_UART7 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_UART7>;
 			status = "disabled";
+			pinctrl-0 = <&pinctrl_uart7_default>;
 			label = "UART_7";
 		};
 
@@ -287,6 +293,7 @@
 			interrupts = <INTR_UART8 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_UART8>;
 			status = "disabled";
+			pinctrl-0 = <&pinctrl_uart8_default>;
 			label = "UART_8";
 		};
 
@@ -296,6 +303,7 @@
 			interrupts = <INTR_UART9 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_UART9>;
 			status = "disabled";
+			pinctrl-0 = <&pinctrl_uart9_default>;
 			label = "UART_9";
 		};
 
@@ -305,6 +313,7 @@
 			interrupts = <INTR_UART10 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_UART10>;
 			status = "disabled";
+			pinctrl-0 = <&pinctrl_uart10_default>;
 			label = "UART_10";
 		};
 
@@ -314,6 +323,7 @@
 			interrupts = <INTR_UART11 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_UART11>;
 			status = "disabled";
+			pinctrl-0 = <&pinctrl_uart11_default>;
 			label = "UART_11";
 		};
 
@@ -323,6 +333,7 @@
 			interrupts = <INTR_UART12 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_UART12>;
 			status = "disabled";
+			pinctrl-0 = <&pinctrl_uart12_default>;
 			label = "UART_12";
 		};
 
@@ -332,6 +343,7 @@
 			interrupts = <INTR_UART13 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_UART13>;
 			status = "disabled";
+			pinctrl-0 = <&pinctrl_uart13_default>;
 			label = "UART_13";
 		};
 
