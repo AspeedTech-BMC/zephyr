@@ -25,6 +25,7 @@ struct tach_aspeed_cfg {
 	const reset_control_subsys_t rst_id;
 	uint8_t tach_ch;
 	uint8_t pulse_pr;
+	uint8_t tach_mode;
 	uint8_t tach_div;
 	uint32_t min_rpm;
 };
@@ -72,13 +73,18 @@ static int tach_aspeed_channel_get(const struct device *dev,
 	uint32_t tach_count = DEV_DATA(dev)->count;
 	uint32_t tach_freq = DEV_DATA(dev)->tach_freq;
 	uint8_t pulse_pr = DEV_CFG(dev)->pulse_pr;
-
+	/*
+	 * We need the mode to determine if the raw_data is double (from
+	 * counting both edges).
+	 */
+	uint8_t both = (DEV_CFG(dev)->tach_mode == 0x2) ? 1 : 0;
 
 	if (chan != SENSOR_CHAN_RPM) {
 		return -ENOTSUP;
 	}
 
 	if (tach_count > 0) {
+		tach_count <<= both;
 		/*
 		 * RPM = (f * 60) / (n * TACH)
 		 *   n = Pulses per round
@@ -141,6 +147,7 @@ static int tach_aspeed_init(const struct device *dev)
 	tach_aspeed_get_tach_freq(dev);
 	tach_general.value = tach_reg->tach_general.value;
 	tach_general.fields.tach_clock_division = DEV_CFG(dev)->tach_div;
+	tach_general.fields.tach_edge = DEV_CFG(dev)->tach_mode;
 	tach_general.fields.enable_tach = 0x1;
 	tach_reg->tach_general.value = tach_general.value;
 	return 0;
@@ -165,6 +172,7 @@ static const struct sensor_driver_api tach_aspeed_api = {
 		.tach_ch = DT_REG_ADDR(node_id),				     \
 		.pulse_pr = DT_PROP(node_id, pulse_pr),				     \
 		.min_rpm = DT_PROP(node_id, min_rpm),				     \
+		.tach_mode = DT_PROP(node_id, tach_mode),			     \
 		.tach_div = DT_PROP(node_id, tach_div),				     \
 },
 
