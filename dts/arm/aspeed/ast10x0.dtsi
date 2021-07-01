@@ -28,13 +28,6 @@
 		compatible = "mmio-sram";
 	};
 
-	flash0: flash@20000000 {
-		compatible = "serial-flash";
-		label = "FLASH_ASPEED";
-		erase-block-size = <4096>;
-		write-block-size = <1>;
-	};
-
 	soc {
 		syscon: syscon@7e6e2000 {
 			reg = <0x7e6e2000 0x1000>;
@@ -637,6 +630,28 @@
 			};
 		};
 
+		fmc: spi@7e620000 {
+			compatible = "aspeed,spi-controller";
+			reg = <0x7e620000 0xc4>, <0x80000000 0x10000000>;
+			reg-names = "ctrl_reg", "spi_mmap";
+			clocks = <&sysclk ASPEED_CLK_HCLK>;
+			num-cs = <3>;
+			ast-platform = <1030>;
+			ctrl-type = "bspi";
+			label = "SPI0";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "okay";
+
+			flash@0 {
+				compatible = "jedec,spi-nor";
+				reg = <0>;
+				spi-max-frequency = <50000000>;
+				size = <DT_SIZE_M(8)>;
+				jedec-id = [ef 40 14];
+				label = "FLASH_0";
+			};
+		};
 	};
 };
 #include "aspeed/ast10x0-pinctrl.dtsi"

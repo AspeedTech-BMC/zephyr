@@ -304,6 +304,7 @@ static int spi_nor_access(const struct device *const dev,
 	struct spi_nor_data *const driver_data = dev->data;
 	bool is_addressed = (access & NOR_ACCESS_ADDRESSED) != 0U;
 	bool is_write = (access & NOR_ACCESS_WRITE) != 0U;
+	bool is_read = (access & NOR_ACCESS_WRITE) == 0U;
 	uint8_t buf[5] = { 0 };
 	struct spi_buf spi_buf[2] = {
 		{
@@ -341,12 +342,12 @@ static int spi_nor_access(const struct device *const dev,
 
 	const struct spi_buf_set tx_set = {
 		.buffers = spi_buf,
-		.count = (length != 0) ? 2 : 1,
+		.count = (length != 0 && (!is_read)) ? 2 : 1,
 	};
 
 	const struct spi_buf_set rx_set = {
-		.buffers = spi_buf,
-		.count = 2,
+		.buffers = spi_buf + 1,
+		.count = !is_read ? 0 : 1,
 	};
 
 	if (is_write) {

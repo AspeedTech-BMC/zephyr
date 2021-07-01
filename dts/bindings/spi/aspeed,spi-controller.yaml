@@ -1,0 +1,54 @@
+# Copyright (c) 2021 Chin-Ting Kuo <chin-ting_kuo@aspeedtech.com>
+# SPDX-License-Identifier: Apache-2.0
+
+description: ASPEED FMC_SPI controller node
+
+compatible: "aspeed,spi-controller"
+
+include: spi-controller.yaml
+
+properties:
+    reg:
+        required: true
+
+    reg-names:
+        required: true
+
+    clocks:
+        required: true
+
+    num-cs:
+        type: int
+        required: true
+        description: |
+            Number of chip select supported by current controller
+
+    ast-platform:
+        type: int
+        required: true
+        description: |
+            Used to distinguish different Aspeed platforms
+        enum:
+            - 2600
+            - 2620
+            - 2605
+            - 2625
+            - 1030
+            - 1060
+
+    ctrl-type:
+        type: string
+        required: true
+        description: |
+            Distinguish the controller auxiliary type.
+
+            There are three types for a Aspeed SPI controller:
+            boot SPI flash controller (bspi),
+            host SPI flash controller (hspi)
+            and normal SPI flash controller (nspi).
+
+        enum:
+            - "bspi"
+            - "hspi"
+            - "nspi"
+
