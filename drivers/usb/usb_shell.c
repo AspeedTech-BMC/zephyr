@@ -12,26 +12,35 @@
 
 #define SHELL_HELP_USB_ENABLE	"Enable USB as CDC_ACM"
 #define SHELL_HELP_USB_CLEAR	"Clear USB env"
+#define SHELL_HELP_USB_PRINT	"Print USB data"
 #define SHELL_HELP_USB_WAIT	"Set/Clear wait during USB transfer"
 #define SHELL_HELP_SHELL	"Useful, not Unix-like shell commands."
 
-#define RX_BUFF_SIZE	64
-#define RING_BUF_SIZE	256
+#define RX_BUFF_SIZE		64
+#define RING_BUF_SIZE		256
 
 RING_BUF_DECLARE(ringbuf, RING_BUF_SIZE);
 
 int total_len;
-int count;
 int transfer_wait;
+int data_print;
 
 static void data_handle(void)
 {
 	uint8_t buff[RX_BUFF_SIZE];
 	int total = 0;
 	int rb_len;
+	int i;
 
 	while (!ring_buf_is_empty(&ringbuf)) {
 		rb_len = ring_buf_get(&ringbuf, buff, sizeof(buff));
+		if (data_print) {
+			printk("Print Data: ");
+			for (i = 0; i < rb_len; i++)
+				printk("0x%x ", buff[i]);
+			printk("\n");
+		}
+
 		total += rb_len;
 	}
 }
@@ -53,12 +62,14 @@ static void interrupt_handler(const struct device *dev, void *user_data)
 			if (rb_len < recv_len) {
 				printk("Drop %u bytes\n", recv_len - rb_len);
 			}
+
+		} else {
+			break;
 		}
 
 		data_handle();
-		count++;
 
-		printk("total transfer len: 0x%x, count: %d\n", total_len, count);
+		printk("total transfer len: 0x%x\n", total_len);
 
 		if (transfer_wait) {
 			printk("wait 1 sec...\n");
@@ -72,7 +83,6 @@ static int cmd_usb_enable(const struct shell *shell, size_t argc, char **argv)
 	const struct device *dev;
 	int ret;
 
-	printk("enter %s\n", __func__);
 	shell_print(shell, "enter %s...\n", __func__);
 
 	ret = usb_enable(NULL);
@@ -98,7 +108,14 @@ static int cmd_usb_enable(const struct shell *shell, size_t argc, char **argv)
 static int cmd_usb_clear(const struct shell *shell, size_t argc, char **argv)
 {
 	total_len = 0;
-	count = 0;
+
+	return 0;
+}
+
+static int cmd_usb_print(const struct shell *shell, size_t argc, char **argv)
+{
+	data_print = strtol(argv[1], NULL, 10);
+	printk("data print: %s\n", data_print ? "true" : "false");
 
 	return 0;
 }
@@ -106,7 +123,7 @@ static int cmd_usb_clear(const struct shell *shell, size_t argc, char **argv)
 static int cmd_usb_wait(const struct shell *shell, size_t argc, char **argv)
 {
 	transfer_wait = strtol(argv[1], NULL, 10);
-	printk("wait: %d\n", transfer_wait);
+	printk("wait: %s\n", transfer_wait ? "true" : "false");
 
 	return 0;
 }
@@ -114,6 +131,7 @@ static int cmd_usb_wait(const struct shell *shell, size_t argc, char **argv)
 SHELL_STATIC_SUBCMD_SET_CREATE(m_sub_usb,
 	SHELL_CMD(enable, NULL, SHELL_HELP_USB_ENABLE, cmd_usb_enable),
 	SHELL_CMD(clear, NULL, SHELL_HELP_USB_CLEAR, cmd_usb_clear),
+	SHELL_CMD_ARG(print, NULL, SHELL_HELP_USB_PRINT, cmd_usb_print, 2, 0),
 	SHELL_CMD_ARG(wait, NULL, SHELL_HELP_USB_WAIT, cmd_usb_wait, 2, 0)
 );
 
