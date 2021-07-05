@@ -618,7 +618,7 @@ static uint8_t
 aspeed_new_i2c_recover_bus(const struct device *dev)
 {
 	struct i2c_aspeed_data *data = DEV_DATA(dev);
-	uint8_t i2c_base = DEV_BASE(dev);
+	uint32_t i2c_base = DEV_BASE(dev);
 
 	uint32_t ctrl, state;
 	int r;
@@ -881,7 +881,7 @@ static int i2c_aspeed_transfer(const struct device *dev, struct i2c_msg *msgs,
 {
 	struct i2c_aspeed_config *config = DEV_CFG(dev);
 	struct i2c_aspeed_data *data = DEV_DATA(dev);
-	uint8_t i2c_base = DEV_BASE(dev);
+	uint32_t i2c_base = DEV_BASE(dev);
 
 	if (!num_msgs) {
 		return 0;
