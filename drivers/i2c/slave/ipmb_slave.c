@@ -1,9 +1,8 @@
 /*
- * Copyright (c) 2017 BayLibre, SAS
+ * Copyright (c) 2021 Aspeed Technology Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
- */
-
+*/
 #define DT_DRV_COMPAT aspeed_ipmb
 
 #include <sys/util.h>
@@ -19,8 +18,9 @@
 #include <logging/log.h>
 LOG_MODULE_REGISTER(i2c_slave_ipmb);
 
-struct ipmb_msg_elem {
+struct ipmb_msg_package {
 	sys_snode_t list;
+	uint8_t msg_length;
 	struct ipmb_msg msg;
 };
 
@@ -28,7 +28,7 @@ struct i2c_ipmb_slave_data {
 	const struct device *i2c_controller;
 	struct i2c_slave_config config;
 	sys_slist_t list_head;
-	struct ipmb_msg_elem *buffer;
+	struct ipmb_msg_package *buffer;
 	uint32_t buffer_idx;
 	uint32_t max_msg_count;
 	uint32_t cur_msg_count;
@@ -56,7 +56,7 @@ static int ipmb_slave_write_requested(struct i2c_slave_config *config)
 	/* check the max msg length */
 	if (data->cur_msg_count < data->max_msg_count) {
 
-		data->buffer = malloc(sizeof(struct ipmb_msg_elem));
+		data->buffer = malloc(sizeof(struct ipmb_msg_package));
 
 		LOG_DBG("ipmb: slave write data->buffer %x", (uint32_t)(data->buffer));
 
@@ -77,11 +77,12 @@ static int ipmb_slave_write_requested(struct i2c_slave_config *config)
 	LOG_DBG("ipmb: write req");
 
 	/*fill data into ipmb buffer*/
+	data->buffer->msg_length = 0;
 	memset(buf, 0x0, sizeof(struct ipmb_msg));
 	data->buffer_idx = 0;
 
 	/*skip the first length parameter*/
-	buf[++data->buffer_idx] = GET_8BIT_ADDR(config->address);
+	buf[data->buffer_idx++] = GET_ADDR(config->address);
 
 	return 0;
 }
@@ -98,14 +99,14 @@ static int ipmb_slave_write_received(struct i2c_slave_config *config,
 
 		uint8_t *buf = (uint8_t *)(&(data->buffer->msg));
 
-		if (data->buffer_idx >= sizeof(struct ipmb_msg) - 1) {
+		if (data->buffer_idx >= sizeof(struct ipmb_msg)) {
 			return 1;
 		}
 
 		LOG_DBG("ipmb: write received, val=0x%x", val);
 
 		/* fill data */
-		buf[++data->buffer_idx] = val;
+		buf[data->buffer_idx++] = val;
 		return 0;
 	} else {
 		return 1;
@@ -120,11 +121,9 @@ static int ipmb_slave_stop(struct i2c_slave_config *config)
 
 	if (data->buffer != NULL) {
 
-		struct ipmb_msg *msg = &(data->buffer->msg);
+		data->buffer->msg_length = data->buffer_idx;
 
 		LOG_DBG("ipmb: stop");
-
-		msg->len = data->buffer_idx;
 
 		return 0;
 	}
@@ -132,19 +131,20 @@ static int ipmb_slave_stop(struct i2c_slave_config *config)
 	return 1;
 }
 
-int ipmb_slave_read(const struct device *dev, struct ipmb_msg **ipmb_data)
+int ipmb_slave_read(const struct device *dev, struct ipmb_msg **ipmb_data, uint8_t *length)
 {
 	struct i2c_ipmb_slave_data *data = DEV_DATA(dev);
 	sys_snode_t *list_node = NULL;
-	struct ipmb_msg_elem *elem = NULL;
+	struct ipmb_msg_package *pack = NULL;
 
 	list_node = sys_slist_peek_head(&(data->list_head));
 
 	LOG_DBG("ipmb: slave read %x", (uint32_t)list_node);
 
 	if (list_node != NULL) {
-		elem = (struct ipmb_msg_elem *)(list_node);
-		*ipmb_data = &(elem->msg);
+		pack = (struct ipmb_msg_package *)(list_node);
+		*ipmb_data = &(pack->msg);
+		*length = pack->msg_length;
 		return 0;
 	} else {
 		LOG_ERR("ipmb slave read: buffer empty!");

@@ -284,16 +284,16 @@ static int cmd_i2c_ipmb_read(const struct shell *shell,
 {
 	int ret = 0, i;
 	struct ipmb_msg *msg = NULL;
+	uint8_t length = 0;
 	uint8_t *buf = NULL;
 
 	if (ipmb_dev != NULL) {
-		ret = ipmb_slave_read(ipmb_dev, &msg);
+		ret = ipmb_slave_read(ipmb_dev, &msg, &length);
 
 		if (!ret) {
 			buf = (uint8_t *)(msg);
-			buf++; /* skip the length */
-			shell_print(shell, "ipmb length : %x", msg->len);
-			for (i = 0; i < (msg->len); i++) {
+			shell_print(shell, "ipmb length : %x", length);
+			for (i = 0; i < length; i++) {
 				shell_print(shell, "%x ", *buf);
 				buf++;
 			}
