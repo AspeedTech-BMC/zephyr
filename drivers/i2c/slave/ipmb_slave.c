@@ -190,6 +190,20 @@ static int ipmb_slave_register(const struct device *dev)
 static int ipmb_slave_unregister(const struct device *dev)
 {
 	struct i2c_ipmb_slave_data *data = dev->data;
+	sys_snode_t *list_node = NULL;
+
+	/* free malloc package */
+	do {
+		list_node = sys_slist_peek_head(&(data->list_head));
+
+		if (list_node != NULL) {
+			/* remove this item from list */
+			sys_slist_find_and_remove(&(data->list_head), list_node);
+			data->cur_msg_count--;
+			free(list_node);
+		}
+
+	} while (list_node != NULL);
 
 	return i2c_slave_unregister(data->i2c_controller, &data->config);
 }

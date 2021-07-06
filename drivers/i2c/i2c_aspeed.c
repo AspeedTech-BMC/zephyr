@@ -1710,7 +1710,8 @@ static int i2c_aspeed_slave_register(const struct device *dev,
 	uint32_t i2c_base = DEV_BASE(dev);
 	uint32_t cmd = AST_I2CS_ACTIVE_ALL | AST_I2CS_PKT_MODE_EN;
 
-	if (!config) {
+	/* check slave config exist or has attached ever*/
+	if ((!config) || (data->slave_attached)) {
 		return -EINVAL;
 	}
 

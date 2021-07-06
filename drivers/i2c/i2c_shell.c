@@ -234,46 +234,56 @@ static int cmd_i2c_read(const struct shell *shell, size_t argc, char **argv)
 #ifdef CONFIG_I2C_EEPROM_SLAVE
 #define EEPROM_SLAVE	0
 #define TEST_DATA_SIZE	20
-#define TEST_IPMB_SIZE	5
 static const uint8_t eeprom_0_data[TEST_DATA_SIZE] = "0123456789abcdefghij";
 #endif
-const struct device *ipmb_dev;
-
 static int cmd_i2c_slave_attach(const struct shell *shell,
 			      size_t argc, char **argv)
 {
-	const struct device *dev, *slave_dev;
+	const struct device *slave_dev;
 
-	dev = device_get_binding(argv[1]);
-	if (!dev) {
-		shell_error(shell, "I2C: Device driver %s not found.",
+	slave_dev = device_get_binding(argv[1]);
+	if (!slave_dev) {
+		shell_error(shell, "xx I2C: Slave Device driver %s not found.",
 			    argv[1]);
 		return -ENODEV;
 	}
 
-	slave_dev = device_get_binding(argv[2]);
-	if (!slave_dev) {
-		shell_error(shell, "xx I2C: Slave Device driver %s not found.",
-			    argv[2]);
-		return -ENODEV;
-	}
-
 #ifdef CONFIG_I2C_EEPROM_SLAVE
-	/* Program differentiable data into the two devices through a back door
-	 * that doesn't use I2C.
-	 */
-	if(eeprom_slave_program(slave_dev, eeprom_0_data, TEST_DATA_SIZE))
-		shell_error(shell, "I2C: Slave Device driver %s found.",slave_dev->name);
-#endif
+	int cmp = 0;
+	/* compare slave type*/
+	cmp = strcmp(argv[2], "EE");
 
-#ifdef CONFIG_I2C_IPMB_SLAVE
-	/* ipmb slave device */
-	ipmb_dev = slave_dev;
+	if (!cmp) {
+		/* Program differentiable data into the two devices through a back door
+		 * that doesn't use I2C.
+		 */
+		if (eeprom_slave_program(slave_dev, eeprom_0_data, TEST_DATA_SIZE))
+			shell_error(shell, "I2C: Slave Device driver %s found.", slave_dev->name);
+	}
 #endif
 
 	/* Attach each EEPROM to its owning bus as a slave device. */
 	if(i2c_slave_driver_register(slave_dev))
-		shell_error(shell, "I2C: Slave Device driver %s not found.",slave_dev->name);
+		shell_error(shell, "I2C: Slave Device driver %s not found.", slave_dev->name);
+
+	return 0;
+}
+
+static int cmd_i2c_slave_deattach(const struct shell *shell,
+			      size_t argc, char **argv)
+{
+	const struct device *slave_dev;
+
+	slave_dev = device_get_binding(argv[1]);
+	if (!slave_dev) {
+		shell_error(shell, "xx I2C: Slave Device driver %s not found.",
+				argv[1]);
+		return -ENODEV;
+	}
+
+	/* Attach each EEPROM to its owning bus as a slave device. */
+	if (i2c_slave_driver_unregister(slave_dev))
+		shell_error(shell, "I2C: Slave Device driver %s not found.", slave_dev->name);
 
 	return 0;
 }
@@ -282,13 +292,21 @@ static int cmd_i2c_slave_attach(const struct shell *shell,
 static int cmd_i2c_ipmb_read(const struct shell *shell,
 			      size_t argc, char **argv)
 {
+	const struct device *slave_dev = NULL;
 	int ret = 0, i;
 	struct ipmb_msg *msg = NULL;
 	uint8_t length = 0;
 	uint8_t *buf = NULL;
 
-	if (ipmb_dev != NULL) {
-		ret = ipmb_slave_read(ipmb_dev, &msg, &length);
+	slave_dev = device_get_binding(argv[1]);
+	if (!slave_dev) {
+		shell_error(shell, "xx I2C: Slave Device driver %s not found.",
+			    argv[1]);
+		return -ENODEV;
+	}
+
+	if (slave_dev != NULL) {
+		ret = ipmb_slave_read(slave_dev, &msg, &length);
 
 		if (!ret) {
 			buf = (uint8_t *)(msg);
@@ -299,7 +317,7 @@ static int cmd_i2c_ipmb_read(const struct shell *shell,
 			}
 
 			/* remove from list */
-			ipmb_slave_remove(ipmb_dev);
+			ipmb_slave_remove(slave_dev);
 		}
 	}
 
@@ -344,6 +362,9 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_i2c_cmds,
 			       SHELL_CMD_ARG(slave_attach, &dsub_device_name,
 					     "Attach slave device",
 					     cmd_i2c_slave_attach, 2, 1),
+			       SHELL_CMD_ARG(slave_deattach, &dsub_device_name,
+					     "Deattach slave device",
+					     cmd_i2c_slave_deattach, 0, 1),
 #ifdef CONFIG_I2C_IPMB_SLAVE
 			       SHELL_CMD_ARG(slave_ipmb_read, &dsub_device_name,
 					     "Read ipmb buffer from slave",

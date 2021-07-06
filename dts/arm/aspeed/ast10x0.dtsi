@@ -382,7 +382,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0x7e7b0080 0x80>;
-			interrupts = <110 0>;
+			interrupts = <INTR_I2C0 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			status = "disabled";
 			label = "I2C_0";
@@ -394,7 +394,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0x7e7b0100 0x80>;
-			interrupts = <111 0>;
+			interrupts = <INTR_I2C1 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			status = "disabled";
 			label = "I2C_1";
@@ -406,7 +406,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0x7e7b0180 0x80>;
-			interrupts = <112 0>;
+			interrupts = <INTR_I2C2 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			status = "disabled";
 			label = "I2C_2";
@@ -418,7 +418,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0x7e7b0200 0x80>;
-			interrupts = <113 0>;
+			interrupts = <INTR_I2C3 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			status = "disabled";
 			label = "I2C_3";
@@ -430,7 +430,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0x7e7b0280 0x80>;
-			interrupts = <114 0>;
+			interrupts = <INTR_I2C4 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			status = "disabled";
 			label = "I2C_4";
@@ -442,7 +442,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0x7e7b0300 0x80>;
-			interrupts = <115 0>;
+			interrupts = <INTR_I2C5 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			status = "disabled";
 			label = "I2C_5";
@@ -454,7 +454,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0x7e7b0380 0x80>;
-			interrupts = <116 0>;
+			interrupts = <INTR_I2C6 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			status = "disabled";
 			label = "I2C_6";
@@ -466,7 +466,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0x7e7b0400 0x80>;
-			interrupts = <117 0>;
+			interrupts = <INTR_I2C7 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			status = "disabled";
 			label = "I2C_7";
@@ -478,7 +478,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0x7e7b0480 0x80>;
-			interrupts = <118 0>;
+			interrupts = <INTR_I2C8 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			status = "disabled";
 			label = "I2C_8";
@@ -490,7 +490,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0x7e7b0500 0x80>;
-			interrupts = <119 0>;
+			interrupts = <INTR_I2C9 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			status = "disabled";
 			label = "I2C_9";
@@ -502,7 +502,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0x7e7b0580 0x80>;
-			interrupts = <120 0>;
+			interrupts = <INTR_I2C10 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			status = "disabled";
 			label = "I2C_10";
@@ -514,7 +514,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0x7e7b0600 0x80>;
-			interrupts = <121 0>;
+			interrupts = <INTR_I2C11 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			status = "disabled";
 			label = "I2C_11";
@@ -526,7 +526,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0x7e7b0680 0x80>;
-			interrupts = <122 0>;
+			interrupts = <INTR_I2C12 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			status = "disabled";
 			label = "I2C_12";
@@ -538,7 +538,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0x7e7b0700 0x80>;
-			interrupts = <123 0>;
+			interrupts = <INTR_I2C13 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			status = "disabled";
 			label = "I2C_13";
@@ -550,7 +550,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0x7e7b0780 0x80>;
-			interrupts = <124 0>;
+			interrupts = <INTR_I2C14 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			status = "disabled";
 			label = "I2C_14";
@@ -562,7 +562,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0x7e7b0800 0x80>;
-			interrupts = <125 0>;
+			interrupts = <INTR_I2C15 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			status = "disabled";
 			label = "I2C_15";

@@ -36,6 +36,23 @@
 #define INTR_UART12			63
 #define INTR_UART13			64
 
+#define INTR_I2C0			110
+#define INTR_I2C1			111
+#define INTR_I2C2			112
+#define INTR_I2C3			113
+#define INTR_I2C4			114
+#define INTR_I2C5			115
+#define INTR_I2C6			116
+#define INTR_I2C7			117
+#define INTR_I2C8			118
+#define INTR_I2C9			119
+#define INTR_I2C10			120
+#define INTR_I2C11			121
+#define INTR_I2C12			122
+#define INTR_I2C13			123
+#define INTR_I2C14			124
+#define INTR_I2C15			125
+
 #define INTR_KCS1			138
 #define INTR_KCS2			139
 #define INTR_KCS3			140
