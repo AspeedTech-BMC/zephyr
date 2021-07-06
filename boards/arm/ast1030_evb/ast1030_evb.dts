@@ -335,7 +335,7 @@
 
 	ipmb@54 {
 		compatible = "aspeed,ipmb";
-		reg = <0x50>;
+		reg = <0x54>;
 		label = "IPMB_SLAVE_4";
 		size = <5>;
 #ifdef CONFIG_I2C_IPMB_SLAVE
