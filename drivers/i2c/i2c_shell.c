@@ -311,10 +311,8 @@ static int cmd_i2c_ipmb_read(const struct shell *shell,
 		if (!ret) {
 			buf = (uint8_t *)(msg);
 			shell_print(shell, "ipmb length : %x", length);
-			for (i = 0; i < length; i++) {
-				shell_print(shell, "%x ", *buf);
-				buf++;
-			}
+
+			shell_hexdump(shell, buf, length);
 
 			/* remove from list */
 			ipmb_slave_remove(slave_dev);
