@@ -160,7 +160,6 @@ struct usb_device_data {
 	bool attached;
 	usb_dc_status_callback status_cb;
 	struct usb_device_ep_data ep_data[NUM_OF_EP_MAX];
-	struct k_sem usb_sem;
 };
 
 static struct usb_device_data dev_data;
@@ -171,7 +170,6 @@ static void aspeed_usb_ep_handle(int ep_num)
 
 	if (dev_data.ep_data[ep_num].is_out && dev_data.ep_data[ep_num].cb_out) {
 		dev_data.ep_data[ep_num].cb_out(USB_EP_DIR_OUT | ep_num, USB_DC_EP_DATA_OUT);
-		k_sem_give(&dev_data.usb_sem);
 
 	} else if (!dev_data.ep_data[ep_num].is_out && dev_data.ep_data[ep_num].cb_in)
 		dev_data.ep_data[ep_num].cb_in(USB_EP_DIR_IN | ep_num, USB_DC_EP_DATA_IN);
@@ -396,8 +394,6 @@ static void usb_aspeed_init(void)
 
 		dev_data.init = true;
 	}
-
-	k_sem_init(&dev_data.usb_sem, 0, 1);
 }
 
 /**
@@ -1056,8 +1052,6 @@ int usb_dc_ep_read_wait(uint8_t ep, uint8_t *data, uint32_t max_data_len,
 		*read_bytes = max_data_len;
 
 	} else {
-		k_sem_take(&dev_data.usb_sem, K_FOREVER);
-
 		ep_reg = REG_BASE + ASPEED_EP_OFFSET + (0x10 * (ep_num - 1));
 		ep_dma_sts = sys_read32(ep_reg + ASPEED_EP_DMA_STS);
 
