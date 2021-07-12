@@ -37,8 +37,6 @@ void aspeed_cache_init(void);
 
 void z_platform_init(void)
 {
-	uint32_t base = DT_REG_ADDR(DT_NODELABEL(syscon));
-
 	/* init cache */
 	aspeed_cache_init();
 }
