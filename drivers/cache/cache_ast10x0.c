@@ -36,11 +36,11 @@
 
 #define CACHED_SRAM_ADDR        DT_REG_ADDR_BY_IDX(DT_NODELABEL(sram0), 0)
 #define CACHED_SRAM_SIZE        DT_REG_SIZE_BY_IDX(DT_NODELABEL(sram0), 0)
+#define CACHED_SRAM_END         (CACHED_SRAM_ADDR + CACHED_SRAM_SIZE - 1)
 
 static void aspeed_cache_init(void)
 {
 	uint32_t base = DT_REG_ADDR(DT_NODELABEL(syscon));
-	uint32_t sram_c_end = CACHED_SRAM_ADDR + CACHED_SRAM_SIZE - 1;
 	uint32_t start_bit, end_bit;
 
 	/* set all cache areas to no-cache by default */
@@ -48,7 +48,7 @@ static void aspeed_cache_init(void)
 
 	/* calculate how many areas need to be set */
 	start_bit = CACHED_SRAM_ADDR >> CACHE_AREA_SIZE_LOG2;
-	end_bit = sram_c_end >> CACHE_AREA_SIZE_LOG2;
+	end_bit = CACHED_SRAM_END >> CACHE_AREA_SIZE_LOG2;
 	sys_write32(GENMASK(end_bit, start_bit), base + CACHE_AREA_CTRL_REG);
 
 	/* enable cache */
