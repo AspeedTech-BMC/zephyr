@@ -71,4 +71,5 @@
 	pinctrl_tach13_default: tach13_default {};
 	pinctrl_tach14_default: tach14_default {};
 	pinctrl_tach15_default: tach15_default {};
+	pinctrl_uart11_default: uart11_default {};
 };

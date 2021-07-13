@@ -61,6 +61,7 @@
 			interrupts = <INTR_UART11 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_GATE_UART11CLK>;
 			status = "disabled";
+			pinctrl-0 = <&pinctrl_uart11_default>;
 			label = "UART_11";
 		};
 
