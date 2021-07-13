@@ -10,5 +10,7 @@ config SOC_SERIES_AST10X0
 	select CPU_HAS_ARM_MPU
 	select CORTEX_M_SYSTICK
 	select SOC_FAMILY_ASPEED
+	select CACHE
+	select CACHE_MANAGEMENT
 	help
 	  Enable support for ASPEED AST10X0 series

@@ -8,6 +8,7 @@
 #include <kernel.h>
 #include <stdint.h>
 #include <linker/linker-defs.h>
+#include <cache.h>
 
 /*WDT0 registers*/
 #define WDT0_BASE 0x7e785000
@@ -32,13 +33,9 @@ struct sb_header sbh __attribute((used, section(".sboot"))) = {
 	.img_size = (uint32_t)&_image_rom_end,
 };
 
-/* external reference */
-void aspeed_cache_init(void);
-
 void z_platform_init(void)
 {
-	/* init cache */
-	aspeed_cache_init();
+	cache_instr_enable();
 }
 
 void sys_arch_reboot(int type)

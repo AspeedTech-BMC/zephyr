@@ -8,6 +8,7 @@
 #include <kernel.h>
 #include <stdint.h>
 #include <linker/linker-defs.h>
+#include <cache.h>
 
 /*WDT0 registers*/
 #define WDT0_BASE 0x7e785000
@@ -34,9 +35,6 @@ struct sb_header sbh __attribute((used, section(".sboot"))) = {
 	.img_size = (uint32_t)&__bss_start,
 };
 
-/* external reference */
-void aspeed_cache_init(void);
-
 void z_platform_init(void)
 {
 	uint32_t jtag_pinmux;
@@ -48,7 +46,7 @@ void z_platform_init(void)
 	sys_write32(jtag_pinmux, base + JTAG_PINMUX_REG);
 
 	/* init cache */
-	aspeed_cache_init();
+	cache_instr_enable();
 }
 
 void sys_arch_reboot(int type)
