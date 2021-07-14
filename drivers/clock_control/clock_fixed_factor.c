@@ -39,12 +39,12 @@ static int fixed_factor_clock_control_get_rate(
 	return 0;
 }
 
-static int fixed_factor_clock_init(const struct device *dev)
+__unused static int fixed_factor_clock_init(const struct device *dev)
 {
 	return 0;
 }
 
-static const struct clock_control_driver_api fixed_factor_clk_api = {
+__unused static const struct clock_control_driver_api fixed_factor_clk_api = {
 	.get_rate = fixed_factor_clock_control_get_rate,
 };
 
