@@ -18,6 +18,11 @@
 #define WDT_SOFTWARE_RESET_REG 0x24
 #define WDT_TRIGGER_KEY 0xAEEDF123
 
+/* SCU registers */
+#define HW_STRAP_SET            0x500
+#define HW_STRAP_CLR            0x504
+#define CORTEX_A7_RESET         BIT(0)
+
 /* secure boot header : provide image size to bootROM for SPI boot */
 struct sb_header {
 	uint32_t key_location;
@@ -36,6 +41,13 @@ struct sb_header sbh __attribute((used, section(".sboot"))) = {
 void z_platform_init(void)
 {
 	cache_instr_enable();
+
+#ifdef CONFIG_BOARD_AST2605_EVB
+	uint32_t base = DT_REG_ADDR(DT_NODELABEL(syscon));
+
+	/* de-assert Cortex-A7 Primary service processor reset */
+	sys_write32(CORTEX_A7_RESET, base + HW_STRAP_CLR);
+#endif
 }
 
 void sys_arch_reboot(int type)
