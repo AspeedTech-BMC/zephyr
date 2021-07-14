@@ -8,7 +8,7 @@
 #include <errno.h>
 #include <soc.h>
 #include <drivers/clock_control.h>
-
+#if DT_HAS_COMPAT_STATUS_OKAY(fixed_factor_clock)
 #define LOG_LEVEL CONFIG_CLOCK_CONTROL_LOG_LEVEL
 #include <logging/log.h>
 LOG_MODULE_REGISTER(fixed_factor_clock);
@@ -39,12 +39,12 @@ static int fixed_factor_clock_control_get_rate(
 	return 0;
 }
 
-__unused static int fixed_factor_clock_init(const struct device *dev)
+static int fixed_factor_clock_init(const struct device *dev)
 {
 	return 0;
 }
 
-__unused static const struct clock_control_driver_api fixed_factor_clk_api = {
+static const struct clock_control_driver_api fixed_factor_clk_api = {
 	.get_rate = fixed_factor_clock_control_get_rate,
 };
 
@@ -64,3 +64,4 @@ __unused static const struct clock_control_driver_api fixed_factor_clk_api = {
 			      &fixed_factor_clk_api);
 
 DT_INST_FOREACH_STATUS_OKAY(FIXED_FACTOR_CLOCK_INIT)
+#endif /* DT_HAS_COMPAT_STATUS_OKAY(DT_DRV_COMPAT) */
