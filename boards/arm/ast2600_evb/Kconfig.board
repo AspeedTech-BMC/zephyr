@@ -6,4 +6,6 @@
 
 config BOARD_AST2600_EVB
 	bool "ASPEED AST2600 Evaluation Board"
-	depends on SOC_AST2600
+
+config BOARD_AST2605_EVB
+	bool "ASPEED AST2605 Evaluation Board"

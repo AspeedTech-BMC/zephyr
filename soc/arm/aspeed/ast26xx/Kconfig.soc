@@ -2,9 +2,10 @@
 #
 # Copyright (c) 2021 ASPEED Technology Inc.
 
-choice
+choice SOC_AST26XX_SELECTION
 	prompt "ASPEED AST26XX Selection"
 	depends on SOC_SERIES_AST26XX
+	default SOC_AST2600
 
 config SOC_AST2600
 	bool "AST2600"
