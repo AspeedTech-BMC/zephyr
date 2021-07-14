@@ -6,4 +6,3 @@
 
 config BOARD_AST1030_EVB
 	bool "ASPEED AST1030 Evaluation Board"
-	depends on SOC_AST1030
