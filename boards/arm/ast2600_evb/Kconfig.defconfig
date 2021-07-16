@@ -9,10 +9,6 @@ if BOARD_AST2600_EVB
 config BOARD
 	default "ast2600_evb"
 
-choice SOC_AST26XX_SELECTION
-default SOC_AST2600
-endchoice
-
 if USB
 
 config USB_ASPEED
@@ -27,12 +23,3 @@ config USB_DEVICE_MANUFACTURER
 endif # USB
 
 endif # BOARD_AST2600_EVB
-
-if BOARD_AST2605_EVB
-config BOARD
-	default "ast2605_evb"
-
-choice SOC_AST26XX_SELECTION
-default SOC_AST2605
-endchoice
-endif
