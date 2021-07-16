@@ -7,6 +7,7 @@
 #include <ztest.h>
 #include <debug/thread_analyzer.h>
 
+#ifdef CONFIG_BOARD_AST1030_EVB
 /* USB */
 extern void test_usb_enable(void);
 extern void test_usb_dc_api(void);
@@ -46,6 +47,11 @@ extern void test_espi_enable(void);
 
 /* PECI */
 extern void test_peci_enable(void);
+#endif
+
+#ifdef CONFIG_BOARD_AST1030_SLT
+extern void test_usb_enable(void);
+#endif
 
 #define run_test_suite(suite) \
 	ast_run_test_suite(#suite, _##suite)
@@ -160,8 +166,8 @@ end:
 
 static void test_platform(void)
 {
+#if CONFIG_BOARD_AST1030_EVB
 	ztest_test_suite(test_ast1030,
-			 /* USB */
 			 ztest_unit_test(test_usb_enable),
 			 ztest_unit_test(test_usb_dc_api),
 			 ztest_unit_test(test_usb_dc_api_read_write),
@@ -180,7 +186,12 @@ static void test_platform(void)
 			 ztest_unit_test(test_espi_enable),
 			 ztest_unit_test(test_peci_enable)
 			 );
-
+#endif
+#if CONFIG_BOARD_AST1030_SLT
+	ztest_test_suite(test_ast1030,
+			 ztest_unit_test(test_usb_hw),
+			 );
+#endif
 	run_test_suite(test_ast1030);
 }
 

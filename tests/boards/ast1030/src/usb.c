@@ -199,3 +199,8 @@ void test_usb_enable(void)
 {
 	zassert_equal(usb_enable(NULL), 0, "usb_enable() failed");
 }
+
+void test_usb_hw(void)
+{
+	printk("Do nothing\n");
+}
