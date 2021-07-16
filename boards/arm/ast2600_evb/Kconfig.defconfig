@@ -23,3 +23,8 @@ config USB_DEVICE_MANUFACTURER
 endif # USB
 
 endif # BOARD_AST2600_EVB
+
+if BOARD_AST2605_EVB
+config BOARD
+	default "ast2605_evb"
+endif
