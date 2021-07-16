@@ -2,15 +2,11 @@
 #
 # Copyright (c) 2021 ASPEED Technology Inc.
 
-choice SOC_AST10X0_SELECTION
+choice
 	prompt "ASPEED AST10X0 Selection"
 	depends on SOC_SERIES_AST10X0
-	default SOC_AST1030
 
 config SOC_AST1030
 	bool "AST1030"
-
-config SOC_AST1060
-	bool "AST1060"
 
 endchoice
