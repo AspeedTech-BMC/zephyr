@@ -628,6 +628,13 @@
 				label = "BT";
 				status = "disabled";
 			};
+
+			snoop: snoop {
+				compatible = "aspeed,snoop";
+				interrupts = <INTR_SNOOP AST10X0_IRQ_DEFAULT_PRIORITY>;
+				label = "SNOOP";
+				status = "disabled";
+			};
 		};
 
 		fmc: spi@7e620000 {
