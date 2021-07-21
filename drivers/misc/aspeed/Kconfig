@@ -1,0 +1,13 @@
+# ASPEED misc. driver options
+
+# Copyright (c) 2021 ASPEED
+# SPDX-License-Identifier: Apache-2.0
+
+config SNOOP_ASPEED
+	bool "ASPEED LPC SNOOP driver"
+	depends on SOC_FAMILY_ASPEED
+	help
+	  This option enables the snoop driver for ASPEED
+	  SoCs.
+	  Say y if you wish to use LPC data byte snooping
+	  on ASPEED MCU.
