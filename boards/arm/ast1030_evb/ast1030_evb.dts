@@ -212,7 +212,7 @@
 		pagesize = <16>;
 		address-width = <8>;
 		timeout = <5>;
-#ifdef CONFIG_I2C_IPMB_SLAVE
+#ifdef CONFIG_I2C_EEPROM_SLAVE
 		status = "okay";
 #endif
 	};
@@ -241,7 +241,7 @@
 		pagesize = <16>;
 		address-width = <8>;
 		timeout = <5>;
-#ifdef CONFIG_I2C_IPMB_SLAVE
+#ifdef CONFIG_I2C_EEPROM_SLAVE
 		status = "okay";
 #endif
 	};
@@ -270,7 +270,7 @@
 		pagesize = <16>;
 		address-width = <8>;
 		timeout = <5>;
-#ifdef CONFIG_I2C_IPMB_SLAVE
+#ifdef CONFIG_I2C_EEPROM_SLAVE
 		status = "okay";
 #endif
 	};
@@ -299,7 +299,7 @@
 		pagesize = <16>;
 		address-width = <8>;
 		timeout = <5>;
-#ifdef CONFIG_I2C_IPMB_SLAVE
+#ifdef CONFIG_I2C_EEPROM_SLAVE
 		status = "okay";
 #endif
 	};
@@ -328,7 +328,7 @@
 		pagesize = <16>;
 		address-width = <8>;
 		timeout = <5>;
-#ifdef CONFIG_I2C_IPMB_SLAVE
+#ifdef CONFIG_I2C_EEPROM_SLAVE
 		status = "okay";
 #endif
 	};
@@ -357,7 +357,7 @@
 		pagesize = <16>;
 		address-width = <8>;
 		timeout = <5>;
-#ifdef CONFIG_I2C_IPMB_SLAVE
+#ifdef CONFIG_I2C_EEPROM_SLAVE
 		status = "okay";
 #endif
 	};

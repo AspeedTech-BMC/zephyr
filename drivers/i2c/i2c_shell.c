@@ -293,7 +293,7 @@ static int cmd_i2c_ipmb_read(const struct shell *shell,
 			      size_t argc, char **argv)
 {
 	const struct device *slave_dev = NULL;
-	int ret = 0, i;
+	int ret = 0;
 	struct ipmb_msg *msg = NULL;
 	uint8_t length = 0;
 	uint8_t *buf = NULL;
