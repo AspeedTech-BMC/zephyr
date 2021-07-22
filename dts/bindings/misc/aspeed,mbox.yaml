@@ -1,0 +1,14 @@
+# Copyright (c) 2021, ASPEED
+# SPDX-License-Identifier: Apache-2.0
+
+description: ASPEED LPC Mailbox
+
+compatible: "aspeed,mbox"
+
+include: base.yaml
+
+properties:
+    port:
+      type: int
+      required: true
+      description: Mailbox I/O port address
