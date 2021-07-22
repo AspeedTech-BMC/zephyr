@@ -1,0 +1,23 @@
+#
+# Copyright (c) ASPEED
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+description: ASPEED I2C Filter controller
+
+compatible: "aspeed,i2c-filter"
+
+include: [base.yaml, aspeed-pinctrl.yaml]
+
+properties:
+    reg:
+      required: true
+
+    interrupts:
+      required: true
+
+    index:
+      type: int
+      required: true
+
