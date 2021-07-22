@@ -635,6 +635,13 @@
 				label = "SNOOP";
 				status = "disabled";
 			};
+
+			mbox: mbox {
+				compatible = "aspeed,mbox";
+				interrupts = <INTR_MBOX AST10X0_IRQ_DEFAULT_PRIORITY>;
+				label = "MBOX";
+				status = "disabled";
+			};
 		};
 
 		fmc: spi@7e620000 {

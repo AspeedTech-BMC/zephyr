@@ -26,6 +26,8 @@
 #define INTR_UART3			49
 #define INTR_UART4			50
 
+#define INTR_MBOX			54
+
 #define INTR_UARTDMA			56
 #define INTR_UART6			57
 #define INTR_UART7			58
