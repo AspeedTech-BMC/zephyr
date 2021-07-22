@@ -11,3 +11,11 @@ config SNOOP_ASPEED
 	  SoCs.
 	  Say y if you wish to use LPC data byte snooping
 	  on ASPEED MCU.
+
+config MAILBOX_ASPEED
+	bool "ASPEED LPC Mailbox driver"
+	depends on SOC_FAMILY_ASPEED
+	help
+	  This option enables the mailbox driver for ASPEED
+	  SoCs.
+	  Say y if you wish to use LPC mailbox on ASPEED MCU.
