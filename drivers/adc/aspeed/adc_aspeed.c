@@ -73,7 +73,6 @@ static uint32_t aspeed_adc_battery_read(const struct device *dev,
 					uint32_t channel)
 {
 	const struct adc_aspeed_cfg *config = DEV_CFG(dev);
-	struct adc_aspeed_data *priv = DEV_DATA(dev);
 	struct adc_register_s *adc_register = config->base;
 	uint32_t raw_data;
 	union adc_engine_control_s engine_ctrl;
