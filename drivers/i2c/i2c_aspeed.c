@@ -1685,7 +1685,6 @@ static int i2c_aspeed_init(const struct device *dev)
 	config->multi_master = 0;
 	config->mode = DMA_MODE;
 	clock_control_get_rate(config->clock_dev, config->clk_id, &config->clk_src);
-	printk("==================================\n");
 	LOG_DBG("clk src %d, div mode %d, multi-master %d, xfer mode %d\n",
 		config->clk_src, config->clk_div_mode, config->multi_master, config->mode);
 
