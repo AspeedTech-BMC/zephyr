@@ -405,7 +405,7 @@ static int adc_aspeed_init(const struct device *dev)
 
 	reset_control_deassert(reset_dev, config->rst_id);
 
-	ret = aspeed_adc_engine_init(dev, 1000);
+	ret = adc_aspeed_set_ref_voltage(dev);
 	if (ret) {
 		return ret;
 	}
@@ -415,7 +415,7 @@ static int adc_aspeed_init(const struct device *dev)
 		return ret;
 	}
 
-	ret = adc_aspeed_set_ref_voltage(dev);
+	ret = aspeed_adc_engine_init(dev, 1000);
 	if (ret) {
 		return ret;
 	}
