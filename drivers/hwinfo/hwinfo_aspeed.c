@@ -31,6 +31,7 @@ static struct soc_id soc_map_table[] = {
 	SOC_ID("AST2600-A3", 0x0503030305030303),
 	SOC_ID("AST2620-A3", 0x0503020305030203),
 	SOC_ID("AST2605-A3", 0x0503010305030103),
+	SOC_ID("Unknown",    0x0000000000000000),
 };
 
 ssize_t z_impl_hwinfo_get_device_id(uint8_t *buffer, size_t length)
@@ -47,12 +48,6 @@ ssize_t z_impl_hwinfo_get_device_id(uint8_t *buffer, size_t length)
 		if (rev_id == soc_map_table[i].rev_id) {
 			break;
 		}
-	}
-
-	if (i == ARRAY_SIZE(soc_map_table)) {
-		printk("UnKnow-SOC: %llx\n", rev_id);
-	} else {
-		printk("SOC: %4s \n", soc_map_table[i].name);
 	}
 
 	if (length > sizeof(rev_id)) {
