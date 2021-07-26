@@ -13,7 +13,7 @@
 
 	chosen {
 		zephyr,console = &uart5;
-		zephyr,shell = &uart5;
+		zephyr,shell-uart = &uart5;
 		zephyr,sram = &sram0;
 	};
 };
