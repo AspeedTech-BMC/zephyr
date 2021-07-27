@@ -20,6 +20,7 @@
 LOG_MODULE_REGISTER(i2c_pfr_filter);
 
 #define I2C_W_R(value, addr) LOG_INF("  dw %x %x", addr, value);
+#define I2C_LW_R(value, addr) LOG_INF("  dw %x %lx", addr, value);
 #define I2C_R(addr) LOG_INF("  dr %x", addr);
 
 /* i2c filter buf */
@@ -36,7 +37,7 @@ struct ast_i2c_filter_data {
 struct ast_i2c_filter_config {
 	char		*filter_dev_name;
 	uint32_t	filter_dev_base;
-	uint8_t	filter_index;
+	uint8_t	filter_dev_idx;
 	void (*irq_config_func)(const struct device *dev);
 };
 
@@ -51,11 +52,112 @@ struct ast_i2c_filter_config {
 static void ast_i2c_filter_isr(const struct device *dev)
 {
 }
+
+/* i2c filter update */
+static int ast_i2c_filter_update(const struct device *dev, uint8_t idx, uint8_t addr,
+struct ast_i2c_f_bitmap *table)
+{
+	struct ast_i2c_filter_data *data = DEV_DATA(dev);
+	const struct ast_i2c_filter_config *cfg = DEV_CFG(dev);
+
+	uint8_t i;
+	uint8_t offset = idx >> 2;
+	uint32_t *list_index = (uint32_t *)(data->filter_idx);
+	struct ast_i2c_f_tbl *dev_wl_tbl = &(filter_tbl[(cfg->filter_dev_idx)]);
+	struct ast_i2c_f_bitmap *dma_buf = &(dev_wl_tbl->filter_tbl[0]);
+
+	if (!cfg->filter_dev_name) {
+		LOG_ERR("i2c filter not found");
+		return -EINVAL;
+	} else if (idx > 15) {
+		LOG_ERR("i2c filter index invalid");
+		return -EINVAL;
+	} else if (filter_tbl == NULL) {
+		LOG_ERR("i2c filter bitmap table is NULL");
+		return -EINVAL;
+	}
+
+	/* fill re-map table and find the value pointer */
+	data->filter_idx[idx] = addr;
+	list_index += offset;
+
+	switch (offset) {
+	case 0:
+		I2C_W_R((*list_index), (cfg->filter_dev_base + AST_I2C_F_MAP0));
+		break;
+	case 1:
+		I2C_W_R((*list_index), (cfg->filter_dev_base + AST_I2C_F_MAP1));
+		break;
+	case 2:
+		I2C_W_R((*list_index), (cfg->filter_dev_base + AST_I2C_F_MAP2));
+		break;
+	case 3:
+		I2C_W_R((*list_index), (cfg->filter_dev_base + AST_I2C_F_MAP3));
+		break;
+	default:
+		LOG_ERR("i2c filter invalid re-map index");
+		return -EINVAL;
+	}
+
+	/* fill pass or block bitmap table */
+	dma_buf += (idx + 1);
+	for (i = 0; i < AST_I2C_F_ELEMENT_SIZE; i++) {
+		dma_buf->filter_ele[i] = table->filter_ele[i];
+	}
+
+	return 0;
+}
+
+
+/* i2c filter enable */
+static int ast_i2c_filter_en(const struct device *dev, uint8_t filter_en, uint8_t wlist_en,
+uint8_t clr_idx, uint8_t clr_tbl)
+{
+	struct ast_i2c_filter_data *data = DEV_DATA(dev);
+	const struct ast_i2c_filter_config *cfg = DEV_CFG(dev);
+
+	if (!cfg->filter_dev_name) {
+		LOG_ERR("i2c filter not found");
+		return -EINVAL;
+	}
+
+	data->filter_dev_en = filter_en;
+	data->filter_en = wlist_en;
+
+	/* set white list buffer into device */
+	if ((data->filter_dev_en) && (data->filter_en)) {
+		I2C_LW_R(TO_PHY_ADDR(&(filter_tbl[(cfg->filter_dev_idx)])),
+		(cfg->filter_dev_base+AST_I2C_F_BUF));
+	}
+
+	/* clear re-map index */
+	if (clr_idx) {
+		I2C_W_R(0x0, (cfg->filter_dev_base+AST_I2C_F_MAP0));
+		I2C_W_R(0x0, (cfg->filter_dev_base+AST_I2C_F_MAP1));
+		I2C_W_R(0x0, (cfg->filter_dev_base+AST_I2C_F_MAP2));
+		I2C_W_R(0x0, (cfg->filter_dev_base+AST_I2C_F_MAP3));
+	}
+
+	/* clear white list table */
+	if (clr_tbl) {
+		I2C_W_R(0, (cfg->filter_dev_base+AST_I2C_F_BUF));
+		data->filter_en = 0x0;
+	}
+
+	/* apply filter setting */
+	I2C_W_R(data->filter_dev_en, (cfg->filter_dev_base+AST_I2C_F_EN));
+	I2C_W_R(data->filter_en, (cfg->filter_dev_base+AST_I2C_F_CFG));
+
+	return 0;
+}
+
+/* i2c filter initial */
 static int ast_i2c_filter_init(const struct device *dev)
 {
 	struct ast_i2c_filter_data *data = DEV_DATA(dev);
 	const struct ast_i2c_filter_config *cfg = DEV_CFG(dev);
 	uint8_t i = 0;
+	uint32_t val = 0;
 
 	if (!cfg->filter_dev_name) {
 		LOG_ERR("i2c filter not found");
@@ -72,11 +174,17 @@ static int ast_i2c_filter_init(const struct device *dev)
 	I2C_W_R(0, (cfg->filter_dev_base+AST_I2C_F_CFG));
 	I2C_W_R(AST_I2C_F_TIMING_VAL, (cfg->filter_dev_base+AST_I2C_F_TIMING));
 
+	/* clear global interrupt */
+	I2C_W_R(0x1F, (data->filter_g_base+AST_I2C_F_G_INT_STS));
+	/* enable global interrupt */
+	I2C_W_R(0x1, (data->filter_g_base+AST_I2C_F_G_INT_EN));
+
 	/* clear local interrupt */
 	I2C_W_R(0x1, (cfg->filter_dev_base+AST_I2C_F_INT_STS));
-
 	/* enable local interrupt */
-	I2C_W_R(0x1, (cfg->filter_dev_base+AST_I2C_F_INT_EN));
+	/* val = I2C_R(AST_I2C_F_INT_EN); */
+	val |= 1 << (cfg->filter_dev_idx);
+	I2C_W_R(val, (cfg->filter_dev_base+AST_I2C_F_INT_EN));
 
 	/* clear filter re-map index table */
 	for (i = 0; i < AST_I2C_F_REMAP_SIZE; i++) {
@@ -96,7 +204,7 @@ static int ast_i2c_filter_init(const struct device *dev)
 		ast_i2c_filter_##inst##_cfg = {		 \
 		.filter_dev_name = DT_INST_PROP(inst, label),	 \
 		.filter_dev_base = DT_INST_REG_ADDR(inst),	 \
-		.filter_index = DT_INST_PROP(inst, index),		 \
+		.filter_dev_idx = DT_INST_PROP(inst, index),	 \
 		.irq_config_func = ast_i2c_filter_cfg_##inst,	 \
 	};		 \
 			 \

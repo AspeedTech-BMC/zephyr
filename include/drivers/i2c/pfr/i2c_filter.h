@@ -63,6 +63,33 @@ struct ast_i2c_f_tbl {
 static void ast_i2c_filter_isr(const struct device *dev);
 
 /**
+ * @brief update i2c filter device
+ *
+ * @param dev Pointer to the device structure for the driver instance.
+ * @param idx Value to the index of re-map table.
+ * @param addr Value to the white list address.
+ * @param filter_tbl Pointer to the filter bitmap table.
+ * @retval 0 If successful.
+ * @retval -EINVAL Invalid data pointer or offset
+ */
+static int ast_i2c_filter_update(const struct device *dev, uint8_t idx, uint8_t addr,
+struct ast_i2c_f_bitmap *table);
+
+/**
+ * @brief enable i2c filter device
+ *
+ * @param dev Pointer to the device structure for the driver instance.
+ * @param filter_en Value to the filter device enable.
+ * @param wlist_en Value to the white list enable.
+ * @param clr_idx Value to the clear index.
+ * @param clr_tbl Value to the clear white list table.
+ * @retval 0 If successful.
+ * @retval -EINVAL Invalid data pointer or offset
+ */
+static int ast_i2c_filter_en(const struct device *dev, uint8_t filter_en, uint8_t wlist_en,
+uint8_t clr_idx, uint8_t clr_tbl);
+
+/**
  * @brief Initial i2c filter device
  *
  * @param dev Pointer to the device structure for the driver instance.
