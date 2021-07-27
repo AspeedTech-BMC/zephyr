@@ -49,3 +49,4 @@ zephyr_library_sources_ifdef(CONFIG_I2C_TEST		i2c_test.c)
 zephyr_library_sources_ifdef(CONFIG_USERSPACE		i2c_handlers.c)
 
 add_subdirectory_ifdef(CONFIG_I2C_SLAVE			slave)
+add_subdirectory_ifdef(CONFIG_I2C_PFR			pfr)

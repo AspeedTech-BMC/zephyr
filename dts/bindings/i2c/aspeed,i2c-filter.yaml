@@ -17,7 +17,11 @@ properties:
     interrupts:
       required: true
 
+    label:
+      required: true
+
     index:
       type: int
       required: true
+      description: i2c filter device index
 
