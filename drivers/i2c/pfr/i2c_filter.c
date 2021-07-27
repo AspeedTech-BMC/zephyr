@@ -19,6 +19,9 @@
 #include <logging/log.h>
 LOG_MODULE_REGISTER(i2c_pfr_filter);
 
+#define I2C_W_R(value, addr) LOG_INF("  dw %x %x", addr, value);
+#define I2C_R(addr) LOG_INF("  dr %x", addr);
+
 /* i2c filter buf */
 struct ast_i2c_f_tbl filter_tbl[AST_I2C_F_COUNT] NON_CACHED_BSS_ALIGN16;
 
@@ -52,13 +55,33 @@ static int ast_i2c_filter_init(const struct device *dev)
 {
 	struct ast_i2c_filter_data *data = DEV_DATA(dev);
 	const struct ast_i2c_filter_config *cfg = DEV_CFG(dev);
+	uint8_t i = 0;
 
 	if (!cfg->filter_dev_name) {
 		LOG_ERR("i2c filter not found");
 		return -EINVAL;
 	}
-	/* Fill the global base */
+
+	/* fill the global base */
 	data->filter_g_base = cfg->filter_dev_base & 0xFFFFF000;
+
+	/* close filter first and fill initial timing setting */
+	data->filter_dev_en = 0;
+	I2C_W_R(0, (cfg->filter_dev_base+AST_I2C_F_EN));
+	data->filter_en = 0;
+	I2C_W_R(0, (cfg->filter_dev_base+AST_I2C_F_CFG));
+	I2C_W_R(AST_I2C_F_TIMING_VAL, (cfg->filter_dev_base+AST_I2C_F_TIMING));
+
+	/* clear local interrupt */
+	I2C_W_R(0x1, (cfg->filter_dev_base+AST_I2C_F_INT_STS));
+
+	/* enable local interrupt */
+	I2C_W_R(0x1, (cfg->filter_dev_base+AST_I2C_F_INT_EN));
+
+	/* clear filter re-map index table */
+	for (i = 0; i < AST_I2C_F_REMAP_SIZE; i++) {
+		data->filter_idx[i] = 0x0;
+	}
 
 	return 0;
 }
