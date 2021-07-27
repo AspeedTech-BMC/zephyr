@@ -13,7 +13,7 @@
 ; 	UUP0c00
 ; 	<AST1030 bic power-on message>
 ; -----------------------------------------------------------------------------
-filename = 'd:\tftpboot\uart_zephyr.bin'
+filename = 'd:\tmp\uart_zephyr.bin'
 ; -----------------------------------------------------------------------------
 ;wait 'UU'
 sendfile filename 1

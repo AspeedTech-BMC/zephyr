@@ -12,7 +12,7 @@
 #    run 'sh aspeed_uart_download.sh'
 # ------------------------------------------------------------------------
 DEV=/dev/ttyS12
-FILE=/mnt/d/tftpboot/uart_zephyr.bin
+FILE=/mnt/d/tmp/uart_zephyr.bin
 
 stty -F $DEV 115200 raw cs8 -ixoff -cstopb -parenb
 bin-xfer.sh -i $FILE -o $DEV
