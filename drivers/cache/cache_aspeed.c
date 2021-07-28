@@ -82,6 +82,7 @@ static void aspeed_cache_init(void)
 	sys_write32(CACHE_EANABLE, base + CACHE_FUNC_CTRL_REG);
 }
 
+#ifndef CONFIG_CACHE_ASPEED_FIXUP_INVALID
 /**
  * @brief get aligned address and the number of cachline to be invalied
  * @param [IN] addr - start address to be invalidated
@@ -121,6 +122,7 @@ static uint32_t get_n_cacheline(uint32_t addr, uint32_t size, uint32_t *p_head)
 
 	return n;
 }
+#endif
 
 void cache_data_enable(void)
 {
@@ -171,6 +173,15 @@ int cache_data_all(int op)
 	return 0;
 }
 
+#ifdef CONFIG_CACHE_ASPEED_FIXUP_INVALID
+int cache_data_range(void *addr, size_t size, int op)
+{
+	ARG_UNUSED(addr);
+	ARG_UNUSED(size);
+
+	return cache_data_all(op);
+}
+#else
 int cache_data_range(void *addr, size_t size, int op)
 {
 	uint32_t aligned_addr, i, n;
@@ -194,6 +205,7 @@ int cache_data_range(void *addr, size_t size, int op)
 
 	return 0;
 }
+#endif
 
 int cache_instr_all(int op)
 {
@@ -219,6 +231,15 @@ int cache_instr_all(int op)
 	return 0;
 }
 
+#ifdef CONFIG_CACHE_ASPEED_FIXUP_INVALID
+int cache_instr_range(void *addr, size_t size, int op)
+{
+	ARG_UNUSED(addr);
+	ARG_UNUSED(size);
+
+	return cache_instr_all(op);
+}
+#else
 int cache_instr_range(void *addr, size_t size, int op)
 {
 	uint32_t aligned_addr, i, n;
@@ -249,6 +270,7 @@ int cache_instr_range(void *addr, size_t size, int op)
 
 	return 0;
 }
+#endif
 
 #ifdef CONFIG_DCACHE_LINE_SIZE_DETECT
 size_t cache_data_line_size_get(void)
