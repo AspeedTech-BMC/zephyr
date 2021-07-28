@@ -124,6 +124,11 @@ LOG_MODULE_REGISTER(usb_dc_aspeed);
 #define EP_TX_LEN(x)			((x & 0x7f) << 16)
 
 /*************************************************************************************/
+#define ASPEED_USB_PHY_CTRL0		0x800
+
+#define PHY_CTRL0_8_BITS_UTMI		BIT(8)
+
+/*************************************************************************************/
 
 #define RX_DMA_BUFF_SIZE	1024
 #define TX_DMA_BUFF_SIZE	1024
@@ -380,6 +385,10 @@ static void usb_aspeed_init(void)
 	sys_write32(0x7ffff, REG_BASE + ASPEED_USB_EP_ACK_IER);
 
 	sys_write32(0, REG_BASE + ASPEED_USB_EP0_CTRL);
+
+	/* Enable 8 bit UTMI */
+	sys_write32(sys_read32(REG_BASE + ASPEED_USB_PHY_CTRL0) | PHY_CTRL0_8_BITS_UTMI,
+		REG_BASE + ASPEED_USB_PHY_CTRL0);
 
 	/* Connect and enable USB interrupt */
 	IRQ_CONNECT(DT_INST_IRQN(0), DT_INST_IRQ(0, priority),
