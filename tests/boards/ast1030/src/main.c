@@ -17,6 +17,8 @@ extern void test_usb_comm(void);
 
 /* ADC */
 extern void test_adc_enable(void);
+extern void test_adc_normal_mode(void);
+extern void test_adc_battery_mode(void);
 
 /* PWM */
 extern void test_pwm_enable(void);
@@ -175,6 +177,8 @@ static void test_platform(void)
 			 ztest_unit_test(test_usb_comm),
 
 			 ztest_unit_test(test_adc_enable),
+			 ztest_unit_test(test_adc_normal_mode),
+			 ztest_unit_test(test_adc_battery_mode),
 			 ztest_unit_test(test_pwm_enable),
 			 ztest_unit_test(test_jtag_enable),
 			 ztest_unit_test(test_tach_enable),

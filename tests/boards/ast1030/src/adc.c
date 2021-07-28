@@ -3,10 +3,120 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-
+#include <ztest.h>
 #include <tc_util.h>
+#include <drivers/adc.h>
+
+#if DT_HAS_COMPAT_STATUS_OKAY(aspeed_adc)
+#define ASPEED_ADC_CH_NUMBER 8
+#define DT_DRV_COMPAT aspeed_adc
+#else
+#error No known devicetree compatible match for ADC test
+#endif
+
+#define NODE_LABELS(n) DT_INST_LABEL(n),
+#define ADC_HDL_LIST_ENTRY(label)      \
+	{			       \
+		.device_label = label, \
+	}
+#define INIT_MACRO() DT_INST_FOREACH_STATUS_OKAY(NODE_LABELS) "NA"
+static struct adc_hdl {
+	char *device_label;
+	struct adc_channel_cfg channel_config[ASPEED_ADC_CH_NUMBER];
+} adc_list[] = {
+	FOR_EACH(ADC_HDL_LIST_ENTRY, (,), INIT_MACRO())
+};
+
+#define ERROR_RATE(percentage) (100 / percentage)
+#define TOLERANCE_ERROR_RATE ERROR_RATE(2)
+
+static const uint16_t golden_value[16] = {
+	1875, 1875, 1875, 1875, 1875, 1875, 1875, 3315,
+	1875, 1875, 1875, 1875, 1875, 1875, 1875, 3315,
+};
 
 void test_adc_enable(void)
 {
 	printk("Do nothing\n");
+}
+
+void test_adc_normal_mode(void)
+{
+	int i, j;
+	int retval;
+	uint16_t m_sample_buffer[ASPEED_ADC_CH_NUMBER];
+	int32_t val;
+	const struct device *adc_dev;
+	const struct adc_sequence sequence = {
+		.channels = GENMASK(6, 0),
+		.buffer = m_sample_buffer,
+		.buffer_size = sizeof(m_sample_buffer),
+		.resolution = 10,
+		.calibrate = 1,
+	};
+
+	for (i = 0; i < ARRAY_SIZE(adc_list) - 1; i++) {
+		adc_dev = device_get_binding(adc_list[i].device_label);
+		for (j = 0; j < ASPEED_ADC_CH_NUMBER; j++) {
+			adc_list[i].channel_config[j].channel_id = j;
+			adc_list[i].channel_config[j].reference = ADC_REF_INTERNAL;
+			adc_list[i].channel_config[j].gain = ADC_GAIN_1;
+			adc_list[i].channel_config[j].acquisition_time = ADC_ACQ_TIME_DEFAULT;
+			adc_channel_setup(adc_dev, &adc_list[i].channel_config[j]);
+		}
+		retval = adc_read(adc_dev, &sequence);
+		if (retval >= 0) {
+			for (j = 0; j < 7; j++) {
+				val = m_sample_buffer[j];
+				adc_raw_to_millivolts(adc_get_ref(adc_dev),
+						      adc_list[i].channel_config[j].gain,
+						      10,
+						      &val);
+				zassert_within(val, golden_value[i * ASPEED_ADC_CH_NUMBER + j],
+					       adc_get_ref(adc_dev) / TOLERANCE_ERROR_RATE,
+					       "%s:[%d] %dmv(raw:%d) check %d+-%d failed!!",
+					       adc_list[i].device_label, j, val, m_sample_buffer[j],
+					       golden_value[i * ASPEED_ADC_CH_NUMBER + j],
+					       adc_get_ref(adc_dev) / TOLERANCE_ERROR_RATE);
+			}
+		}
+	}
+}
+
+void test_adc_battery_mode(void)
+{
+	int i;
+	int retval;
+	uint16_t m_sample_buffer[1];
+	int32_t val;
+	const struct device *adc_dev;
+	const struct adc_sequence sequence = {
+		.channels = BIT(7),
+		.buffer = m_sample_buffer,
+		.buffer_size = sizeof(m_sample_buffer),
+		.resolution = 10,
+		.calibrate = 1,
+	};
+
+	for (i = 0; i < ARRAY_SIZE(adc_list) - 1; i++) {
+		adc_dev = device_get_binding(adc_list[i].device_label);
+		adc_list[i].channel_config[7].channel_id = 7;
+		adc_list[i].channel_config[7].reference = ADC_REF_INTERNAL;
+		adc_list[i].channel_config[7].gain =
+			(adc_get_ref(adc_dev) < 1550) ? ADC_GAIN_1_3 : ADC_GAIN_2_3;
+		adc_list[i].channel_config[7].acquisition_time = ADC_ACQ_TIME_DEFAULT;
+		adc_channel_setup(adc_dev, &adc_list[i].channel_config[7]);
+		retval = adc_read(adc_dev, &sequence);
+		if (retval >= 0) {
+			val = m_sample_buffer[0];
+			adc_raw_to_millivolts(adc_get_ref(adc_dev),
+					      adc_list[i].channel_config[7].gain, 10, &val);
+			zassert_within(val, golden_value[i * ASPEED_ADC_CH_NUMBER + 7],
+				       adc_get_ref(adc_dev) / TOLERANCE_ERROR_RATE,
+				       "%s:[%d] %dmv(raw:%d) check %d+-%d failed!!",
+				       adc_list[i].device_label, 7, val, m_sample_buffer[0],
+				       golden_value[i * ASPEED_ADC_CH_NUMBER + 7],
+				       adc_get_ref(adc_dev) / TOLERANCE_ERROR_RATE);
+		}
+	}
 }
