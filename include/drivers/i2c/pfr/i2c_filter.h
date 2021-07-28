@@ -42,7 +42,7 @@ extern "C" {
 #endif
 
 struct ast_i2c_f_bitmap {
-	uint32_t		filter_ele[AST_I2C_F_ELEMENT_SIZE];
+	uint32_t		element[AST_I2C_F_ELEMENT_SIZE];
 };
 
 struct ast_i2c_f_tbl {
@@ -63,12 +63,23 @@ struct ast_i2c_f_tbl {
 static void ast_i2c_filter_isr(const struct device *dev);
 
 /**
+ * @brief set i2c filter default handle behavior
+ *
+ * @param dev Pointer to the device structure for the driver instance.
+ * @param pass Value to the default white list behavior.
+ * @param table Pointer to the filter bitmap table.
+ * @retval 0 If successful.
+ * @retval -EINVAL Invalid data pointer or offset
+ */
+static int ast_i2c_filter_default(const struct device *dev, uint8_t pass);
+
+/**
  * @brief update i2c filter device
  *
  * @param dev Pointer to the device structure for the driver instance.
  * @param idx Value to the index of re-map table.
  * @param addr Value to the white list address.
- * @param filter_tbl Pointer to the filter bitmap table.
+ * @param table Pointer to the filter bitmap table.
  * @retval 0 If successful.
  * @retval -EINVAL Invalid data pointer or offset
  */
