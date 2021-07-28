@@ -589,7 +589,7 @@
 
 		udc: udc@7e6a2000 {
 			compatible = "aspeed,ast1030-udc";
-			reg = <0x7e6a2000 0x300>;
+			reg = <0x7e6a2000 0x1000>;
 			interrupts = <INTR_USBDEV AST10X0_IRQ_DEFAULT_PRIORITY>;
 			num-bidir-endpoints = <5>;
 			resets = <&sysrst ASPEED_RESET_USB>;
