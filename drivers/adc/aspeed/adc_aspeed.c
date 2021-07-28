@@ -56,7 +56,6 @@ struct adc_aspeed_cfg {
 static uint32_t aspeed_adc_read_raw(const struct device *dev, uint32_t channel)
 {
 	const struct adc_aspeed_cfg *config = DEV_CFG(dev);
-	struct adc_aspeed_data *priv = DEV_DATA(dev);
 	struct adc_register_s *adc_register = config->base;
 	uint32_t raw_data;
 
@@ -64,8 +63,7 @@ static uint32_t aspeed_adc_read_raw(const struct device *dev, uint32_t channel)
 		(channel & 0x1) ?
 		adc_register->adc_data[channel >> 1].fields.data_even :
 		adc_register->adc_data[channel >> 1].fields.data_odd;
-	LOG_DBG("Raw data before cv: %u\n", raw_data);
-	raw_data += priv->cv;
+	LOG_DBG("%u\n", raw_data);
 	return raw_data;
 }
 
@@ -330,10 +328,6 @@ static void aspeed_acquisition_thread(struct adc_aspeed_data *data)
 	while (true) {
 		k_sem_take(&data->acq_sem, K_FOREVER);
 
-		if (data->calibrate) {
-			aspeed_adc_calibration(data->dev);
-		}
-
 		while (data->channels) {
 			channel = find_lsb_set(data->channels) - 1;
 
@@ -341,6 +335,10 @@ static void aspeed_acquisition_thread(struct adc_aspeed_data *data)
 
 			err = adc_aspeed_read_channel(data->dev, channel,
 						      &result);
+			if (data->calibrate) {
+				result += data->cv;
+			}
+
 			if (err) {
 				adc_context_complete(&data->ctx, err);
 				break;
@@ -418,6 +416,7 @@ static int adc_aspeed_init(const struct device *dev)
 	if (ret) {
 		return ret;
 	}
+	aspeed_adc_calibration(dev);
 
 	tid = k_thread_create(&priv->thread, priv->stack,
 			      CONFIG_ADC_ASPEED_ACQUISITION_THREAD_STACK_SIZE,
