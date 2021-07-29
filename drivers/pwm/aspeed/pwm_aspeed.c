@@ -85,8 +85,35 @@ static int aspeed_set_pwm_period(const struct device *dev, uint32_t pwm,
 {
 	pwm_register_t *pwm_reg = DEV_CFG(dev)->base;
 	pwm_general_register_t general_reg;
-	uint32_t div_h, div_l, divisor;
+	uint32_t div_h, div_l;
+#ifdef CONFIG_PWM_ASPEED_ACCURATE_FREQ
+	int diff, min_diff = INT_MAX;
+	uint32_t tmp_div_h, tmp_div_l;
+	bool found = 0;
 
+	/* calculate for target frequence */
+	for (tmp_div_h = 0; tmp_div_h < 0x10; tmp_div_h++) {
+		tmp_div_l = period_cycles / BIT(tmp_div_h) - 1;
+
+		if (tmp_div_l < 0 || tmp_div_l > 255) {
+			continue;
+		}
+
+		diff = period_cycles - (BIT(tmp_div_h) * (tmp_div_l + 1));
+		if (abs(diff) < abs(min_diff)) {
+			min_diff = diff;
+			div_l = tmp_div_l;
+			div_h = tmp_div_h;
+			found = 1;
+			if (diff == 0) {
+				break;
+			}
+		}
+	}
+	if (!found)
+		return -ERANGE;
+#else
+	uint32_t divisor;
 	/*
 	 * Pick the smallest value for div_h so that div_l can be the biggest
 	 * which results in a finer resolution near the target period value.
@@ -109,6 +136,7 @@ static int aspeed_set_pwm_period(const struct device *dev, uint32_t pwm,
 	if (div_l > 255) {
 		div_l = 255;
 	}
+#endif
 
 	/*
 	 * The PWM frequency = PCLK(200Mhz) / (clock division L bit *
