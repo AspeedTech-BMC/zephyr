@@ -1,6 +1,6 @@
 # ASPEED FMC_SPI
 
-# Copyright (c) 2021 <chin-ting_kuo@aspeedtech.com>
+# Copyright (c) 2021 ASPEED Technology Inc. <chin-ting_kuo@aspeedtech.com>
 # SPDX-License-Identifier: Apache-2.0
 
 config SPI_ASPEED

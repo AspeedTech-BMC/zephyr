@@ -1,6 +1,6 @@
 # PINMUX configuration options for Aspeed SOC
 
-# Copyright (c) 2021 Aspeed, Inc. All rights reserved.
+# Copyright (c) 2021 ASPEED Technology Inc.
 # SPDX-License-Identifier: Apache-2.0
 
 config ADC_ASPEED
