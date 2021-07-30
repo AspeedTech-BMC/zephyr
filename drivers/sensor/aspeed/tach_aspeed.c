@@ -187,12 +187,12 @@ static const struct sensor_driver_api tach_aspeed_api = {
 
 #define TACH_ASPEED_INIT(n)					       \
 	static struct tach_aspeed_data tach_aspeed_data[] = {	       \
-		DT_FOREACH_CHILD(DT_DRV_INST(0), TACH_ASPEED_DEV_DATA) \
+		DT_FOREACH_CHILD(DT_DRV_INST(n), TACH_ASPEED_DEV_DATA) \
 	};							       \
 	static const struct tach_aspeed_cfg tach_aspeed_cfg[] = {      \
-		DT_FOREACH_CHILD(DT_DRV_INST(0), TACH_ASPEED_DEV_CFG)  \
+		DT_FOREACH_CHILD(DT_DRV_INST(n), TACH_ASPEED_DEV_CFG)  \
 	};							       \
-	enum { DT_FOREACH_CHILD(DT_DRV_INST(0), TACH_ENUM) };	       \
-	DT_FOREACH_CHILD(DT_DRV_INST(0), TACH_ASPEED_DT_DEFINE)
+	enum { DT_FOREACH_CHILD(DT_DRV_INST(n), TACH_ENUM) };	       \
+	DT_FOREACH_CHILD(DT_DRV_INST(n), TACH_ASPEED_DT_DEFINE)
 
 DT_INST_FOREACH_STATUS_OKAY(TACH_ASPEED_INIT)
