@@ -26,9 +26,6 @@ extern void test_pwm_enable(void);
 /* JTAG */
 extern void test_jtag_enable(void);
 
-/* TACH */
-extern void test_tach_enable(void);
-
 /* I2C */
 extern void test_i2c_enable(void);
 
@@ -181,7 +178,6 @@ static void test_platform(void)
 			 ztest_unit_test(test_adc_battery_mode),
 			 ztest_unit_test(test_pwm_enable),
 			 ztest_unit_test(test_jtag_enable),
-			 ztest_unit_test(test_tach_enable),
 			 ztest_unit_test(test_i2c_enable),
 			 ztest_unit_test(test_i3c_enable),
 			 ztest_unit_test(test_gpio_enable),
