@@ -43,128 +43,128 @@
 			&pinctrl_tach14_default &pinctrl_tach15_default>;
 	fan@0 {
 		reg = <0>;
-		pulse-pr = <2>;
+		pulse-pr = <1>;
 		min-rpm = <1000>;
-		tach-div = <5>;
+		tach-div = <2>;
 		label = "FAN0";
 	};
 
 	fan@1 {
 		reg = <1>;
-		pulse-pr = <2>;
+		pulse-pr = <1>;
 		min-rpm = <1000>;
-		tach-div = <5>;
+		tach-div = <2>;
 		label = "FAN1";
 	};
 
 	fan@2 {
 		reg = <2>;
-		pulse-pr = <2>;
+		pulse-pr = <1>;
 		min-rpm = <1000>;
-		tach-div = <5>;
+		tach-div = <2>;
 		label = "FAN2";
 	};
 
 	fan@3 {
 		reg = <3>;
-		pulse-pr = <2>;
+		pulse-pr = <1>;
 		min-rpm = <1000>;
-		tach-div = <5>;
+		tach-div = <2>;
 		label = "FAN3";
 	};
 
 	fan@4 {
 		reg = <4>;
-		pulse-pr = <2>;
+		pulse-pr = <1>;
 		min-rpm = <1000>;
-		tach-div = <5>;
+		tach-div = <2>;
 		label = "FAN4";
 	};
 
 	fan@5 {
 		reg = <5>;
-		pulse-pr = <2>;
+		pulse-pr = <1>;
 		min-rpm = <1000>;
-		tach-div = <5>;
+		tach-div = <2>;
 		label = "FAN5";
 	};
 
 	fan@6 {
 		reg = <6>;
-		pulse-pr = <2>;
+		pulse-pr = <1>;
 		min-rpm = <1000>;
-		tach-div = <5>;
+		tach-div = <2>;
 		label = "FAN6";
 	};
 
 	fan@7 {
 		reg = <7>;
-		pulse-pr = <2>;
+		pulse-pr = <1>;
 		min-rpm = <1000>;
-		tach-div = <5>;
+		tach-div = <2>;
 		label = "FAN7";
 	};
 
 	fan@8 {
 		reg = <8>;
-		pulse-pr = <2>;
+		pulse-pr = <1>;
 		min-rpm = <1000>;
-		tach-div = <5>;
+		tach-div = <2>;
 		label = "FAN8";
 	};
 
 	fan@9 {
 		reg = <9>;
-		pulse-pr = <2>;
+		pulse-pr = <1>;
 		min-rpm = <1000>;
-		tach-div = <5>;
+		tach-div = <2>;
 		label = "FAN9";
 	};
 
 	fan@a {
 		reg = <0xa>;
-		pulse-pr = <2>;
+		pulse-pr = <1>;
 		min-rpm = <1000>;
-		tach-div = <5>;
+		tach-div = <2>;
 		label = "FAN10";
 	};
 
 	fan@b {
 		reg = <0xb>;
-		pulse-pr = <2>;
+		pulse-pr = <1>;
 		min-rpm = <1000>;
-		tach-div = <5>;
+		tach-div = <2>;
 		label = "FAN11";
 	};
 
 	fan@c {
 		reg = <0xc>;
-		pulse-pr = <2>;
+		pulse-pr = <1>;
 		min-rpm = <1000>;
-		tach-div = <5>;
+		tach-div = <2>;
 		label = "FAN12";
 	};
 
 	fan@d {
 		reg = <0xd>;
-		pulse-pr = <2>;
+		pulse-pr = <1>;
 		min-rpm = <1000>;
-		tach-div = <5>;
+		tach-div = <2>;
 		label = "FAN13";
 	};
 
 	fan@e {
 		reg = <0xe>;
-		pulse-pr = <2>;
+		pulse-pr = <1>;
 		min-rpm = <1000>;
-		tach-div = <5>;
+		tach-div = <2>;
 		label = "FAN14";
 	};
 
 	fan@f {
 		reg = <0xf>;
 		pulse-pr = <2>;
-		min-rpm = <1000>;
+		min-rpm = <700>;
 		tach-div = <5>;
 		label = "FAN15";
 	};

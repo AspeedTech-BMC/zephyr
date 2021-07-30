@@ -21,7 +21,13 @@ extern void test_adc_normal_mode(void);
 extern void test_adc_battery_mode(void);
 
 /* PWM */
-extern void test_pwm_enable(void);
+extern void test_pwm_tach_enable(void);
+#if CONFIG_PWM_ASPEED_ACCURATE_FREQ
+extern void test_pwm_tach_loopback_accurate(void);
+#else
+extern void test_pwm_tach_loopback_rough(void);
+#endif
+extern void test_pwm_tach_fan(void);
 
 /* JTAG */
 extern void test_jtag_enable(void);
@@ -176,7 +182,13 @@ static void test_platform(void)
 			 ztest_unit_test(test_adc_enable),
 			 ztest_unit_test(test_adc_normal_mode),
 			 ztest_unit_test(test_adc_battery_mode),
-			 ztest_unit_test(test_pwm_enable),
+			 ztest_unit_test(test_pwm_tach_enable),
+#if CONFIG_PWM_ASPEED_ACCURATE_FREQ
+			 ztest_unit_test(test_pwm_tach_loopback_accurate),
+#else
+			 ztest_unit_test(test_pwm_tach_loopback_rough),
+#endif
+			 ztest_unit_test(test_pwm_tach_fan),
 			 ztest_unit_test(test_jtag_enable),
 			 ztest_unit_test(test_i2c_enable),
 			 ztest_unit_test(test_i3c_enable),
