@@ -29,6 +29,22 @@ properties:
     "#gpio-cells":
       const: 2
 
+    aspeed,cmd-src:
+      type: int
+      required: false
+      enum:
+        - 0 # ARM
+        - 1 # LPC
+        - 2 # SSP
+      description: Select the master to control the gpio device.
+
+    aspeed,group-dedicated:
+      type: int
+      required: false
+      description: |
+        Dedicated gpio group for select master, each group include 8 gpios
+        BIT0~BIT3 => GROUP0~GROUP3.
+
 gpio-cells:
   - pin
   - flags
