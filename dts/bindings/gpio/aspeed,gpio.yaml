@@ -16,7 +16,7 @@ properties:
 
     gpio-reserved:
       type: int
-      required: true
+      required: false
       description: |
           specify which GPIOs are unusable. 
           If gpio 3, 4, 10 are reserved the value will be 0x418

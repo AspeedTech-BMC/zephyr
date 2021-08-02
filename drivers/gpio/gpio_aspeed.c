@@ -375,7 +375,7 @@ int gpio_aspeed_init(const struct device *dev)
 		.common = {							      \
 			.port_pin_mask =					      \
 				GPIO_PORT_PIN_MASK_FROM_DT_INST(inst) &		      \
-				~(DT_INST_PROP(inst, gpio_reserved)),		      \
+				~(DT_INST_PROP_OR(inst, gpio_reserved, 0)),	      \
 		},								      \
 		.base = (gpio_register_t *)DT_REG_ADDR(DT_PARENT(DT_DRV_INST(inst))), \
 		.pin_offset = DT_INST_PROP(inst, pin_offset),			      \
