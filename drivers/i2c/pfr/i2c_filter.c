@@ -51,6 +51,44 @@ struct ast_i2c_filter_config {
 /* i2c filter interrupt service routine */
 static void ast_i2c_filter_isr(const struct device *dev)
 {
+	struct ast_i2c_filter_data *data = DEV_DATA(dev);
+
+	uint8_t index = 0, i, infowp, inforp;
+	uint32_t stsg = sys_read32(data->filter_g_base + AST_I2C_F_G_INT_STS);
+	uint32_t filter_dev_base = 0, stsl = 0, sts = 0;
+	uint32_t value = 0, count = 0;
+
+	/* find which one local filter interrupt status */
+	for (index = 0; index < AST_I2C_F_COUNT; index++) {
+		/* local filter */
+		if (stsg & (1 << index)) {
+			filter_dev_base = (data->filter_g_base + (index * AST_I2C_F_D_OFFSET));
+			stsl = sys_read32(filter_dev_base + AST_I2C_F_INT_STS);
+
+			if (stsl) {
+				sts = sys_read32(filter_dev_base + AST_I2C_F_STS);
+
+				infowp = (sts & 0xF000) >> 12;
+				inforp = (sts & 0x0F00) >> 8;
+
+				/* calculte the information count */
+				if (infowp > inforp)
+					count = infowp - inforp;
+				else
+					count = (infowp + 0x10) - inforp;
+
+				/* read back from  */
+				for (i = 0; i < count; i++) {
+					value = sys_read32(filter_dev_base + AST_I2C_F_INFO);
+					LOG_INF(" dr %x", value);
+				}
+
+				/* clear status */
+				I2C_W_R(stsl, (filter_dev_base + AST_I2C_F_INT_STS));
+
+			}
+		}
+	}
 }
 
 /* i2c filter default */
