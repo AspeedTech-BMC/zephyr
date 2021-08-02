@@ -7,6 +7,11 @@
 #include <tc_util.h>
 #include <drivers/adc.h>
 
+#define LOG_MODULE_NAME adc_test
+
+#include <logging/log.h>
+LOG_MODULE_REGISTER(LOG_MODULE_NAME);
+
 #if DT_HAS_COMPAT_STATUS_OKAY(aspeed_adc)
 #define ASPEED_ADC_CH_NUMBER 8
 #define DT_DRV_COMPAT aspeed_adc
@@ -31,8 +36,8 @@ static struct adc_hdl {
 #define TOLERANCE_ERROR_RATE ERROR_RATE(2)
 
 static const uint16_t golden_value[16] = {
-	1875, 1875, 1875, 1875, 1875, 1875, 1875, 3315,
-	1875, 1875, 1875, 1875, 1875, 1875, 1875, 3315,
+	620, 1202, 1800, 620, 1145, 1873, 1126, 3000,
+	620, 1202, 1800, 620, 1145, 1873, 1126, 3000,
 };
 
 void test_adc_enable(void)
@@ -72,6 +77,8 @@ void test_adc_normal_mode(void)
 						      adc_list[i].channel_config[j].gain,
 						      10,
 						      &val);
+				LOG_DBG("%s:[%d] %dmv(raw:%d)", adc_list[i].device_label, j, val,
+					m_sample_buffer[j]);
 				zassert_within(val, golden_value[i * ASPEED_ADC_CH_NUMBER + j],
 					       adc_get_ref(adc_dev) / TOLERANCE_ERROR_RATE,
 					       "%s:[%d] %dmv(raw:%d) check %d+-%d failed!!",
@@ -111,6 +118,8 @@ void test_adc_battery_mode(void)
 			val = m_sample_buffer[0];
 			adc_raw_to_millivolts(adc_get_ref(adc_dev),
 					      adc_list[i].channel_config[7].gain, 10, &val);
+			LOG_DBG("%s:[%d] %dmv(raw:%d)", adc_list[i].device_label, 7, val,
+				m_sample_buffer[0]);
 			zassert_within(val, golden_value[i * ASPEED_ADC_CH_NUMBER + 7],
 				       adc_get_ref(adc_dev) / TOLERANCE_ERROR_RATE,
 				       "%s:[%d] %dmv(raw:%d) check %d+-%d failed!!",
