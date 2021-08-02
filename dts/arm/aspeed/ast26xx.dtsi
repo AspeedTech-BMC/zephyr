@@ -55,6 +55,127 @@
 			};
 		};
 
+		gpio0: gpio@7e780000 {
+			reg = <0x7e780000 0x400>;
+			interrupts = <72 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			gpio0_a_d: gpio0_a_d {
+				compatible = "aspeed,gpio";
+				#gpio-cells = <2>;
+				gpio-controller;
+				ngpios = <32>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				aspeed,cmd-src = <2>;
+				label = "GPIO0_A_D";
+				pin-offset = <0>;
+			};
+
+			gpio0_e_h: gpio0_e_h {
+				compatible = "aspeed,gpio";
+				#gpio-cells = <2>;
+				gpio-controller;
+				ngpios = <32>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				aspeed,cmd-src = <2>;
+				label = "GPIO0_E_H";
+				pin-offset = <32>;
+			};
+
+			gpio0_i_l: gpio0_i_l {
+				compatible = "aspeed,gpio";
+				#gpio-cells = <2>;
+				gpio-controller;
+				ngpios = <32>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				aspeed,cmd-src = <2>;
+				label = "GPIO0_I_L";
+				pin-offset = <64>;
+			};
+
+			gpio0_m_p: gpio0_m_p {
+				compatible = "aspeed,gpio";
+				#gpio-cells = <2>;
+				gpio-controller;
+				ngpios = <32>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				aspeed,cmd-src = <2>;
+				label = "GPIO0_M_P";
+				pin-offset = <96>;
+			};
+
+			gpio0_q_t: gpio0_q_t {
+				compatible = "aspeed,gpio";
+				#gpio-cells = <2>;
+				gpio-controller;
+				ngpios = <32>;
+				aspeed,cmd-src = <2>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				label = "GPIO0_Q_T";
+				pin-offset = <128>;
+			};
+
+			gpio0_u_x: gpio0_u_x {
+				compatible = "aspeed,gpio";
+				#gpio-cells = <2>;
+				gpio-controller;
+				ngpios = <32>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				aspeed,cmd-src = <2>;
+				label = "GPIO0_U_X";
+				pin-offset = <160>;
+			};
+
+			gpio0_y_z: gpio0_y_z {
+				compatible = "aspeed,gpio";
+				#gpio-cells = <2>;
+				gpio-controller;
+				ngpios = <16>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				aspeed,cmd-src = <2>;
+				label = "GPIO0_Y_Z";
+				pin-offset = <192>;
+			};
+		};
+
+		gpio1: gpio@7e780800 {
+			reg = <0x7e780800 0x800>;
+			interrupts = <11 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			gpio1_a_d: gpio1_a_d {
+				compatible = "aspeed,gpio";
+				#gpio-cells = <2>;
+				gpio-controller;
+				ngpios = <32>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				aspeed,cmd-src = <2>;
+				label = "GPIO1_A_D";
+				pin-offset = <0>;
+				status = "disabled";
+			};
+
+			gpio1_e_h: gpio1_e_h {
+				compatible = "aspeed,gpio";
+				#gpio-cells = <2>;
+				gpio-controller;
+				ngpios = <4>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				aspeed,cmd-src = <2>;
+				label = "GPIO1_E_H";
+				pin-offset = <32>;
+				status = "disabled";
+			};
+		};
+
+
 		uart11: serial@7e790500 {
 			compatible = "aspeed,uart";
 			reg = <0x7e790500 0x100>;
