@@ -27,6 +27,8 @@ struct gpio_aspeed_config {
 	/* GPIO controller base address */
 	gpio_register_t *base;
 	uint8_t pin_offset;
+	uint8_t gpio_master;
+	uint8_t group_dedicated;
 };
 
 /* Driver data */
@@ -110,6 +112,19 @@ static int gpio_aspeed_cmd_src_set(const struct device *dev, gpio_pin_t pin, uin
 	index.fields.index_data = cmd_src;
 	gpio_reg->index.value = index.value;
 	return 0;
+}
+
+static void gpio_aspeed_init_cmd_src(const struct device *dev)
+{
+	uint32_t group_dedicated = DEV_CFG(dev)->group_dedicated;
+	uint32_t gpio_group_index;
+
+	for (gpio_group_index = 0; gpio_group_index < 4; gpio_group_index++) {
+		if (group_dedicated & BIT(gpio_group_index)) {
+			gpio_aspeed_cmd_src_set(dev, gpio_group_index * 8,
+						DEV_CFG(dev)->gpio_master);
+		}
+	}
 }
 
 static int gpio_aspeed_set_direction(const struct device *dev, gpio_pin_t pin, int direct)
@@ -321,7 +336,6 @@ static int gpio_aspeed_config(const struct device *dev,
 		/* Set pin direction to input */
 		ret = gpio_aspeed_set_direction(dev, pin, 0);
 	}
-	gpio_aspeed_cmd_src_set(dev, pin, ASPEED_GPIO_CMD_SRC_ARM);
 	return 0;
 }
 
@@ -341,10 +355,9 @@ int gpio_aspeed_init(const struct device *dev)
 {
 	struct gpio_aspeed_data *data = DEV_DATA(dev);
 
-	gpio_aspeed_init_cmd_src_sel(dev);
 	data->pinmux = DEVICE_DT_GET(DT_NODELABEL(pinmux));
 	if (nr_isr_devs == 0) {
-
+		gpio_aspeed_init_cmd_src_sel(dev);
 		IRQ_CONNECT(DT_IRQN(DT_PARENT(DT_DRV_INST(0))),
 			    DT_IRQ(DT_PARENT(DT_DRV_INST(0)), priority),
 			    gpio_aspeed_isr,
@@ -352,8 +365,7 @@ int gpio_aspeed_init(const struct device *dev)
 			    0);
 		irq_enable(DT_IRQN(DT_PARENT(DT_DRV_INST(0))));
 	}
-
-	// irq_enable(DT_INST_IRQN(0));
+	gpio_aspeed_init_cmd_src(dev);
 	isr_devs[nr_isr_devs++] = dev;
 
 	return 0;
@@ -367,6 +379,11 @@ int gpio_aspeed_init(const struct device *dev)
 		},								      \
 		.base = (gpio_register_t *)DT_REG_ADDR(DT_PARENT(DT_DRV_INST(inst))), \
 		.pin_offset = DT_INST_PROP(inst, pin_offset),			      \
+		.gpio_master = DT_INST_PROP_OR(inst, aspeed_cmd_src,		      \
+					       ASPEED_GPIO_CMD_SRC_ARM),	      \
+		.group_dedicated = DT_INST_PROP_OR(inst,			      \
+						   aspeed_group_dedicated,	      \
+						   GENMASK(3, 0)) & GENMASK(3, 0),    \
 	};									      \
 										      \
 	static struct gpio_aspeed_data gpio_aspeed_data_##inst;			      \
