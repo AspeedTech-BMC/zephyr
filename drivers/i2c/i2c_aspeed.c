@@ -13,7 +13,7 @@
 #include <soc.h>
 
 #include <sys/util.h>
-
+#include <cache.h>
 #include <logging/log.h>
 #define LOG_LEVEL CONFIG_I2C_LOG_LEVEL
 LOG_MODULE_REGISTER(i2c_aspeed);
@@ -484,54 +484,6 @@ static struct ast_i2c_timing_table aspeed_old_i2c_timing_table[] = {
 	{ 2944,  0x00000300 | (0x7) | (0xb << 20) | (0xb << 16) | (0xa << 12) },
 	{ 3072,  0x00000300 | (0x7) | (0xb << 20) | (0xb << 16) | (0xb << 12) },
 };
-
-/* cache size = 32B * 128 = 4KB */
-#define CACHE_LINE_SIZE_LOG2    5
-#define CACHE_LINE_SIZE         (1 << CACHE_LINE_SIZE_LOG2)
-#define N_CACHE_LINE            128
-#define CACHE_ALIGNED_ADDR(addr) \
-	((addr >> CACHE_LINE_SIZE_LOG2) << CACHE_LINE_SIZE_LOG2)
-
-#define SCU_BASE 0x7e6e2000
-
-#define CACHE_AREA_CTRL_REG             0xa50
-#define CACHE_AREA_SIZE_LOG2    15
-#define CACHE_AREA_SIZE                 (1 << CACHE_AREA_SIZE_LOG2)
-
-#define CACHE_INVALID_REG               0xa54
-#define DCACHE_INVALID(addr)    (BIT(31) | ((addr & GENMASK(10, 0)) << 16))
-#define ICACHE_INVALID(addr)    (BIT(15) | ((addr & GENMASK(10, 0)) << 0))
-
-#define CACHE_FUNC_CTRL_REG             0xa58
-#define ICACHE_CLEAN                    BIT(2)
-#define DCACHE_CLEAN                    BIT(1)
-#define CACHE_EANABLE                   BIT(0)
-
-void cache_inv(uint32_t addr, uint32_t size)
-{
-#ifdef CACHE_BY_CACHELINE
-	uint32_t aligned_addr, i, n;
-
-	n = get_n_cacheline(addr, size, &aligned_addr);
-
-	LOG_DBG("addr %x, size %d n: %d\n", addr, size, n);
-	sys_read32((uint32_t)(0x70000));
-
-	for (i = 0; i < n; i++) {
-		sys_write32(DCACHE_INVALID(aligned_addr), SCU_BASE + CACHE_INVALID_REG);
-		sys_write32(0, SCU_BASE + CACHE_INVALID_REG);
-		aligned_addr += CACHE_LINE_SIZE;
-	}
-
-	/* issue a non-cached data access to flush the prefetch buffer */
-	sys_read32((uint32_t)(0x70000));
-	sys_read32((uint32_t)(addr | 0x10000));
-#else
-	sys_write32(sys_read32(SCU_BASE + 0xa58) & ~0x2, SCU_BASE + 0xa58);
-	sys_write32(sys_read32(SCU_BASE + 0xa58) | 0x2, SCU_BASE + 0xa58);
-#endif
-
-}
 
 static uint32_t i2c_aspeed_select_clock(const struct device *dev)
 {
@@ -1067,7 +1019,7 @@ void do_i2cm_rx(const struct device *dev)
 	if (data->master_xfer_cnt == msg->len) {
 		/*TODO dma unmap*/
 		/*Assure cache coherency after DMA write operation*/
-		cache_inv((uint32_t)msg->buf, (uint32_t)msg->len);
+		cache_data_range(msg->buf, (size_t)(msg->len), K_CACHE_INVD);
 		for (i = 0; i < msg->len; i++) {
 			LOG_DBG("M: r %d:[%x]\n", i, msg->buf[i]);
 		}
@@ -1338,7 +1290,8 @@ int aspeed_i2c_slave_irq(const struct device *dev)
 				for (i = 0; i < slave_rx_len; i++) {
 				/*LOG_DBG(data->dev, "[%02x]", data->slave_dma_buf[i]);*/
 					if (slave_cb->write_received) {
-						cache_inv((uint32_t)(&data->slave_dma_buf[i]), 0);
+						cache_data_range((&data->slave_dma_buf[i])
+						, 0, K_CACHE_INVD);
 						slave_cb->write_received(data->slave_cfg
 						, data->slave_dma_buf[i]);
 					}
