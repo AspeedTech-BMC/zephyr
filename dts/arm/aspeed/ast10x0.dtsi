@@ -215,7 +215,7 @@
 			compatible = "aspeed,uart";
 			reg = <0x7e783000 0x1000>;
 			interrupts = <INTR_UART1 AST10X0_IRQ_DEFAULT_PRIORITY>;
-			clocks = <&sysclk ASPEED_CLK_UART1>;
+			clocks = <&sysclk ASPEED_CLK_GATE_UART1CLK>;
 			status = "disabled";
 			pinctrl-0 = <&pinctrl_uart1_default>;
 			label = "UART_1";
@@ -225,7 +225,7 @@
 			compatible = "aspeed,uart";
 			reg = <0x7e78d000 0x100>;
 			interrupts = <INTR_UART2 AST10X0_IRQ_DEFAULT_PRIORITY>;
-			clocks = <&sysclk ASPEED_CLK_UART2>;
+			clocks = <&sysclk ASPEED_CLK_GATE_UART2CLK>;
 			status = "disabled";
 			pinctrl-0 = <&pinctrl_uart2_default>;
 			label = "UART_2";
@@ -235,7 +235,7 @@
 			compatible = "aspeed,uart";
 			reg = <0x7e78e000 0x100>;
 			interrupts = <INTR_UART3 AST10X0_IRQ_DEFAULT_PRIORITY>;
-			clocks = <&sysclk ASPEED_CLK_UART3>;
+			clocks = <&sysclk ASPEED_CLK_GATE_UART3CLK>;
 			status = "disabled";
 			pinctrl-0 = <&pinctrl_uart3_default>;
 			label = "UART_3";
@@ -245,7 +245,7 @@
 			compatible = "aspeed,uart";
 			reg = <0x7e78f000 0x100>;
 			interrupts = <INTR_UART4 AST10X0_IRQ_DEFAULT_PRIORITY>;
-			clocks = <&sysclk ASPEED_CLK_UART4>;
+			clocks = <&sysclk ASPEED_CLK_GATE_UART4CLK>;
 			status = "disabled";
 			pinctrl-0 = <&pinctrl_uart4_default>;
 			label = "UART_4";
@@ -264,7 +264,7 @@
 			compatible = "aspeed,uart";
 			reg = <0x7e790000 0x100>;
 			interrupts = <INTR_UART6 AST10X0_IRQ_DEFAULT_PRIORITY>;
-			clocks = <&sysclk ASPEED_CLK_UART6>;
+			clocks = <&sysclk ASPEED_CLK_GATE_UART6CLK>;
 			status = "disabled";
 			pinctrl-0 = <&pinctrl_uart6_default>;
 			label = "UART_6";
@@ -274,7 +274,7 @@
 			compatible = "aspeed,uart";
 			reg = <0x7e790100 0x100>;
 			interrupts = <INTR_UART7 AST10X0_IRQ_DEFAULT_PRIORITY>;
-			clocks = <&sysclk ASPEED_CLK_UART7>;
+			clocks = <&sysclk ASPEED_CLK_GATE_UART7CLK>;
 			status = "disabled";
 			pinctrl-0 = <&pinctrl_uart7_default>;
 			label = "UART_7";
@@ -284,7 +284,7 @@
 			compatible = "aspeed,uart";
 			reg = <0x7e790200 0x100>;
 			interrupts = <INTR_UART8 AST10X0_IRQ_DEFAULT_PRIORITY>;
-			clocks = <&sysclk ASPEED_CLK_UART8>;
+			clocks = <&sysclk ASPEED_CLK_GATE_UART8CLK>;
 			status = "disabled";
 			pinctrl-0 = <&pinctrl_uart8_default>;
 			label = "UART_8";
@@ -294,7 +294,7 @@
 			compatible = "aspeed,uart";
 			reg = <0x7e790300 0x100>;
 			interrupts = <INTR_UART9 AST10X0_IRQ_DEFAULT_PRIORITY>;
-			clocks = <&sysclk ASPEED_CLK_UART9>;
+			clocks = <&sysclk ASPEED_CLK_GATE_UART9CLK>;
 			status = "disabled";
 			pinctrl-0 = <&pinctrl_uart9_default>;
 			label = "UART_9";
@@ -304,7 +304,7 @@
 			compatible = "aspeed,uart";
 			reg = <0x7e790400 0x100>;
 			interrupts = <INTR_UART10 AST10X0_IRQ_DEFAULT_PRIORITY>;
-			clocks = <&sysclk ASPEED_CLK_UART10>;
+			clocks = <&sysclk ASPEED_CLK_GATE_UART10CLK>;
 			status = "disabled";
 			pinctrl-0 = <&pinctrl_uart10_default>;
 			label = "UART_10";
@@ -314,7 +314,7 @@
 			compatible = "aspeed,uart";
 			reg = <0x7e790500 0x100>;
 			interrupts = <INTR_UART11 AST10X0_IRQ_DEFAULT_PRIORITY>;
-			clocks = <&sysclk ASPEED_CLK_UART11>;
+			clocks = <&sysclk ASPEED_CLK_GATE_UART11CLK>;
 			status = "disabled";
 			pinctrl-0 = <&pinctrl_uart11_default>;
 			label = "UART_11";
@@ -324,7 +324,7 @@
 			compatible = "aspeed,uart";
 			reg = <0x7e790600 0x100>;
 			interrupts = <INTR_UART12 AST10X0_IRQ_DEFAULT_PRIORITY>;
-			clocks = <&sysclk ASPEED_CLK_UART12>;
+			clocks = <&sysclk ASPEED_CLK_GATE_UART12CLK>;
 			status = "disabled";
 			pinctrl-0 = <&pinctrl_uart12_default>;
 			label = "UART_12";
@@ -334,7 +334,7 @@
 			compatible = "aspeed,uart";
 			reg = <0x7e790700 0x100>;
 			interrupts = <INTR_UART13 AST10X0_IRQ_DEFAULT_PRIORITY>;
-			clocks = <&sysclk ASPEED_CLK_UART13>;
+			clocks = <&sysclk ASPEED_CLK_GATE_UART13CLK>;
 			status = "disabled";
 			pinctrl-0 = <&pinctrl_uart13_default>;
 			label = "UART_13";

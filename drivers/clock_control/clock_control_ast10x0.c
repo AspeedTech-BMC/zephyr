@@ -14,17 +14,51 @@
 #include <logging/log.h>
 LOG_MODULE_REGISTER(clock_control_aspeed);
 
+struct clock_aspeed_config {
+	uintptr_t base;
+};
 
+#define DEV_CFG(dev)				   \
+	((const struct clock_aspeed_config *const) \
+	 (dev)->config)
 
 static int aspeed_clock_control_on(const struct device *dev,
 				   clock_control_subsys_t sub_system)
 {
+	uint32_t clk_gate = (uint32_t)sub_system;
+	uint32_t addr = DEV_CFG(dev)->base + 0x84;
+
+	if (clk_gate >= ASPEED_CLK_GRP_2_OFFSET) {
+		return 0;
+	}
+
+	if (clk_gate >= ASPEED_CLK_GRP_1_OFFSET) {
+		clk_gate -= ASPEED_CLK_GRP_1_OFFSET;
+		addr += 0x10;
+	}
+
+	sys_write32(BIT(clk_gate), addr);
+
 	return 0;
 }
 
 static int aspeed_clock_control_off(const struct device *dev,
 				    clock_control_subsys_t sub_system)
 {
+	uint32_t clk_gate = (uint32_t)sub_system;
+	uint32_t addr = DEV_CFG(dev)->base + 0x80;
+
+	if (clk_gate >= ASPEED_CLK_GRP_2_OFFSET) {
+		return 0;
+	}
+
+	if (clk_gate >= ASPEED_CLK_GRP_1_OFFSET) {
+		clk_gate -= ASPEED_CLK_GRP_1_OFFSET;
+		addr += 0x10;
+	}
+
+	sys_write32(BIT(clk_gate), addr);
+
 	return 0;
 }
 
@@ -42,19 +76,19 @@ static int aspeed_clock_control_get_rate(
 	case ASPEED_CLK_PCLK:
 		*rate = 50000000;
 		break;
-	case ASPEED_CLK_UART1:
-	case ASPEED_CLK_UART2:
-	case ASPEED_CLK_UART3:
-	case ASPEED_CLK_UART4:
+	case ASPEED_CLK_GATE_UART1CLK:
+	case ASPEED_CLK_GATE_UART2CLK:
+	case ASPEED_CLK_GATE_UART3CLK:
+	case ASPEED_CLK_GATE_UART4CLK:
 	case ASPEED_CLK_UART5:
-	case ASPEED_CLK_UART6:
-	case ASPEED_CLK_UART7:
-	case ASPEED_CLK_UART8:
-	case ASPEED_CLK_UART9:
-	case ASPEED_CLK_UART10:
-	case ASPEED_CLK_UART11:
-	case ASPEED_CLK_UART12:
-	case ASPEED_CLK_UART13:
+	case ASPEED_CLK_GATE_UART6CLK:
+	case ASPEED_CLK_GATE_UART7CLK:
+	case ASPEED_CLK_GATE_UART8CLK:
+	case ASPEED_CLK_GATE_UART9CLK:
+	case ASPEED_CLK_GATE_UART10CLK:
+	case ASPEED_CLK_GATE_UART11CLK:
+	case ASPEED_CLK_GATE_UART12CLK:
+	case ASPEED_CLK_GATE_UART13CLK:
 		*rate = 24000000 / 13;
 		break;
 	case ASPEED_CLK_APB1:
@@ -79,12 +113,16 @@ static const struct clock_control_driver_api aspeed_clk_api = {
 	.get_rate = aspeed_clock_control_get_rate,
 };
 
+static const struct clock_aspeed_config clock_aspeed_cfg = {
+	.base = DT_REG_ADDR(DT_NODELABEL(syscon)),
+};
+
 #define ASPEED_CLOCK_INIT(n)							\
 										\
 	DEVICE_DT_INST_DEFINE(n,						\
 			      &aspeed_clock_control_init,			\
 			      NULL,						\
-			      NULL, NULL,					\
+			      NULL, &clock_aspeed_cfg,				\
 			      PRE_KERNEL_1, CONFIG_KERNEL_INIT_PRIORITY_DEVICE,	\
 			      &aspeed_clk_api);
 
