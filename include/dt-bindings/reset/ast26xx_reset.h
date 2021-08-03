@@ -37,7 +37,7 @@
 #define ASPEED_RESET_MII                RESET_VAL_DECLARE(0x50, 0x54, 3);
 #define ASPEED_RESET_I2C                RESET_VAL_DECLARE(0x50, 0x54, 2);
 #define ASPEED_RESET_RESERVED33         RESET_VAL_DECLARE(0x50, 0x54, 1);
-#define ASPEED_RESET_LPC_ESPI           RESET_VAL_DECLARE(0x50, 0x54, 0);
+#define ASPEED_RESET_LPC                RESET_VAL_DECLARE(0x50, 0x54, 0);
 
 #define ASPEED_RESET_H2X                RESET_VAL_DECLARE(0x40, 0x44, 31);
 #define ASPEED_RESET_GP_MCU             RESET_VAL_DECLARE(0x40, 0x44, 30);
