@@ -1661,9 +1661,11 @@ static int i2c_aspeed_slave_register(const struct device *dev,
 	struct i2c_aspeed_data *data = dev->data;
 	uint32_t i2c_base = DEV_BASE(dev);
 	uint32_t cmd = AST_I2CS_ACTIVE_ALL | AST_I2CS_PKT_MODE_EN;
+	uint32_t slave_en = (sys_read32(i2c_base + AST_I2CC_FUN_CTRL)
+		& AST_I2CC_SLAVE_EN);
 
 	/* check slave config exist or has attached ever*/
-	if ((!config) || (data->slave_attached)) {
+	if ((!config) || (data->slave_attached) || slave_en) {
 		return -EINVAL;
 	}
 
