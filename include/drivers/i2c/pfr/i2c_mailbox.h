@@ -23,7 +23,11 @@
 
 /* i2c device registers */
 #define AST_I2C_CTL		0x00
+#define AST_I2C_DMA_LEN	0x2C
+#define AST_I2C_TX_DMA	0x38
+#define AST_I2C_RX_DMA	0x3C
 #define AST_I2C_ADDR	0x40
+#define AST_I2C_MBX_LIM	0x70
 
 /* device registers */
 #define AST_I2C_M_CFG		0x04
@@ -45,6 +49,9 @@
 #define AST_I2C_M_ADDR_IRQ1	0x74
 #define AST_I2C_M_ADDR_IRQ2	0x78
 #define AST_I2C_M_ADDR_IRQ3	0x7C
+
+#define AST_I2C_MASTER_EN	BIT(0)
+#define AST_I2C_MBX_EN		(BIT(23) | BIT(24))
 
 /* i2c slave address control */
 #define AST_I2CS_ADDR3_MBX_TYPE(x)	(x << 28)
@@ -70,10 +77,12 @@ AST_I2CS_ADDR2_ENABLE|AST_I2CS_ADDR2_MBX_TYPE(0x3))
 #define	AST_I2CS_ADDR1_CLEAR	(AST_I2CS_ADDR1_MASK |\
 AST_I2CS_ADDR1_ENABLE|AST_I2CS_ADDR1_MBX_TYPE(0x3))
 
-/* i2c mailbox write protect element */
-struct ast_i2c_m_wp_tbl {
-	uint32_t		wp_element[AST_I2C_M_WP_COUNT];
-};
+/* i2c slave address control */
+#define AST_I2C_MBX_RX_DMA_LEN(x)	\
+((((x - 1) & 0xfff) << 16) | BIT(31))
+
+#define AST_I2C_MBX_TX_DMA_LEN(x)	\
+(((x - 1) & 0xfff) | BIT(15))
 
 #ifdef __cplusplus
 extern "C" {
@@ -103,6 +112,20 @@ static int ast_i2c_mbx_init(const struct device *dev);
  */
 static int ast_i2c_mbx_addr(const struct device *dev, uint8_t idx,
 uint8_t offset, uint8_t addr, uint8_t enable);
+
+/**
+ * @brief Enable i2c mailbox device
+ *
+ * @param dev Pointer to the device structure for the driver instance
+ * @param base Buffer base to the mbx
+ * @param length Length to the mbx
+ * @param enable Enable flag to the mbx device
+ *
+ * @retval 0 If successful
+ * @retval -EINVAL Invalid data pointer or offset
+ */
+static int ast_i2c_mbx_enable(const struct device *dev, uint32_t base,
+uint16_t length, uint8_t enable);
 
 /**
  * @}
