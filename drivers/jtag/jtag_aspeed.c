@@ -26,7 +26,7 @@ LOG_MODULE_REGISTER(jtag_aspeed);
 #include <drivers/clock_control.h>
 #include <drivers/reset_control.h>
 
-#define DEFAULT_JTAG_FREQ 8000000
+#define DEFAULT_JTAG_FREQ 1000000
 
 struct name_mapping {
 	enum tap_state symbol;
@@ -569,7 +569,7 @@ static int jtag_aspeed_init(const struct device *dev)
 	mode_1_int_ctrl.fields.enable_of_instr_xfer_completed = 1;
 	mode_1_int_ctrl.fields.enable_of_instr_xfer_pause = 1;
 	jtag_register->mode_1_int_ctrl.value = mode_1_int_ctrl.value;
-	jtag_aspeed_freq_set(dev, JTAG_ASPEED_MAX_FREQUENCY);
+	jtag_aspeed_freq_set(dev, DEFAULT_JTAG_FREQ);
 	/* Output enable */
 	mode_1_control.value = jtag_register->mode_1_control.value;
 	mode_1_control.fields.engine_output_enable = 1;
