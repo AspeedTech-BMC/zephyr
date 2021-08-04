@@ -21,6 +21,10 @@
 /* mail box base define */
 #define AST_I2C_M_BASE			0x3000
 
+/* i2c device registers */
+#define AST_I2C_CTL		0x00
+#define AST_I2C_ADDR	0x40
+
 /* device registers */
 #define AST_I2C_M_CFG		0x04
 #define AST_I2C_M_FIFO_IRQ	0x08
@@ -42,6 +46,30 @@
 #define AST_I2C_M_ADDR_IRQ2	0x78
 #define AST_I2C_M_ADDR_IRQ3	0x7C
 
+/* i2c slave address control */
+#define AST_I2CS_ADDR3_MBX_TYPE(x)	(x << 28)
+#define AST_I2CS_ADDR2_MBX_TYPE(x)	(x << 26)
+#define AST_I2CS_ADDR1_MBX_TYPE(x)	(x << 24)
+#define AST_I2CS_ADDR3_ENABLE		BIT(23)
+#define AST_I2CS_ADDR3(x)			((x & 0x7f) << 16)
+#define AST_I2CS_ADDR2_ENABLE		BIT(15)
+#define AST_I2CS_ADDR2(x)			((x & 0x7f) << 8)
+#define AST_I2CS_ADDR1_ENABLE		BIT(7)
+#define AST_I2CS_ADDR1(x)			(x & 0x7f)
+
+#define	AST_I2CS_ADDR3_MASK	(0x7f << 16)
+#define	AST_I2CS_ADDR2_MASK	(0x7f << 8)
+#define	AST_I2CS_ADDR1_MASK	0x7f
+
+#define	AST_I2CS_ADDR3_CLEAR	(AST_I2CS_ADDR3_MASK |\
+AST_I2CS_ADDR3_ENABLE|AST_I2CS_ADDR3_MBX_TYPE(0x3))
+
+#define	AST_I2CS_ADDR2_CLEAR	(AST_I2CS_ADDR2_MASK |\
+AST_I2CS_ADDR2_ENABLE|AST_I2CS_ADDR2_MBX_TYPE(0x3))
+
+#define	AST_I2CS_ADDR1_CLEAR	(AST_I2CS_ADDR1_MASK |\
+AST_I2CS_ADDR1_ENABLE|AST_I2CS_ADDR1_MBX_TYPE(0x3))
+
 /* i2c mailbox write protect element */
 struct ast_i2c_m_wp_tbl {
 	uint32_t		wp_element[AST_I2C_M_WP_COUNT];
@@ -54,12 +82,28 @@ extern "C" {
 /**
  * @brief Initial i2c mailbox device
  *
- * @param dev Pointer to the device structure for the driver instance.
+ * @param dev Pointer to the device structure for the driver instance
  *
- * @retval 0 If successful.
+ * @retval 0 If successful
  * @retval -EINVAL Invalid data pointer or offset
  */
 static int ast_i2c_mbx_init(const struct device *dev);
+
+/**
+ * @brief Set i2c mailbox device slave address
+ *
+ * @param dev Pointer to the device structure for the driver instance
+ * @param idx Index to the slave address
+ * @param offset Offset to the slave address length
+ * @param addr Address to the mbx device
+ * @param enable Enable flag to the mbx device
+ *
+ * @retval 0 If successful
+ * @retval -EINVAL Invalid data pointer or offset
+ */
+static int ast_i2c_mbx_addr(const struct device *dev, uint8_t idx,
+uint8_t offset, uint8_t addr, uint8_t enable);
+
 /**
  * @}
  */

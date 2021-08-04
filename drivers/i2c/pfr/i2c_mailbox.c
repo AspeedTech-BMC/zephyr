@@ -25,8 +25,11 @@ LOG_MODULE_REGISTER(i2c_pfr_mbx);
 
 struct ast_i2c_mbx_data {
 	uint32_t	i2c_dev_base;	/* i2c dev base*/
+	uint8_t	mail_addr_en;	/* mbx addr enable*/
+	uint8_t	mail_en;			/* mbx enable*/
+	uint8_t	m_fifo_en;		/* mbx fifo enable*/
 	uint8_t	mail_piroity;		/* mbx : piroity */
-	uint8_t	mail_fifo_addr[AST_I2C_M_FIFO_COUNT];
+	uint8_t	mail_fifo_addr;
 	uint8_t	mail_fifo_rw_disable;
 	uint8_t	mail_addr_irq[AST_I2C_M_IRQ_COUNT];
 };
@@ -40,19 +43,111 @@ struct ast_i2c_mbx_config {
 
 /* convenience defines */
 #define DEV_CFG(dev)				     \
-	((const struct ast_i2c_filter_config *const) \
+	((const struct ast_i2c_mbx_config *const) \
 	 (dev)->config)
 #define DEV_DATA(dev) \
-	((struct ast_i2c_filter_data *const)(dev)->data)
+	((struct ast_i2c_mbx_data *const)(dev)->data)
 
 /* i2c mbx interrupt service routine */
 static void ast_i2c_mbx_isr(const struct device *dev)
 {
 }
 
+/* i2c mbx set addr */
+static int ast_i2c_mbx_addr(const struct device *dev, uint8_t idx,
+uint8_t offset, uint8_t addr, uint8_t enable)
+{
+	struct ast_i2c_mbx_data *data = DEV_DATA(dev);
+	const struct ast_i2c_mbx_config *cfg = DEV_CFG(dev);
+
+	uint32_t mask_addr = 0;
+
+	/* check parameter valid */
+	if (!cfg->mail_dev_name) {
+		LOG_ERR("i2c mailbox not found");
+		return -EINVAL;
+	} else if ((cfg->mail_dev_idx != 0) &&
+			(cfg->mail_dev_idx != 1)) {
+		LOG_ERR("invalid i2c mailbox index");
+		return -EINVAL;
+	}
+
+	/* Set slave addr. */
+	switch (idx) {
+	case 0:
+		mask_addr = (sys_read32(data->i2c_dev_base + AST_I2C_ADDR)
+			& ~(AST_I2CS_ADDR1_CLEAR));
+		if (enable) {
+			mask_addr |= (AST_I2CS_ADDR1(addr)|
+			AST_I2CS_ADDR1_MBX_TYPE(offset)|AST_I2CS_ADDR1_ENABLE);
+		}
+		break;
+	case 1:
+		mask_addr = (sys_read32(data->i2c_dev_base + AST_I2C_ADDR)
+			& ~(AST_I2CS_ADDR2_CLEAR));
+		if (enable) {
+			mask_addr |= (AST_I2CS_ADDR2(addr)|
+			AST_I2CS_ADDR2_MBX_TYPE(offset)|AST_I2CS_ADDR2_ENABLE);
+		}
+		break;
+	case 2:
+		mask_addr = (sys_read32(data->i2c_dev_base + AST_I2C_ADDR)
+			& ~(AST_I2CS_ADDR3_CLEAR));
+		if (enable) {
+			mask_addr |= (AST_I2CS_ADDR3(addr)|
+			AST_I2CS_ADDR3_MBX_TYPE(offset)|AST_I2CS_ADDR3_ENABLE);
+		}
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	/* fire in register */
+	I2C_W_R(mask_addr, data->i2c_dev_base + AST_I2C_ADDR);
+
+	/* find out if any one i2c slave is existed */
+	mask_addr = (sys_read32(data->i2c_dev_base + AST_I2C_ADDR)
+		& (AST_I2CS_ADDR1_ENABLE|
+		AST_I2CS_ADDR2_ENABLE|
+		AST_I2CS_ADDR3_ENABLE));
+
+	if (mask_addr) {
+		data->mail_addr_en = 1;
+	} else {
+		data->mail_addr_en = 0;
+	}
+
+	return 0;
+}
+
 /* i2c mbx initial */
 static int ast_i2c_mbx_init(const struct device *dev)
 {
+	struct ast_i2c_mbx_data *data = DEV_DATA(dev);
+	const struct ast_i2c_mbx_config *cfg = DEV_CFG(dev);
+
+	uint32_t sts = 0;
+
+	/* check parameter valid */
+	if (!cfg->mail_dev_name) {
+		LOG_ERR("i2c mailbox not found");
+		return -EINVAL;
+	} else if ((cfg->mail_dev_idx != 0) &&
+			(cfg->mail_dev_idx != 1)) {
+		LOG_ERR("invalid i2c mailbox index");
+		return -EINVAL;
+	}
+
+	/* clear mbx addr /fifo irq status */
+	I2C_W_R(0xFFFFFFFF, (cfg->mail_g_base+AST_I2C_M_IRQ_STA0));
+	I2C_W_R(0xFFFFFFFF, (cfg->mail_g_base+AST_I2C_M_IRQ_STA1));
+	sts =  sys_read32(cfg->mail_g_base + AST_I2C_M_FIFO_IRQ);
+	I2C_W_R(sts, (cfg->mail_g_base+AST_I2C_M_FIFO_IRQ));
+
+	/* i2c device base for slave setting */
+	data->i2c_dev_base = (cfg->mail_g_base & 0xFFFF0000);
+	data->i2c_dev_base += (0x80 * (cfg->mail_dev_idx + 1));
+
 	return 0;
 }
 
