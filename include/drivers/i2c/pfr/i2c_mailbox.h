@@ -18,8 +18,14 @@
 #define AST_I2C_M_FIFO_COUNT	2
 #define AST_I2C_M_FIFO_REMAP	0x100000
 #define AST_I2C_M_FIFO0_MASK	0xFFFCFF00
+#define AST_I2C_M_FIFO0_INT_EN	(BIT(16) | BIT(17))
+#define AST_I2C_M_FIFO0_INT_STS	(BIT(0) | BIT(1))
 #define AST_I2C_M_FIFO1_MASK	0xFFF300FF
+#define AST_I2C_M_FIFO1_INT_EN	(BIT(18) | BIT(19))
+#define AST_I2C_M_FIFO1_INT_STS	(BIT(2) | BIT(3))
 #define AST_I2C_M_FIFO_R_NAK	0x10000000
+#define AST_I2C_M_FIFO_INT	0xF0000
+#define AST_I2C_M_FIFO_STS	0xF
 
 /* mail box base define */
 #define AST_I2C_M_BASE			0x3000
@@ -127,7 +133,7 @@ uint8_t offset, uint8_t addr, uint8_t enable);
  * @retval 0 If successful
  * @retval -EINVAL Invalid data pointer or offset
  */
-static int ast_i2c_mbx_enable(const struct device *dev, uint32_t base,
+static int ast_i2c_mbx_en(const struct device *dev, uint32_t base,
 uint16_t length, uint8_t enable);
 
 /**
@@ -170,6 +176,34 @@ uint8_t addr);
 static int ast_i2c_mbx_notify_en(const struct device *dev, uint8_t idx,
 uint8_t type, uint8_t enable);
 
+/**
+ * @brief Set i2c mailbox fifo enable
+ *
+ * @param dev Pointer to the device structure for the driver instance
+ * @param idx Index to the fifo  (0x0~0x1)
+ * @param base Buffer base to the fifo
+ * @param length Buffer length to the fifo (0 means close fifo)
+ *
+ * @retval 0 If successful
+ * @retval -EINVAL Invalid data pointer or offset
+ */
+static int ast_i2c_mbx_fifo_en(const struct device *dev, uint8_t idx,
+uint16_t base, uint16_t length);
+
+/**
+ * @brief Set i2c mailbox fifo apply
+ *
+ * @param dev Pointer to the device structure for the driver instance
+ * @param idx Index to the fifo  (0x0~0x1)
+ * @param addr fifo address to the mbx
+ * @param type Type disable (read / write) to the fifo in mbx device
+ * @param enable Enable flag to the notify
+ *
+ * @retval 0 If successful
+ * @retval -EINVAL Invalid data pointer or offset
+ */
+static int ast_i2c_mbx_fifo_apply(const struct device *dev, uint8_t idx,
+uint8_t addr, uint8_t type, uint8_t pirority);
 
 /**
  * @}
