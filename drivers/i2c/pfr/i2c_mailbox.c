@@ -68,12 +68,130 @@ static void ast_i2c_mbx_isr(const struct device *dev)
 {
 }
 
+/* i2c mbx notify enable */
+static int ast_i2c_mbx_notify_en(const struct device *dev, uint8_t idx,
+uint8_t type, uint8_t enable)
+{
+	const struct ast_i2c_mbx_config *cfg = DEV_CFG(dev);
+
+	uint8_t reg_offset = AST_I2C_M_IRQ_EN0;
+	uint32_t value = 0;
+
+	/* check common parameter valid */
+	if (check_ast_mbx_valid(cfg))
+		return -EINVAL;
+
+	/* over notify index define */
+	if (idx > 0xF)
+		return -EINVAL;
+
+	/* invalid type */
+	if ((type < AST_I2C_M_R_NOTIFY) ||
+	(type > (AST_I2C_M_R_NOTIFY | AST_I2C_M_W_NOTIFY)))
+		return -EINVAL;
+
+	if (cfg->mail_dev_idx == 1)
+		reg_offset = AST_I2C_M_IRQ_EN1;
+
+	/* calculate the interrupt flag position */
+	value = sys_read32(cfg->mail_g_base + reg_offset);
+
+	if (enable) {
+		if (type & AST_I2C_M_R_NOTIFY)
+			value |= (0x1 << (idx + 0x10));
+
+		if (type & AST_I2C_M_W_NOTIFY)
+			value |= (0x1 << idx);
+	} else {
+		if (type & AST_I2C_M_R_NOTIFY)
+			value &= ~((0x1 << (idx + 0x10)));
+
+		if (type & AST_I2C_M_W_NOTIFY)
+			value &= ~(0x1 << idx);
+	}
+
+	I2C_W_R(value, cfg->mail_g_base + reg_offset);
+
+	return 0;
+}
+
+
+/* i2c mbx notify address */
+static int ast_i2c_mbx_notify_addr(const struct device *dev, uint8_t idx,
+uint8_t addr)
+{
+	const struct ast_i2c_mbx_config *cfg = DEV_CFG(dev);
+
+	uint8_t reg_index, reg_offset = AST_I2C_M_ADDR_IRQ0;
+	uint32_t value, byteshift;
+
+	/* check common parameter valid */
+	if (check_ast_mbx_valid(cfg))
+		return -EINVAL;
+
+	/* over notify index define */
+	if (idx > 0xF)
+		return -EINVAL;
+
+	/* calculte nodify address position */
+	reg_index = idx >> 0x2;
+	byteshift = ((idx % 0x4) << 3);
+
+	reg_offset += (0x4 << reg_index);
+
+	value = (sys_read32(cfg->mail_g_base + reg_offset)
+	& ~(0xFF << byteshift));
+
+	value |= (addr << byteshift);
+
+	I2C_W_R(value, cfg->mail_g_base + reg_offset);
+
+	return 0;
+}
+
+
+/* i2c mbx protect address */
+static int ast_i2c_mbx_protect(const struct device *dev, uint8_t addr,
+uint8_t enable)
+{
+	const struct ast_i2c_mbx_config *cfg = DEV_CFG(dev);
+
+	uint8_t index, bit;
+	uint32_t value, base = AST_I2C_M_WP_BASE0;
+
+	/* check common parameter valid */
+	if (check_ast_mbx_valid(cfg))
+		return -EINVAL;
+
+	/* change write protect base */
+	if (cfg->mail_dev_idx == 0x1)
+		base = AST_I2C_M_WP_BASE1;
+
+	/* calculte bitmap position */
+	index = addr / 0x20;
+	bit = addr % 0x20;
+
+	base += (index << 2);
+
+	value = sys_read32(cfg->mail_g_base + base);
+
+	if (enable)
+		value |= (0x1 << bit);
+	else
+		value = value & ~(0x1 << bit);
+
+	I2C_W_R(value, cfg->mail_g_base + base);
+
+	return 0;
+}
+
 /* i2c mbx enable */
 static int ast_i2c_mbx_enable(const struct device *dev, uint32_t base,
 uint16_t length, uint8_t enable)
 {
 	struct ast_i2c_mbx_data *data = DEV_DATA(dev);
 	const struct ast_i2c_mbx_config *cfg = DEV_CFG(dev);
+
 	uint32_t value = 0;
 
 	/* check common parameter valid */
