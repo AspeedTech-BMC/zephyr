@@ -68,6 +68,84 @@ static void ast_i2c_mbx_isr(const struct device *dev)
 {
 }
 
+static int ast_i2c_mbx_fifo_pirority(const struct device *dev, uint8_t pirority)
+{
+	const struct ast_i2c_mbx_config *cfg = DEV_CFG(dev);
+
+	uint32_t value;
+
+	/* check common parameter valid */
+	if (check_ast_mbx_valid(cfg))
+		return -EINVAL;
+
+	/* invalid pirority */
+	if (pirority > AST_I2C_M_I2C1)
+		return -EINVAL;
+
+	/* apply fifo config */
+	value = (sys_read32(cfg->mail_g_base + AST_I2C_M_CFG) &
+		~(AST_I2C_M_FIFO_I2C0_H | AST_I2C_M_FIFO_I2C1_H));
+
+	if (pirority == AST_I2C_M_I2C0) {
+		value |= AST_I2C_M_FIFO_I2C0_H;
+	} else if (pirority == AST_I2C_M_I2C1) {
+		value |= AST_I2C_M_FIFO_I2C1_H;
+	}
+
+	I2C_W_R(value, cfg->mail_g_base + AST_I2C_M_CFG);
+
+	return 0;
+}
+
+
+/* i2c mbx fifo apply setting */
+static int ast_i2c_mbx_fifo_apply(const struct device *dev, uint8_t idx,
+uint8_t addr, uint8_t type)
+{
+	const struct ast_i2c_mbx_config *cfg = DEV_CFG(dev);
+
+	uint32_t value;
+
+	/* check common parameter valid */
+	if (check_ast_mbx_valid(cfg))
+		return -EINVAL;
+
+	/* invalid type */
+	if ((type < AST_I2C_M_R) ||
+	(type > (AST_I2C_M_R | AST_I2C_M_W)))
+		return -EINVAL;
+
+	/* apply fifo config */
+	value = (sys_read32(cfg->mail_g_base + AST_I2C_M_CFG)
+		| AST_I2C_M_FIFO_R_NAK);
+
+	if (idx == 0) {
+		value &= AST_I2C_M_FIFO0_MASK;
+		value |= (AST_I2C_M_FIFO_REMAP | addr);
+
+		if (type & AST_I2C_M_W)
+			value |= AST_I2C_M_FIFO0_W_DIS;
+
+		if (type & AST_I2C_M_R)
+			value |= AST_I2C_M_FIFO0_R_DIS;
+	} else if (idx == 1) {
+		value &= AST_I2C_M_FIFO1_MASK;
+		value |= (AST_I2C_M_FIFO_REMAP | addr);
+
+		if (type & AST_I2C_M_W)
+			value |= AST_I2C_M_FIFO1_W_DIS;
+
+		if (type & AST_I2C_M_R)
+			value |= AST_I2C_M_FIFO1_R_DIS;
+	} else {
+		return -EINVAL;
+	}
+
+	I2C_W_R(value, cfg->mail_g_base + AST_I2C_M_CFG);
+
+	return 0;
+}
+
 /* i2c mbx fifo enable */
 static int ast_i2c_mbx_fifo_en(const struct device *dev, uint8_t idx,
 uint16_t base, uint16_t length)
@@ -86,8 +164,7 @@ uint16_t base, uint16_t length)
 	fifo_int &= AST_I2C_M_FIFO_INT;
 	fifo_sts &= AST_I2C_M_FIFO_STS;
 
-	if (cfg->mail_dev_idx == 0) {
-
+	if (idx == 0) {
 		value1 = (fifo_sts & AST_I2C_M_FIFO0_INT_STS);
 		I2C_W_R(value1, cfg->mail_g_base + AST_I2C_M_FIFO_IRQ);
 
@@ -100,9 +177,7 @@ uint16_t base, uint16_t length)
 		I2C_W_R(fifo_int, cfg->mail_g_base + AST_I2C_M_FIFO_IRQ);
 
 		I2C_W_R(value, cfg->mail_g_base + AST_I2C_M_FIFO_CFG0);
-
-	} else if (cfg->mail_dev_idx == 1) {
-
+	} else if (idx == 1) {
 		value1 = (fifo_sts & AST_I2C_M_FIFO1_INT_STS);
 		I2C_W_R(value1, cfg->mail_g_base + AST_I2C_M_FIFO_IRQ);
 
@@ -115,7 +190,8 @@ uint16_t base, uint16_t length)
 		I2C_W_R(fifo_int, cfg->mail_g_base + AST_I2C_M_FIFO_IRQ);
 
 		I2C_W_R(value, cfg->mail_g_base + AST_I2C_M_FIFO_CFG1);
-
+	} else {
+		return -EINVAL;
 	}
 
 	return 0;
@@ -139,8 +215,8 @@ uint8_t type, uint8_t enable)
 		return -EINVAL;
 
 	/* invalid type */
-	if ((type < AST_I2C_M_R_NOTIFY) ||
-	(type > (AST_I2C_M_R_NOTIFY | AST_I2C_M_W_NOTIFY)))
+	if ((type < AST_I2C_M_R) ||
+	(type > (AST_I2C_M_R | AST_I2C_M_W)))
 		return -EINVAL;
 
 	if (cfg->mail_dev_idx == 1)
@@ -150,16 +226,16 @@ uint8_t type, uint8_t enable)
 	value = sys_read32(cfg->mail_g_base + reg_offset);
 
 	if (enable) {
-		if (type & AST_I2C_M_R_NOTIFY)
+		if (type & AST_I2C_M_R)
 			value |= (0x1 << (idx + 0x10));
 
-		if (type & AST_I2C_M_W_NOTIFY)
+		if (type & AST_I2C_M_W)
 			value |= (0x1 << idx);
 	} else {
-		if (type & AST_I2C_M_R_NOTIFY)
+		if (type & AST_I2C_M_R)
 			value &= ~((0x1 << (idx + 0x10)));
 
-		if (type & AST_I2C_M_W_NOTIFY)
+		if (type & AST_I2C_M_W)
 			value &= ~(0x1 << idx);
 	}
 

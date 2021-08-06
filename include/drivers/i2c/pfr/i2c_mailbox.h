@@ -11,21 +11,31 @@
 #define AST_I2C_M_WP_COUNT		8
 #define AST_I2C_M_IRQ_COUNT		16
 
-#define AST_I2C_M_R_NOTIFY		1
-#define AST_I2C_M_W_NOTIFY		2
+#define AST_I2C_M_R		1
+#define AST_I2C_M_W		2
+
+#define AST_I2C_M_I2C0	1
+#define AST_I2C_M_I2C1	2
 
 /* mail box fifo define */
 #define AST_I2C_M_FIFO_COUNT	2
-#define AST_I2C_M_FIFO_REMAP	0x100000
+#define AST_I2C_M_FIFO_REMAP	BIT(20)
 #define AST_I2C_M_FIFO0_MASK	0xFFFCFF00
 #define AST_I2C_M_FIFO0_INT_EN	(BIT(16) | BIT(17))
+#define AST_I2C_M_FIFO0_INT_EN	(BIT(16) | BIT(17))
+#define AST_I2C_M_FIFO0_W_DIS	BIT(16)
+#define AST_I2C_M_FIFO0_R_DIS	BIT(17)
 #define AST_I2C_M_FIFO0_INT_STS	(BIT(0) | BIT(1))
 #define AST_I2C_M_FIFO1_MASK	0xFFF300FF
 #define AST_I2C_M_FIFO1_INT_EN	(BIT(18) | BIT(19))
+#define AST_I2C_M_FIFO1_W_DIS	BIT(18)
+#define AST_I2C_M_FIFO1_R_DIS	BIT(19)
 #define AST_I2C_M_FIFO1_INT_STS	(BIT(2) | BIT(3))
-#define AST_I2C_M_FIFO_R_NAK	0x10000000
+#define AST_I2C_M_FIFO_R_NAK	BIT(28)
 #define AST_I2C_M_FIFO_INT	0xF0000
 #define AST_I2C_M_FIFO_STS	0xF
+#define AST_I2C_M_FIFO_I2C0_H	BIT(24)
+#define AST_I2C_M_FIFO_I2C1_H	BIT(25)
 
 /* mail box base define */
 #define AST_I2C_M_BASE			0x3000
@@ -197,13 +207,23 @@ uint16_t base, uint16_t length);
  * @param idx Index to the fifo  (0x0~0x1)
  * @param addr fifo address to the mbx
  * @param type Type disable (read / write) to the fifo in mbx device
- * @param enable Enable flag to the notify
  *
  * @retval 0 If successful
  * @retval -EINVAL Invalid data pointer or offset
  */
 static int ast_i2c_mbx_fifo_apply(const struct device *dev, uint8_t idx,
-uint8_t addr, uint8_t type, uint8_t pirority);
+uint8_t addr, uint8_t type);
+
+/**
+ * @brief Set i2c mailbox fifo pirority
+ *
+ * @param dev Pointer to the device structure for the driver instance
+ * @param pirority I2C access pirority (0x0~0x2) 0x0 means no pirority setting
+ *
+ * @retval 0 If successful
+ * @retval -EINVAL Invalid data pointer or offset
+ */
+static int ast_i2c_mbx_fifo_pirority(const struct device *dev, uint8_t pirority);
 
 /**
  * @}
