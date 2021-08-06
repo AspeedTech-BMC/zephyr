@@ -66,6 +66,27 @@ int check_ast_mbx_valid(const struct ast_i2c_mbx_config *cfg)
 /* i2c mbx interrupt service routine */
 static void ast_i2c_mbx_isr(const struct device *dev)
 {
+	const struct ast_i2c_mbx_config *cfg = DEV_CFG(dev);
+
+	uint32_t sts0 = sys_read32(cfg->mail_g_base + AST_I2C_M_IRQ_STA0);
+	uint32_t sts1 = sys_read32(cfg->mail_g_base + AST_I2C_M_IRQ_STA1);
+	uint32_t stsfifo = sys_read32(cfg->mail_g_base + AST_I2C_M_FIFO_IRQ);
+
+	LOG_INF(" B mail sts0 : %x", sts0);
+	LOG_INF(" B mail sts1 : %x", sts1);
+	LOG_INF(" B mail stsfifo : %x", stsfifo);
+
+	I2C_W_R(sts0, cfg->mail_g_base + AST_I2C_M_IRQ_STA0);
+	I2C_W_R(sts1, cfg->mail_g_base + AST_I2C_M_IRQ_STA1);
+	I2C_W_R(stsfifo, cfg->mail_g_base + AST_I2C_M_FIFO_IRQ);
+
+	sts0 = sys_read32(cfg->mail_g_base + AST_I2C_M_IRQ_STA0);
+	sts1 = sys_read32(cfg->mail_g_base + AST_I2C_M_IRQ_STA1);
+	stsfifo = sys_read32(cfg->mail_g_base + AST_I2C_M_FIFO_IRQ);
+
+	LOG_INF(" A mail sts0 : %x", sts0);
+	LOG_INF(" A mail sts1 : %x", sts1);
+	LOG_INF(" A mail stsfifo : %x", stsfifo);
 }
 
 static int ast_i2c_mbx_fifo_pirority(const struct device *dev, uint8_t pirority)
