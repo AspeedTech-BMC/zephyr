@@ -698,6 +698,16 @@
 				label = "FLASH_0";
 			};
 		};
+
+		i3c_gr: i3c-global-regs@7e7a0000 {
+			compatible = "aspeed,i3c-global";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x7e7a0000 0x100>;
+			resets = <&sysrst ASPEED_RESET_I3C>;
+			ni3cs = <4>;
+			status = "disabled";
+		};
 	};
 };
 #include "aspeed/ast10x0-pinctrl.dtsi"
