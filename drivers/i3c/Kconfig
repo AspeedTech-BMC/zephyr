@@ -1,0 +1,15 @@
+# I3C configuration options
+
+# Copyright (c) 2021 ASPEED Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig I3C
+	bool "I3C Driver"
+	help
+	  Enable I3C Driver.
+
+if I3C
+
+source "drivers/i3c/Kconfig.aspeed"
+
+endif # I3C

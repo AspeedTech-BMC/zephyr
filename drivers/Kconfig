@@ -121,4 +121,5 @@ source "drivers/disk/Kconfig"
 
 source "drivers/cache/Kconfig"
 
+source "drivers/i3c/Kconfig"
 endmenu
