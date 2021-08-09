@@ -14,6 +14,8 @@
 #include <logging/log.h>
 LOG_MODULE_REGISTER(clock_control_aspeed);
 
+#define CLK_SELECTION_REG5		0x314
+
 struct clock_aspeed_config {
 	uintptr_t base;
 };
@@ -62,14 +64,22 @@ static int aspeed_clock_control_off(const struct device *dev,
 	return 0;
 }
 
-static int aspeed_clock_control_get_rate(
-	const struct device *dev,
-	clock_control_subsys_t sub_system,
-	uint32_t *rate)
+static int aspeed_clock_control_get_rate(const struct device *dev,
+					 clock_control_subsys_t sub_system, uint32_t *rate)
 {
 	uint32_t clk_id = (uint32_t)sub_system;
+	uint32_t reg;
 
 	switch (clk_id) {
+	case ASPEED_CLK_GATE_I3C0CLK:
+	case ASPEED_CLK_GATE_I3C1CLK:
+	case ASPEED_CLK_GATE_I3C2CLK:
+	case ASPEED_CLK_GATE_I3C3CLK:
+	case ASPEED_CLK_GATE_I3C4CLK:
+	case ASPEED_CLK_GATE_I3C5CLK:
+		reg = sys_read32(DEV_CFG(dev)->base + CLK_SELECTION_REG5);
+		__ASSERT((reg & BIT(31)) == 0, "Not support I3C clock from APLL yet\n");
+		/* fall through */
 	case ASPEED_CLK_HCLK:
 		*rate = 200000000;
 		break;
