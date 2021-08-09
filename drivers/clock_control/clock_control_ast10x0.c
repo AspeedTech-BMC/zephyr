@@ -8,7 +8,7 @@
 #include <errno.h>
 #include <soc.h>
 #include <drivers/clock_control.h>
-#include <dt-bindings/clock/ast1030_clock.h>
+#include <dt-bindings/clock/ast10x0_clock.h>
 
 #define LOG_LEVEL CONFIG_CLOCK_CONTROL_LOG_LEVEL
 #include <logging/log.h>
