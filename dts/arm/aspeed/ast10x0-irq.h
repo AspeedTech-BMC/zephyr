@@ -56,7 +56,7 @@
 #define INTR_I2C15			125
 
 #define INTR_I2CFILTER			127
-#define INTR_I2CMBX				128
+#define INTR_I2CMBX			128
 
 #define INTR_KCS1			138
 #define INTR_KCS2			139
