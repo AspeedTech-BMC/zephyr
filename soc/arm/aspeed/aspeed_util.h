@@ -82,5 +82,5 @@ typedef enum {
 	MAX_IRQn                = CONFIG_NUM_IRQS,
 } IRQn_Type;
 
-#define	DEBUG_HALT()	{ volatile int halt = 1; while (halt); }
+#define	DEBUG_HALT()	{ volatile int halt = 1; while (halt) { __asm__ volatile("nop"); } }
 #endif
