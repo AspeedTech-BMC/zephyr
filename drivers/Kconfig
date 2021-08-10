@@ -11,6 +11,8 @@ source "drivers/ieee802154/Kconfig"
 
 source "drivers/lora/Kconfig"
 
+source "drivers/cache/Kconfig"
+
 source "drivers/console/Kconfig"
 
 source "drivers/debug/Kconfig"
@@ -40,6 +42,8 @@ source "drivers/spi/Kconfig"
 source "drivers/i2c/Kconfig"
 
 source "drivers/i2s/Kconfig"
+
+source "drivers/i3c/Kconfig"
 
 source "drivers/pwm/Kconfig"
 
@@ -119,7 +123,4 @@ source "drivers/misc/Kconfig"
 
 source "drivers/disk/Kconfig"
 
-source "drivers/cache/Kconfig"
-
-source "drivers/i3c/Kconfig"
 endmenu
