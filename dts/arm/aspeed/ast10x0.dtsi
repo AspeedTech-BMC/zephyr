@@ -698,19 +698,77 @@
 				label = "FLASH_0";
 			};
 		};
-
-		i3c_gr: i3c-global-regs@7e7a0000 {
-			compatible = "aspeed,i3c-global";
+		i3c: bus@7e7a0000 {
+			compatible = "simple-bus";
 			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <0x7e7a0000 0x100>;
-			resets = <&sysrst ASPEED_RESET_I3C>;
-			ni3cs = <4>;
-			status = "disabled";
+			#size-cells = <1>;
+			ranges = <0 0x7e7a0000 0x8000>;
 		};
 	};
 };
 #include "aspeed/ast10x0-pinctrl.dtsi"
 &nvic {
 	arm,num-irq-priority-bits = <3>;
+};
+
+&i3c {
+	i3c_gr: i3c-global-regs@00 {
+		compatible = "aspeed,i3c-global";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x0 0x100>;
+		resets = <&sysrst ASPEED_RESET_I3C>;
+		ni3cs = <4>;
+		status = "disabled";
+	};
+
+	i3c0: i3c0@2000 {
+		compatible = "aspeed,i3c";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x2000 0x1000>;
+		interrupts = <102 0>;
+		resets = <&sysrst ASPEED_RESET_I3C0>;
+		clocks = <&sysclk ASPEED_CLK_GATE_I3C0CLK>;
+		pinctrl-0 = <&pinctrl_i3c0_default>;
+		status = "disabled";
+		label = "I3C_0";
+	};
+
+	i3c1: i3c1@3000 {
+		compatible = "aspeed,i3c";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x3000 0x1000>;
+		interrupts = <103 0>;
+		resets = <&sysrst ASPEED_RESET_I3C1>;
+		clocks = <&sysclk ASPEED_CLK_GATE_I3C1CLK>;
+		pinctrl-0 = <&pinctrl_i3c1_default>;
+		status = "disabled";
+		label = "I3C_1";
+	};
+
+	i3c2: i3c2@4000 {
+		compatible = "aspeed,i3c";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x4000 0x1000>;
+		interrupts = <104 0>;
+		resets = <&sysrst ASPEED_RESET_I3C2>;
+		clocks = <&sysclk ASPEED_CLK_GATE_I3C2CLK>;
+		status = "disabled";
+		label = "I3C_2";
+	};
+
+	i3c3: i3c3@5000 {
+		compatible = "aspeed,i3c";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x5000 0x1000>;
+		interrupts = <105 0>;
+		resets = <&sysrst ASPEED_RESET_I3C3>;
+		clocks = <&sysclk ASPEED_CLK_GATE_I3C3CLK>;
+		status = "disabled";
+		label = "I3C_3";
+	};
 };

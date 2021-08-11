@@ -83,4 +83,12 @@
 	pinctrl_uart11_default: uart11_default {};
 	pinctrl_uart12_default: uart12_default {};
 	pinctrl_uart13_default: uart13_default {};
+	pinctrl_i3c0_default: i3c0_default {};
+	pinctrl_i3c1_default: i3c1_default {};
+	pinctrl_i3c2_default: i3c2_default {};
+	pinctrl_i3c3_default: i3c3_default {};
+	pinctrl_hvi3c0_default: hvi3c0_default {};
+	pinctrl_hvi3c1_default: hvi3c1_default {};
+	pinctrl_hvi3c2_default: hvi3c2_default {};
+	pinctrl_hvi3c3_default: hvi3c3_default {};
 };
