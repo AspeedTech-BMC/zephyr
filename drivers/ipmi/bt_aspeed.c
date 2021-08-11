@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <string.h>
 #include <logging/log.h>
+#include <drivers/ipmi/bt_aspeed.h>
 LOG_MODULE_REGISTER(bt_aspeed, CONFIG_LOG_DEFAULT_LEVEL);
 
 /* LPC registers */

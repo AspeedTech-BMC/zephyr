@@ -8,6 +8,7 @@
 #include <sys/printk.h>
 #include <string.h>
 #include <device.h>
+#include <drivers/ipmi/kcs_aspeed.h>
 
 struct kcs_request {
 	uint8_t netfn;
@@ -21,12 +22,6 @@ struct kcs_response {
 	uint8_t cmplt_code;
 	uint8_t data[0];
 };
-
-int kcs_aspeed_read(const struct device *dev,
-		    uint8_t *buf, uint32_t buf_sz);
-
-int kcs_aspeed_write(const struct device *dev,
-		     uint8_t *buf, uint32_t buf_sz);
 
 void main(void)
 {

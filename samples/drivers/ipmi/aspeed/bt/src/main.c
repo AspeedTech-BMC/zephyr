@@ -3,11 +3,11 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-
 #include <zephyr.h>
 #include <sys/printk.h>
 #include <string.h>
 #include <device.h>
+#include <drivers/ipmi/bt_aspeed.h>
 
 struct bt_request {
 	uint8_t len;
@@ -25,12 +25,6 @@ struct bt_response {
 	uint8_t cmplt_code;
 	uint8_t data[0];
 };
-
-int bt_aspeed_read(const struct device *dev,
-		   uint8_t *buf, uint32_t buf_sz);
-
-int bt_aspeed_write(const struct device *dev,
-		    uint8_t *buf, uint32_t buf_sz);
 
 void main(void)
 {

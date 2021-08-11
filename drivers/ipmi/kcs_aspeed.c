@@ -12,6 +12,7 @@
 #include <string.h>
 #include <logging/log.h>
 #include <drivers/clock_control.h>
+#include <drivers/ipmi/kcs_aspeed.h>
 LOG_MODULE_REGISTER(kcs_aspeed, CONFIG_LOG_DEFAULT_LEVEL);
 
 /* LPC registers */
