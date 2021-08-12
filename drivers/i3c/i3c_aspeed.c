@@ -17,121 +17,215 @@
 #define LOG_LEVEL CONFIG_I3C_LOG_LEVEL
 LOG_MODULE_REGISTER(i3c);
 
-
 union i3c_device_ctrl_s {
 	volatile uint32_t value;
 	struct {
-		volatile uint32_t boradcast_addr_inc : 1; /* bit[0] */
-		volatile uint32_t reserved0 : 6; /* bit[6:1] */
-		volatile uint32_t i2c_slave_present : 1; /* bit[7] */
-		volatile uint32_t hj_ack_ctrl : 1; /* bit[8] */
-		volatile uint32_t slave_ibi_payload_en : 1; /* bit[9] */
-		volatile uint32_t slave_pec_en : 1; /* bit[10] */
-		volatile uint32_t reserved1 : 5; /* bit[15:11] */
-		volatile uint32_t slave_mdb : 8; /* bit[23:16] */
-		volatile uint32_t reserved2 : 4; /* bit[27:24] */
-		volatile uint32_t dma_handshake_en : 1; /* bit[28] */
-		volatile uint32_t abort : 1; /* bit[29] */
-		volatile uint32_t resume : 1; /* bit[30] */
-		volatile uint32_t enable : 1; /* bit[31] */
+		volatile uint32_t boradcast_addr_inc : 1;	/* bit[0] */
+		volatile uint32_t reserved0 : 6;		/* bit[6:1] */
+		volatile uint32_t i2c_slave_present : 1;	/* bit[7] */
+		volatile uint32_t hj_ack_ctrl : 1;		/* bit[8] */
+		volatile uint32_t slave_ibi_payload_en : 1;	/* bit[9] */
+		volatile uint32_t slave_pec_en : 1;		/* bit[10] */
+		volatile uint32_t reserved1 : 5;		/* bit[15:11] */
+		volatile uint32_t slave_mdb : 8;		/* bit[23:16] */
+		volatile uint32_t reserved2 : 3;		/* bit[26:24] */
+		volatile uint32_t slave_auto_mode_adapt : 1;	/* bit[27] */
+		volatile uint32_t dma_handshake_en : 1;		/* bit[28] */
+		volatile uint32_t abort : 1;			/* bit[29] */
+		volatile uint32_t resume : 1;			/* bit[30] */
+		volatile uint32_t enable : 1;			/* bit[31] */
 	} fields;
-};
+}; /* offset 0x00 */
 
 union i3c_device_addr_s {
 	volatile uint32_t value;
 	struct {
-		volatile uint32_t static_addr : 7; /* bit[6:0] */
-		volatile uint32_t reserved0 : 8; /* bit[14:7] */
-		volatile uint32_t static_addr_valid : 1; /* bit[15] */
-		volatile uint32_t dynamic_addr : 7; /* bit[22:16] */
-		volatile uint32_t reserved1 : 8; /* bit[30:23] */
-		volatile uint32_t dynamic_addr_valid : 1; /* bit[31] */
+		volatile uint32_t static_addr : 7;		/* bit[6:0] */
+		volatile uint32_t reserved0 : 8;		/* bit[14:7] */
+		volatile uint32_t static_addr_valid : 1;	/* bit[15] */
+		volatile uint32_t dynamic_addr : 7;		/* bit[22:16] */
+		volatile uint32_t reserved1 : 8;		/* bit[30:23] */
+		volatile uint32_t dynamic_addr_valid : 1;	/* bit[31] */
 	} fields;
-};
+}; /* offset 0x04 */
 
 union i3c_device_cmd_queue_port_s {
 	volatile uint32_t value;
 	struct {
-		volatile uint32_t static_addr : 7; /* bit[6:0] */
-		volatile uint32_t reserved0 : 8; /* bit[14:7] */
-		volatile uint32_t static_addr_valid : 1; /* bit[15] */
-		volatile uint32_t dynamic_addr : 7; /* bit[22:16] */
-		volatile uint32_t reserved1 : 8; /* bit[30:23] */
-		volatile uint32_t dynamic_addr_valid : 1; /* bit[31] */
+		volatile uint32_t static_addr : 7;		/* bit[6:0] */
+		volatile uint32_t reserved0 : 8;		/* bit[14:7] */
+		volatile uint32_t static_addr_valid : 1;	/* bit[15] */
+		volatile uint32_t dynamic_addr : 7;		/* bit[22:16] */
+		volatile uint32_t reserved1 : 8;		/* bit[30:23] */
+		volatile uint32_t dynamic_addr_valid : 1;	/* bit[31] */
 	} fields;
-};
+}; /* offset 0x0c */
 
 union i3c_device_resp_queue_port_s {
 	volatile uint32_t value;
 	struct {
-		volatile uint32_t data_length : 16;	/* bit[15:0] */
-		volatile uint32_t ccct : 8;		/* bit[23:16] */
-		volatile uint32_t tid : 4;		/* bit[27:24] */
-		volatile uint32_t err_status : 4;	/* bit[31:28] */
+		volatile uint32_t data_length : 16;		/* bit[15:0] */
+		volatile uint32_t ccct : 8;			/* bit[23:16] */
+		volatile uint32_t tid : 4;			/* bit[27:24] */
+		volatile uint32_t err_status : 4;		/* bit[31:28] */
 	} fields;
-};
+}; /* offset 0x10 */
 
 union i3c_queue_thld_ctrl_s {
 	volatile uint32_t value;
 	struct {
-		volatile uint32_t cmd_q_empty_thld : 8;	/* bit[7:0] */
-		volatile uint32_t resp_q_thld : 8;	/* bit[15:8] */
-		volatile uint32_t ibi_data_thld : 8;	/* bit[23:16] */
-		volatile uint32_t ibi_status_thld : 8;	/* bit[31:24] */
+		volatile uint32_t cmd_q_empty_thld : 8;		/* bit[7:0] */
+		volatile uint32_t resp_q_thld : 8;		/* bit[15:8] */
+#define MAX_IBI_CHUNK_IN_BYTE	124
+		volatile uint32_t ibi_data_thld : 8;		/* bit[23:16] */
+		volatile uint32_t ibi_status_thld : 8;		/* bit[31:24] */
 	} fields;
-};
+}; /* offset 0x1c */
 
+union i3c_data_buff_ctrl_s {
+	volatile uint32_t value;
+	struct {
+		volatile uint32_t tx_thld : 3;			/* bit[2:0] */
+		volatile uint32_t reserved0 : 5;		/* bit[7:3] */
+		volatile uint32_t rx_thld : 3;			/* bit[10:8] */
+		volatile uint32_t reserved1 : 5;		/* bit[15:11] */
+		volatile uint32_t tx_start_thld : 3;		/* bit[18:16] */
+		volatile uint32_t reserved2 : 5;		/* bit[23:19] */
+		volatile uint32_t rx_start_thld : 3;		/* bit[26:24] */
+		volatile uint32_t reserved3 : 5;		/* bit[31:27] */
+	} fields;
+}; /* offset 0x20 */
 union i3c_reset_ctrl_s {
 	volatile uint32_t value;
 	struct {
-		volatile uint32_t core_reset : 1;	/* bit[0] */
-		volatile uint32_t cmd_queue_reset : 1;	/* bit[1] */
-		volatile uint32_t resp_queue_reset : 1;	/* bit[2] */
-		volatile uint32_t tx_queue_reset : 1;	/* bit[3] */
-		volatile uint32_t rx_queue_reset : 1;	/* bit[4] */
-		volatile uint32_t ibi_queue_reset : 1;	/* bit[5] */
-		volatile uint32_t reserved : 23;	/* bit[28:6] */
-		volatile uint32_t bus_reset_type : 2;	/* bit[30:29] */
-		volatile uint32_t bus_reset : 1;	/* bit[31] */
+		volatile uint32_t core_reset : 1;		/* bit[0] */
+		volatile uint32_t cmd_queue_reset : 1;		/* bit[1] */
+		volatile uint32_t resp_queue_reset : 1;		/* bit[2] */
+		volatile uint32_t tx_queue_reset : 1;		/* bit[3] */
+		volatile uint32_t rx_queue_reset : 1;		/* bit[4] */
+		volatile uint32_t ibi_queue_reset : 1;		/* bit[5] */
+		volatile uint32_t reserved : 23;		/* bit[28:6] */
+		volatile uint32_t bus_reset_type : 2;		/* bit[30:29] */
+		volatile uint32_t bus_reset : 1;		/* bit[31] */
 	} fields;
-};
+}; /* offset 0x34 */
 
 union i3c_slave_event_ctrl_s {
 	volatile uint32_t value;
 	struct {
-		volatile uint32_t sir_allowed : 1;	/* bit[0] */
-		volatile uint32_t mr_allowed : 1;	/* bit[1] */
-		volatile uint32_t reserved0 : 1;	/* bit[2] */
-		volatile uint32_t hj_allowed : 1;	/* bit[3] */
-		volatile uint32_t act_state : 2;	/* bit[5:4] */
-		volatile uint32_t mrl_update : 1;	/* bit[6] */
-		volatile uint32_t mwl_update : 1;	/* bit[7] */
-		volatile uint32_t reserved1 : 24;	/* bit[31:8] */
+		volatile uint32_t sir_allowed : 1;		/* bit[0] */
+		volatile uint32_t mr_allowed : 1;		/* bit[1] */
+		volatile uint32_t reserved0 : 1;		/* bit[2] */
+		volatile uint32_t hj_allowed : 1;		/* bit[3] */
+		volatile uint32_t act_state : 2;		/* bit[5:4] */
+		volatile uint32_t mrl_update : 1;		/* bit[6] */
+		volatile uint32_t mwl_update : 1;		/* bit[7] */
+		volatile uint32_t reserved1 : 24;		/* bit[31:8] */
 	} fields;
-};
+}; /* offset 0x38 */
 
 union i3c_intr_s {
 	volatile uint32_t value;
 	struct {
-		volatile uint32_t tx_thld : 1;		/* bit[0] */
-		volatile uint32_t rx_thld : 1;		/* bit[1] */
-		volatile uint32_t ibi_thld : 1;		/* bit[2] */
-		volatile uint32_t cmd_q_ready : 1;	/* bit[3] */
-		volatile uint32_t resp_q_ready : 1;	/* bit[4] */
-		volatile uint32_t xfr_abort : 1;	/* bit[5] */
-		volatile uint32_t ccc_update : 1;	/* bit[6] */
-		volatile uint32_t reserved0 : 1;	/* bit[7] */
-		volatile uint32_t dyn_addr_assign : 1;	/* bit[8] */
-		volatile uint32_t xfr_error : 1;	/* bit[9] */
-		volatile uint32_t defslv : 1;		/* bit[10] */
-		volatile uint32_t read_q_recv : 1;	/* bit[11] */
-		volatile uint32_t ibi_update : 1;	/* bit[12] */
-		volatile uint32_t bus_owner_update : 1;	/* bit[13] */
-		volatile uint32_t reserved1 : 1;	/* bit[14] */
-		volatile uint32_t bus_reset_done : 1;	/* bit[15] */
-		volatile uint32_t reserved2 : 16;	/* bit[31:16] */
+		volatile uint32_t tx_thld : 1;			/* bit[0] */
+		volatile uint32_t rx_thld : 1;			/* bit[1] */
+		volatile uint32_t ibi_thld : 1;			/* bit[2] */
+		volatile uint32_t cmd_q_ready : 1;		/* bit[3] */
+		volatile uint32_t resp_q_ready : 1;		/* bit[4] */
+		volatile uint32_t xfr_abort : 1;		/* bit[5] */
+		volatile uint32_t ccc_update : 1;		/* bit[6] */
+		volatile uint32_t reserved0 : 1;		/* bit[7] */
+		volatile uint32_t dyn_addr_assign : 1;		/* bit[8] */
+		volatile uint32_t xfr_error : 1;		/* bit[9] */
+		volatile uint32_t defslv : 1;			/* bit[10] */
+		volatile uint32_t read_q_recv : 1;		/* bit[11] */
+		volatile uint32_t ibi_update : 1;		/* bit[12] */
+		volatile uint32_t bus_owner_update : 1;		/* bit[13] */
+		volatile uint32_t reserved1 : 1;		/* bit[14] */
+		volatile uint32_t bus_reset_done : 1;		/* bit[15] */
+		volatile uint32_t reserved2 : 16;		/* bit[31:16] */
 	} fields;
-};
+}; /* offset 0x3c ~ 0x48 */
+
+union i3c_dev_addr_tbl_ptr_s {
+	volatile uint32_t value;
+	struct {
+		volatile uint32_t start_addr : 16;		/* bit[15:0] */
+		volatile uint32_t depth : 16;			/* bit[31:16] */
+	} fields;
+}; /* offset 0x5c */
+
+union i3c_slave_pid_hi_s {
+	volatile uint32_t value;
+	struct {
+		volatile uint32_t dcr_select : 1;		/* bit[0] */
+#define DCR_SELECT_VENDOR_FIXED	0
+#define DCR_SELECT_RANDOM	1
+		volatile uint32_t mipi_mfg_id : 15;		/* bit[15:1] */
+#define MIPI_MFG_ASPEED		0x03f6
+		volatile uint32_t reserved0 : 16;		/* bit[31:16] */
+	} fields;
+}; /* offset 0x70 */
+
+union i3c_slave_pid_lo_s {
+	volatile uint32_t value;
+	struct {
+		volatile uint32_t dcr : 12;			/* bit[11:0] */
+		volatile uint32_t inst_id : 4;			/* bit[15:12] */
+		volatile uint32_t part_id : 16;			/* bit[31:16] */
+	} fields;
+}; /* offset 0x74 */
+
+union i3c_slave_char_s {
+	volatile uint32_t value;
+	struct {
+		volatile uint32_t bcr : 8;			/* bit[7:0] */
+		volatile uint32_t dcr : 8;			/* bit[15:8] */
+		volatile uint32_t hdr_cap : 8;			/* bit[23:16] */
+		volatile uint32_t reserved0 : 8;		/* bit[31:24] */
+	} fields;
+}; /* offset 0x78 */
+
+union i3c_device_ctrl_extend_s {
+	volatile uint32_t value;
+	struct {
+#define DEVICE_CTRL_EXT_ROLE_MASTER	0
+#define DEVICE_CTRL_EXT_ROLE_SLAVE	1
+		volatile uint32_t role : 2;			/* bit[1:0] */
+		volatile uint32_t reserved0 : 1;		/* bit[2] */
+		volatile uint32_t reqmst_ack : 1;		/* bit[3] */
+		volatile uint32_t reserved1 : 28;		/* bit[31:4] */
+	} fields;
+}; /* offset 0xb0 */
+
+union i3c_scl_timing_s {
+	volatile uint32_t value;
+	struct {
+		volatile uint32_t lcnt : 8;			/* bit[7:0] */
+		volatile uint32_t reserved0 : 8;		/* bit[15:8] */
+		volatile uint32_t hcnt : 8;			/* bit[23:16] */
+		volatile uint32_t reserved1 : 8;		/* bit[31:24] */
+	} fields;
+}; /* offset 0xb4 and 0xb8 */
+
+union i2c_scl_timing_s {
+	volatile uint32_t value;
+	struct {
+		volatile uint32_t lcnt : 16;			/* bit[15:0] */
+		volatile uint32_t hcnt : 16;			/* bit[31:16] */
+	} fields;
+}; /* offset 0xbc and 0xc0 */
+
+union i3c_ext_termn_timing_s {
+	volatile uint32_t value;
+	struct {
+#define DEFAULT_EXT_TERMN_LCNT	4
+		volatile uint32_t lcnt : 4;			/* bit[3:0] */
+		volatile uint32_t reserved0 : 12;		/* bit[15:4] */
+		volatile uint32_t i3c_ts_skew_cnt : 4;		/* bit[19:16] */
+		volatile uint32_t reserved1 : 12;		/* bit[31:20] */
+	} fields;
+}; /* offset 0xcc */
 
 struct i3c_register_s {
 	union i3c_device_ctrl_s device_ctrl;			/* 0x0 */
@@ -142,13 +236,30 @@ struct i3c_register_s {
 	uint32_t rx_tx_data_port;				/* 0x14 */
 	uint32_t ibi_queue_data;				/* 0x18 */
 	union i3c_queue_thld_ctrl_s queue_thld_ctrl;		/* 0x1c */
-	uint32_t reserved0[5];					/* 0x20 ~ 0x30 */
+	union i3c_data_buff_ctrl_s data_buff_ctrl;		/* 0x20 */
+	uint32_t reserved0[3];					/* 0x20 ~ 0x28 */
+	uint32_t mr_reject;					/* 0x2c */
+	uint32_t sir_reject;					/* 0x30 */
 	union i3c_reset_ctrl_s reset_ctrl;			/* 0x34 */
 	union i3c_slave_event_ctrl_s slave_event_ctrl;		/* 0x38 */
 	union i3c_intr_s intr_status;				/* 0x3c */
 	union i3c_intr_s intr_status_en;			/* 0x40 */
 	union i3c_intr_s intr_signal_en;			/* 0x44 */
 	union i3c_intr_s intr_force_en;				/* 0x48 */
+	uint32_t reserved1[4];					/* 0x4c ~ 0x58 */
+	union i3c_dev_addr_tbl_ptr_s dev_addr_tbl_ptr;		/* 0x5c */
+	uint32_t reserved2[4];					/* 0x60 ~ 0x6c */
+	union i3c_slave_pid_hi_s slave_pid_hi;			/* 0x70 */
+	union i3c_slave_pid_lo_s slave_pid_lo;			/* 0x74 */
+	union i3c_slave_char_s slave_char;			/* 0x78 */
+	uint32_t reserved3[13];					/* 0x7c ~ 0xac */
+	union i3c_device_ctrl_extend_s device_ctrl_ext;		/* 0xb0 */
+	union i3c_scl_timing_s op_timing;			/* 0xb4 */
+	union i3c_scl_timing_s pp_timing;			/* 0xb8 */
+	union i2c_scl_timing_s fm_timing;			/* 0xbc */
+	union i2c_scl_timing_s fmp_timing;			/* 0xc0 */
+	uint32_t reserved4[2];					/* 0xc4 ~ 0xc8 */
+	union i3c_ext_termn_timing_s ext_termn_timing;		/* 0xcc */
 };
 
 struct i3c_aspeed_config {
@@ -183,18 +294,50 @@ static void i3c_aspeed_isr(const struct device *dev)
 	}
 }
 
-static void i3c_aspeed_master_config_clock(const struct device *dev)
+static void i3c_aspeed_init_clock(const struct device *dev)
 {
 	struct i3c_aspeed_config *config = DEV_CFG(dev);
-	int i3cclk;
+	struct i3c_register_s *i3c_register = config->base;
+	union i3c_scl_timing_s reg;
+	int i3cclk, tck_ns, period, hcnt, lcnt;
 
 	clock_control_get_rate(config->clock_dev, config->clock_id, &i3cclk);
 	LOG_DBG("i3cclk %d hz\n", i3cclk);
+
+	tck_ns = 1000000000 / i3cclk;
+	__ASSERT(tck_ns > 0, "i3c clock too fast\n");
+
+	LOG_INF("i2c-scl = %d, i3c-scl = %d\n", config->i2c_scl_hz, config->i3c_scl_hz);
+
+	/* Configure OP mode timing parameters */
+	period = (1000000000 / config->i2c_scl_hz) >> 1;
+	hcnt = lcnt = DIV_ROUND_UP(period, tck_ns);
+
+	reg.value = 0;
+	reg.fields.hcnt = hcnt;
+	reg.fields.lcnt = lcnt;
+	i3c_register->op_timing.value = reg.value;
+	i3c_register->fm_timing.value = reg.value;
+	i3c_register->fmp_timing.value = reg.value;
+
+	/* Configure PP mode timing parameters */
+	period = (1000000000 / config->i3c_scl_hz) >> 1;
+	hcnt = lcnt = DIV_ROUND_UP(period, tck_ns);
+
+	reg.fields.hcnt = hcnt;
+	reg.fields.lcnt = lcnt;
+	i3c_register->pp_timing.value = reg.value;
+
+	/* Configure extra termination timing */
+	i3c_register->ext_termn_timing.fields.lcnt = DEFAULT_EXT_TERMN_LCNT;
+}
 }
 
 static int i3c_aspeed_init(const struct device *dev)
 {
 	struct i3c_aspeed_config *config = DEV_CFG(dev);
+	struct i3c_aspeed_data *data = DEV_DATA(dev);
+	struct i3c_register_s *i3c_register = config->base;
 	const struct device *reset_dev = device_get_binding(ASPEED_RST_CTRL_NAME);
 	union i3c_reset_ctrl_s reset_ctrl;
 
@@ -208,13 +351,13 @@ static int i3c_aspeed_init(const struct device *dev)
 	reset_ctrl.fields.ibi_queue_reset = 1;
 	reset_ctrl.fields.cmd_queue_reset = 1;
 	reset_ctrl.fields.resp_queue_reset = 1;
-	config->base->reset_ctrl.value = reset_ctrl.value;
-	while (config->base->reset_ctrl.value)
+	i3c_register->reset_ctrl.value = reset_ctrl.value;
+	while (i3c_register->reset_ctrl.value)
 		;
 
-	config->base->intr_status.value = GENMASK(31, 0);
+	i3c_register->intr_status.value = GENMASK(31, 0);
 
-	i3c_aspeed_master_config_clock(dev);
+	i3c_aspeed_init_clock(dev);
 
 	LOG_INF("i3c base %08x\n", (uint32_t)config->base);
 
