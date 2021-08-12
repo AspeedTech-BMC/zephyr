@@ -158,8 +158,9 @@ struct i3c_aspeed_config {
 	const clock_control_subsys_t clock_id;
 	uint32_t i3c_scl_hz;
 	uint32_t i2c_scl_hz;
-
 	int secondary;
+	int assigned_addr;
+	int inst_id;
 };
 
 struct i3c_aspeed_data {
@@ -227,6 +228,11 @@ static int i3c_aspeed_init(const struct device *dev)
 		.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(n)),                                \
 		.clock_id = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(n, clk_id),                \
 		.reset_id = (reset_control_subsys_t)DT_INST_RESETS_CELL(n, rst_id),                \
+		.i2c_scl_hz = DT_INST_PROP_OR(n, i2c_scl_hz, 0),                                   \
+		.i3c_scl_hz = DT_INST_PROP_OR(n, i3c_scl_hz, 0),                                   \
+		.secondary = DT_INST_PROP_OR(n, secondary, 0),                                     \
+		.assigned_addr = DT_INST_PROP_OR(n, assigned_addr, 0),                             \
+		.inst_id = DT_INST_PROP_OR(n, instance_id, 0),                                     \
 	};                                                                                         \
 												   \
 	static struct i3c_aspeed_data i3c_aspeed_data##n;                                          \

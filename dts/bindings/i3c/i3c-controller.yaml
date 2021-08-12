@@ -8,3 +8,11 @@ include: base.yaml
 properties:
     label:
       required: true
+    i2c-scl-hz:
+      required: false
+      type: int
+      description: I2C mode and Open-drain mode SCL frequency in HZ
+    i3c-scl-hz:
+      required: false
+      type: int
+      description: I3C Push-Pull mode SCL frequency in HZ
