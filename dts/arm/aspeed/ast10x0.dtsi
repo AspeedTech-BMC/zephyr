@@ -712,7 +712,7 @@
 };
 
 &i3c {
-	i3c_gr: i3c-global-regs@00 {
+	i3c_gr: i3c-global-regs@0 {
 		compatible = "aspeed,i3c-global";
 		#address-cells = <1>;
 		#size-cells = <0>;
