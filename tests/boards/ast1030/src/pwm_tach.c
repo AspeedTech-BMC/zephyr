@@ -8,6 +8,7 @@
 #include <random/rand32.h>
 #include <drivers/sensor.h>
 #include <drivers/pwm.h>
+#include "ast_test.h"
 #define LOG_MODULE_NAME pwm_tach_test
 
 #include <logging/log.h>
@@ -173,4 +174,11 @@ void test_pwm_tach_fan(void)
 				       AFB0812SH_FAN_ERROR);
 		}
 	}
+}
+
+int test_pwm(int count, enum aspeed_test_type type)
+{
+	printk("%s, count: %d, type: %d\n", __func__, count, type);
+
+	return 0;
 }

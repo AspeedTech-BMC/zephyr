@@ -11,6 +11,8 @@
 #include <usb/usb_common.h>
 #include <drivers/uart.h>
 
+#include "ast_test.h"
+
 /* Max packet size for endpoints */
 #define BULK_EP_MPS		64
 #define ENDP_BULK_IN		0x81
@@ -79,14 +81,14 @@ static void interrupt_handler(const struct device *dev, void *user_data)
 	}
 }
 
-void test_usb_comm(void)
+static void test_usb_comm(void)
 {
 	const struct device *dev;
 	int count = 0;
 	int ret;
 
 	dev = device_get_binding("CDC_ACM_0");
-	zassert_not_null(dev, "CDC ACM device is not found");
+	ast_zassert_not_null(dev, "CDC ACM device is not found");
 
 	uart_irq_callback_set(dev, interrupt_handler);
 
@@ -104,103 +106,111 @@ void test_usb_comm(void)
 		}
 	}
 
-	zassert_equal(data_handle(), TC_PASS, "compare received data failed");
+	ast_zassert_equal(data_handle(), TC_PASS, "compare received data failed");
 }
 
 /* Test USB Device Cotnroller API */
-void test_usb_dc_api(void)
+static void test_usb_dc_api(void)
 {
 	/* Control endpoins are configured */
-	zassert_equal(usb_dc_ep_mps(0x0), 64,
+	ast_zassert_equal(usb_dc_ep_mps(0x0), 64,
 		      "usb_dc_ep_mps(0x00) failed");
-	zassert_equal(usb_dc_ep_mps(0x80), 64,
+	ast_zassert_equal(usb_dc_ep_mps(0x80), 64,
 		      "usb_dc_ep_mps(0x80) failed");
 
 	/* Bulk EP is not configured yet */
-	zassert_equal(usb_dc_ep_mps(ENDP_BULK_IN), 0,
+	ast_zassert_equal(usb_dc_ep_mps(ENDP_BULK_IN), 0,
 		      "usb_dc_ep_mps(ENDP_BULK_IN) not configured");
 }
 
 /* Test USB Device Cotnroller API for invalid parameters */
-void test_usb_dc_api_invalid(void)
+static void test_usb_dc_api_invalid(void)
 {
 	uint32_t size;
 	uint8_t byte;
 
 	/* Set stall to invalid EP */
-	zassert_not_equal(usb_dc_ep_set_stall(INVALID_EP), TC_PASS,
+	ast_zassert_not_equal(usb_dc_ep_set_stall(INVALID_EP), TC_PASS,
 			  "usb_dc_ep_set_stall(INVALID_EP)");
 
 	/* Clear stall to invalid EP */
-	zassert_not_equal(usb_dc_ep_clear_stall(INVALID_EP), TC_PASS,
+	ast_zassert_not_equal(usb_dc_ep_clear_stall(INVALID_EP), TC_PASS,
 			  "usb_dc_ep_clear_stall(INVALID_EP)");
 
 	/* Check if the selected endpoint is stalled */
-	zassert_not_equal(usb_dc_ep_is_stalled(INVALID_EP, &byte), TC_PASS,
+	ast_zassert_not_equal(usb_dc_ep_is_stalled(INVALID_EP, &byte), TC_PASS,
 			  "usb_dc_ep_is_stalled(INVALID_EP, stalled)");
-	zassert_not_equal(usb_dc_ep_is_stalled(VALID_EP, NULL), TC_PASS,
+	ast_zassert_not_equal(usb_dc_ep_is_stalled(VALID_EP, NULL), TC_PASS,
 			  "usb_dc_ep_is_stalled(VALID_EP, NULL)");
 
 	/* Halt invalid EP */
-	zassert_not_equal(usb_dc_ep_halt(INVALID_EP), TC_PASS,
+	ast_zassert_not_equal(usb_dc_ep_halt(INVALID_EP), TC_PASS,
 			  "usb_dc_ep_halt(INVALID_EP)");
 
 	/* Enable invalid EP */
-	zassert_not_equal(usb_dc_ep_enable(INVALID_EP), TC_PASS,
+	ast_zassert_not_equal(usb_dc_ep_enable(INVALID_EP), TC_PASS,
 			  "usb_dc_ep_enable(INVALID_EP)");
 
 	/* Disable invalid EP */
-	zassert_not_equal(usb_dc_ep_disable(INVALID_EP), TC_PASS,
+	ast_zassert_not_equal(usb_dc_ep_disable(INVALID_EP), TC_PASS,
 			  "usb_dc_ep_disable(INVALID_EP)");
 
 	/* Flush invalid EP */
-	zassert_not_equal(usb_dc_ep_flush(INVALID_EP), TC_PASS,
+	ast_zassert_not_equal(usb_dc_ep_flush(INVALID_EP), TC_PASS,
 			  "usb_dc_ep_flush(INVALID_EP)");
 
 	/* Set callback to invalid EP */
-	zassert_not_equal(usb_dc_ep_set_callback(INVALID_EP, NULL), TC_PASS,
+	ast_zassert_not_equal(usb_dc_ep_set_callback(INVALID_EP, NULL), TC_PASS,
 			  "usb_dc_ep_set_callback(INVALID_EP, NULL)");
 
 	/* Write to invalid EP */
-	zassert_not_equal(usb_dc_ep_write(INVALID_EP, &byte, sizeof(byte),
+	ast_zassert_not_equal(usb_dc_ep_write(INVALID_EP, &byte, sizeof(byte),
 					  &size),
 			  TC_PASS, "usb_dc_ep_write(INVALID_EP)");
 
 	/* Read invalid EP */
-	zassert_not_equal(usb_dc_ep_read(INVALID_EP, &byte, sizeof(byte),
+	ast_zassert_not_equal(usb_dc_ep_read(INVALID_EP, &byte, sizeof(byte),
 					 &size),
 			  TC_PASS, "usb_dc_ep_read(INVALID_EP)");
-	zassert_not_equal(usb_dc_ep_read_wait(INVALID_EP, &byte, sizeof(byte),
+	ast_zassert_not_equal(usb_dc_ep_read_wait(INVALID_EP, &byte, sizeof(byte),
 					      &size),
 			  TC_PASS, "usb_dc_ep_read_wait(INVALID_EP)");
-	zassert_not_equal(usb_dc_ep_read_continue(INVALID_EP), TC_PASS,
+	ast_zassert_not_equal(usb_dc_ep_read_continue(INVALID_EP), TC_PASS,
 			  "usb_dc_ep_read_continue(INVALID_EP)");
 
 	/* Get endpoint max packet size for invalid EP */
-	zassert_not_equal(usb_dc_ep_mps(INVALID_EP), TC_PASS,
+	ast_zassert_not_equal(usb_dc_ep_mps(INVALID_EP), TC_PASS,
 			  "usb_dc_ep_mps(INVALID_EP)");
 }
 
-void test_usb_dc_api_read_write(void)
+static void test_usb_dc_api_read_write(void)
 {
 	uint32_t size;
 	uint8_t byte;
 
 	/* Read invalid EP */
-	zassert_not_equal(usb_read(INVALID_EP, &byte, sizeof(byte), &size),
+	ast_zassert_not_equal(usb_read(INVALID_EP, &byte, sizeof(byte), &size),
 			  TC_PASS, "usb_read(INVALID_EP)");
 
 	/* Write to invalid EP */
-	zassert_not_equal(usb_write(INVALID_EP, &byte, sizeof(byte), &size),
+	ast_zassert_not_equal(usb_write(INVALID_EP, &byte, sizeof(byte), &size),
 			  TC_PASS, "usb_write(INVALID_EP)");
 }
 
-void test_usb_enable(void)
+static void test_usb_enable(void)
 {
-	zassert_equal(usb_enable(NULL), 0, "usb_enable() failed");
+	ast_zassert_equal(usb_enable(NULL), 0, "usb_enable() failed");
 }
 
-void test_usb_hw(void)
+int test_usb(int count, enum aspeed_test_type type)
 {
-	printk("Do nothing\n");
+	printk("%s, count: %d, type: %d\n", __func__, count, type);
+
+	test_usb_enable();
+	test_usb_dc_api();
+	test_usb_dc_api_read_write();
+	test_usb_dc_api_invalid();
+	test_usb_comm();
+
+	return ast_ztest_result();
 }

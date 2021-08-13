@@ -5,8 +5,11 @@
  */
 
 #include <tc_util.h>
+#include "ast_test.h"
 
-void test_espi_enable(void)
+int test_espi(int count, enum aspeed_test_type type)
 {
-	printk("Do nothing\n");
+	printk("%s, count: %d, type: %d\n", __func__, count, type);
+
+	return 0;
 }

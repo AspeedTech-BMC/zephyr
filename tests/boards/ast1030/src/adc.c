@@ -6,6 +6,7 @@
 #include <ztest.h>
 #include <tc_util.h>
 #include <drivers/adc.h>
+#include "ast_test.h"
 
 #define LOG_MODULE_NAME adc_test
 
@@ -128,4 +129,11 @@ void test_adc_battery_mode(void)
 				       adc_get_ref(adc_dev) / TOLERANCE_ERROR_RATE);
 		}
 	}
+}
+
+int test_adc(int count, enum aspeed_test_type type)
+{
+	printk("%s, count: %d, type: %d\n", __func__, count, type);
+
+	return 0;
 }

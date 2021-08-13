@@ -7,87 +7,71 @@
 #include <ztest.h>
 #include <debug/thread_analyzer.h>
 
-#ifdef CONFIG_BOARD_AST1030_EVB
-/* USB */
-extern void test_usb_enable(void);
-extern void test_usb_dc_api(void);
-extern void test_usb_dc_api_read_write(void);
-extern void test_usb_dc_api_invalid(void);
-extern void test_usb_comm(void);
+#include "ast_test.h"
 
-/* ADC */
-extern void test_adc_enable(void);
-extern void test_adc_normal_mode(void);
-extern void test_adc_battery_mode(void);
+extern void test_usb(void);
+extern void test_adc(void);
+extern void test_adc(void);
+extern void test_pwm(void);
+extern void test_jtag(void);
+extern void test_i2c(void);
+extern void test_i3c(void);
+extern void test_gpio(void);
+extern void test_uart(void);
+extern void test_spi(void);
+extern void test_espi(void);
+extern void test_peci(void);
 
-/* PWM */
-extern void test_pwm_tach_enable(void);
-#if CONFIG_PWM_ASPEED_ACCURATE_FREQ
-extern void test_pwm_tach_loopback_accurate(void);
-#else
-extern void test_pwm_tach_loopback_rough(void);
-#endif
-extern void test_pwm_tach_fan(void);
+#define run_test_suite(suite, type) \
+	aspeed_run_test_suite(#suite, _##suite, type)
 
-/* JTAG */
-extern void test_jtag_enable(void);
-
-/* I2C */
-extern void test_i2c_enable(void);
-
-/* I3C */
-extern void test_i3c_enable(void);
-
-/* GPIO */
-extern void test_gpio_enable(void);
-
-/* UART */
-extern void test_uart_enable(void);
-
-/* SPI */
-extern void test_spi_enable(void);
-
-/* ESPI */
-extern void test_espi_enable(void);
-
-/* PECI */
-extern void test_peci_enable(void);
-#endif
-
-#ifdef CONFIG_BOARD_AST1030_SLT
-extern void test_usb_enable(void);
-#endif
-
-#define run_test_suite(suite) \
-	ast_run_test_suite(#suite, _##suite)
-
-#define TEST_THREAD_CNT		20
+#define TEST_THREAD_CNT		12
 #define TEST_STACKSIZE		1024
+#define TEST_TIMEOUT		10
+
+#define TEST_CI_FUNC_COUNT	100
+#define TEST_SLT_FUNC_COUNT	100
+#define TEST_FT_FUNC_COUNT	100
 
 K_THREAD_STACK_ARRAY_DEFINE(test_thread_stack, TEST_THREAD_CNT, TEST_STACKSIZE);
 
+static struct aspeed_test_param test_params[] = {
+	{ AST_TEST_CI, "AST_TEST_CI", TEST_CI_FUNC_COUNT, TEST_TIMEOUT },
+	{ AST_TEST_SLT, "AST_TEST_SLT", TEST_SLT_FUNC_COUNT, TEST_TIMEOUT },
+	{ AST_TEST_FT, "AST_TEST_FT", TEST_FT_FUNC_COUNT, TEST_TIMEOUT },
+};
+
+typedef int (*test_func)(int count, enum aspeed_test_type);
+
+struct aspeed_tests {
+	const char *name;
+	int (*test)(int count, enum aspeed_test_type);
+	int results;
+};
+
+static struct aspeed_tests aspeed_testcase[TEST_THREAD_CNT];
 static struct k_thread ztest_thread[TEST_THREAD_CNT];
 static int unit_test_count;
 static int unit_test_remain;
 
-static void test_cb(void *a, void *dummy2, void *dummy)
+static void test_cb(void *a, void *b, void *c)
 {
-	struct unit_test *test = (struct unit_test *)a;
-	int ret = TC_PASS;
+	int num = (int)a;
+	int count = (int)b;
+	enum aspeed_test_type type = (enum aspeed_test_type)c;
+	int ret = TC_FAIL;
 
-	ARG_UNUSED(dummy2);
-	ARG_UNUSED(dummy);
-
-	TC_START(test->name);
+	TC_START(aspeed_testcase[num].name);
 
 	printk("Current thread id: %d\n", (int)k_current_get());
-	test->test();
+	ret = aspeed_testcase[num].test(count, type);
+	aspeed_testcase[num].results = ret;
 
 	unit_test_remain--;
-	Z_TC_END_RESULT(ret, test->name);
+	Z_TC_END_RESULT(ret, aspeed_testcase[num].name);
 }
 
-static int create_test(struct unit_test *test, int thread_num)
+static int create_test(struct unit_test *test, int thread_num, int count, int type)
 {
 	int ret = TC_PASS;
 	k_tid_t pid;
@@ -95,18 +79,23 @@ static int create_test(struct unit_test *test, int thread_num)
 	if (IS_ENABLED(CONFIG_MULTITHREADING)) {
 		pid = k_thread_create(&ztest_thread[thread_num], test_thread_stack[thread_num],
 				TEST_STACKSIZE,
-				(k_thread_entry_t) test_cb, (struct unit_test *)test,
-				NULL, NULL, CONFIG_ZTEST_THREAD_PRIORITY,
+				(k_thread_entry_t) test_cb, (void *)thread_num,
+				(void *)count, (void *)type, CONFIG_ZTEST_THREAD_PRIORITY,
 				test->thread_options | K_INHERIT_PERMS,
 					K_FOREVER);
 
 		if (test->name != NULL) {
 			k_thread_name_set(&ztest_thread[thread_num], test->name);
 		}
+
 	} else {
 		printk("multithreading is not supported\n");
 		ret = TC_FAIL;
 	}
+
+	aspeed_testcase[thread_num].name = test->name;
+	aspeed_testcase[thread_num].test = (test_func)test->test;
+	aspeed_testcase[thread_num].results = -1;
 
 	printk("Create thread %s\t to num %d, pid: %d\n", test->name, thread_num, (int)pid);
 
@@ -122,22 +111,61 @@ static void run_test(void)
 	}
 }
 
-static void terminate_test(void)
+static void show_banner(bool is_passed)
 {
-	int i;
-
-	for (i = 0; i < unit_test_count; i++) {
-		k_thread_abort(&ztest_thread[i]);
+	if (is_passed) {
+		printf("\x1b[;32;1m\n"
+				"########     ###     ######   ######  ######## ########\n"
+				"##     ##   ## ##   ##    ## ##    ## ##       ##     ##\n"
+				"##     ##  ##   ##  ##       ##       ##       ##     ##\n"
+				"########  ##     ##  ######   ######  ######   ##     ##\n"
+				"##        #########       ##       ## ##       ##     ##\n"
+				"##        ##     ## ##    ## ##    ## ##       ##     ##\n"
+				"##        ##     ##  ######   ######  ######## ########\n"
+				"\x1b[0;m\n"
+		      );
+	} else {
+		printf("\x1b[;31;1m\n"
+				"########    ###    #### ##       ######## ########\n"
+				"##         ## ##    ##  ##       ##       ##     ##\n"
+				"##        ##   ##   ##  ##       ##       ##     ##\n"
+				"######   ##     ##  ##  ##       ######   ##     ##\n"
+				"##       #########  ##  ##       ##       ##     ##\n"
+				"##       ##     ##  ##  ##       ##       ##     ##\n"
+				"##       ##     ## #### ######## ######## ########\n"
+				"\x1b[0;m\n"
+		      );
 	}
 }
 
-static void ast_run_test_suite(const char *name, struct unit_test *suite)
+static void terminate_test(int type)
 {
-	int count = 0;
+	int ret = 0;
+	int i;
+
+	printk("\nTest Counter: %d. Test Type: %s.\n",
+			test_params[type].test_count, test_params[type].name);
+
+	for (i = 0; i < unit_test_count; i++) {
+		k_thread_abort(&ztest_thread[i]);
+		ret += aspeed_testcase[i].results;
+
+		printk("Case %d - %s results: %s\n", i + 1,
+				aspeed_testcase[i].name,
+				aspeed_testcase[i].results ? "FAILED" : "PASSED");
+	}
+
+	show_banner(!ret);
+	zassert_equal(ret, 0, "%s FAILED");
+}
+
+static void aspeed_run_test_suite(const char *name, struct unit_test *suite, int type)
+{
+	int timer = 0;
 	int fail = 0;
 
 	while (suite->test) {
-		fail += create_test(suite, unit_test_count++);
+		fail += create_test(suite, unit_test_count++, test_params[type].test_count, type);
 		suite++;
 		if (unit_test_count >= TEST_THREAD_CNT) {
 			printk("unit tests are limited to %d\n", unit_test_count);
@@ -153,9 +181,9 @@ static void ast_run_test_suite(const char *name, struct unit_test *suite)
 
 	run_test();
 
-	while (unit_test_remain && (count < 200)) {
-		count++;
-		k_sleep(K_MSEC(100));
+	while (unit_test_remain && (timer < test_params[type].timeout)) {
+		timer++;
+		k_sleep(K_SECONDS(1));
 	}
 
 	if (unit_test_remain) {
@@ -165,46 +193,27 @@ static void ast_run_test_suite(const char *name, struct unit_test *suite)
 	}
 
 end:
-	terminate_test();
+	terminate_test(type);
 	zassert_equal(fail, 0, "test ast1030 failed");
 }
 
 static void test_platform(void)
 {
-#if CONFIG_BOARD_AST1030_EVB
 	ztest_test_suite(test_ast1030,
-			 ztest_unit_test(test_usb_enable),
-			 ztest_unit_test(test_usb_dc_api),
-			 ztest_unit_test(test_usb_dc_api_read_write),
-			 ztest_unit_test(test_usb_dc_api_invalid),
-			 ztest_unit_test(test_usb_comm),
+			 ztest_unit_test(test_usb),
+			 ztest_unit_test(test_adc),
+			 ztest_unit_test(test_pwm),
+			 ztest_unit_test(test_jtag),
+			 ztest_unit_test(test_i2c),
+			 ztest_unit_test(test_i3c),
+			 ztest_unit_test(test_gpio),
+			 ztest_unit_test(test_uart),
+			 ztest_unit_test(test_spi),
+			 ztest_unit_test(test_espi),
+			 ztest_unit_test(test_peci)
+			 );
 
-			 ztest_unit_test(test_adc_enable),
-			 ztest_unit_test(test_adc_normal_mode),
-			 ztest_unit_test(test_adc_battery_mode),
-			 ztest_unit_test(test_pwm_tach_enable),
-#if CONFIG_PWM_ASPEED_ACCURATE_FREQ
-			 ztest_unit_test(test_pwm_tach_loopback_accurate),
-#else
-			 ztest_unit_test(test_pwm_tach_loopback_rough),
-#endif
-			 ztest_unit_test(test_pwm_tach_fan),
-			 ztest_unit_test(test_jtag_enable),
-			 ztest_unit_test(test_i2c_enable),
-			 ztest_unit_test(test_i3c_enable),
-			 ztest_unit_test(test_gpio_enable),
-			 ztest_unit_test(test_uart_enable),
-			 ztest_unit_test(test_spi_enable),
-			 ztest_unit_test(test_espi_enable),
-			 ztest_unit_test(test_peci_enable)
-			 );
-#endif
-#if CONFIG_BOARD_AST1030_SLT
-	ztest_test_suite(test_ast1030,
-			 ztest_unit_test(test_usb_hw),
-			 );
-#endif
-	run_test_suite(test_ast1030);
+	run_test_suite(test_ast1030, AST_TEST_CI);
 }
 
 /* test case main entry */
