@@ -237,7 +237,7 @@ struct i3c_register_s {
 	uint32_t ibi_queue_data;				/* 0x18 */
 	union i3c_queue_thld_ctrl_s queue_thld_ctrl;		/* 0x1c */
 	union i3c_data_buff_ctrl_s data_buff_ctrl;		/* 0x20 */
-	uint32_t reserved0[3];					/* 0x20 ~ 0x28 */
+	uint32_t reserved0[2];					/* 0x24 ~ 0x28 */
 	uint32_t mr_reject;					/* 0x2c */
 	uint32_t sir_reject;					/* 0x30 */
 	union i3c_reset_ctrl_s reset_ctrl;			/* 0x34 */
@@ -275,7 +275,13 @@ struct i3c_aspeed_config {
 };
 
 struct i3c_aspeed_data {
-	uint8_t self_addr;
+	struct {
+		uint32_t ibi_status_correct : 1;
+		uint32_t reserved : 31;
+	} hw_feature;
+
+	union i3c_dev_addr_tbl_ptr_s hw_dat;
+	uint32_t hw_dat_free_pos;
 	uint8_t dev_addr_tbl[256];
 
 };
@@ -331,6 +337,105 @@ static void i3c_aspeed_init_clock(const struct device *dev)
 	/* Configure extra termination timing */
 	i3c_register->ext_termn_timing.fields.lcnt = DEFAULT_EXT_TERMN_LCNT;
 }
+
+static void i3c_aspeed_init_hw_feature(struct i3c_aspeed_data *data)
+{
+	uint32_t scu = DT_REG_ADDR(DT_NODELABEL(syscon));
+	uint32_t rev_id = (sys_read32(scu + 0x4) & GENMASK(31, 16)) >> 16;
+
+	/*
+	 * if AST26xx-A3 or AST10x0-A1, the IBI status bitfield is correct.
+	 * The others are not correct and need for workaround.
+	 */
+	if ((rev_id == 0x0503) || (rev_id == 0x8001)) {
+		data->hw_feature.ibi_status_correct = 1;
+	} else {
+		data->hw_feature.ibi_status_correct = 0;
+	}
+}
+
+static void i3c_aspeed_init_pid(const struct device *dev)
+{
+	struct i3c_aspeed_config *config = DEV_CFG(dev);
+	struct i3c_register_s *i3c_register = config->base;
+	union i3c_slave_pid_hi_s slave_pid_hi;
+	union i3c_slave_pid_lo_s slave_pid_lo;
+	union i3c_slave_char_s slave_char;
+	uint32_t scu = DT_REG_ADDR(DT_NODELABEL(syscon));
+	uint32_t rev_id = (sys_read32(scu + 0x4) & GENMASK(31, 16)) >> 16;
+
+	slave_pid_hi.value = 0;
+	slave_pid_hi.fields.mipi_mfg_id = MIPI_MFG_ASPEED;
+	i3c_register->slave_pid_hi.value = slave_pid_hi.value;
+
+	slave_pid_lo.value = 0;
+	slave_pid_lo.fields.part_id = rev_id >> 16;
+	slave_pid_lo.fields.inst_id = config->inst_id;
+	i3c_register->slave_pid_lo.value = slave_pid_lo.value;
+
+	slave_char.value = i3c_register->slave_char.value;
+	slave_char.fields.bcr = 0x66;
+	i3c_register->slave_char.value = slave_char.value;
+}
+
+static void i3c_aspeed_set_role(const struct device *dev, int secondary)
+{
+	struct i3c_aspeed_config *config = DEV_CFG(dev);
+	struct i3c_register_s *i3c_register = config->base;
+	union i3c_device_ctrl_extend_s device_ctrl_ext;
+
+	device_ctrl_ext.value = i3c_register->device_ctrl_ext.value;
+	if (secondary)
+		device_ctrl_ext.fields.role = DEVICE_CTRL_EXT_ROLE_SLAVE;
+	else
+		device_ctrl_ext.fields.role = DEVICE_CTRL_EXT_ROLE_MASTER;
+
+	i3c_register->device_ctrl_ext.value = device_ctrl_ext.value;
+}
+
+static void i3c_aspeed_init_queues(const struct device *dev)
+{
+	struct i3c_aspeed_config *config = DEV_CFG(dev);
+	struct i3c_register_s *i3c_register = config->base;
+	union i3c_queue_thld_ctrl_s queue_thld_ctrl;
+	union i3c_data_buff_ctrl_s data_buff_ctrl;
+
+	queue_thld_ctrl.value = 0;
+	/*
+	 * The size of the HW IBI queue is 256-byte.  Whereas the max IBI chunk size is 124-byte.
+	 * So the max number of the IBI status = ceil(256 / 124) = 3
+	 */
+	queue_thld_ctrl.fields.ibi_data_thld = MAX_IBI_CHUNK_IN_BYTE >> 2;
+	queue_thld_ctrl.fields.ibi_status_thld = 3;
+	i3c_register->queue_thld_ctrl.value = queue_thld_ctrl.value;
+
+	data_buff_ctrl.value = 0;
+	data_buff_ctrl.fields.tx_thld = 1;
+	data_buff_ctrl.fields.rx_thld = 1;
+	data_buff_ctrl.fields.tx_start_thld = 1;
+	data_buff_ctrl.fields.rx_start_thld = 1;
+	i3c_register->data_buff_ctrl.value = data_buff_ctrl.value;
+}
+
+static void i3c_aspeed_enable(const struct device *dev)
+{
+	struct i3c_aspeed_config *config = DEV_CFG(dev);
+	struct i3c_register_s *i3c_register = config->base;
+	union i3c_device_ctrl_s reg;
+
+	reg.value = i3c_register->device_ctrl.value;
+	reg.fields.enable = 1;
+	reg.fields.slave_ibi_payload_en = 1;
+	if (config->secondary) {
+		/*
+		 * We don't support hot-join on master mode, so disable auto-mode-adaption for
+		 * slave mode accordingly.  Since the only master device we may connect with is
+		 * our ourself.
+		 */
+		reg.fields.slave_auto_mode_adapt = 1;
+	}
+	i3c_register->device_ctrl.value = reg.value;
+}
 }
 
 static int i3c_aspeed_init(const struct device *dev)
@@ -340,6 +445,7 @@ static int i3c_aspeed_init(const struct device *dev)
 	struct i3c_register_s *i3c_register = config->base;
 	const struct device *reset_dev = device_get_binding(ASPEED_RST_CTRL_NAME);
 	union i3c_reset_ctrl_s reset_ctrl;
+	int ret;
 
 	clock_control_on(config->clock_dev, config->clock_id);
 	reset_control_deassert(reset_dev, config->reset_id);
@@ -352,14 +458,40 @@ static int i3c_aspeed_init(const struct device *dev)
 	reset_ctrl.fields.cmd_queue_reset = 1;
 	reset_ctrl.fields.resp_queue_reset = 1;
 	i3c_register->reset_ctrl.value = reset_ctrl.value;
-	while (i3c_register->reset_ctrl.value)
-		;
+
+	ret = reg_read_poll_timeout(i3c_register, reset_ctrl, reset_ctrl, !reset_ctrl.value, 0, 10);
+	if (ret) {
+		return ret;
+	}
 
 	i3c_register->intr_status.value = GENMASK(31, 0);
 
+	i3c_aspeed_init_hw_feature(data);
+	i3c_aspeed_set_role(dev, config->secondary);
 	i3c_aspeed_init_clock(dev);
 
-	LOG_INF("i3c base %08x\n", (uint32_t)config->base);
+	/* setup the dynamic address if playing the role as the main master */
+	if (!config->secondary) {
+		union i3c_device_addr_s reg;
+
+		reg.value = 0;
+		reg.fields.dynamic_addr = config->assigned_addr;
+		reg.fields.dynamic_addr_valid = 1;
+		i3c_register->device_addr.value = reg.value;
+	}
+
+	i3c_aspeed_init_queues(dev);
+	i3c_aspeed_init_pid(dev);
+
+	data->hw_dat.value = i3c_register->dev_addr_tbl_ptr.value;
+	data->hw_dat_free_pos = GENMASK(data->hw_dat.fields.depth - 1, 0);
+
+	/* Not support MR for now */
+	i3c_register->mr_reject = GENMASK(31, 0);
+	/* Disable SIR auto-reject */
+	i3c_register->sir_reject = 0;
+
+	i3c_aspeed_enable(dev);
 
 	return 0;
 }
