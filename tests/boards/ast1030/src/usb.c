@@ -6,12 +6,15 @@
 
 #include <ztest.h>
 #include <tc_util.h>
-
 #include <usb/usb_device.h>
 #include <usb/usb_common.h>
 #include <drivers/uart.h>
-
 #include "ast_test.h"
+
+#define LOG_MODULE_NAME usb_test
+
+#include <logging/log.h>
+LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
 /* Max packet size for endpoints */
 #define BULK_EP_MPS		64
@@ -36,17 +39,16 @@ static int data_handle(void)
 
 	rb_len = ring_buf_get(&ringbuf, buff, sizeof(buff));
 	if (data_print) {
-		printk("Print Data: ");
+		LOG_INF("Receive Data: ");
 		for (i = 0; i < rb_len; i++)
-			printk("0x%x ", buff[i]);
-		printk("\n");
+			LOG_INF("0x%x ", buff[i]);
 	}
 
 	/* Check golden pattern */
 	rb_len = strlen(golden_str);
 	for (i = 0; i < rb_len; i++) {
 		if (golden_str[i] != buff[i]) {
-			printk("cmp to %d, buff: %s\n", i, buff);
+			LOG_DBG("cmp to %d, buff: %s\n", i, buff);
 			return -EIO;
 		}
 	}
@@ -70,13 +72,13 @@ static void interrupt_handler(const struct device *dev, void *user_data)
 		if (recv_len) {
 			rb_len = ring_buf_put(&ringbuf, rx_buff, recv_len);
 			if (rb_len < recv_len) {
-				printk("Drop %u bytes\n", recv_len - rb_len);
+				LOG_DBG("Drop %u bytes\n", recv_len - rb_len);
 			}
 		} else {
 			break;
 		}
 
-		printk("total transfer len: 0x%x\n", total_len);
+		LOG_DBG("total transfer len: 0x%x\n", total_len);
 		k_sem_give(&usb_sem);
 	}
 }
@@ -95,7 +97,9 @@ static void test_usb_comm(void)
 	/* Enable rx interrupts */
 	uart_irq_rx_enable(dev);
 
-	printk("Wait for host side data, expect to receive \"%s\"...\n\n", golden_str);
+	LOG_INF("Wait for host side data, expect to receive \"%s\"...\n",
+			golden_str);
+
 	while (count < 100) {
 		ret = k_sem_take(&usb_sem, K_NO_WAIT);
 		if (ret) {
@@ -106,7 +110,7 @@ static void test_usb_comm(void)
 		}
 	}
 
-	ast_zassert_equal(data_handle(), TC_PASS, "compare received data failed");
+	ast_zassert_equal(data_handle(), TC_PASS, "Unexpected received data");
 }
 
 /* Test USB Device Cotnroller API */
@@ -204,7 +208,10 @@ static void test_usb_enable(void)
 
 int test_usb(int count, enum aspeed_test_type type)
 {
-	printk("%s, count: %d, type: %d\n", __func__, count, type);
+	LOG_INF("%s, count: %d, type: %d", __func__, count, type);
+
+	if (type != AST_TEST_CI)
+		return AST_TEST_PASS;
 
 	test_usb_enable();
 	test_usb_dc_api();

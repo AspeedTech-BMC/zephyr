@@ -29,9 +29,15 @@ struct aspeed_test_param {
 	int timeout;
 };
 
-const char *ztest_relative_filename(const char *file);
+struct aspeed_tests {
+	const char *name;
+	int (*test)(int count, enum aspeed_test_type);
+	int results;
+};
 
 static bool ast_test_fail;
+
+const char *ztest_relative_filename(const char *file);
 
 static inline bool aspeed_zassert(bool cond,
 			    const char *default_msg,
