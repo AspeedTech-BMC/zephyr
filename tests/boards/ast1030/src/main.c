@@ -161,7 +161,7 @@ static void aspeed_show_banner(bool is_passed)
 
 static void aspeed_terminate_test(int type)
 {
-	int ret = 0;
+	bool is_passed = true;
 	int i;
 
 	LOG_INF("\nTest Counter: %d. Test Type: %s.",
@@ -170,15 +170,16 @@ static void aspeed_terminate_test(int type)
 
 	for (i = 0; i < unit_test_count; i++) {
 		k_thread_abort(&ztest_thread[i]);
-		ret += aspeed_testcase[i].results;
+		if (aspeed_testcase[i].results)
+			is_passed = false;
 
 		LOG_INF("Case %d - %s results: %s", i + 1,
 			aspeed_testcase[i].name,
 			aspeed_testcase[i].results ? "FAILED" : "PASSED");
 	}
 
-	aspeed_show_banner(!ret);
-	zassert_equal(ret, 0, "%s FAILED");
+	aspeed_show_banner(is_passed);
+	zassert_equal(is_passed, true, "%s FAILED");
 }
 
 static void aspeed_run_test_suite(const char *name, struct unit_test *suite,
@@ -214,7 +215,7 @@ static void aspeed_run_test_suite(const char *name, struct unit_test *suite,
 	}
 
 	if (unit_test_remain) {
-		LOG_INF("Total test case: %d, remaining: %d",
+		LOG_ERR("TIMEOUT ! Total test case: %d, remaining: %d",
 			unit_test_count, unit_test_remain);
 		fail++;
 	}

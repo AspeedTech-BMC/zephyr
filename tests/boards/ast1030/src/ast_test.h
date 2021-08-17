@@ -14,7 +14,7 @@
 #include <stdbool.h>
 
 #define AST_TEST_PASS	0
-#define AST_TEST_FAIL	1
+#define AST_TEST_FAIL	-1
 
 enum aspeed_test_type {
 	AST_TEST_CI = 0,
