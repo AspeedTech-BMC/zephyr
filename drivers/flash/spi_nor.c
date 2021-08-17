@@ -102,8 +102,7 @@ struct spi_nor_config {
 	 */
 	uint8_t has_lock;
 
-	uint32_t spi_tx_buswidth;
-	uint32_t spi_rx_buswidth;
+	uint32_t spi_max_buswidth;
 	uint32_t spi_ctrl_caps_mask;
 	uint32_t spi_nor_caps_mask;
 };
@@ -1167,6 +1166,11 @@ static void spi_nor_info_init_params(
 	data->quad_bit_en = NULL;
 	data->cap_mask = ~(cfg->spi_ctrl_caps_mask | cfg->spi_nor_caps_mask);
 
+	if (cfg->spi_max_buswidth < 2)
+		data->cap_mask &= ~(SPI_NOR_DUAL_CAP_MASK | SPI_NOR_QUAD_CAP_MASK);
+	else if (cfg->spi_max_buswidth < 4)
+		data->cap_mask &= ~SPI_NOR_QUAD_CAP_MASK;
+
 	/* initial basic command */
 	if (data->cap_mask & SPI_NOR_MODE_1_1_1_FAST_CAP)
 		spi_nor_assign_read_cmd(data, JESD216_MODE_111_FAST, SPI_NOR_CMD_READ_FAST, 8);
@@ -1174,6 +1178,8 @@ static void spi_nor_info_init_params(
 		spi_nor_assign_read_cmd(data, JESD216_MODE_111, SPI_NOR_CMD_READ, 0);
 
 	spi_nor_assign_pp_cmd(data, JESD216_MODE_111, SPI_NOR_CMD_PP);
+
+	LOG_INF("bus_width: %d, cap: %08x", cfg->spi_max_buswidth, data->cap_mask);
 }
 
 /**
@@ -1442,8 +1448,7 @@ static const struct spi_nor_config spi_nor_config_0 = {
 #endif /* CONFIG_SPI_NOR_SFDP_DEVICETREE */
 
 #else
-	.spi_tx_buswidth = DT_INST_PROP_OR(0, spi_tx_buswidth, 1),
-	.spi_rx_buswidth = DT_INST_PROP_OR(0, spi_rx_buswidth, 1),
+	.spi_max_buswidth = DT_INST_PROP_OR(0, spi_max_buswidth, 1),
 	.spi_ctrl_caps_mask =
 		DT_PROP_OR(DT_PARENT(DT_INST(0, DT_DRV_COMPAT)),
 			spi_ctrl_caps_mask, 0),

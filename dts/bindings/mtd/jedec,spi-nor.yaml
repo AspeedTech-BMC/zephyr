@@ -25,15 +25,11 @@ properties:
     required: false
     description: RESETn pin
 
-  spi-tx-buswdith:
+  spi-max-buswidth:
     type: int
     required: false
-    description: Assign bus width used to transmit data
-
-  spi-rx-buswdith:
-    type: int
-    required: false
-    description: Assign bus width used to receive data
+    description: |
+      Assign the mximum bus width used to transmit or receive data
 
   spi-nor-caps-mask:
     type: int

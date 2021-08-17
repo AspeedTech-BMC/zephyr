@@ -77,6 +77,9 @@
 #define SPI_NOR_ADDR_BUS_WIDTH(prot) ((prot & 0xF0) >> 4)
 #define SPI_NOR_DATA_BUS_WIDTH(prot) ((prot & 0xF00) >> 8)
 
+#define SPI_NOR_DUAL_CAP_MASK 0x00000F00
+#define SPI_NOR_QUAD_CAP_MASK 0x000F0000
+
 enum spi_nor_cap {
 	SPI_NOR_MODE_1_1_1_CAP = 0x00000001,
 	SPI_NOR_MODE_1_1_1_FAST_CAP = 0x00000002,
