@@ -102,9 +102,11 @@ struct spi_nor_config {
 	 */
 	uint8_t has_lock;
 
+#if !defined(CONFIG_SPI_NOR_SFDP_MINIMAL)
 	uint32_t spi_max_buswidth;
 	uint32_t spi_ctrl_caps_mask;
 	uint32_t spi_nor_caps_mask;
+#endif	/* CONFIG_SPI_NOR_SFDP_MINIMAL */
 };
 
 /**
@@ -139,6 +141,8 @@ struct spi_nor_data {
 	 */
 	bool flag_access_32bit: 1;
 
+	struct spi_nor_cmd_info cmd_info;
+
 	/* Minimal SFDP stores no dynamic configuration.  Runtime and
 	 * devicetree store page size and erase_types; runtime also
 	 * stores flash size and layout.
@@ -154,7 +158,6 @@ struct spi_nor_data {
 	/* Size of flash, in bytes */
 	uint32_t flash_size;
 	uint32_t sector_size;
-	struct spi_nor_cmd_info cmd_info;
 	enum spi_nor_cap cap_mask;
 	bool jedec_4bai_support: 1;
 	void (*quad_bit_en)(const struct device *dev);
@@ -1163,8 +1166,13 @@ static void spi_nor_info_init_params(
 	struct spi_nor_data *data = dev->data;
 
 	memset(&data->cmd_info, 0x0, sizeof(struct spi_nor_cmd_info));
-	data->quad_bit_en = NULL;
+
+#if defined(CONFIG_SPI_NOR_SFDP_MINIMAL)
+	spi_nor_assign_read_cmd(data, JESD216_MODE_111, SPI_NOR_CMD_READ, 0);
+	spi_nor_assign_pp_cmd(data, JESD216_MODE_111, SPI_NOR_CMD_PP);
+#else /* CONFIG_SPI_NOR_SFDP_MINIMAL */
 	data->cap_mask = ~(cfg->spi_ctrl_caps_mask | cfg->spi_nor_caps_mask);
+	data->quad_bit_en = NULL;
 
 	if (cfg->spi_max_buswidth < 2)
 		data->cap_mask &= ~(SPI_NOR_DUAL_CAP_MASK | SPI_NOR_QUAD_CAP_MASK);
@@ -1180,6 +1188,7 @@ static void spi_nor_info_init_params(
 	spi_nor_assign_pp_cmd(data, JESD216_MODE_111, SPI_NOR_CMD_PP);
 
 	LOG_INF("bus_width: %d, cap: %08x", cfg->spi_max_buswidth, data->cap_mask);
+#endif /* CONFIG_SPI_NOR_SFDP_MINIMAL */
 }
 
 /**
@@ -1268,6 +1277,8 @@ static int spi_nor_configure(const struct device *dev)
 		release_device(dev);
 	}
 
+	spi_nor_info_init_params(dev);
+
 #ifdef CONFIG_SPI_NOR_SFDP_MINIMAL
 	/* For minimal we support some overrides from specific
 	 * devicertee properties.
@@ -1285,8 +1296,6 @@ static int spi_nor_configure(const struct device *dev)
 	/* For devicetree and runtime we need to process BFP data and
 	 * set up or validate page layout.
 	 */
-
-	spi_nor_info_init_params(dev);
 
 	rc = spi_nor_process_sfdp(dev);
 	if (rc != 0) {
@@ -1446,14 +1455,15 @@ static const struct spi_nor_config spi_nor_config_0 = {
 	.bfp_len = sizeof(bfp_data_0) / 4,
 	.bfp = (const struct jesd216_bfp *)bfp_data_0,
 #endif /* CONFIG_SPI_NOR_SFDP_DEVICETREE */
+#endif /* CONFIG_SPI_NOR_SFDP_RUNTIME */
 
-#else
+#if !defined(CONFIG_SPI_NOR_SFDP_MINIMAL)
 	.spi_max_buswidth = DT_INST_PROP_OR(0, spi_max_buswidth, 1),
 	.spi_ctrl_caps_mask =
 		DT_PROP_OR(DT_PARENT(DT_INST(0, DT_DRV_COMPAT)),
 			spi_ctrl_caps_mask, 0),
 	.spi_nor_caps_mask = DT_INST_PROP_OR(0, spi_nor_caps_mask, 0),
-#endif /* CONFIG_SPI_NOR_SFDP_RUNTIME */
+#endif
 };
 
 static struct spi_nor_data spi_nor_data_0;
