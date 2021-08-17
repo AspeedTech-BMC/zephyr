@@ -187,8 +187,8 @@ int test_pwm(int count, enum aspeed_test_type type)
 #else
 		test_pwm_tach_loopback_rough();
 #endif
-		test_pwm_tach_fan();
 	}
+	test_pwm_tach_fan();
 
 	return 0;
 }
