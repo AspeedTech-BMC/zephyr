@@ -53,12 +53,10 @@ void test_pwm_tach_enable(void)
 	printk("Do nothing\n");
 }
 
-#define TEST_ROUND_EACH_CHANNEL 30
-
 #if CONFIG_PWM_ASPEED_ACCURATE_FREQ
 void test_pwm_tach_loopback_accurate(void)
 {
-	int i, j, hw_pwm;
+	int i, hw_pwm;
 	const struct device *pwm_dev, *tach_dev;
 	uint64_t cycles_per_sec, cycles_per_min;
 	uint32_t expected_rpm, rand_cycles, div_l, div_h;
@@ -71,35 +69,32 @@ void test_pwm_tach_loopback_accurate(void)
 			pwm_get_cycles_per_sec(pwm_dev, hw_pwm, &cycles_per_sec);
 			cycles_per_min = cycles_per_sec * 60;
 			tach_dev = device_get_binding(fan_list[hw_pwm].device_label);
-			for (j = 0; j < TEST_ROUND_EACH_CHANNEL; j++) {
-				div_l = sys_rand32_get() % 256;
-				div_h = sys_rand32_get() % 4;
-				rand_cycles = BIT(div_h) * (div_l + 1);
-				if (rand_cycles < 2) {
-					rand_cycles = 2;
-				}
-				pwm_pin_set_cycles(pwm_dev, hw_pwm, rand_cycles, rand_cycles / 2,
-						   0);
-				/* Needs one cylce time for period transtion */
-				k_usleep(rand_cycles * USEC_PER_SEC / cycles_per_sec);
-				expected_rpm = cycles_per_min / rand_cycles;
-				err = sensor_sample_fetch(tach_dev);
-				zassert_ok(err, "Failed to read sensor %s\n",
-					   fan_list[hw_pwm].device_label);
-				sensor_channel_get(tach_dev, SENSOR_CHAN_RPM, &sensor_value);
-				LOG_DBG("%d value = %10.6f expected = %d rand_cycles = %d", hw_pwm,
-					sensor_value_to_double(&sensor_value), expected_rpm,
-					rand_cycles);
-				zassert_equal(sensor_value.val1, expected_rpm, "PWM%d(%d == %d)",
-					      hw_pwm, sensor_value.val1, expected_rpm);
+
+			div_l = sys_rand32_get() % 256;
+			div_h = sys_rand32_get() % 4;
+			rand_cycles = BIT(div_h) * (div_l + 1);
+			if (rand_cycles < 2) {
+				rand_cycles = 2;
 			}
+			pwm_pin_set_cycles(pwm_dev, hw_pwm, rand_cycles, rand_cycles / 2, 0);
+			/* Needs one cylce time for period transtion */
+			k_usleep(rand_cycles * USEC_PER_SEC / cycles_per_sec);
+			expected_rpm = cycles_per_min / rand_cycles;
+			err = sensor_sample_fetch(tach_dev);
+			zassert_ok(err, "Failed to read sensor %s\n",
+				   fan_list[hw_pwm].device_label);
+			sensor_channel_get(tach_dev, SENSOR_CHAN_RPM, &sensor_value);
+			LOG_DBG("%d value = %10.6f expected = %d rand_cycles = %d", hw_pwm,
+				sensor_value_to_double(&sensor_value), expected_rpm, rand_cycles);
+			zassert_equal(sensor_value.val1, expected_rpm, "PWM%d(%d == %d)", hw_pwm,
+				      sensor_value.val1, expected_rpm);
 		}
 	}
 }
 #else
 void test_pwm_tach_loopback_rough(void)
 {
-	int i, j, hw_pwm;
+	int i, hw_pwm;
 	const struct device *pwm_dev, *tach_dev;
 	uint64_t cycles_per_sec, cycles_per_min;
 	uint32_t expected_rpm, rand_cycles;
@@ -112,23 +107,20 @@ void test_pwm_tach_loopback_rough(void)
 			pwm_get_cycles_per_sec(pwm_dev, hw_pwm, &cycles_per_sec);
 			cycles_per_min = cycles_per_sec * 60;
 			tach_dev = device_get_binding(fan_list[hw_pwm].device_label);
-			for (j = 0; j < TEST_ROUND_EACH_CHANNEL; j++) {
-				rand_cycles = (sys_rand32_get() % 2000) + 2;
-				pwm_pin_set_cycles(pwm_dev, hw_pwm, rand_cycles, rand_cycles / 2,
-						   0);
-				/* Needs one cylce time for period transtion */
-				k_usleep(rand_cycles * USEC_PER_SEC / cycles_per_sec);
-				expected_rpm = cycles_per_min / rand_cycles;
-				err = sensor_sample_fetch(tach_dev);
-				zassert_ok(err, "Failed to read sensor %s\n",
-					   fan_list[hw_pwm].device_label);
-				sensor_channel_get(tach_dev, SENSOR_CHAN_RPM, &sensor_value);
-				LOG_DBG("%d value = %10.6f expected = %d rand_cycles = %d", hw_pwm,
-					sensor_value_to_double(&sensor_value), expected_rpm,
-					rand_cycles);
-				zassert_true(sensor_value.val1 >= expected_rpm, "PWM%d(%d < %d)",
-					     hw_pwm, sensor_value.val1, expected_rpm);
-			}
+
+			rand_cycles = (sys_rand32_get() % 2000) + 2;
+			pwm_pin_set_cycles(pwm_dev, hw_pwm, rand_cycles, rand_cycles / 2, 0);
+			/* Needs one cylce time for period transtion */
+			k_usleep(rand_cycles * USEC_PER_SEC / cycles_per_sec);
+			expected_rpm = cycles_per_min / rand_cycles;
+			err = sensor_sample_fetch(tach_dev);
+			zassert_ok(err, "Failed to read sensor %s\n",
+				   fan_list[hw_pwm].device_label);
+			sensor_channel_get(tach_dev, SENSOR_CHAN_RPM, &sensor_value);
+			LOG_DBG("%d value = %10.6f expected = %d rand_cycles = %d", hw_pwm,
+				sensor_value_to_double(&sensor_value), expected_rpm, rand_cycles);
+			zassert_true(sensor_value.val1 >= expected_rpm, "PWM%d(%d < %d)", hw_pwm,
+				     sensor_value.val1, expected_rpm);
 		}
 	}
 }
