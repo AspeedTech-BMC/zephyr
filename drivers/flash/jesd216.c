@@ -10,6 +10,21 @@
 #include "jesd216.h"
 #include "spi_nor.h"
 
+struct jesd216_4bai sfdp_4bai_reads[JESD216_4BAI_NUM_READ_TYPES] = {
+	{JESD216_MODE_144, 5, SPI_NOR_CMD_READ_1_4_4_4B},
+	{JESD216_MODE_114, 4, SPI_NOR_CMD_READ_1_1_4_4B},
+	{JESD216_MODE_122, 3, SPI_NOR_CMD_READ_1_2_2_4B},
+	{JESD216_MODE_112, 2, SPI_NOR_CMD_READ_1_1_2_4B},
+	{JESD216_MODE_111_FAST, 1, SPI_NOR_CMD_READ_FAST_4B}, /* w dummy cycle */
+	{JESD216_MODE_111, 0, SPI_NOR_CMD_READ_4B}, /* wo dummuy cycle */
+};
+
+struct jesd216_4bai sfdp_4bai_pps[JESD216_4BAI_NUM_READ_TYPES] = {
+	{JESD216_MODE_144, 8, SPI_NOR_CMD_PP_1_4_4_4B},
+	{JESD216_MODE_114, 7, SPI_NOR_CMD_PP_1_1_4_4B},
+	{JESD216_MODE_111, 6, SPI_NOR_CMD_PP_4B},
+};
+
 static bool extract_instr(uint16_t packed,
 			  struct jesd216_instr *res)
 {
@@ -44,6 +59,7 @@ int jesd216_bfp_read_support(const struct jesd216_param_header *php,
 		}
 		break;
 	case JESD216_MODE_111:
+	case JESD216_MODE_111_FAST:
 		rv = 0;
 		break;
 	case JESD216_MODE_112:
@@ -115,6 +131,67 @@ int jesd216_bfp_read_support(const struct jesd216_param_header *php,
 		break;
 	default:
 		rv = -EINVAL;
+	}
+
+	return rv;
+}
+
+int jesd216_4bai_read_support(uint32_t *jedec_4bai_dwd,
+				enum jesd216_mode_type mode,
+				uint8_t *cmd)
+{
+	int rv = -ENOTSUP;
+	uint32_t i;
+
+	for (i = 0; i < JESD216_4BAI_NUM_READ_TYPES; i++) {
+		if (sfdp_4bai_reads[i].mode == mode) {
+			if (sys_le32_to_cpu(jedec_4bai_dwd[0]) &
+				sfdp_4bai_reads[i].support_bit) {
+				*cmd = sfdp_4bai_reads[i].opcode;
+				rv = 0;
+				break;
+			}
+		}
+	}
+
+	return rv;
+}
+
+int jesd216_4bai_pp_support(uint32_t *jedec_4bai_dwd,
+				enum jesd216_mode_type mode,
+				uint8_t *cmd)
+{
+	int rv = -ENOTSUP;
+	uint32_t i;
+
+	for (i = 0; i < JESD216_4BAI_NUM_WRITE_TYPES; i++) {
+		if (sfdp_4bai_pps[i].mode == mode) {
+			if (sys_le32_to_cpu(jedec_4bai_dwd[0]) &
+				sfdp_4bai_pps[i].support_bit) {
+				*cmd = sfdp_4bai_pps[i].opcode;
+				rv = 0;
+				break;
+			}
+		}
+	}
+
+	return rv;
+}
+
+int jesd216_4bai_se_support(uint32_t *jedec_4bai_dwd,
+				uint8_t se_type, uint8_t *cmd)
+{
+	int rv = -ENOTSUP;
+	uint8_t tb_cmd;
+
+	se_type--;
+
+	if (sys_le32_to_cpu(jedec_4bai_dwd[0]) & BIT(9 + se_type)) {
+		tb_cmd = (uint8_t)(sys_le32_to_cpu(jedec_4bai_dwd[1]) >> (8 * se_type));
+		if (tb_cmd != 0x00 && tb_cmd != 0xff) {
+			*cmd = tb_cmd;
+			rv = 0;
+		}
 	}
 
 	return rv;
@@ -327,3 +404,4 @@ int jesd216_bfp_decode_dw16(const struct jesd216_param_header *php,
 
 	return 0;
 }
+

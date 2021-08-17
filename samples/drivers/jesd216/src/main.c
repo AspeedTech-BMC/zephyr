@@ -24,18 +24,25 @@
 typedef void (*dw_extractor)(const struct jesd216_param_header *php,
 			     const struct jesd216_bfp *bfp);
 
-static const char * const mode_tags[] = {
-	[JESD216_MODE_044] = "QSPI XIP",
-	[JESD216_MODE_088] = "OSPI XIP",
-	[JESD216_MODE_111] = "1-1-1",
-	[JESD216_MODE_112] = "1-1-2",
-	[JESD216_MODE_114] = "1-1-4",
-	[JESD216_MODE_118] = "1-1-8",
-	[JESD216_MODE_122] = "1-2-2",
-	[JESD216_MODE_144] = "1-4-4",
-	[JESD216_MODE_188] = "1-8-8",
-	[JESD216_MODE_222] = "2-2-2",
-	[JESD216_MODE_444] = "4-4-4",
+#define JESD216_MAX_MODE_SUPPORT 11
+
+struct mode_str {
+	enum jesd216_mode_type mode;
+	char *mode_str;
+};
+
+static const struct mode_str const mode_tags[JESD216_MAX_MODE_SUPPORT] = {
+	{JESD216_MODE_044, "QSPI XIP"},
+	{JESD216_MODE_088, "OSPI XIP"},
+	{JESD216_MODE_111, "1-1-1"},
+	{JESD216_MODE_112, "1-1-2"},
+	{JESD216_MODE_114, "1-1-4"},
+	{JESD216_MODE_118, "1-1-8"},
+	{JESD216_MODE_122, "1-2-2"},
+	{JESD216_MODE_144, "1-4-4"},
+	{JESD216_MODE_188, "1-8-8"},
+	{JESD216_MODE_222, "2-2-2"},
+	{JESD216_MODE_444, "4-4-4"},
 };
 
 static void summarize_dw1(const struct jesd216_param_header *php,
@@ -66,21 +73,16 @@ static void summarize_dw1(const struct jesd216_param_header *php,
 	printf("4-KiBy erase: %s\n", bsersz[(dw1 & JESD216_SFDP_BFP_DW1_BSERSZ_MASK)
 					    >> JESD216_SFDP_BFP_DW1_BSERSZ_SHFT]);
 
-	for (size_t mode = 0; mode < ARRAY_SIZE(mode_tags); ++mode) {
-		const char *tag = mode_tags[mode];
+	for (size_t mi = 0; mi < JESD216_MAX_MODE_SUPPORT; ++mi) {
+		struct jesd216_instr cmd;
+		int rc = jesd216_bfp_read_support(php, bfp, mode_tags[mi].mode, &cmd);
 
-		if (tag) {
-			struct jesd216_instr cmd;
-			int rc = jesd216_bfp_read_support(php, bfp,
-							  (enum jesd216_mode_type)mode,
-							  &cmd);
-
-			if (rc == 0) {
-				printf("Support %s\n", tag);
-			} else if (rc > 0) {
-				printf("Support %s: instr %02Xh, %u mode clocks, %u waits\n",
-				       tag, cmd.instr, cmd.mode_clocks, cmd.wait_states);
-			}
+		if (rc == 0) {
+			printf("Support %s\n", mode_tags[mi].mode_str);
+		} else if (rc > 0) {
+			printf("Support %s: instr %02Xh, %u mode clocks, %u waits\n",
+			       mode_tags[mi].mode_str, cmd.instr, cmd.mode_clocks,
+			       cmd.wait_states);
 		}
 	}
 }

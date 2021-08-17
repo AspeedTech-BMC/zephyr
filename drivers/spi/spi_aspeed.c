@@ -252,7 +252,6 @@ static int aspeed_spi_transceive(const struct device *dev,
 	spi_context_release(ctx, ret);
 
 	return ret;
-
 }
 
 static int aspeed_spi_release(const struct device *dev,

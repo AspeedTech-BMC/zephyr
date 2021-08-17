@@ -73,4 +73,17 @@ config SPI_NOR_IDLE_IN_DPD
 	  long periods, and when used the impact of waiting for mode
 	  enter and exit delays is acceptable.
 
+config SPI_NOR_4BAIT_SUPPORT
+	bool "Support 4-byte Address Instruction Table"
+	help
+	  Most flash part with size greater than 16MB support 4-byte dedicated
+	  command. These command type can be sent with 4-byte address without
+	  enter 4-byte address mode in advance.
+
+config SPI_NOR_MULTI_BUS_WIDTH_SUPPORT
+	bool "Support SPI dual mode and quad mode"
+	help
+	  In order to speed up SPI data transmission, it is common to use two or
+	  four busses to transfer data.
+
 endif # SPI_NOR
