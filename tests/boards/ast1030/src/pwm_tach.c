@@ -178,7 +178,17 @@ void test_pwm_tach_fan(void)
 
 int test_pwm(int count, enum aspeed_test_type type)
 {
+	int times;
+
 	printk("%s, count: %d, type: %d\n", __func__, count, type);
+	for (times = 0; times < count; times++) {
+#if CONFIG_PWM_ASPEED_ACCURATE_FREQ
+		test_pwm_tach_loopback_accurate();
+#else
+		test_pwm_tach_loopback_rough();
+#endif
+		test_pwm_tach_fan();
+	}
 
 	return 0;
 }

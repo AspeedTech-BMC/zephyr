@@ -133,7 +133,13 @@ void test_adc_battery_mode(void)
 
 int test_adc(int count, enum aspeed_test_type type)
 {
+	int times;
+
 	printk("%s, count: %d, type: %d\n", __func__, count, type);
+	for (times = 0; times < count; times++) {
+		test_adc_normal_mode();
+		test_adc_battery_mode();
+	}
 
 	return 0;
 }
