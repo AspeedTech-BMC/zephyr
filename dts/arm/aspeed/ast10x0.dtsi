@@ -730,6 +730,9 @@
 		interrupts = <102 0>;
 		resets = <&sysrst ASPEED_RESET_I3C0>;
 		clocks = <&sysclk ASPEED_CLK_GATE_I3C0CLK>;
+		i2c-scl-hz = <400000>;
+		i3c-scl-hz = <12500000>;
+		instance-id = <0>;
 		pinctrl-0 = <&pinctrl_i3c0_default>;
 		status = "disabled";
 		label = "I3C_0";
@@ -743,6 +746,9 @@
 		interrupts = <103 0>;
 		resets = <&sysrst ASPEED_RESET_I3C1>;
 		clocks = <&sysclk ASPEED_CLK_GATE_I3C1CLK>;
+		i2c-scl-hz = <400000>;
+		i3c-scl-hz = <12500000>;
+		instance-id = <1>;
 		pinctrl-0 = <&pinctrl_i3c1_default>;
 		status = "disabled";
 		label = "I3C_1";
@@ -756,6 +762,9 @@
 		interrupts = <104 0>;
 		resets = <&sysrst ASPEED_RESET_I3C2>;
 		clocks = <&sysclk ASPEED_CLK_GATE_I3C2CLK>;
+		i2c-scl-hz = <400000>;
+		i3c-scl-hz = <12500000>;
+		instance-id = <2>;
 		status = "disabled";
 		label = "I3C_2";
 	};
@@ -768,6 +777,9 @@
 		interrupts = <105 0>;
 		resets = <&sysrst ASPEED_RESET_I3C3>;
 		clocks = <&sysclk ASPEED_CLK_GATE_I3C3CLK>;
+		i2c-scl-hz = <400000>;
+		i3c-scl-hz = <12500000>;
+		instance-id = <3>;
 		status = "disabled";
 		label = "I3C_3";
 	};
