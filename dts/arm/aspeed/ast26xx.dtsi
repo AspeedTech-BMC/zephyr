@@ -144,38 +144,6 @@
 			};
 		};
 
-		gpio1: gpio@7e780800 {
-			reg = <0x7e780800 0x800>;
-			interrupts = <11 AST10X0_IRQ_DEFAULT_PRIORITY>;
-			clocks = <&sysclk ASPEED_CLK_PCLK>;
-			gpio1_a_d: gpio1_a_d {
-				compatible = "aspeed,gpio";
-				#gpio-cells = <2>;
-				gpio-controller;
-				ngpios = <32>;
-				interrupt-controller;
-				#interrupt-cells = <2>;
-				aspeed,cmd-src = <2>;
-				label = "GPIO1_A_D";
-				pin-offset = <0>;
-				status = "disabled";
-			};
-
-			gpio1_e_h: gpio1_e_h {
-				compatible = "aspeed,gpio";
-				#gpio-cells = <2>;
-				gpio-controller;
-				ngpios = <4>;
-				interrupt-controller;
-				#interrupt-cells = <2>;
-				aspeed,cmd-src = <2>;
-				label = "GPIO1_E_H";
-				pin-offset = <32>;
-				status = "disabled";
-			};
-		};
-
-
 		uart11: serial@7e790500 {
 			compatible = "aspeed,uart";
 			reg = <0x7e790500 0x100>;
