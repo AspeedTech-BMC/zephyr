@@ -23,6 +23,7 @@
 #include <stddef.h>
 #include <device.h>
 #include <drivers/gpio.h>
+#include <drivers/spi_nor.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -351,6 +352,21 @@ typedef int (*spi_api_release)(const struct device *dev,
 			       const struct spi_config *config);
 
 
+typedef int (*spi_nor_transceive)(const struct device *dev,
+			       struct spi_nor_op_info op_info);
+
+typedef int (*spi_nor_read_init)(const struct device *dev,
+			       struct spi_nor_op_info read_op_info);
+
+typedef int (*spi_nor_write_init)(const struct device *dev,
+			       struct spi_nor_op_info write_op_info);
+
+struct spi_nor_ops {
+	spi_nor_transceive transceive;
+	spi_nor_read_init read_init;
+	spi_nor_write_init write_init;
+};
+
 /**
  * @brief SPI driver API
  * This is the mandatory API any SPI driver needs to expose.
@@ -361,6 +377,7 @@ __subsystem struct spi_driver_api {
 	spi_api_io_async transceive_async;
 #endif /* CONFIG_SPI_ASYNC */
 	spi_api_release release;
+	struct spi_nor_ops *spi_nor_op;
 };
 
 /**

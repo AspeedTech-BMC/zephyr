@@ -8,7 +8,8 @@
 #define __SPI_NOR_H__
 
 #include <sys/util.h>
-#include "jesd216.h"
+#include <sys/types.h>
+#include <drivers/jesd216.h>
 
 #define SPI_NOR_MAX_ID_LEN	3
 
@@ -108,15 +109,30 @@ struct spi_nor_cmd_info {
 	uint8_t se_opcode;
 };
 
+#define SPI_NOR_OP_INFO(_mode_, _opcode_, _addr_, _addr_len_,	\
+	_dummy_cycle_, _data_, _data_len_, _data_direct_)	\
+	{	\
+		.mode = _mode_,	\
+		.opcode = _opcode_,	\
+		.addr = _addr_,	\
+		.addr_len = _addr_len_,	\
+		.dummy_cycle = _dummy_cycle_,	\
+		.buf = _data_,	\
+		.data_len = _data_len_,	\
+		.data_direct = _data_direct_,	\
+	}
+
 #define SPI_NOR_DATA_DIRECT_IN    0x00000001
 #define SPI_NOR_DATA_DIRECT_OUT   0x00000002
 
 struct spi_nor_op_info {
 	enum jesd216_mode_type mode;
 	uint8_t opcode;
+	off_t addr;
 	uint8_t addr_len;
 	uint8_t dummy_cycle;
-	uint32_t data_len;
+	void *buf;
+	size_t data_len;
 	uint32_t data_direct;
 };
 

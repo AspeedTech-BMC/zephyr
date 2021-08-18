@@ -7,8 +7,8 @@
 
 #include <sys/types.h>
 #include <kernel.h>
-#include "jesd216.h"
-#include "spi_nor.h"
+#include <drivers/jesd216.h>
+#include <drivers/spi_nor.h>
 
 struct jesd216_4bai sfdp_4bai_reads[JESD216_4BAI_NUM_READ_TYPES] = {
 	{JESD216_MODE_144, 5, SPI_NOR_CMD_READ_1_4_4_4B},
