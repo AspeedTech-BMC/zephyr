@@ -10,6 +10,7 @@
 #include <device.h>
 #include <drivers/gpio.h>
 #include <drivers/pinmux.h>
+#include <drivers/clock_control.h>
 #include <soc.h>
 
 #include "gpio_utils.h"
@@ -21,9 +22,24 @@
 LOG_MODULE_REGISTER(gpio_aspeed);
 
 /* Driver config */
+struct device_array {
+	const struct device *dev;
+};
+struct gpio_aspeed_parent_config {
+	/* GPIO controller base address */
+	gpio_register_t *base;
+	const struct device *clock_dev;
+	const clock_control_subsys_t clk_id;
+	uint32_t irq_num;
+	uint32_t irq_prio;
+	struct device_array *child_dev;
+	uint32_t child_num;
+};
 struct gpio_aspeed_config {
 	/* gpio_driver_config needs to be first */
 	struct gpio_driver_config common;
+	/* Parent device handler for shared resource */
+	const struct device *parent;
 	/* GPIO controller base address */
 	gpio_register_t *base;
 	uint8_t pin_offset;
@@ -71,28 +87,10 @@ uint16_t gpio_offset_int_status[] = {
 	[6] = offsetof(gpio_register_t, group6_int_status),
 };
 
-#define ASPEED_GPIO_GROUP_NUM DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT)
-static int nr_isr_devs;
-static const struct device *isr_devs[ASPEED_GPIO_GROUP_NUM];
-
 /* Driver convenience defines */
+#define DEV_PARENT_CFG(dev) ((const struct gpio_aspeed_parent_config *)(dev)->config)
 #define DEV_CFG(dev) ((const struct gpio_aspeed_config *)(dev)->config)
 #define DEV_DATA(dev) ((struct gpio_aspeed_data *)(dev)->data)
-
-static void gpio_aspeed_init_cmd_src_sel(const struct device *dev)
-{
-	volatile gpio_register_t *gpio_reg = DEV_CFG(dev)->base;
-	gpio_cmd_src_sel_t cmd_src_sel;
-
-	cmd_src_sel.value = gpio_reg->cmd_src_sel.value;
-	cmd_src_sel.fields.mst1 = ASPEED_GPIO_SEL_PRI;
-	cmd_src_sel.fields.mst2 = ASPEED_GPIO_SEL_LPC;
-	cmd_src_sel.fields.mst3 = ASPEED_GPIO_SEL_SSP;
-	cmd_src_sel.fields.mst4 = ASPEED_GPIO_SEL_PRI;
-	cmd_src_sel.fields.mst5 = ASPEED_GPIO_SEL_PRI;
-	cmd_src_sel.fields.lock = 1;
-	gpio_reg->cmd_src_sel.value = cmd_src_sel.value;
-}
 
 static int gpio_aspeed_cmd_src_set(const struct device *dev, gpio_pin_t pin, uint8_t cmd_src)
 {
@@ -148,16 +146,19 @@ static int gpio_aspeed_set_direction(const struct device *dev, gpio_pin_t pin, i
 	return 0;
 }
 
-static void gpio_aspeed_isr(const void *unused)
+static void gpio_aspeed_isr(const void *arg)
 {
-	ARG_UNUSED(unused);
+	const struct device *parent = arg;
+	const struct gpio_aspeed_parent_config *cfg;
 	const struct device *dev;
 	struct gpio_aspeed_data *data;
 	uint32_t index, group_idx;
 	uint32_t gpio_pin, int_pendding;
 	gpio_int_status_register_t *int_reg;
-	for (index = 0; index < ASPEED_GPIO_GROUP_NUM; index++) {
-		dev = isr_devs[index];
+
+	cfg = DEV_PARENT_CFG(parent);
+	for (index = 0; index < cfg->child_num; index++) {
+		dev = cfg->child_dev[index].dev;
 		data = DEV_DATA(dev);
 		group_idx = DEV_CFG(dev)->pin_offset >> 5;
 		int_reg = (gpio_int_status_register_t *)((uint32_t)DEV_CFG(dev)->base +
@@ -355,42 +356,84 @@ int gpio_aspeed_init(const struct device *dev)
 	struct gpio_aspeed_data *data = DEV_DATA(dev);
 
 	data->pinmux = DEVICE_DT_GET(DT_NODELABEL(pinmux));
-	if (nr_isr_devs == 0) {
-		gpio_aspeed_init_cmd_src_sel(dev);
-		IRQ_CONNECT(DT_IRQN(DT_PARENT(DT_DRV_INST(0))),
-			    DT_IRQ(DT_PARENT(DT_DRV_INST(0)), priority),
-			    gpio_aspeed_isr,
-			    NULL,
-			    0);
-		irq_enable(DT_IRQN(DT_PARENT(DT_DRV_INST(0))));
-	}
 	gpio_aspeed_init_cmd_src(dev);
-	isr_devs[nr_isr_devs++] = dev;
 
 	return 0;
 }
-#define ASPEED_GPIO_DEVICE_INIT(inst)						      \
-	static const struct gpio_aspeed_config gpio_aspeed_cfg_##inst = {	      \
-		.common = {							      \
-			.port_pin_mask =					      \
-				GPIO_PORT_PIN_MASK_FROM_DT_INST(inst) &		      \
-				~(DT_INST_PROP_OR(inst, gpio_reserved, 0)),	      \
-		},								      \
-		.base = (gpio_register_t *)DT_REG_ADDR(DT_PARENT(DT_DRV_INST(inst))), \
-		.pin_offset = DT_INST_PROP(inst, pin_offset),			      \
-		.gpio_master = DT_INST_PROP_OR(inst, aspeed_cmd_src,		      \
-					       ASPEED_GPIO_CMD_SRC_ARM),	      \
-		.group_dedicated = DT_INST_PROP_OR(inst,			      \
-						   aspeed_group_dedicated,	      \
-						   GENMASK(3, 0)) & GENMASK(3, 0),    \
-	};									      \
-										      \
-	static struct gpio_aspeed_data gpio_aspeed_data_##inst;			      \
-										      \
-	DEVICE_DT_INST_DEFINE(inst, gpio_aspeed_init, NULL,			      \
-			      &gpio_aspeed_data_##inst,				      \
-			      &gpio_aspeed_cfg_##inst, POST_KERNEL,		      \
-			      CONFIG_GPIO_ASPEED_INIT_PRIORITY,			      \
-			      &gpio_aspeed_driver);
+
+static void gpio_aspeed_init_cmd_src_sel(const struct device *parent)
+{
+	volatile gpio_register_t *gpio_reg = DEV_PARENT_CFG(parent)->base;
+	gpio_cmd_src_sel_t cmd_src_sel;
+
+	cmd_src_sel.value = gpio_reg->cmd_src_sel.value;
+	cmd_src_sel.fields.mst1 = ASPEED_GPIO_SEL_PRI;
+	cmd_src_sel.fields.mst2 = ASPEED_GPIO_SEL_LPC;
+	cmd_src_sel.fields.mst3 = ASPEED_GPIO_SEL_SSP;
+	cmd_src_sel.fields.mst4 = ASPEED_GPIO_SEL_PRI;
+	cmd_src_sel.fields.mst5 = ASPEED_GPIO_SEL_PRI;
+	cmd_src_sel.fields.lock = 1;
+	gpio_reg->cmd_src_sel.value = cmd_src_sel.value;
+}
+
+int gpio_aspeed_parent_init(const struct device *parent)
+{
+	const struct gpio_aspeed_parent_config *cfg = DEV_PARENT_CFG(parent);
+
+	gpio_aspeed_init_cmd_src_sel(parent);
+	irq_connect_dynamic(cfg->irq_num, cfg->irq_prio, gpio_aspeed_isr, parent, 0);
+	irq_enable(cfg->irq_num);
+	return 0;
+}
+
+#define GPIO_ENUM(node_id) node_id,
+
+#define GPIO_ASPEED_DEV_DATA(node_id) {},
+#define GPIO_ASPEED_DEV_CFG(node_id) {					      \
+		.common = {						      \
+			.port_pin_mask =				      \
+				GPIO_PORT_PIN_MASK_FROM_DT_NODE(node_id) &    \
+				~(DT_PROP_OR(node_id, gpio_reserved, 0)),     \
+		},							      \
+		.parent = DEVICE_DT_GET(DT_PARENT(node_id)),		      \
+		.base = (gpio_register_t *)DT_REG_ADDR(DT_PARENT(node_id)),   \
+		.pin_offset = DT_PROP(node_id, pin_offset),		      \
+		.gpio_master = DT_PROP_OR(node_id, aspeed_cmd_src,	      \
+					  ASPEED_GPIO_CMD_SRC_ARM),	      \
+		.group_dedicated = DT_PROP_OR(node_id,			      \
+					      aspeed_group_dedicated,	      \
+					      GENMASK(3, 0)) & GENMASK(3, 0), \
+},
+
+#define GPIO_ASPEED_DT_DEFINE(node_id)						      \
+	DEVICE_DT_DEFINE(node_id, gpio_aspeed_init, NULL, &gpio_aspeed_data[node_id], \
+			 &gpio_aspeed_cfg[node_id], POST_KERNEL, 0, &gpio_aspeed_driver);
+
+#define GPIO_ASPEED_DEV_DECLARE(node_id) { .dev = DEVICE_DT_GET(node_id) },
+
+#define ASPEED_GPIO_DEVICE_INIT(inst)							\
+	static struct device_array child_dev_##inst[] = {				\
+		DT_FOREACH_CHILD(DT_DRV_INST(inst), GPIO_ASPEED_DEV_DECLARE)		\
+	};										\
+	static const struct gpio_aspeed_parent_config gpio_aspeed_parent_cfg_##inst = {	\
+		.base = (gpio_register_t *)DT_INST_REG_ADDR(inst),			\
+		.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(inst)),			\
+		.clk_id = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(inst, clk_id),	\
+		.irq_num = DT_INST_IRQN(inst),						\
+		.irq_prio = DT_INST_IRQ(inst, priority),				\
+		.child_dev = child_dev_##inst,						\
+		.child_num = ARRAY_SIZE(child_dev_##inst),				\
+	};										\
+	DEVICE_DT_INST_DEFINE(inst, gpio_aspeed_parent_init, NULL, NULL,		\
+			      &gpio_aspeed_parent_cfg_##inst, POST_KERNEL,		\
+			      CONFIG_GPIO_ASPEED_INIT_PRIORITY, NULL);			\
+	static const struct gpio_aspeed_config gpio_aspeed_cfg[] = {			\
+		DT_FOREACH_CHILD(DT_DRV_INST(inst), GPIO_ASPEED_DEV_CFG)		\
+	};										\
+	static struct gpio_aspeed_data gpio_aspeed_data[] = {				\
+		DT_FOREACH_CHILD(DT_DRV_INST(inst), GPIO_ASPEED_DEV_DATA)		\
+	};										\
+	enum { DT_FOREACH_CHILD(DT_DRV_INST(inst), GPIO_ENUM) };			\
+	DT_FOREACH_CHILD(DT_DRV_INST(inst), GPIO_ASPEED_DT_DEFINE)
 
 DT_INST_FOREACH_STATUS_OKAY(ASPEED_GPIO_DEVICE_INIT)

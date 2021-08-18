@@ -5,10 +5,14 @@ description: ASPEED GPIO node
 
 compatible: "aspeed,gpio"
 
-include: [gpio-controller.yaml, base.yaml]
+include: base.yaml
 
-properties:
+child-binding:
+  description: GPIO child node
+  include: gpio-controller.yaml
+  properties:
     label:
+      type: string
       required: true
 
     ngpios:
@@ -44,7 +48,6 @@ properties:
       description: |
         Dedicated gpio group for select master, each group include 8 gpios
         BIT0~BIT3 => GROUP0~GROUP3.
-
-gpio-cells:
+  gpio-cells:
   - pin
   - flags

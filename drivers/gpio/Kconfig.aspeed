@@ -4,6 +4,7 @@
 config GPIO_ASPEED
 	bool "ASPEED GPIO Controllers"
 	depends on SOC_FAMILY_ASPEED
+	select DYNAMIC_INTERRUPTS
 	help
 	  Enable config options to support the ASPEED GPIO controllers.
 

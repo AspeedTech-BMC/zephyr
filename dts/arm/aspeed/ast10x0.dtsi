@@ -101,11 +101,11 @@
 			};
 		};
 		gpio0: gpio@7e780000 {
+			compatible = "aspeed,gpio";
 			reg = <0x7e780000 0x400>;
 			interrupts = <11 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			gpio0_a_d: gpio0_a_d {
-				compatible = "aspeed,gpio";
 				#gpio-cells = <2>;
 				gpio-controller;
 				ngpios = <32>;
@@ -117,7 +117,6 @@
 			};
 
 			gpio0_e_h: gpio0_e_h {
-				compatible = "aspeed,gpio";
 				#gpio-cells = <2>;
 				gpio-controller;
 				ngpios = <32>;
@@ -129,7 +128,6 @@
 			};
 
 			gpio0_i_l: gpio0_i_l {
-				compatible = "aspeed,gpio";
 				#gpio-cells = <2>;
 				gpio-controller;
 				ngpios = <32>;
@@ -141,7 +139,6 @@
 			};
 
 			gpio0_m_p: gpio0_m_p {
-				compatible = "aspeed,gpio";
 				#gpio-cells = <2>;
 				gpio-controller;
 				ngpios = <32>;
@@ -153,7 +150,6 @@
 			};
 
 			gpio0_q_t: gpio0_q_t {
-				compatible = "aspeed,gpio";
 				#gpio-cells = <2>;
 				gpio-controller;
 				ngpios = <32>;
@@ -165,7 +161,6 @@
 			};
 
 			gpio0_u_v: gpio0_u_v {
-				compatible = "aspeed,gpio";
 				#gpio-cells = <2>;
 				gpio-controller;
 				ngpios = <8>;
