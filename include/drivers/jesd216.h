@@ -241,6 +241,10 @@ enum jesd216_mode_type {
 	JESD216_MODE_LIMIT,
 };
 
+#define JESD216_GET_CMD_BUSWIDTH(v) ((v & 0x00000F00) >> 8)
+#define JESD216_GET_ADDR_BUSWIDTH(v) ((v & 0x000000F0) >> 4)
+#define JESD216_GET_DATA_BUSWIDTH(v) (v & 0x0000000F)
+
 /* Command to use for fast read operations in a specified protocol
  * mode.
  */

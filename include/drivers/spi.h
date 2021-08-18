@@ -353,12 +353,15 @@ typedef int (*spi_api_release)(const struct device *dev,
 
 
 typedef int (*spi_nor_transceive)(const struct device *dev,
+				   const struct spi_config *config,
 			       struct spi_nor_op_info op_info);
 
 typedef int (*spi_nor_read_init)(const struct device *dev,
+				   const struct spi_config *config,
 			       struct spi_nor_op_info read_op_info);
 
 typedef int (*spi_nor_write_init)(const struct device *dev,
+				   const struct spi_config *config,
 			       struct spi_nor_op_info write_op_info);
 
 struct spi_nor_ops {
@@ -377,7 +380,7 @@ __subsystem struct spi_driver_api {
 	spi_api_io_async transceive_async;
 #endif /* CONFIG_SPI_ASYNC */
 	spi_api_release release;
-	struct spi_nor_ops *spi_nor_op;
+	const struct spi_nor_ops *spi_nor_op;
 };
 
 /**

@@ -8,6 +8,7 @@
 
 #include <device.h>
 #include <drivers/spi.h>
+#include <drivers/spi_nor.h>
 #include <errno.h>
 #include <logging/log.h>
 LOG_MODULE_REGISTER(spi_aspeed, CONFIG_SPI_LOG_LEVEL);
@@ -51,6 +52,11 @@ LOG_MODULE_REGISTER(spi_aspeed, CONFIG_SPI_LOG_LEVEL);
 #define SPIA4_ADDR_FILTER_CTRL      (0x00A4)
 #define SPIA8_REG_LOCK_SRST         (0x00A8)
 #define SPIAC_REG_LOCK_WDT          (0x00AC)
+
+
+#define ASPEED_SPI_USER             0x3
+#define ASPEED_SPI_USER_INACTIVE    BIT(2)
+
 
 #define ASPEED_SPI_SZ_2M            0x200000
 #define ASPEED_SPI_SZ_256M          0x10000000
@@ -125,6 +131,25 @@ uint32_t ast1030_spi_segment_addr_end(uint32_t reg_val)
 uint32_t ast1030_spi_segment_addr_val(uint32_t start, uint32_t end)
 {
 	return ((((((start) >> 20) << 20) >> 16) & 0xffff) | ((((end) >> 20) << 20) & 0xffff0000));
+}
+
+static uint32_t aspeed_spi_io_mode(uint32_t bus_width)
+{
+	uint32_t reg;
+
+	switch (bus_width) {
+	case 4:
+		reg = 0x40000000;
+		break;
+	case 2:
+		reg = 0x20000000;
+		break;
+	default:
+		reg = 0x00000000;
+		break;
+	}
+
+	return reg;
 }
 
 static void aspeed_spi_read_data(uint32_t ahb_addr,
@@ -228,6 +253,60 @@ static void aspeed_spi_start_tx(const struct device *dev)
 	spi_context_complete(ctx, 0);
 }
 
+static void aspeed_spi_nor_transceive_user(const struct device *dev,
+						const struct spi_config *spi_cfg,
+						struct spi_nor_op_info op_info)
+{
+	const struct aspeed_spi_config *config = dev->config;
+	struct aspeed_spi_data *data = dev->data;
+	struct spi_context *ctx = &data->ctx;
+	uint32_t cs = ctx->config->slave;
+	uint8_t dummy[12] = {0};
+
+	sys_write32(ASPEED_SPI_USER_INACTIVE | ASPEED_SPI_USER,
+		config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
+	sys_write32(ASPEED_SPI_USER, config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
+
+	/* cmd */
+	sys_write32(ASPEED_SPI_USER |
+		aspeed_spi_io_mode(JESD216_GET_CMD_BUSWIDTH(op_info.mode)),
+		config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
+
+	aspeed_spi_write_data(data->decode_addr[cs].start, &op_info.opcode, 1);
+
+	/* addr */
+	sys_write32(ASPEED_SPI_USER |
+		aspeed_spi_io_mode(JESD216_GET_ADDR_BUSWIDTH(op_info.mode)),
+		config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
+	op_info.addr = sys_cpu_to_be32(op_info.addr);
+	aspeed_spi_write_data(data->decode_addr[cs].start,
+		(const uint8_t *)&op_info.addr, op_info.addr_len);
+
+	/* dummy */
+	aspeed_spi_write_data(data->decode_addr[cs].start,
+		(const uint8_t *)&dummy,
+		(op_info.dummy_cycle / (8 / JESD216_GET_ADDR_BUSWIDTH(op_info.mode))));
+
+	/* data */
+	sys_write32(ASPEED_SPI_USER |
+			aspeed_spi_io_mode(JESD216_GET_DATA_BUSWIDTH(op_info.mode)),
+			config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
+
+	if (op_info.data_direct == SPI_NOR_DATA_DIRECT_IN) {
+		/* read data */
+		aspeed_spi_read_data(data->decode_addr[cs].start,
+				op_info.buf, op_info.data_len);
+	} else {
+		/* write data */
+		aspeed_spi_write_data(data->decode_addr[cs].start,
+				op_info.buf, op_info.data_len);
+	}
+
+	sys_write32(ASPEED_SPI_USER_INACTIVE | ASPEED_SPI_USER,
+		config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
+
+	spi_context_complete(ctx, 0);
+}
 
 static int aspeed_spi_transceive(const struct device *dev,
 					    const struct spi_config *spi_cfg,
@@ -249,6 +328,26 @@ static int aspeed_spi_transceive(const struct device *dev,
 
 	ret = spi_context_wait_for_completion(ctx);
 
+	spi_context_release(ctx, ret);
+
+	return ret;
+}
+
+static int aspeed_spi_nor_transceive(const struct device *dev,
+						const struct spi_config *spi_cfg,
+						struct spi_nor_op_info op_info)
+{
+	struct aspeed_spi_data *data = dev->data;
+	struct spi_context *ctx = &data->ctx;
+	int ret;
+
+	spi_context_lock(ctx, false, NULL, spi_cfg);
+	if (!spi_context_configured(ctx, spi_cfg))
+		ctx->config = spi_cfg;
+
+	aspeed_spi_nor_transceive_user(dev, spi_cfg, op_info);
+
+	ret = spi_context_wait_for_completion(ctx);
 	spi_context_release(ctx, ret);
 
 	return ret;
@@ -357,9 +456,16 @@ static int aspeed_spi_init(const struct device *dev)
 	return 0;
 }
 
+static const struct spi_nor_ops aspeed_spi_nor_ops = {
+	.transceive = aspeed_spi_nor_transceive,
+	.read_init = NULL,
+	.write_init = NULL,
+};
+
 static const struct spi_driver_api aspeed_spi_driver_api = {
 	.transceive = aspeed_spi_transceive,
 	.release = aspeed_spi_release,
+	.spi_nor_op = &aspeed_spi_nor_ops,
 };
 
 #define ASPEED_SPI_INIT(n)						\

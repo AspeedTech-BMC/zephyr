@@ -424,8 +424,9 @@ static int spi_nor_op_exec(const struct device *dev,
 		(const struct spi_driver_api *)driver_data->spi->api;
 
 	if (api->spi_nor_op && api->spi_nor_op->transceive) {
-		LOG_INF("Using spi_nor op framework");
-		ret = api->spi_nor_op->transceive(dev, op_info);
+		LOG_DBG("Using spi_nor op framework");
+		ret = api->spi_nor_op->transceive(driver_data->spi,
+				&driver_data->spi_cfg, op_info);
 		goto end;
 	}
 
@@ -510,9 +511,10 @@ static int read_sfdp(const struct device *const dev,
 		LOG_DBG("Using spi_nor op framework");
 		struct spi_nor_op_info op_info =
 			SPI_NOR_OP_INFO(JESD216_MODE_111, JESD216_CMD_READ_SFDP,
-				addr, 3, 8, data, length, SPI_NOR_DATA_DIRECT_IN);
+				addr << 8, 3, 8, data, length, SPI_NOR_DATA_DIRECT_IN);
 
-		ret = api->spi_nor_op->transceive(dev, op_info);
+		ret = api->spi_nor_op->transceive(driver_data->spi,
+				&driver_data->spi_cfg, op_info);
 		return ret;
 	}
 
@@ -1454,7 +1456,10 @@ static int spi_nor_configure(const struct device *dev)
 				0, data->flag_access_32bit ? 4 : 3, data->cmd_info.read_dummy,
 				NULL, 0, SPI_NOR_DATA_DIRECT_IN);
 
-		rc = api->spi_nor_op->read_init(dev, read_op_info);
+		rc = api->spi_nor_op->read_init(data->spi,
+				&data->spi_cfg, read_op_info);
+		if (rc != 0)
+			return -ENODEV;
 	}
 
 	if (api->spi_nor_op && api->spi_nor_op->write_init) {
@@ -1463,7 +1468,10 @@ static int spi_nor_configure(const struct device *dev)
 				0, data->flag_access_32bit ? 4 : 3, 0,
 				NULL, 0, SPI_NOR_DATA_DIRECT_OUT);
 
-		rc = api->spi_nor_op->write_init(dev, write_op_info);
+		rc = api->spi_nor_op->write_init(data->spi,
+				&data->spi_cfg, write_op_info);
+		if (rc != 0)
+			return -ENODEV;
 	}
 
 	return 0;
