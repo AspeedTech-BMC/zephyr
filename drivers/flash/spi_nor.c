@@ -1454,7 +1454,7 @@ static int spi_nor_configure(const struct device *dev)
 		struct spi_nor_op_info read_op_info =
 			SPI_NOR_OP_INFO(data->cmd_info.read_mode, data->cmd_info.read_opcode,
 				0, data->flag_access_32bit ? 4 : 3, data->cmd_info.read_dummy,
-				NULL, 0, SPI_NOR_DATA_DIRECT_IN);
+				NULL, data->flash_size, SPI_NOR_DATA_DIRECT_IN);
 
 		rc = api->spi_nor_op->read_init(data->spi,
 				&data->spi_cfg, read_op_info);
@@ -1466,7 +1466,7 @@ static int spi_nor_configure(const struct device *dev)
 		struct spi_nor_op_info write_op_info =
 			SPI_NOR_OP_INFO(data->cmd_info.pp_mode, data->cmd_info.pp_opcode,
 				0, data->flag_access_32bit ? 4 : 3, 0,
-				NULL, 0, SPI_NOR_DATA_DIRECT_OUT);
+				NULL, data->flash_size, SPI_NOR_DATA_DIRECT_OUT);
 
 		rc = api->spi_nor_op->write_init(data->spi,
 				&data->spi_cfg, write_op_info);
