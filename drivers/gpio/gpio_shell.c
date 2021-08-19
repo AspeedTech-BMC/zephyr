@@ -184,11 +184,15 @@ static int cmd_gpio_listen(const struct shell *shell,
 		index = (uint8_t)atoi(argv[2]);
 		shell_print(shell, "Listen to %s pin %d mode %s", argv[args_indx.port], index,
 			    argv[args_indx.mode]);
-		rc = gpio_pin_interrupt_configure(dev, index, flag);
-		if (rc)
-			return rc;
 		gpio_init_callback(&gpio_cb[index], event_print, BIT(index));
 		rc = gpio_add_callback(dev, &gpio_cb[index]);
+		if (rc)
+			return rc;
+		rc = gpio_pin_interrupt_configure(dev, index, flag);
+		if (rc) {
+			gpio_remove_callback(dev, &gpio_cb[index]);
+			return rc;
+		}
 	}
 
 	return 0;
