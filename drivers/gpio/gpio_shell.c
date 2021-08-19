@@ -60,6 +60,8 @@ static int cmd_gpio_conf(const struct shell *shell, size_t argc, char **argv)
 			type = GPIO_INPUT;
 		} else if (!strcmp(argv[args_indx.mode], "out")) {
 			type = GPIO_OUTPUT;
+		} else if (!strcmp(argv[args_indx.mode], "deb")) {
+			type = GPIO_INPUT | GPIO_INT_DEBOUNCE;
 		} else {
 			return 0;
 		}
@@ -99,7 +101,7 @@ static int cmd_gpio_get(const struct shell *shell,
 	if (dev != NULL) {
 		index = (uint8_t)atoi(argv[2]);
 		shell_print(shell, "Reading %s pin %d",
-			     argv[args_indx.port], index);
+			    argv[args_indx.port], index);
 		rc = gpio_pin_get(dev, index);
 		if (rc >= 0) {
 			shell_print(shell, "Value %d", rc);
@@ -151,7 +153,7 @@ static void event_print(const struct device *dev, struct gpio_callback *gpio_cb,
 }
 
 static int cmd_gpio_listen(const struct shell *shell,
-			size_t argc, char **argv)
+			   size_t argc, char **argv)
 {
 	const struct device *dev;
 	uint8_t index = 0U;
@@ -186,8 +188,9 @@ static int cmd_gpio_listen(const struct shell *shell,
 			    argv[args_indx.mode]);
 		gpio_init_callback(&gpio_cb[index], event_print, BIT(index));
 		rc = gpio_add_callback(dev, &gpio_cb[index]);
-		if (rc)
+		if (rc) {
 			return rc;
+		}
 		rc = gpio_pin_interrupt_configure(dev, index, flag);
 		if (rc) {
 			gpio_remove_callback(dev, &gpio_cb[index]);
@@ -199,7 +202,8 @@ static int cmd_gpio_listen(const struct shell *shell,
 }
 
 SHELL_STATIC_SUBCMD_SET_CREATE(
-	sub_gpio, SHELL_CMD(conf, NULL, "Configure GPIO: <device> <pin> <in|out>", cmd_gpio_conf),
+	sub_gpio,
+	SHELL_CMD(conf, NULL, "Configure GPIO: <device> <pin> <in|out|deb>", cmd_gpio_conf),
 	SHELL_CMD(get, NULL, "Get GPIO value: <device> <pin>", cmd_gpio_get),
 	SHELL_CMD(set, NULL, "Set GPIO: <device> <pin> <0|1>", cmd_gpio_set),
 	SHELL_CMD(listen, NULL, "Listen GPIO: <device> <pin> <levelH|levelL|edgeH|edgeL|edgeB>",
