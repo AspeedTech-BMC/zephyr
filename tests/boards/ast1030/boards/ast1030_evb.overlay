@@ -174,7 +174,7 @@
 	status = "okay";
 	pinctrl-0 = <&pinctrl_i2c0_default>;
 
-	eeprom0: eeprom0 {
+	eeprom0: eeprom0@40 {
 		compatible = "atmel,at24";
 		reg = <0x40>;
 		label = "EEPROM_SLAVE_0";
@@ -187,7 +187,7 @@
 #endif
 	};
 
-	ipmb0: ipmb0 {
+	ipmb0: ipmb0@50 {
 		compatible = "aspeed,ipmb";
 		reg = <0x50>;
 		label = "IPMB_SLAVE_0";
@@ -203,7 +203,7 @@
 	pinctrl-0 = <&pinctrl_i2c1_default>;
 	status = "okay";
 
-	eeprom1: eeprom1 {
+	eeprom1: eeprom1@41 {
 		compatible = "atmel,at24";
 		reg = <0x41>;
 		label = "EEPROM_SLAVE_1";
@@ -216,7 +216,7 @@
 #endif
 	};
 
-	ipmb1: ipmb1 {
+	ipmb1: ipmb1@51 {
 		compatible = "aspeed,ipmb";
 		reg = <0x51>;
 		label = "IPMB_SLAVE_1";
@@ -232,7 +232,7 @@
 	pinctrl-0 = <&pinctrl_i2c2_default>;
 	status = "okay";
 
-	eeprom2: eeprom2 {
+	eeprom2: eeprom2@42 {
 		compatible = "atmel,at24";
 		reg = <0x42>;
 		label = "EEPROM_SLAVE_2";
@@ -245,7 +245,7 @@
 #endif
 	};
 
-	ipmb2: ipmb2 {
+	ipmb2: ipmb2@52 {
 		compatible = "aspeed,ipmb";
 		reg = <0x52>;
 		label = "IPMB_SLAVE_2";
@@ -261,7 +261,7 @@
 	pinctrl-0 = <&pinctrl_i2c3_default>;
 	status = "okay";
 
-	eeprom3: eeprom3 {
+	eeprom3: eeprom3@43 {
 		compatible = "atmel,at24";
 		reg = <0x43>;
 		label = "EEPROM_SLAVE_3";
@@ -274,7 +274,7 @@
 #endif
 	};
 
-	ipmb3: ipmb3 {
+	ipmb3: ipmb3@53 {
 		compatible = "aspeed,ipmb";
 		reg = <0x53>;
 		label = "IPMB_SLAVE_3";
@@ -290,7 +290,7 @@
 	pinctrl-0 = <&pinctrl_i2c4_default>;
 	status = "okay";
 
-	eeprom4: eeprom4 {
+	eeprom4: eeprom4@44 {
 		compatible = "atmel,at24";
 		reg = <0x44>;
 		label = "EEPROM_SLAVE_4";
@@ -303,7 +303,7 @@
 #endif
 	};
 
-	ipmb4: ipmb4 {
+	ipmb4: ipmb4@54 {
 		compatible = "aspeed,ipmb";
 		reg = <0x54>;
 		label = "IPMB_SLAVE_4";
@@ -319,7 +319,7 @@
 	pinctrl-0 = <&pinctrl_i2c5_default>;
 	status = "okay";
 
-	eeprom5: eeprom5 {
+	eeprom5: eeprom5@45 {
 		compatible = "atmel,at24";
 		reg = <0x45>;
 		label = "EEPROM_SLAVE_5";
@@ -332,7 +332,7 @@
 #endif
 	};
 
-	ipmb5: ipmb5 {
+	ipmb5: ipmb5@55 {
 		compatible = "aspeed,ipmb";
 		reg = <0x55>;
 		label = "IPMB_SLAVE_5";
