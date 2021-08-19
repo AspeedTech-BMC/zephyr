@@ -156,7 +156,6 @@ struct spi_nor_data {
 	uint16_t page_size;
 	uint32_t sector_size;
 	enum spi_nor_cap cap_mask;
-	void (*quad_bit_en)(const struct device *dev);
 
 #ifdef CONFIG_SPI_NOR_SFDP_RUNTIME
 	/* Size of flash, in bytes */
@@ -652,6 +651,22 @@ static int spi_nor_rdsr(const struct device *dev)
 	return ret;
 }
 
+static int spi_nor_rdsr2(const struct device *dev)
+{
+	uint8_t reg;
+	struct spi_nor_op_info op_info =
+			SPI_NOR_OP_INFO(JESD216_MODE_111, SPI_NOR_CMD_RDSR2,
+				0, 0, 0, &reg, sizeof(reg), SPI_NOR_DATA_DIRECT_IN);
+
+	int ret = spi_nor_op_exec(dev, op_info);
+
+	if (ret == 0) {
+		ret = reg;
+	}
+
+	return ret;
+}
+
 /**
  * @brief Write the status register.
  *
@@ -680,6 +695,151 @@ static int spi_nor_wrsr(const struct device *dev,
 
 	return ret;
 }
+
+static int spi_nor_wrsr2(const struct device *dev,
+			uint8_t sr)
+{
+	int ret;
+	struct spi_nor_op_info op_info =
+			SPI_NOR_OP_INFO(JESD216_MODE_111, SPI_NOR_CMD_WRSR2,
+				0, 0, 0, &sr, sizeof(sr), SPI_NOR_DATA_DIRECT_OUT);
+
+	ret = spi_nor_wren(dev);
+
+	if (ret == 0) {
+		ret = spi_nor_op_exec(dev, op_info);
+		spi_nor_wait_until_ready(dev);
+	}
+
+	return ret;
+}
+
+#ifndef CONFIG_SPI_NOR_SFDP_MINIMAL
+/* MXIC, ISSI */
+static int spi_nor_sr1_bit6_config(const struct device *dev)
+{
+	int sr;
+
+	sr = spi_nor_rdsr(dev);
+	if (sr < 0)
+		return sr;
+
+	if ((sr & BIT(6)) != 0)
+		return 0;
+
+	sr |= BIT(6);
+
+	sr = spi_nor_wrsr(dev, (uint8_t)sr);
+	if (sr != 0)
+		return sr;
+
+	sr = spi_nor_rdsr(dev);
+	if ((sr & BIT(6)) == 0) {
+		LOG_ERR("Fail to set SR1[6]");
+		return -ENOTSUP;
+	}
+
+	return 0;
+}
+
+/* Winbond */
+static int spi_nor_sr2_bit1_config(const struct device *dev)
+{
+	int sr;
+
+	sr = spi_nor_rdsr2(dev);
+	if (sr < 0)
+		return sr;
+
+	if ((sr & BIT(1)) != 0)
+		return 0;
+
+	sr |= BIT(1);
+
+	sr = spi_nor_wrsr2(dev, (uint8_t)sr);
+	if (sr != 0)
+		return sr;
+
+	sr = spi_nor_rdsr2(dev);
+	if ((sr & BIT(1)) == 0) {
+		LOG_ERR("Fail to set SR2[1]");
+		return -ENOTSUP;
+	}
+
+	return 0;
+}
+
+/* Cypress */
+static int spi_nor_cf1_bit1_config(const struct device *dev)
+{
+	int ret;
+	uint8_t sr[2];
+	struct spi_nor_op_info op_info =
+			SPI_NOR_OP_INFO(JESD216_MODE_111, SPI_NOR_CMD_WRSR,
+				0, 0, 0, sr, sizeof(sr), SPI_NOR_DATA_DIRECT_OUT);
+
+	ret = spi_nor_rdsr(dev);
+	if (ret < 0)
+		return ret;
+	sr[0] = (uint8_t)ret;
+
+	ret = spi_nor_rdsr2(dev);
+	if (ret < 0)
+		return ret;
+	sr[1] = (uint8_t)(ret | BIT(1));
+
+	ret = spi_nor_wren(dev);
+	if (ret != 0)
+		return ret;
+
+	ret = spi_nor_op_exec(dev, op_info);
+	spi_nor_wait_until_ready(dev);
+	if (ret != 0)
+		return ret;
+
+	ret = spi_nor_rdsr2(dev);
+	if ((ret & BIT(1)) == 0) {
+		LOG_ERR("Fail to set SR2[1]");
+		return -ENOTSUP;
+	}
+
+	return 0;
+}
+
+#define SPI_NOR_QE_NO_NEED        0x0 /* Micron, Gigadevice */
+#define SPI_NOR_QE_NOT_SUPPORTED  0x7
+#define SPI_NOR_QE_SR1_BIT6       0x2 /* MXIC, ISSI */
+#define SPI_NOR_QE_SR2_BIT1       0x4 /* Winbond */
+#define SPI_NOR_QE_CF1_BIT1       0x5 /* Cypress */
+
+static int spi_nor_qe_config(const struct device *dev, uint32_t qer)
+{
+	int ret = 0;
+	struct spi_nor_data *data = dev->data;
+
+	switch (qer) {
+	case SPI_NOR_QE_NO_NEED:
+		break;
+	case SPI_NOR_QE_SR1_BIT6:
+		ret = spi_nor_sr1_bit6_config(dev);
+		break;
+	case SPI_NOR_QE_SR2_BIT1:
+		ret = spi_nor_sr2_bit1_config(dev);
+		break;
+	case SPI_NOR_QE_CF1_BIT1:
+		ret = spi_nor_cf1_bit1_config(dev);
+		break;
+	case SPI_NOR_QE_NOT_SUPPORTED:
+	default:
+		LOG_INF("Disable QSPI bit");
+		data->cap_mask &= ~SPI_NOR_QUAD_CAP_MASK;
+		break;
+	}
+
+	return ret;
+}
+
+#endif /* CONFIG_SPI_NOR_SFDP_MINIMAL */
 
 static int spi_nor_read(const struct device *dev, off_t addr, void *dest,
 			size_t size)
@@ -1042,6 +1202,16 @@ static int spi_nor_process_bfp(const struct device *dev,
 		}
 	}
 
+	struct jesd216_bfp_dw15 dw15;
+
+	if (jesd216_bfp_decode_dw15(php, bfp, &dw15) == 0) {
+		rc = spi_nor_qe_config(dev, dw15.qer);
+		if (rc != 0) {
+			LOG_ERR("Fail to configure QE bit : %d\n", rc);
+			return rc;
+		}
+	}
+
 	/* get read cmd info from bfp */
 	for (uint8_t mc = 0; mc < ARRAY_SIZE(mode_cap_map); mc++) {
 		if ((data->cap_mask & mode_cap_map[mc].cap) != 0) {
@@ -1303,7 +1473,6 @@ static void spi_nor_info_init_params(
 	const struct spi_nor_config *cfg = dev->config;
 
 	data->cap_mask = ~(cfg->spi_ctrl_caps_mask | cfg->spi_nor_caps_mask);
-	data->quad_bit_en = NULL;
 
 	/* 4-4-4 QPI format is not supported */
 	data->cap_mask &= ~SPI_NOR_MODE_4_4_4_CAP;
