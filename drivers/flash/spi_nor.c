@@ -1304,6 +1304,9 @@ static void spi_nor_info_init_params(
 	data->cap_mask = ~(cfg->spi_ctrl_caps_mask | cfg->spi_nor_caps_mask);
 	data->quad_bit_en = NULL;
 
+	/* 4-4-4 QPI format is not supported */
+	data->cap_mask &= ~SPI_NOR_MODE_4_4_4_CAP;
+
 	if (cfg->spi_max_buswidth < 2)
 		data->cap_mask &= ~(SPI_NOR_DUAL_CAP_MASK | SPI_NOR_QUAD_CAP_MASK);
 	else if (cfg->spi_max_buswidth < 4)
