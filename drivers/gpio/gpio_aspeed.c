@@ -9,6 +9,7 @@
 #include <kernel.h>
 #include <device.h>
 #include <drivers/gpio.h>
+#include <drivers/clock_control.h>
 #include <drivers/pinmux.h>
 #include <drivers/clock_control.h>
 #include <soc.h>
@@ -34,6 +35,7 @@ struct gpio_aspeed_parent_config {
 	uint32_t irq_prio;
 	struct device_array *child_dev;
 	uint32_t child_num;
+	uint32_t deb_interval;
 };
 struct gpio_aspeed_config {
 	/* gpio_driver_config needs to be first */
@@ -285,6 +287,28 @@ static int gpio_aspeed_manage_callback(const struct device *dev,
 	return gpio_manage_callback(&data->cb, callback, set);
 }
 
+static int gpio_aspeed_deb_en(const struct device *dev, gpio_pin_t pin, bool en)
+{
+	volatile gpio_register_t *gpio_reg = DEV_CFG(dev)->base;
+	uint8_t pin_offset = DEV_CFG(dev)->pin_offset;
+	gpio_index_register_t index;
+
+	if (pin >= 32) {
+		LOG_ERR("Invalid gpio pin #%d", pin);
+		return -EINVAL;
+	}
+	pin += pin_offset;
+	index.value = 0;
+	index.fields.index_type = ASPEED_GPIO_DEBOUCE;
+	index.fields.index_command = ASPEED_GPIO_INDEX_WRITE;
+	index.fields.index_data = en ? 2 : 0;
+	index.fields.index_number = pin;
+	LOG_DBG("gpio index = 0x%08x\n", index.value);
+	gpio_reg->index.value = index.value;
+
+	return 0;
+}
+
 static int gpio_aspeed_config(const struct device *dev,
 			      gpio_pin_t pin, gpio_flags_t flags)
 {
@@ -332,11 +356,16 @@ static int gpio_aspeed_config(const struct device *dev,
 		}
 		/* Set pin direction to output */
 		ret = gpio_aspeed_set_direction(dev, pin, 1);
-	} else { /* Input */
+	} else if (flags & GPIO_INPUT) { /* Input */
+		if (flags & GPIO_INT_DEBOUNCE) {
+			ret = gpio_aspeed_deb_en(dev, pin, true);
+		} else {
+			ret = gpio_aspeed_deb_en(dev, pin, false);
+		}
 		/* Set pin direction to input */
 		ret = gpio_aspeed_set_direction(dev, pin, 0);
 	}
-	return 0;
+	return ret;
 }
 
 /* GPIO driver registration */
@@ -376,14 +405,50 @@ static void gpio_aspeed_init_cmd_src_sel(const struct device *parent)
 	gpio_reg->cmd_src_sel.value = cmd_src_sel.value;
 }
 
+static int gpio_aspeed_msec_to_cycles(const struct device *parent, uint32_t ms, uint32_t *cycles)
+{
+	uint32_t clk_rate;
+	uint64_t temp_64;
+
+	clock_control_get_rate(DEV_PARENT_CFG(parent)->clock_dev, DEV_PARENT_CFG(parent)->clk_id,
+			       &clk_rate);
+	temp_64 = ceiling_fraction(((uint64_t)ms * clk_rate), MSEC_PER_SEC);
+	if (temp_64 > GENMASK(23, 0)) {
+		return -ERANGE;
+	}
+	*cycles = (uint32_t)temp_64;
+
+	return 0;
+}
+
+static int gpio_aspeed_deb_init(const struct device *parent, uint32_t ms)
+{
+	volatile gpio_register_t *gpio_reg = DEV_PARENT_CFG(parent)->base;
+	uint32_t cycles;
+	int ret;
+
+	ret = gpio_aspeed_msec_to_cycles(parent, ms, &cycles);
+	if (ret) {
+		LOG_ERR("Err: %d", ret);
+		return ret;
+	}
+	LOG_DBG("Init debounce timer for waiting %dms(%d cycles)", ms, cycles);
+	gpio_reg->debounce_time[0].fields.debounce_time = cycles;
+
+	return 0;
+}
+
 int gpio_aspeed_parent_init(const struct device *parent)
 {
 	const struct gpio_aspeed_parent_config *cfg = DEV_PARENT_CFG(parent);
+	int ret;
 
 	gpio_aspeed_init_cmd_src_sel(parent);
+	ret = gpio_aspeed_deb_init(parent, cfg->deb_interval);
 	irq_connect_dynamic(cfg->irq_num, cfg->irq_prio, gpio_aspeed_isr, parent, 0);
 	irq_enable(cfg->irq_num);
-	return 0;
+
+	return ret;
 }
 
 #define GPIO_ENUM(node_id) node_id,
@@ -423,6 +488,7 @@ int gpio_aspeed_parent_init(const struct device *parent)
 		.irq_prio = DT_INST_IRQ(inst, priority),				\
 		.child_dev = child_dev_##inst,						\
 		.child_num = ARRAY_SIZE(child_dev_##inst),				\
+		.deb_interval = DT_INST_PROP_OR(inst, aspeed_deb_interval_ms, 5),	\
 	};										\
 	DEVICE_DT_INST_DEFINE(inst, gpio_aspeed_parent_init, NULL, NULL,		\
 			      &gpio_aspeed_parent_cfg_##inst, POST_KERNEL,		\
