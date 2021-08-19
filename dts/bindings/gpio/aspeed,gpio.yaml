@@ -7,6 +7,13 @@ compatible: "aspeed,gpio"
 
 include: base.yaml
 
+properties:
+  aspeed,deb-interval-ms:
+    type: int
+    default: 5
+    description:
+      Debounce inverval when pin configure with GPIO_INT_DEBOUNCE. (unit is ms)
+
 child-binding:
   description: GPIO child node
   include: gpio-controller.yaml
