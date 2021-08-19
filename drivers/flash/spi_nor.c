@@ -1292,7 +1292,6 @@ static int setup_pages_layout(const struct device *dev)
 static void spi_nor_info_init_params(
 	const struct device *dev)
 {
-	const struct spi_nor_config *cfg = dev->config;
 	struct spi_nor_data *data = dev->data;
 
 	memset(&data->cmd_info, 0x0, sizeof(struct spi_nor_cmd_info));
@@ -1301,6 +1300,8 @@ static void spi_nor_info_init_params(
 	spi_nor_assign_read_cmd(data, JESD216_MODE_111, SPI_NOR_CMD_READ, 0);
 	spi_nor_assign_pp_cmd(data, JESD216_MODE_111, SPI_NOR_CMD_PP);
 #else /* CONFIG_SPI_NOR_SFDP_MINIMAL */
+	const struct spi_nor_config *cfg = dev->config;
+
 	data->cap_mask = ~(cfg->spi_ctrl_caps_mask | cfg->spi_nor_caps_mask);
 	data->quad_bit_en = NULL;
 
@@ -1457,7 +1458,7 @@ static int spi_nor_configure(const struct device *dev)
 		struct spi_nor_op_info read_op_info =
 			SPI_NOR_OP_INFO(data->cmd_info.read_mode, data->cmd_info.read_opcode,
 				0, data->flag_access_32bit ? 4 : 3, data->cmd_info.read_dummy,
-				NULL, data->flash_size, SPI_NOR_DATA_DIRECT_IN);
+				NULL, dev_flash_size(dev), SPI_NOR_DATA_DIRECT_IN);
 
 		rc = api->spi_nor_op->read_init(data->spi,
 				&data->spi_cfg, read_op_info);
@@ -1469,7 +1470,7 @@ static int spi_nor_configure(const struct device *dev)
 		struct spi_nor_op_info write_op_info =
 			SPI_NOR_OP_INFO(data->cmd_info.pp_mode, data->cmd_info.pp_opcode,
 				0, data->flag_access_32bit ? 4 : 3, 0,
-				NULL, data->flash_size, SPI_NOR_DATA_DIRECT_OUT);
+				NULL, dev_flash_size(dev), SPI_NOR_DATA_DIRECT_OUT);
 
 		rc = api->spi_nor_op->write_init(data->spi,
 				&data->spi_cfg, write_op_info);
