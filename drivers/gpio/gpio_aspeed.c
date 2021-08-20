@@ -9,7 +9,6 @@
 #include <kernel.h>
 #include <device.h>
 #include <drivers/gpio.h>
-#include <drivers/clock_control.h>
 #include <drivers/pinmux.h>
 #include <drivers/clock_control.h>
 #include <soc.h>
@@ -488,7 +487,7 @@ int gpio_aspeed_parent_init(const struct device *parent)
 		.irq_prio = DT_INST_IRQ(inst, priority),				\
 		.child_dev = child_dev_##inst,						\
 		.child_num = ARRAY_SIZE(child_dev_##inst),				\
-		.deb_interval = DT_INST_PROP_OR(inst, aspeed_deb_interval_ms, 5),	\
+		.deb_interval = DT_INST_PROP(inst, aspeed_deb_interval_ms),		\
 	};										\
 	DEVICE_DT_INST_DEFINE(inst, gpio_aspeed_parent_init, NULL, NULL,		\
 			      &gpio_aspeed_parent_cfg_##inst, POST_KERNEL,		\
