@@ -53,8 +53,9 @@ struct flash_pages_layout {
  * through a runtime.
  */
 struct flash_parameters {
-	const size_t write_block_size;
+	size_t write_block_size;
 	uint8_t erase_value; /* Byte value of erased flash */
+	size_t flash_size; /* Byte value of flash size */
 };
 
 /**
@@ -463,6 +464,15 @@ static inline size_t z_impl_flash_get_write_block_size(const struct device *dev)
 	return api->get_parameters(dev)->write_block_size;
 }
 
+__syscall size_t flash_get_flash_size(const struct device *dev);
+
+static inline size_t z_impl_flash_get_flash_size(const struct device *dev)
+{
+	const struct flash_driver_api *api =
+		(const struct flash_driver_api *)dev->api;
+
+	return api->get_parameters(dev)->flash_size;
+}
 
 /**
  *  @brief  Get pointer to flash_parameters structure

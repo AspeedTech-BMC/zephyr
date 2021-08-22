@@ -246,9 +246,10 @@ static inline uint16_t dev_page_size(const struct device *dev)
 #endif /* CONFIG_SPI_NOR_SFDP_MINIMAL */
 }
 
-static const struct flash_parameters flash_nor_parameters = {
+static struct flash_parameters flash_nor_parameters = {
 	.write_block_size = 1,
 	.erase_value = 0xff,
+	.flash_size = 0,
 };
 
 /* Capture the time at which the device entered deep power-down. */
@@ -1172,6 +1173,7 @@ static int spi_nor_process_bfp(const struct device *dev,
 			data->cmd_info.se_opcode = data->erase_types[ti].cmd;
 			data->sector_size = BIT(data->erase_types[ti].exp);
 			data->cmd_info.se_mode = JESD216_MODE_111;
+			flash_nor_parameters.write_block_size = data->sector_size;
 			break;
 		}
 	}
@@ -1260,13 +1262,15 @@ static int spi_nor_process_4bai(const struct device *dev,
 
 	data->cmd_info.pp_opcode = cmd;
 
-	for (ti = 1; ti <= JESD216_NUM_ERASE_TYPES; ti++) {
+	for (ti = 0; ti < JESD216_NUM_ERASE_TYPES; ti++) {
 		if (data->erase_types[ti].exp != 0) {
-			rv = jesd216_4bai_se_support(jedec_4bai, ti, &cmd);
+			rv = jesd216_4bai_se_support(jedec_4bai, ti + 1, &cmd);
 			if (rv < 0)
 				goto end;
 			data->cmd_info.se_opcode = cmd;
+			data->erase_types[ti].cmd = cmd;
 			data->sector_size = BIT(data->erase_types[ti].exp);
+			flash_nor_parameters.write_block_size = data->sector_size;
 			break;
 		}
 	}
@@ -1282,9 +1286,9 @@ static int spi_nor_process_4bai(const struct device *dev,
 end:
 	LOG_DBG("[4bai][mode] read: %08x, write: %08x, erase: %08x",
 		data->cmd_info.read_mode, data->cmd_info.pp_mode, data->cmd_info.se_mode);
-	LOG_DBG("[4bai] read op: %02xh (%02x), write op: %02xh, erase op: %02xh",
+	LOG_DBG("[4bai] read op: %02xh (%02x), write op: %02xh, erase op: %02xh(%dKB)",
 		data->cmd_info.read_opcode, data->cmd_info.read_dummy,
-		data->cmd_info.pp_opcode, data->cmd_info.se_opcode);
+		data->cmd_info.pp_opcode, data->cmd_info.se_opcode, data->sector_size / 1024);
 
 	return 0;
 }
@@ -1385,7 +1389,7 @@ static int spi_nor_process_sfdp(
 
 	LOG_INF("[sfdp][mode] read: %08x, write: %08x, erase: %08x",
 		data->cmd_info.read_mode, data->cmd_info.pp_mode, data->cmd_info.se_mode);
-	LOG_INF("[sfdp] read op: %02xh (%d), write op: %02xh, erase op: %02xh (%d KB)",
+	LOG_INF("[sfdp] read op: %02xh (%d), write op: %02xh, erase op: %02xh(%dKB)",
 		data->cmd_info.read_opcode, data->cmd_info.read_dummy,
 		data->cmd_info.pp_opcode, data->cmd_info.se_opcode, data->sector_size / 1024);
 
@@ -1614,6 +1618,8 @@ static int spi_nor_configure(const struct device *dev)
 	}
 #endif /* CONFIG_FLASH_PAGE_LAYOUT */
 #endif /* CONFIG_SPI_NOR_SFDP_MINIMAL */
+
+	flash_nor_parameters.flash_size = dev_flash_size(dev);
 
 	if (IS_ENABLED(CONFIG_SPI_NOR_IDLE_IN_DPD)
 	    && (enter_dpd(dev) != 0)) {
