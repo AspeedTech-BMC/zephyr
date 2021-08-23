@@ -88,6 +88,26 @@ uint16_t gpio_offset_int_status[] = {
 	[6] = offsetof(gpio_register_t, group6_int_status),
 };
 
+uint16_t gpio_offset_wr_permit[] = {
+	[0] = offsetof(gpio_register_t, group0_write_cmd_src),
+	[1] = offsetof(gpio_register_t, group1_write_cmd_src),
+	[2] = offsetof(gpio_register_t, group2_write_cmd_src),
+	[3] = offsetof(gpio_register_t, group3_write_cmd_src),
+	[4] = offsetof(gpio_register_t, group4_write_cmd_src),
+	[5] = offsetof(gpio_register_t, group5_write_cmd_src),
+	[6] = offsetof(gpio_register_t, group6_write_cmd_src),
+};
+
+uint16_t gpio_offset_rd_permit[] = {
+	[0] = offsetof(gpio_register_t, group0_read_cmd_src),
+	[1] = offsetof(gpio_register_t, group1_read_cmd_src),
+	[2] = offsetof(gpio_register_t, group2_read_cmd_src),
+	[3] = offsetof(gpio_register_t, group3_read_cmd_src),
+	[4] = offsetof(gpio_register_t, group4_read_cmd_src),
+	[5] = offsetof(gpio_register_t, group5_read_cmd_src),
+	[6] = offsetof(gpio_register_t, group6_read_cmd_src),
+};
+
 /* Driver convenience defines */
 #define DEV_PARENT_CFG(dev) ((const struct gpio_aspeed_parent_config *)(dev)->config)
 #define DEV_CFG(dev) ((const struct gpio_aspeed_config *)(dev)->config)
@@ -95,14 +115,38 @@ uint16_t gpio_offset_int_status[] = {
 
 static int gpio_aspeed_cmd_src_set(const struct device *dev, gpio_pin_t pin, uint8_t cmd_src)
 {
-	volatile gpio_register_t *gpio_reg = DEV_CFG(dev)->base;
 	uint8_t pin_offset = DEV_CFG(dev)->pin_offset;
+#if CONFIG_GPIO_ASPEED_PERMIT_LOCK
+	gpio_new_cmd_src_t *new_cmd_src, temp;
+	gpio_set_permit_t permit;
+	uint32_t group_idx = pin_offset >> 5;
+	uint8_t byte_idx;
+#else
+	volatile gpio_register_t *gpio_reg = DEV_CFG(dev)->base;
 	gpio_index_register_t index;
+#endif
 
 	if (pin >= 32) {
 		LOG_ERR("Invalid gpio pin #%d", pin);
 		return -EINVAL;
 	}
+#if CONFIG_GPIO_ASPEED_PERMIT_LOCK
+	byte_idx = pin >> 3;
+	pin += pin_offset;
+	permit.byte = BIT(cmd_src);
+	permit.bits.mode_sel = 1;
+	permit.bits.lock = 1;
+	new_cmd_src = (gpio_new_cmd_src_t *)((uint32_t)DEV_CFG(dev)->base +
+					     gpio_offset_wr_permit[group_idx]);
+	temp.value = new_cmd_src->value;
+	temp.fields.sets[byte_idx] = permit.byte;
+	new_cmd_src->value = temp.value;
+	new_cmd_src = (gpio_new_cmd_src_t *)((uint32_t)DEV_CFG(dev)->base +
+					     gpio_offset_rd_permit[group_idx]);
+	temp.value = new_cmd_src->value;
+	temp.fields.sets[byte_idx] = permit.byte;
+	new_cmd_src->value = temp.value;
+#else
 	pin += pin_offset;
 	index.value = 0;
 	index.fields.index_type = ASPEED_GPIO_CMD_SRC;
@@ -110,6 +154,7 @@ static int gpio_aspeed_cmd_src_set(const struct device *dev, gpio_pin_t pin, uin
 	index.fields.index_number = pin;
 	index.fields.index_data = cmd_src;
 	gpio_reg->index.value = index.value;
+#endif
 	return 0;
 }
 

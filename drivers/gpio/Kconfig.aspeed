@@ -8,6 +8,14 @@ config GPIO_ASPEED
 	help
 	  Enable config options to support the ASPEED GPIO controllers.
 
+config GPIO_ASPEED_PERMIT_LOCK
+	bool "Lock the GPIO access permission"
+	depends on GPIO_ASPEED
+	depends on SOC_AST2600 || SOC_AST2605
+	default n
+	help
+	  Use command source new mode to lock the gpio access permission.
+
 config GPIO_ASPEED_INIT_PRIORITY
 	int "Init priority"
 	depends on GPIO_ASPEED
