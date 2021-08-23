@@ -250,7 +250,7 @@ int cache_instr_range(void *addr, size_t size, int op)
 {
 	uint32_t aligned_addr, i, n;
 	uint32_t base = DT_REG_ADDR(DT_NODELABEL(syscon));
-	unsigned int key;
+	unsigned int key = 0;
 
 	ARG_UNUSED(op);
 
