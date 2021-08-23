@@ -4,12 +4,111 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <ztest.h>
 #include <tc_util.h>
+#include <drivers/i2c.h>
+#include <drivers/i2c/slave/eeprom.h>
+#include <drivers/i2c/slave/ipmb.h>
 #include "ast_test.h"
+
+#define LOG_MODULE_NAME i2c_test
+
+#include <logging/log.h>
+LOG_MODULE_REGISTER(LOG_MODULE_NAME);
+
+#if DT_HAS_COMPAT_STATUS_OKAY(aspeed_i2c)
+#define ASPEED_I2C_NUMBER 6
+#define DT_DRV_COMPAT aspeed_i2c
+#define DATA_COUNT 0x20
+#define EEPROM_ADDR 0x40
+#define IPMB_ADDR 0x50
+#else
+#error No known devicetree compatible match for I2C test
+#endif
+
+#define I2CMDRV "I2C_"
+#define IPMBDRV "IPMB_SLAVE_"
+#define EEPROMDRV "EEPROM_SLAVE_"
+
+uint8_t i2c_speed[] = {I2C_SPEED_STANDARD,
+					I2C_SPEED_FAST,
+					I2C_SPEED_FAST_PLUS};
+
+int test_i2c_slave_EEPROM(void)
+{
+	int i, j, result;
+	char name_m[20], name_s[20], num[10];
+	uint8_t data_s[DATA_COUNT];
+	uint8_t data_r[DATA_COUNT];
+	const struct device *master_dev;
+	const struct device *slave_dev;
+	uint32_t dev_config_raw;
+	uint32_t i2c_clock = I2C_SPEED_FAST;
+	uint8_t data_add = 0, dev_addr;
+
+	/* change odd device as EEPROM slave device */
+	for (i = 0; i < ASPEED_I2C_NUMBER ; i += 2) {
+		dev_addr = EEPROM_ADDR + (i + 1);
+
+		strcpy(name_m, I2CMDRV);
+		sprintf(num, "%d", i);
+		strcat(name_m, num);
+
+		strcpy(name_s, EEPROMDRV);
+		sprintf(num, "%d", (i+1));
+		strcat(name_s, num);
+
+		/* obtain i2c master device */
+		master_dev = device_get_binding(name_m);
+		ast_zassert_not_null(master_dev, "I2C: %s Master device is get fail",
+		name_m);
+
+		/* change i2c speed */
+		i2c_clock = i2c_speed[i%3];
+		dev_config_raw = I2C_MODE_MASTER |
+		I2C_SPEED_SET(i2c_clock);
+		i2c_configure(master_dev, dev_config_raw);
+
+		/* obtain i2c slave device */
+		slave_dev = device_get_binding(name_s);
+		ast_zassert_not_null(slave_dev, "I2C: %s Slave device is get fail",
+		name_s);
+
+		/* register i2c slave device */
+		ast_zassert_false(i2c_slave_driver_register(slave_dev),
+		"I2C: %s Slave register is get fail", name_s);
+
+		for (j = 0; j < DATA_COUNT; j++) {
+			data_s[j] = data_add + j;
+			data_r[j] = 0;
+		}
+
+		/* burst transfer data */
+		result = i2c_burst_write(master_dev, dev_addr, 0, data_s, DATA_COUNT);
+		ast_zassert_false(result,
+		"I2C: %s Master transfer is get fail", name_m);
+
+		/* burst receive data */
+		result = i2c_burst_read(master_dev, dev_addr, 0, data_r, DATA_COUNT);
+		ast_zassert_false(result,
+		"I2C: %s Master read is get fail", name_m);
+
+		for (j = 0; j < DATA_COUNT; j++) {
+			ast_zassert_equal(data_s[j], data_r[j],
+			"I2C: %s EEPROM R/W is get fail at %d", name_m, j);
+		}
+
+		data_add += 0x10;
+	}
+
+	return 0;
+}
 
 int test_i2c(int count, enum aspeed_test_type type)
 {
 	printk("%s, count: %d, type: %d\n", __func__, count, type);
 
-	return 0;
+	test_i2c_slave_EEPROM();
+
+	return ast_ztest_result();
 }
