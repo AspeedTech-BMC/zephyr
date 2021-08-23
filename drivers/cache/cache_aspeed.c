@@ -158,12 +158,13 @@ int cache_data_all(int op)
 {
 	uint32_t base = DT_REG_ADDR(DT_NODELABEL(syscon));
 	uint32_t ctrl = sys_read32(base + CACHE_FUNC_CTRL_REG);
-	unsigned int key;
+	unsigned int key = 0;
 
 	ARG_UNUSED(op);
 
 	/* enter critical section */
-	key = irq_lock();
+	if (!k_is_in_isr())
+		key = irq_lock();
 
 	ctrl &= ~DCACHE_CLEAN;
 	sys_write32(ctrl, base + CACHE_FUNC_CTRL_REG);
@@ -174,7 +175,8 @@ int cache_data_all(int op)
 	__DSB();
 
 	/* exit critical section */
-	irq_unlock(key);
+	if (!k_is_in_isr())
+		irq_unlock(key);
 
 	return 0;
 }
@@ -217,12 +219,13 @@ int cache_instr_all(int op)
 {
 	uint32_t base = DT_REG_ADDR(DT_NODELABEL(syscon));
 	uint32_t ctrl = sys_read32(base + CACHE_FUNC_CTRL_REG);
-	unsigned int key;
+	unsigned int key = 0;
 
 	ARG_UNUSED(op);
 
 	/* enter critical section */
-	key = irq_lock();
+	if (!k_is_in_isr())
+		key = irq_lock();
 
 	ctrl &= ~ICACHE_CLEAN;
 	sys_write32(ctrl, base + CACHE_FUNC_CTRL_REG);
@@ -232,7 +235,8 @@ int cache_instr_all(int op)
 	__ISB();
 
 	/* exit critical section */
-	irq_unlock(key);
+	if (!k_is_in_isr())
+		irq_unlock(key);
 
 	return 0;
 }
@@ -262,7 +266,8 @@ int cache_instr_range(void *addr, size_t size, int op)
 	n = get_n_cacheline((uint32_t)addr, size, &aligned_addr);
 
 	/* enter critical section */
-	key = irq_lock();
+	if (!k_is_in_isr())
+		key = irq_lock();
 
 	for (i = 0; i < n; i++) {
 		sys_write32(0, base + CACHE_INVALID_REG);
@@ -272,7 +277,8 @@ int cache_instr_range(void *addr, size_t size, int op)
 	__DSB();
 
 	/* exit critical section */
-	irq_unlock(key);
+	if (!k_is_in_isr())
+		irq_unlock(key);
 
 	return 0;
 }
