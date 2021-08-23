@@ -36,62 +36,29 @@ LOG_MODULE_REGISTER(spi_nor_multi_dev, CONFIG_FLASH_LOG_LEVEL);
 struct spi_nor_config {
 	/* Runtime SFDP stores no static configuration. */
 
-#ifndef CONFIG_SPI_NOR_SFDP_RUNTIME
-	/* Size of device in bytes, from size property */
-	uint32_t flash_size;
-
-#ifdef CONFIG_FLASH_PAGE_LAYOUT
-	/* Flash page layout can be determined from devicetree. */
-	struct flash_pages_layout layout;
-#endif /* CONFIG_FLASH_PAGE_LAYOUT */
-
-	/* Expected JEDEC ID, from jedec-id property */
-	uint8_t jedec_id[SPI_NOR_MAX_ID_LEN];
-
-#if defined(CONFIG_SPI_NOR_SFDP_MINIMAL)
-	/* Optional support for entering 32-bit address mode. */
-	uint8_t enter_4byte_addr;
-#endif /* CONFIG_SPI_NOR_SFDP_MINIMAL */
-
-#if defined(CONFIG_SPI_NOR_SFDP_DEVICETREE)
-	/* Length of BFP structure, in 32-bit words. */
-	uint8_t bfp_len;
-
-	/* Pointer to the BFP table as read from the device
-	 * (little-endian stored words), from sfdp-bfp property
-	 */
-	const struct jesd216_bfp *bfp;
-#endif /* CONFIG_SPI_NOR_SFDP_DEVICETREE */
-#endif /* CONFIG_SPI_NOR_SFDP_RUNTIME */
-
 	/* Optional bits in SR to be cleared on startup.
 	 *
 	 * This information cannot be derived from SFDP.
 	 */
 	uint8_t has_lock;
 
-#if !defined(CONFIG_SPI_NOR_SFDP_MINIMAL)
 	uint32_t spi_max_buswidth;
 	uint32_t spi_ctrl_caps_mask;
 	uint32_t spi_nor_caps_mask;
-#endif	/* CONFIG_SPI_NOR_SFDP_MINIMAL */
 };
 
 /**
  * struct spi_nor_data - Structure for defining the SPI NOR access
  * @spi: The SPI device
  * @spi_cfg: The SPI configuration
- * @cs_ctrl: The GPIO pin used to emulate the SPI CS if required
  * @sem: The semaphore to access to the flash
  */
 struct spi_nor_data {
+	char *dev_name;
 	uint8_t jedec_id[SPI_NOR_MAX_ID_LEN];
 	struct k_sem sem;
 	const struct device *spi;
 	struct spi_config spi_cfg;
-#if DT_INST_SPI_DEV_HAS_CS_GPIOS(0)
-	struct spi_cs_control cs_ctrl;
-#endif /* DT_INST_SPI_DEV_HAS_CS_GPIOS(0) */
 
 	/* Miscellaneous flags */
 
@@ -109,8 +76,6 @@ struct spi_nor_data {
 	 * devicetree store page size and erase_types; runtime also
 	 * stores flash size and layout.
 	 */
-#ifndef CONFIG_SPI_NOR_SFDP_MINIMAL
-
 	struct jesd216_erase_type erase_types[JESD216_NUM_ERASE_TYPES];
 
 	/* Number of bytes per page */
@@ -118,31 +83,14 @@ struct spi_nor_data {
 	uint32_t sector_size;
 	enum spi_nor_cap cap_mask;
 
-#ifdef CONFIG_SPI_NOR_SFDP_RUNTIME
 	/* Size of flash, in bytes */
 	uint32_t flash_size;
 	bool jedec_4bai_support: 1;
 
-#ifdef CONFIG_FLASH_PAGE_LAYOUT
 	struct flash_pages_layout layout;
-#endif /* CONFIG_FLASH_PAGE_LAYOUT */
-#endif /* CONFIG_SPI_NOR_SFDP_RUNTIME */
-#endif /* CONFIG_SPI_NOR_SFDP_MINIMAL */
-};
 
-#ifdef CONFIG_SPI_NOR_SFDP_MINIMAL
-/* The historically supported erase sizes. */
-static const struct jesd216_erase_type minimal_erase_types[JESD216_NUM_ERASE_TYPES] = {
-	{
-		.cmd = SPI_NOR_CMD_BE,
-		.exp = 16,
-	},
-	{
-		.cmd = SPI_NOR_CMD_SE,
-		.exp = 12,
-	},
+	struct flash_parameters flash_nor_parameter;
 };
-#endif /* CONFIG_SPI_NOR_SFDP_MINIMAL */
 
 #define SPI_NOR_PROT_NUM 8
 
@@ -167,13 +115,9 @@ static int spi_nor_write_protection_set(const struct device *dev,
 static inline const struct jesd216_erase_type *
 dev_erase_types(const struct device *dev)
 {
-#ifdef CONFIG_SPI_NOR_SFDP_MINIMAL
-	return minimal_erase_types;
-#else /* CONFIG_SPI_NOR_SFDP_MINIMAL */
 	const struct spi_nor_data *data = dev->data;
 
 	return data->erase_types;
-#endif /* CONFIG_SPI_NOR_SFDP_MINIMAL */
 }
 
 /* Get the size of the flash device.  Data for runtime, constant for
@@ -181,15 +125,9 @@ dev_erase_types(const struct device *dev)
  */
 static inline uint32_t dev_flash_size(const struct device *dev)
 {
-#ifdef CONFIG_SPI_NOR_SFDP_RUNTIME
 	const struct spi_nor_data *data = dev->data;
 
 	return data->flash_size;
-#else /* CONFIG_SPI_NOR_SFDP_RUNTIME */
-	const struct spi_nor_config *cfg = dev->config;
-
-	return cfg->flash_size;
-#endif /* CONFIG_SPI_NOR_SFDP_RUNTIME */
 }
 
 /* Get the flash device page size.  Constant for minimal, data for
@@ -197,20 +135,10 @@ static inline uint32_t dev_flash_size(const struct device *dev)
  */
 static inline uint16_t dev_page_size(const struct device *dev)
 {
-#ifdef CONFIG_SPI_NOR_SFDP_MINIMAL
-	return 256;
-#else /* CONFIG_SPI_NOR_SFDP_MINIMAL */
 	const struct spi_nor_data *data = dev->data;
 
 	return data->page_size;
-#endif /* CONFIG_SPI_NOR_SFDP_MINIMAL */
 }
-
-static struct flash_parameters flash_nor_parameters = {
-	.write_block_size = 1,
-	.erase_value = 0xff,
-	.flash_size = 0,
-};
 
 /* Indicates that an access command includes bytes for the address.
  * If not provided the opcode is not followed by address bytes.
@@ -400,7 +328,6 @@ static int spi_nor_wait_until_ready(const struct device *dev)
 	return ret;
 }
 
-#if defined(CONFIG_SPI_NOR_SFDP_RUNTIME) || defined(CONFIG_FLASH_JESD216_API)
 /*
  * @brief Read content from the SFDP hierarchy
  *
@@ -440,7 +367,6 @@ static int read_sfdp(const struct device *const dev,
 			      NOR_ACCESS_32BIT_ADDR | NOR_ACCESS_ADDRESSED,
 			      addr << 8, data, length);
 }
-#endif /* CONFIG_SPI_NOR_SFDP_RUNTIME */
 
 /* Everything necessary to acquire owning access to the device.
  *
@@ -572,7 +498,6 @@ static int spi_nor_wrsr2(const struct device *dev,
 	return ret;
 }
 
-#ifndef CONFIG_SPI_NOR_SFDP_MINIMAL
 /* MXIC, ISSI */
 static int spi_nor_sr1_bit6_config(const struct device *dev)
 {
@@ -696,8 +621,6 @@ static int spi_nor_qe_config(const struct device *dev, uint32_t qer)
 
 	return ret;
 }
-
-#endif /* CONFIG_SPI_NOR_SFDP_MINIMAL */
 
 static int spi_nor_read(const struct device *dev, off_t addr, void *dest,
 			size_t size)
@@ -900,8 +823,6 @@ static int spi_nor_write_protection_set(const struct device *dev,
 	return ret;
 }
 
-#if defined(CONFIG_FLASH_JESD216_API)
-
 static int spi_nor_sfdp_read(const struct device *dev, off_t addr,
 			     void *dest, size_t size)
 {
@@ -913,8 +834,6 @@ static int spi_nor_sfdp_read(const struct device *dev, off_t addr,
 
 	return ret;
 }
-
-#endif /* CONFIG_FLASH_JESD216_API */
 
 static int spi_nor_read_jedec_id(const struct device *dev,
 				 uint8_t *id)
@@ -1000,8 +919,6 @@ static int spi_nor_set_address_mode(const struct device *dev,
 	return ret;
 }
 
-#ifndef CONFIG_SPI_NOR_SFDP_MINIMAL
-
 static int spi_nor_process_bfp(const struct device *dev,
 			       const struct jesd216_param_header *php,
 			       const struct jesd216_bfp *bfp)
@@ -1030,20 +947,13 @@ static int spi_nor_process_bfp(const struct device *dev,
 			data->cmd_info.se_opcode = data->erase_types[ti].cmd;
 			data->sector_size = BIT(data->erase_types[ti].exp);
 			data->cmd_info.se_mode = JESD216_MODE_111;
-			flash_nor_parameters.write_block_size = data->sector_size;
+			data->flash_nor_parameter.write_block_size = data->sector_size;
 			break;
 		}
 	}
 
 	data->page_size = jesd216_bfp_page_size(php, bfp);
-#ifdef CONFIG_SPI_NOR_SFDP_RUNTIME
 	data->flash_size = flash_size;
-#else /* CONFIG_SPI_NOR_SFDP_RUNTIME */
-	if (flash_size != dev_flash_size(dev)) {
-		LOG_ERR("BFP flash size mismatch with devicetree");
-		return -EINVAL;
-	}
-#endif /* CONFIG_SPI_NOR_SFDP_RUNTIME */
 
 	LOG_DBG("Page size %u bytes", data->page_size);
 
@@ -1127,7 +1037,7 @@ static int spi_nor_process_4bai(const struct device *dev,
 			data->cmd_info.se_opcode = cmd;
 			data->erase_types[ti].cmd = cmd;
 			data->sector_size = BIT(data->erase_types[ti].exp);
-			flash_nor_parameters.write_block_size = data->sector_size;
+			data->flash_nor_parameter.write_block_size = data->sector_size;
 			break;
 		}
 	}
@@ -1157,7 +1067,6 @@ static int spi_nor_process_sfdp(
 	int rc;
 	struct spi_nor_data *data = dev->data;
 
-#if defined(CONFIG_SPI_NOR_SFDP_RUNTIME)
 	/* For runtime we need to read the SFDP table, identify the
 	 * BFP block, and process it.
 	 */
@@ -1230,19 +1139,6 @@ static int spi_nor_process_sfdp(
 
 		++php;
 	}
-#elif defined(CONFIG_SPI_NOR_SFDP_DEVICETREE)
-	/* For devicetree we need to synthesize a parameter header and
-	 * process the stored BFP data as if we had read it.
-	 */
-	const struct spi_nor_config *cfg = dev->config;
-	struct jesd216_param_header bfp_hdr = {
-		.len_dw = cfg->bfp_len,
-	};
-
-	rc = spi_nor_process_bfp(dev, &bfp_hdr, cfg->bfp);
-#else
-#error Unhandled SFDP choice
-#endif
 
 	LOG_INF("[sfdp][mode] read: %08x, write: %08x, erase: %08x",
 		data->cmd_info.read_mode, data->cmd_info.pp_mode, data->cmd_info.se_mode);
@@ -1253,12 +1149,10 @@ static int spi_nor_process_sfdp(
 	return rc;
 }
 
-#if defined(CONFIG_FLASH_PAGE_LAYOUT)
 static int setup_pages_layout(const struct device *dev)
 {
 	int rv = 0;
 
-#if defined(CONFIG_SPI_NOR_SFDP_RUNTIME)
 	struct spi_nor_data *data = dev->data;
 	const size_t flash_size = dev_flash_size(dev);
 	const uint32_t layout_page_size = CONFIG_SPI_NOR_FLASH_LAYOUT_PAGE_SIZE;
@@ -1300,25 +1194,9 @@ static int setup_pages_layout(const struct device *dev)
 	data->layout.pages_size = layout_page_size;
 	data->layout.pages_count = flash_size / layout_page_size;
 	LOG_DBG("layout %u x %u By pages", data->layout.pages_count, data->layout.pages_size);
-#elif defined(CONFIG_SPI_NOR_SFDP_DEVICETREE)
-	const struct spi_nor_config *cfg = dev->config;
-	const struct flash_pages_layout *layout = &cfg->layout;
-	const size_t flash_size = dev_flash_size(dev);
-	size_t layout_size = layout->pages_size * layout->pages_count;
-
-	if (flash_size != layout_size) {
-		LOG_ERR("device size %u mismatch %zu * %zu By pages",
-			flash_size, layout->pages_count, layout->pages_size);
-		return -EINVAL;
-	}
-#else /* CONFIG_SPI_NOR_SFDP_RUNTIME */
-#error Unhandled SFDP choice
-#endif /* CONFIG_SPI_NOR_SFDP_RUNTIME */
 
 	return rv;
 }
-#endif /* CONFIG_FLASH_PAGE_LAYOUT */
-#endif /* CONFIG_SPI_NOR_SFDP_MINIMAL */
 
 static void spi_nor_info_init_params(
 	const struct device *dev)
@@ -1327,10 +1205,6 @@ static void spi_nor_info_init_params(
 
 	memset(&data->cmd_info, 0x0, sizeof(struct spi_nor_cmd_info));
 
-#if defined(CONFIG_SPI_NOR_SFDP_MINIMAL)
-	spi_nor_assign_read_cmd(data, JESD216_MODE_111, SPI_NOR_CMD_READ, 0);
-	spi_nor_assign_pp_cmd(data, JESD216_MODE_111, SPI_NOR_CMD_PP);
-#else /* CONFIG_SPI_NOR_SFDP_MINIMAL */
 	const struct spi_nor_config *cfg = dev->config;
 
 	data->cap_mask = ~(cfg->spi_ctrl_caps_mask | cfg->spi_nor_caps_mask);
@@ -1352,7 +1226,6 @@ static void spi_nor_info_init_params(
 	spi_nor_assign_pp_cmd(data, JESD216_MODE_111, SPI_NOR_CMD_PP);
 
 	LOG_INF("bus_width: %d, cap: %08x", cfg->spi_max_buswidth, data->cap_mask);
-#endif /* CONFIG_SPI_NOR_SFDP_MINIMAL */
 }
 
 /**
@@ -1368,28 +1241,10 @@ static int spi_nor_configure(const struct device *dev)
 	const struct spi_nor_config *cfg = dev->config;
 	int rc;
 
-	data->spi = device_get_binding(DT_INST_BUS_LABEL(0));
+	data->spi = device_get_binding(data->dev_name);
 	if (!data->spi) {
 		return -EINVAL;
 	}
-
-	data->spi_cfg.frequency = DT_INST_PROP(0, spi_max_frequency);
-	data->spi_cfg.operation = SPI_WORD_SET(8);
-	data->spi_cfg.slave = DT_INST_REG_ADDR(0);
-
-#if DT_INST_SPI_DEV_HAS_CS_GPIOS(0)
-	data->cs_ctrl.gpio_dev =
-		device_get_binding(DT_INST_SPI_DEV_CS_GPIOS_LABEL(0));
-	if (!data->cs_ctrl.gpio_dev) {
-		return -ENODEV;
-	}
-
-	data->cs_ctrl.gpio_pin = DT_INST_SPI_DEV_CS_GPIOS_PIN(0);
-	data->cs_ctrl.gpio_dt_flags = DT_INST_SPI_DEV_CS_GPIOS_FLAGS(0);
-	data->cs_ctrl.delay = CONFIG_SPI_NOR_CS_WAIT_DELAY;
-
-	data->spi_cfg.cs = &data->cs_ctrl;
-#endif /* DT_INST_SPI_DEV_HAS_CS_GPIOS(0) */
 
 	/* now the spi bus is configured, we can verify SPI
 	 * connectivity by reading the JEDEC ID.
@@ -1400,20 +1255,6 @@ static int spi_nor_configure(const struct device *dev)
 		LOG_ERR("JEDEC ID read failed: %d", rc);
 		return -ENODEV;
 	}
-
-#ifndef CONFIG_SPI_NOR_SFDP_RUNTIME
-	/* For minimal and devicetree we need to check the JEDEC ID
-	 * against the one from devicetree, to ensure we didn't find a
-	 * device that has different parameters.
-	 */
-
-	if (memcmp(data->jedec_id, cfg->jedec_id, SPI_NOR_MAX_ID_LEN) != 0) {
-		LOG_ERR("Device id %02x %02x %02x does not match config %02x %02x %02x",
-			data->jedec_id[0], data->jedec_id[1], data->jedec_id[2],
-			cfg->jedec_id[0], cfg->jedec_id[1], cfg->jedec_id[2]);
-		return -EINVAL;
-	}
-#endif
 
 	/* Check for block protect bits that need to be cleared.  This
 	 * information cannot be determined from SFDP content, so the
@@ -1440,40 +1281,19 @@ static int spi_nor_configure(const struct device *dev)
 
 	spi_nor_info_init_params(dev);
 
-#ifdef CONFIG_SPI_NOR_SFDP_MINIMAL
-	/* For minimal we support some overrides from specific
-	 * devicertee properties.
-	 */
-	if (cfg->enter_4byte_addr != 0) {
-		rc = spi_nor_set_address_mode(dev, cfg->enter_4byte_addr);
-
-		if (rc != 0) {
-			LOG_ERR("Unable to enter 4-byte mode: %d\n", rc);
-			return -ENODEV;
-		}
-	}
-
-#else /* CONFIG_SPI_NOR_SFDP_MINIMAL */
-	/* For devicetree and runtime we need to process BFP data and
-	 * set up or validate page layout.
-	 */
-
 	rc = spi_nor_process_sfdp(dev);
 	if (rc != 0) {
 		LOG_ERR("SFDP read failed: %d", rc);
 		return -ENODEV;
 	}
 
-#if defined(CONFIG_FLASH_PAGE_LAYOUT)
 	rc = setup_pages_layout(dev);
 	if (rc != 0) {
 		LOG_ERR("layout setup failed: %d", rc);
 		return -ENODEV;
 	}
-#endif /* CONFIG_FLASH_PAGE_LAYOUT */
-#endif /* CONFIG_SPI_NOR_SFDP_MINIMAL */
 
-	flash_nor_parameters.flash_size = dev_flash_size(dev);
+	data->flash_nor_parameter.flash_size = dev_flash_size(dev);
 
 	const struct spi_driver_api *api =
 			(const struct spi_driver_api *)data->spi->api;
@@ -1522,34 +1342,23 @@ static int spi_nor_init(const struct device *dev)
 	return spi_nor_configure(dev);
 }
 
-#if defined(CONFIG_FLASH_PAGE_LAYOUT)
-
 static void spi_nor_pages_layout(const struct device *dev,
 				 const struct flash_pages_layout **layout,
 				 size_t *layout_size)
 {
 	/* Data for runtime, const for devicetree and minimal. */
-#ifdef CONFIG_SPI_NOR_SFDP_RUNTIME
 	const struct spi_nor_data *data = dev->data;
 
 	*layout = &data->layout;
-#else /* CONFIG_SPI_NOR_SFDP_RUNTIME */
-	const struct spi_nor_config *cfg = dev->config;
-
-	*layout = &cfg->layout;
-#endif /* CONFIG_SPI_NOR_SFDP_RUNTIME */
-
 	*layout_size = 1;
 }
-
-#endif /* CONFIG_FLASH_PAGE_LAYOUT */
 
 static const struct flash_parameters *
 flash_nor_get_parameters(const struct device *dev)
 {
-	ARG_UNUSED(dev);
+	const struct spi_nor_data *data = dev->data;
 
-	return &flash_nor_parameters;
+	return &data->flash_nor_parameter;
 }
 
 static const struct flash_driver_api spi_nor_api = {
@@ -1557,103 +1366,37 @@ static const struct flash_driver_api spi_nor_api = {
 	.write = spi_nor_write,
 	.erase = spi_nor_erase,
 	.get_parameters = flash_nor_get_parameters,
-#if defined(CONFIG_FLASH_PAGE_LAYOUT)
 	.page_layout = spi_nor_pages_layout,
-#endif
-#if defined(CONFIG_FLASH_JESD216_API)
 	.sfdp_read = spi_nor_sfdp_read,
 	.read_jedec_id = spi_nor_read_jedec_id,
-#endif
 };
 
-#ifndef CONFIG_SPI_NOR_SFDP_RUNTIME
-/* We need to know the size and ID of the configuration data we're
- * using so we can disable the device we see at runtime if it isn't
- * compatible with what we're taking from devicetree or minimal.
- */
-BUILD_ASSERT(DT_INST_NODE_HAS_PROP(0, jedec_id),
-	     "jedec,spi-nor jedec-id required for non-runtime SFDP");
+#define SPI_NOR_MULTI_INIT(n)	\
+	static const struct spi_nor_config spi_nor_config_##n = {	\
+		.spi_max_buswidth = DT_INST_PROP_OR(n, spi_max_buswidth, 1),	\
+		.spi_ctrl_caps_mask =	\
+			DT_PROP_OR(DT_PARENT(DT_INST(n, DT_DRV_COMPAT)),	\
+				spi_ctrl_caps_mask, 0),	\
+		.spi_nor_caps_mask = DT_INST_PROP_OR(n, spi_nor_caps_mask, 0),	\
+		\
+	static struct spi_nor_data spi_nor_data_##n = {	\
+		.dev_name = DT_INST_BUS_LABEL(n),	\
+		.spi_cfg = {	\
+			.frequency = DT_INST_PROP(n, spi_max_frequency),	\
+			.operation = SPI_WORD_SET(8),	\
+			.slave = DT_INST_REG_ADDR(n),	\
+		},	\
+		.flash_nor_parameter = {	\
+			.write_block_size = 1,	\
+			.erase_value = 0xff,	\
+			.flash_size = 0,	\
+		},	\
+	};	\
+		\
+	DEVICE_DT_INST_DEFINE(n, &spi_nor_init, NULL,	\
+			 &spi_nor_data_##n, &spi_nor_config_##n,	\
+			 POST_KERNEL, CONFIG_SPI_NOR_INIT_PRIORITY,	\
+			 &spi_nor_api);
 
-#if defined(CONFIG_FLASH_PAGE_LAYOUT)
+DT_INST_FOREACH_STATUS_OKAY(SPI_NOR_MULTI_INIT)
 
-/* For devicetree or minimal page layout we need to know the size of
- * the device.  We can't extract it from the raw BFP data, so require
- * it to be present in devicetree.
- */
-BUILD_ASSERT(DT_INST_NODE_HAS_PROP(0, size),
-	     "jedec,spi-nor size required for non-runtime SFDP page layout");
-
-/* instance 0 size in bytes */
-#define INST_0_BYTES (DT_INST_PROP(0, size) / 8)
-
-BUILD_ASSERT(SPI_NOR_IS_SECTOR_ALIGNED(CONFIG_SPI_NOR_FLASH_LAYOUT_PAGE_SIZE),
-	     "SPI_NOR_FLASH_LAYOUT_PAGE_SIZE must be multiple of 4096");
-
-/* instance 0 page count */
-#define LAYOUT_PAGES_COUNT (INST_0_BYTES / CONFIG_SPI_NOR_FLASH_LAYOUT_PAGE_SIZE)
-
-BUILD_ASSERT((CONFIG_SPI_NOR_FLASH_LAYOUT_PAGE_SIZE * LAYOUT_PAGES_COUNT)
-	     == INST_0_BYTES,
-	     "SPI_NOR_FLASH_LAYOUT_PAGE_SIZE incompatible with flash size");
-
-#endif /* CONFIG_FLASH_PAGE_LAYOUT */
-
-#ifdef CONFIG_SPI_NOR_SFDP_DEVICETREE
-BUILD_ASSERT(DT_INST_NODE_HAS_PROP(0, sfdp_bfp),
-	     "jedec,spi-nor sfdp-bfp required for devicetree SFDP");
-
-static const __aligned(4) uint8_t bfp_data_0[] = DT_INST_PROP(0, sfdp_bfp);
-#endif /* CONFIG_SPI_NOR_SFDP_DEVICETREE */
-
-#endif /* CONFIG_SPI_NOR_SFDP_RUNTIME */
-
-#if DT_INST_NODE_HAS_PROP(0, has_lock)
-/* Currently we only know of devices where the BP bits are present in
- * the first byte of the status register.  Complain if that changes.
- */
-BUILD_ASSERT(DT_INST_PROP(0, has_lock) == (DT_INST_PROP(0, has_lock) & 0xFF),
-	     "Need support for lock clear beyond SR1");
-#endif
-
-static const struct spi_nor_config spi_nor_config_0 = {
-#if !defined(CONFIG_SPI_NOR_SFDP_RUNTIME)
-
-#if defined(CONFIG_FLASH_PAGE_LAYOUT)
-	.layout = {
-		.pages_count = LAYOUT_PAGES_COUNT,
-		.pages_size = CONFIG_SPI_NOR_FLASH_LAYOUT_PAGE_SIZE,
-	},
-#undef LAYOUT_PAGES_COUNT
-#endif /* CONFIG_FLASH_PAGE_LAYOUT */
-
-	.flash_size = DT_INST_PROP(0, size) / 8,
-	.jedec_id = DT_INST_PROP(0, jedec_id),
-
-#if DT_INST_NODE_HAS_PROP(0, has_lock)
-	.has_lock = DT_INST_PROP(0, has_lock),
-#endif
-#if defined(CONFIG_SPI_NOR_SFDP_MINIMAL)		\
-	&& DT_INST_NODE_HAS_PROP(0, enter_4byte_addr)
-	.enter_4byte_addr = DT_INST_PROP(0, enter_4byte_addr),
-#endif
-#ifdef CONFIG_SPI_NOR_SFDP_DEVICETREE
-	.bfp_len = sizeof(bfp_data_0) / 4,
-	.bfp = (const struct jesd216_bfp *)bfp_data_0,
-#endif /* CONFIG_SPI_NOR_SFDP_DEVICETREE */
-#endif /* CONFIG_SPI_NOR_SFDP_RUNTIME */
-
-#if !defined(CONFIG_SPI_NOR_SFDP_MINIMAL)
-	.spi_max_buswidth = DT_INST_PROP_OR(0, spi_max_buswidth, 1),
-	.spi_ctrl_caps_mask =
-		DT_PROP_OR(DT_PARENT(DT_INST(0, DT_DRV_COMPAT)),
-			spi_ctrl_caps_mask, 0),
-	.spi_nor_caps_mask = DT_INST_PROP_OR(0, spi_nor_caps_mask, 0),
-#endif
-};
-
-static struct spi_nor_data spi_nor_data_0;
-
-DEVICE_DT_INST_DEFINE(0, &spi_nor_init, NULL,
-		 &spi_nor_data_0, &spi_nor_config_0,
-		 POST_KERNEL, CONFIG_SPI_NOR_INIT_PRIORITY,
-		 &spi_nor_api);

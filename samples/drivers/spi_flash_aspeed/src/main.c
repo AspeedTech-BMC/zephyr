@@ -558,9 +558,9 @@ static int cmd_set_dev(const struct shell *shell, size_t argc, char **argv)
 		PR_ERROR(shell, "No device named %s.\n", name);
 		return -ENOEXEC;
 	}
-	if (flash_device) {
-		PR_SHELL(shell, "Leaving behind device %s\n",
-			 flash_device->name);
+	if (flash_device != dev) {
+		PR_SHELL(shell, "Leaving behind device %s and changing to %s\n",
+			 flash_device->name, dev->name);
 	}
 	flash_device = dev;
 
