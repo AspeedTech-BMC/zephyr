@@ -14,3 +14,17 @@ config GPIO_ASPEED_INIT_PRIORITY
 	default 60
 	help
 	  Device driver initialization priority.
+
+config GPIO_ASPEED_SGPIOM
+	bool "ASPEED SGPIOM Controllers"
+	depends on SOC_FAMILY_ASPEED
+	select DYNAMIC_INTERRUPTS
+	help
+	  Enable config options to support the ASPEED SGPIOM controllers.
+
+config GPIO_ASPEED_SGPIOM_INIT_PRIORITY
+	int "Init priority"
+	depends on GPIO_ASPEED_SGPIOM
+	default 60
+	help
+	  Device driver initialization priority.
