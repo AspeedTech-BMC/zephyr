@@ -33,7 +33,7 @@ LOG_MODULE_REGISTER(app);
  * Otherwise the device can be set at runtime with the set_device command.
  */
 #ifndef DT_CHOSEN_ZEPHYR_FLASH_CONTROLLER_LABEL
-#define DT_CHOSEN_ZEPHYR_FLASH_CONTROLLER_LABEL "spi1_cs0"
+#define DT_CHOSEN_ZEPHYR_FLASH_CONTROLLER_LABEL "spi2_cs0"
 #endif
 
 /* Command usage info. */
@@ -275,7 +275,8 @@ static int do_update(const struct device *flash_device,
 	uint8_t *update_ptr = buf, *op_buf = NULL, *read_back_buf = NULL;
 	bool update_it = false;
 
-	printk("writing %d bytes to %s ... ", len, flash_device->name);
+	printk("Writing %d bytes to %s (offset: 0x%08x)...\n",
+			len, flash_device->name, offset);
 
 	if (flash_sz < flash_offset + len) {
 		printk("ERROR: update boundary exceeds flash size. (%d, %d, %d)\n",
@@ -499,9 +500,9 @@ static int cmd_rw_pattern_test(const struct shell *shell, size_t argc, char **ar
 
 	ret = do_update(flash_device, 0x100, test_array, RW_TEST_PATTERN_SIZE);
 	if (ret != 0)
-		PR_ERROR(shell, "rw test fail\n");
+		PR_ERROR(shell, "RW test fail\n");
 	else
-		PR_SHELL(shell, "rw test pass\n");
+		PR_SHELL(shell, "RW test pass\n");
 
 	test_repeat ^= true;
 
