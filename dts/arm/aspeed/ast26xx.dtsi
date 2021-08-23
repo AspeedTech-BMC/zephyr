@@ -138,6 +138,94 @@
 			};
 		};
 
+		sgpiom0: sgpiom@7e780500 {
+			compatible = "aspeed,sgpiom";
+			reg = <0x7e780500 0x100>;
+			interrupts = <51 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			pinctrl-0 = <&pinctrl_sgpiom0_default>;
+			ngpios = <128>;
+			status = "disabled";
+			sgpiom0_a_d: sgpiom0_a_d {
+				#gpio-cells = <2>;
+				gpio-controller;
+				ngpios = <32>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				label = "SGPIOM0_A_D";
+				pin-offset = <0>;
+			};
+
+			sgpiom0_e_h: sgpiom0_e_h {
+				#gpio-cells = <2>;
+				gpio-controller;
+				ngpios = <32>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				label = "SGPIOM0_E_H";
+				pin-offset = <32>;
+			};
+
+			sgpiom0_i_l: sgpiom0_i_l {
+				#gpio-cells = <2>;
+				gpio-controller;
+				ngpios = <32>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				label = "SGPIOM0_I_L";
+				pin-offset = <64>;
+			};
+
+			sgpiom0_m_p: sgpiom0_m_p {
+				#gpio-cells = <2>;
+				gpio-controller;
+				ngpios = <32>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				label = "SGPIOM0_M_P";
+				pin-offset = <96>;
+			};
+		};
+
+		sgpiom1: sgpiom@7e780600 {
+			compatible = "aspeed,sgpiom";
+			reg = <0x7e780600 0x100>;
+			interrupts = <70 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			pinctrl-0 = <&pinctrl_sgpiom1_default>;
+			ngpios = <80>;
+			status = "disabled";
+			sgpiom1_a_d: sgpiom0_a_d {
+				#gpio-cells = <2>;
+				gpio-controller;
+				ngpios = <32>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				label = "SGPIOM1_A_D";
+				pin-offset = <0>;
+			};
+
+			sgpiom1_e_h: sgpiom0_e_h {
+				#gpio-cells = <2>;
+				gpio-controller;
+				ngpios = <32>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				label = "SGPIOM1_E_H";
+				pin-offset = <32>;
+			};
+
+			sgpiom1_i_l: sgpiom0_i_l {
+				#gpio-cells = <2>;
+				gpio-controller;
+				ngpios = <16>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				label = "SGPIOM1_I_L";
+				pin-offset = <64>;
+			};
+		};
+
 		uart11: serial@7e790500 {
 			compatible = "aspeed,uart";
 			reg = <0x7e790500 0x100>;
