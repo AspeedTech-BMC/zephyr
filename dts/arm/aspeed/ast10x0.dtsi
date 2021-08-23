@@ -172,6 +172,55 @@
 			};
 		};
 
+		sgpiom: sgpiom@7e780500 {
+			compatible = "aspeed,sgpiom";
+			reg = <0x7e780500 0x100>;
+			interrupts = <51 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			pinctrl-0 = <&pinctrl_sgpiom_default>;
+			ngpios = <128>;
+			status = "disabled";
+			sgpiom_a_d: sgpiom_a_d {
+				#gpio-cells = <2>;
+				gpio-controller;
+				ngpios = <32>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				label = "SGPIOM_A_D";
+				pin-offset = <0>;
+			};
+
+			sgpiom_e_h: sgpiom_e_h {
+				#gpio-cells = <2>;
+				gpio-controller;
+				ngpios = <32>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				label = "SGPIOM_E_H";
+				pin-offset = <32>;
+			};
+
+			sgpiom_i_l: sgpiom_i_l {
+				#gpio-cells = <2>;
+				gpio-controller;
+				ngpios = <32>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				label = "SGPIOM_I_L";
+				pin-offset = <64>;
+			};
+
+			sgpiom_m_p: sgpiom_m_p {
+				#gpio-cells = <2>;
+				gpio-controller;
+				ngpios = <32>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				label = "SGPIOM_M_P";
+				pin-offset = <96>;
+			};
+		};
+
 		peci: peci@7e78b000 {
 			compatible = "aspeed,peci";
 			reg = <0x7e78b000 0x100>;
