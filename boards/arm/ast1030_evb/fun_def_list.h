@@ -50,6 +50,10 @@ FUN_DEFINE(DT_NODELABEL(pinctrl_pwm14_default), PWM14)
 FUN_DEFINE(DT_NODELABEL(pinctrl_pwm15_default), PWM15)
 #endif
 
+#if DT_NODE_HAS_STATUS(DT_NODELABEL(sgpiom), okay) && CONFIG_GPIO_ASPEED_SGPIOM
+FUN_DEFINE(DT_NODELABEL(pinctrl_sgpiom_default), SGPMCLK, SGPMLD, SGPMO, SGPMI)
+#endif
+
 #if DT_NODE_HAS_STATUS(DT_NODELABEL(tach), okay) && CONFIG_TACH_ASPEED
 FUN_DEFINE(DT_NODELABEL(pinctrl_tach0_default), TACH0)
 FUN_DEFINE(DT_NODELABEL(pinctrl_tach1_default), TACH1)

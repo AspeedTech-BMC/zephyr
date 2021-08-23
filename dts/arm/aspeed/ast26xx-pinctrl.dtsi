@@ -63,6 +63,8 @@
 	pinctrl_pwm13_default: pwm13_default {};
 	pinctrl_pwm14_default: pwm14_default {};
 	pinctrl_pwm15_default: pwm15_default {};
+	pinctrl_sgpiom0_default: sgpiom0_default {};
+	pinctrl_sgpiom1_default: sgpiom1_default {};
 	pinctrl_tach0_default: tach0_default {};
 	pinctrl_tach1_default: tach1_default {};
 	pinctrl_tach2_default: tach2_default {};
