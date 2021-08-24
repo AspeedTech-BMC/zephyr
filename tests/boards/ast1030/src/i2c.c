@@ -34,7 +34,7 @@ uint8_t i2c_speed[] = {I2C_SPEED_STANDARD,
 					I2C_SPEED_FAST,
 					I2C_SPEED_FAST_PLUS};
 
-int test_i2c_slave_EEPROM(void)
+void test_i2c_slave_EEPROM(void)
 {
 	int i, j, result;
 	char name_m[20], name_s[20], num[10];
@@ -60,7 +60,7 @@ int test_i2c_slave_EEPROM(void)
 
 		/* obtain i2c master device */
 		master_dev = device_get_binding(name_m);
-		ast_zassert_not_null(master_dev, "I2C: %s Master device is get fail",
+		ast_zassert_not_null(master_dev, "I2C: %s Master device is got failed",
 		name_m);
 
 		/* change i2c speed */
@@ -71,12 +71,12 @@ int test_i2c_slave_EEPROM(void)
 
 		/* obtain i2c slave device */
 		slave_dev = device_get_binding(name_s);
-		ast_zassert_not_null(slave_dev, "I2C: %s Slave device is get fail",
+		ast_zassert_not_null(slave_dev, "I2C: %s Slave device is got failed",
 		name_s);
 
 		/* register i2c slave device */
 		ast_zassert_false(i2c_slave_driver_register(slave_dev),
-		"I2C: %s Slave register is get fail", name_s);
+		"I2C: %s Slave register is got failed", name_s);
 
 		for (j = 0; j < DATA_COUNT; j++) {
 			data_s[j] = data_add + j;
@@ -86,29 +86,118 @@ int test_i2c_slave_EEPROM(void)
 		/* burst transfer data */
 		result = i2c_burst_write(master_dev, dev_addr, 0, data_s, DATA_COUNT);
 		ast_zassert_false(result,
-		"I2C: %s Master transfer is get fail", name_m);
+		"I2C: %s Master transfer is got failed", name_m);
 
 		/* burst receive data */
 		result = i2c_burst_read(master_dev, dev_addr, 0, data_r, DATA_COUNT);
 		ast_zassert_false(result,
-		"I2C: %s Master read is get fail", name_m);
+		"I2C: %s Master read is got failed", name_m);
 
 		for (j = 0; j < DATA_COUNT; j++) {
 			ast_zassert_equal(data_s[j], data_r[j],
-			"I2C: %s EEPROM R/W is get fail at %d", name_m, j);
+			"I2C: %s EEPROM R/W is got failed at %d", name_m, j);
 		}
+
+		/* un-register i2c slave device */
+		ast_zassert_false(i2c_slave_driver_unregister(slave_dev),
+		"I2C: %s Slave un-register is got failed", name_s);
 
 		data_add += 0x10;
 	}
-
-	return 0;
 }
+
+void test_i2c_slave_IPMB(void)
+{
+	int i, j, result;
+	char name_m[20], name_s[20], num[10];
+	uint8_t data_s[DATA_COUNT];
+	const struct device *master_dev;
+	const struct device *slave_dev;
+	uint32_t dev_config_raw;
+	uint32_t i2c_clock = I2C_SPEED_FAST;
+	uint8_t data_add = 0, dev_addr;
+	struct ipmb_msg *msg = NULL;
+	uint8_t length = 0;
+	uint8_t *buf = NULL;
+
+	/* change even device as IPMB slave device */
+	for (i = 0; i < ASPEED_I2C_NUMBER ; i += 2) {
+		dev_addr = IPMB_ADDR + i;
+
+		strcpy(name_m, I2CMDRV);
+		sprintf(num, "%d", (i+1));
+		strcat(name_m, num);
+
+		strcpy(name_s, IPMBDRV);
+		sprintf(num, "%d", i);
+		strcat(name_s, num);
+
+		/* obtain i2c master device */
+		master_dev = device_get_binding(name_m);
+		ast_zassert_not_null(master_dev, "I2C: %s Master device is got failed",
+		name_m);
+
+		/* change i2c speed */
+		i2c_clock = i2c_speed[i%3];
+		dev_config_raw = I2C_MODE_MASTER |
+		I2C_SPEED_SET(i2c_clock);
+		i2c_configure(master_dev, dev_config_raw);
+
+		/* obtain i2c slave device */
+		slave_dev = device_get_binding(name_s);
+		ast_zassert_not_null(slave_dev, "I2C: %s Slave device is got failed",
+		name_s);
+
+		/* register i2c slave device */
+		ast_zassert_false(i2c_slave_driver_register(slave_dev),
+		"I2C: %s Slave register is got failed", name_s);
+
+		for (j = 0; j < DATA_COUNT; j++) {
+			data_s[j] = data_add + j;
+		}
+
+		/* burst transfer data */
+		result = i2c_burst_write(master_dev, dev_addr, 0, data_s, DATA_COUNT);
+		ast_zassert_false(result,
+		"I2C: %s Master transfer is got failed", name_m);
+
+		result = ipmb_slave_read(slave_dev, &msg, &length);
+		ast_zassert_false(result,
+		"I2C: %s ipmb read is got failed", name_s);
+
+		if (!result) {
+			/* check length */
+			ast_zassert_equal(length, DATA_COUNT+2,
+			"I2C: %s IPMB length is wrong %d ", name_m, length);
+
+			buf = (uint8_t *)(msg);
+
+			/* check length */
+			ast_zassert_equal(buf[0], dev_addr << 1,
+			"I2C: %s IPMB device id is wrong %d ", name_m, buf[0]);
+
+			/* check message value */
+			for (j = 2; j < length; j++) {
+				ast_zassert_equal(buf[j], data_s[j-2],
+				"I2C: %s IPMB R/W is got failed at %d", name_m, j);
+			}
+		}
+
+		/* un-register i2c slave device */
+		ast_zassert_false(i2c_slave_driver_unregister(slave_dev),
+		"I2C: %s Slave un-register is got failed", name_s);
+
+		data_add += 0x10;
+	}
+}
+
 
 int test_i2c(int count, enum aspeed_test_type type)
 {
 	printk("%s, count: %d, type: %d\n", __func__, count, type);
 
 	test_i2c_slave_EEPROM();
+	test_i2c_slave_IPMB();
 
 	return ast_ztest_result();
 }
