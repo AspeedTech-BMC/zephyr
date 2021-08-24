@@ -502,40 +502,24 @@ static uint32_t i2c_aspeed_select_clock(const struct device *dev)
 
 	if (config->clk_div_mode) {
 		clk_div_reg = sys_read32(config->global_reg + ASPEED_I2CG_CLK_DIV_CTRL);
-		base_clk1 = config->clk_src / (((clk_div_reg & 0xff) + 2) / 2);
-		base_clk2 = config->clk_src / ((((clk_div_reg >> 8) & 0xff) + 2) / 2);
-		base_clk3 = config->clk_src / ((((clk_div_reg >> 16) & 0xff) + 2) / 2);
-		base_clk4 = config->clk_src / ((((clk_div_reg >> 24) & 0xff) + 2) / 2);
-		/*printf("base_clk1 %ld, base_clk2 %ld, base_clk3 %ld, base_clk4 %ld\n"*/
-		/*, base_clk1, base_clk2, base_clk3, base_clk4);*/
-		if((config->clk_src / data->bus_frequency) <= 32) {
-			div = 0;
-			divider_ratio = config->clk_src / data->bus_frequency;
-		} else if ((base_clk1 / data->bus_frequency) <= 32) {
-			div = 1;
-			divider_ratio = base_clk1 / data->bus_frequency;
-		} else if ((base_clk2 / data->bus_frequency) <= 32) {
-			div = 2;
-			divider_ratio = base_clk2 / data->bus_frequency;
-		} else if ((base_clk3 / data->bus_frequency) <= 32) {
-			div = 3;
-			divider_ratio = base_clk3 / data->bus_frequency;
-		} else {
-			div = 4;
-			divider_ratio = base_clk4 / data->bus_frequency;
-			inc = 0;
-			while ((divider_ratio + inc) > 32) {
-				inc |= divider_ratio & 0x1;
-				divider_ratio >>= 1;
-				div++;
-			}
-			divider_ratio += inc;
+		base_clk4 = (config->clk_src * 10) /
+		(((((clk_div_reg >> 24) & 0xff) + 2) * 10) / 2);
+
+		div = 4;
+		divider_ratio = base_clk4 / data->bus_frequency;
+		inc = 0;
+		while ((divider_ratio + inc) > 32) {
+			inc |= divider_ratio & 0x1;
+			divider_ratio >>= 1;
+			div++;
 		}
+		divider_ratio += inc;
+
 		div &= 0xf;
 		scl_low = ((divider_ratio >> 1) - 1) & 0xf;
 		scl_high = (divider_ratio - scl_low - 2) & 0xf;
 		/*Divisor : Base Clock : tCKHighMin : tCK High : tCK Low*/
-		ac_timing = (scl_high << 20) | (scl_high << 16) | (scl_low << 12) | (div);
+		ac_timing = ((scl_high-1) << 20) | (scl_high << 16) | (scl_low << 12) | (div);
 	} else {
 		for (i = 0; i < ARRAY_SIZE(aspeed_old_i2c_timing_table); i++) {
 			if ((config->clk_src / aspeed_old_i2c_timing_table[i].divisor) <

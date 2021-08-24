@@ -37,11 +37,14 @@ static int i2c_global_init(const struct device *dev)
 
 	const struct device *reset_dev = device_get_binding(ASPEED_RST_CTRL_NAME);
 
+	reset_control_assert(reset_dev, DEV_CFG(dev)->rst_id);
+	k_msleep(1);
 	reset_control_deassert(reset_dev, DEV_CFG(dev)->rst_id);
+	k_msleep(1);
+
 	/* TODO check delay */
-	sys_read32(i2c_global_base + 0x0C);
-	/* k_usleep(10); */
-	sys_write32(0x14, i2c_global_base + 0x0C);
+	sys_write32(0x16, i2c_global_base + 0x0C);
+	sys_write32(0x03020100, i2c_global_base + 0x10);
 
 	return 0;
 }
