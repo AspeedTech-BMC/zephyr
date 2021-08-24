@@ -16,9 +16,8 @@
 #include <string.h>
 #include <logging/log.h>
 
-#include <drivers/spi.h>
-#include <drivers/spi_nor.h>
-#include <drivers/jesd216.h>
+#include "spi_nor.h"
+#include "jesd216.h"
 #include "flash_priv.h"
 
 LOG_MODULE_REGISTER(spi_nor, CONFIG_FLASH_LOG_LEVEL);
@@ -102,12 +101,6 @@ struct spi_nor_config {
 	 * This information cannot be derived from SFDP.
 	 */
 	uint8_t has_lock;
-
-#if !defined(CONFIG_SPI_NOR_SFDP_MINIMAL)
-	uint32_t spi_max_buswidth;
-	uint32_t spi_ctrl_caps_mask;
-	uint32_t spi_nor_caps_mask;
-#endif	/* CONFIG_SPI_NOR_SFDP_MINIMAL */
 };
 
 /**
@@ -118,7 +111,6 @@ struct spi_nor_config {
  * @sem: The semaphore to access to the flash
  */
 struct spi_nor_data {
-	uint8_t jedec_id[SPI_NOR_MAX_ID_LEN];
 	struct k_sem sem;
 	const struct device *spi;
 	struct spi_config spi_cfg;
@@ -142,8 +134,6 @@ struct spi_nor_data {
 	 */
 	bool flag_access_32bit: 1;
 
-	struct spi_nor_cmd_info cmd_info;
-
 	/* Minimal SFDP stores no dynamic configuration.  Runtime and
 	 * devicetree store page size and erase_types; runtime also
 	 * stores flash size and layout.
@@ -154,13 +144,10 @@ struct spi_nor_data {
 
 	/* Number of bytes per page */
 	uint16_t page_size;
-	uint32_t sector_size;
-	enum spi_nor_cap cap_mask;
 
 #ifdef CONFIG_SPI_NOR_SFDP_RUNTIME
 	/* Size of flash, in bytes */
 	uint32_t flash_size;
-	bool jedec_4bai_support: 1;
 
 #ifdef CONFIG_FLASH_PAGE_LAYOUT
 	struct flash_pages_layout layout;
@@ -182,21 +169,6 @@ static const struct jesd216_erase_type minimal_erase_types[JESD216_NUM_ERASE_TYP
 	},
 };
 #endif /* CONFIG_SPI_NOR_SFDP_MINIMAL */
-
-#define SPI_NOR_PROT_NUM 8
-
-
-/* following order should be kept in order to get better performance */
-struct spi_nor_mode_cap mode_cap_map[SPI_NOR_PROT_NUM] = {
-	{JESD216_MODE_444, SPI_NOR_MODE_4_4_4_CAP},
-	{JESD216_MODE_144, SPI_NOR_MODE_1_4_4_CAP},
-	{JESD216_MODE_114, SPI_NOR_MODE_1_1_4_CAP},
-	{JESD216_MODE_222, SPI_NOR_MODE_2_2_2_CAP},
-	{JESD216_MODE_122, SPI_NOR_MODE_1_2_2_CAP},
-	{JESD216_MODE_112, SPI_NOR_MODE_1_1_2_CAP},
-	{JESD216_MODE_111_FAST, SPI_NOR_MODE_1_1_1_FAST_CAP},
-	{JESD216_MODE_111, SPI_NOR_MODE_1_1_1_CAP},
-};
 
 static int spi_nor_write_protection_set(const struct device *dev,
 					bool write_protect);
@@ -246,10 +218,9 @@ static inline uint16_t dev_page_size(const struct device *dev)
 #endif /* CONFIG_SPI_NOR_SFDP_MINIMAL */
 }
 
-static struct flash_parameters flash_nor_parameters = {
+static const struct flash_parameters flash_nor_parameters = {
 	.write_block_size = 1,
 	.erase_value = 0xff,
-	.flash_size = 0,
 };
 
 /* Capture the time at which the device entered deep power-down. */
@@ -370,12 +341,12 @@ static int spi_nor_access(const struct device *const dev,
 
 	const struct spi_buf_set tx_set = {
 		.buffers = spi_buf,
-		.count = (length != 0 && is_write) ? 2 : 1,
+		.count = (length != 0) ? 2 : 1,
 	};
 
 	const struct spi_buf_set rx_set = {
-		.buffers = spi_buf + 1,
-		.count = is_write ? 0 : 1,
+		.buffers = spi_buf,
+		.count = 2,
 	};
 
 	if (is_write) {
@@ -397,63 +368,6 @@ static int spi_nor_access(const struct device *const dev,
 	spi_nor_access(dev, opcode, NOR_ACCESS_WRITE | NOR_ACCESS_ADDRESSED, \
 		       addr, (void *)src, length)
 
-static inline void spi_nor_assign_read_cmd(
-	struct spi_nor_data *data,
-	enum jesd216_mode_type mode,
-	uint8_t opcode, uint8_t dummy_cycle)
-{
-	data->cmd_info.read_mode = mode;
-	data->cmd_info.read_opcode = opcode;
-	data->cmd_info.read_dummy = dummy_cycle;
-}
-
-static inline void spi_nor_assign_pp_cmd(
-	struct spi_nor_data *data,
-	enum jesd216_mode_type mode, uint8_t opcode)
-{
-	data->cmd_info.pp_mode = mode;
-	data->cmd_info.pp_opcode = opcode;
-}
-
-static int spi_nor_op_exec(const struct device *dev,
-	struct spi_nor_op_info op_info)
-{
-	int ret = 0;
-	struct spi_nor_data *const driver_data = dev->data;
-	const struct spi_driver_api *api =
-		(const struct spi_driver_api *)driver_data->spi->api;
-
-	if (api->spi_nor_op && api->spi_nor_op->transceive) {
-		LOG_DBG("Using spi_nor op framework");
-		ret = api->spi_nor_op->transceive(driver_data->spi,
-				&driver_data->spi_cfg, op_info);
-		goto end;
-	}
-
-	if (op_info.addr_len == 0 && op_info.data_len == 0) {
-		ret = spi_nor_cmd_write(dev, op_info.opcode);
-	} else if (op_info.addr_len == 0) {
-		ret = spi_nor_cmd_read(dev, op_info.opcode, op_info.buf,
-			op_info.data_len);
-	} else if (op_info.addr_len != 0 &&
-		op_info.data_direct == SPI_NOR_DATA_DIRECT_IN) {
-		ret = spi_nor_cmd_addr_read(dev, op_info.opcode,
-			op_info.addr, op_info.buf, op_info.data_len);
-	} else if (op_info.addr_len != 0 &&
-		op_info.data_direct == SPI_NOR_DATA_DIRECT_OUT) {
-		ret = spi_nor_cmd_addr_write(dev, op_info.opcode,
-			op_info.addr, op_info.buf, op_info.data_len);
-	} else {
-		LOG_ERR("Undefine operation, opcode: %02xh", op_info.opcode);
-	}
-
-end:
-	if (ret)
-		LOG_ERR("%s, op: %02xh, ret = %d", __func__, op_info.opcode, ret);
-
-	return ret;
-}
-
 /**
  * @brief Wait until the flash is ready
  *
@@ -472,11 +386,9 @@ static int spi_nor_wait_until_ready(const struct device *dev)
 {
 	int ret;
 	uint8_t reg;
-	struct spi_nor_op_info op_info =
-		SPI_NOR_OP_INFO(JESD216_MODE_111, SPI_NOR_CMD_RDSR,
-			0, 0, 0, &reg, sizeof(reg), SPI_NOR_DATA_DIRECT_IN);
+
 	do {
-		ret = spi_nor_op_exec(dev, op_info);
+		ret = spi_nor_cmd_read(dev, SPI_NOR_CMD_RDSR, &reg, sizeof(reg));
 	} while (!ret && (reg & SPI_NOR_WIP_BIT));
 
 	return ret;
@@ -502,22 +414,6 @@ static int read_sfdp(const struct device *const dev,
 	 * byte for a wait state.  This is effected by using 32-bit
 	 * address by shifting the 24-bit address up 8 bits.
 	 */
-	int ret;
-	struct spi_nor_data *const driver_data = dev->data;
-	const struct spi_driver_api *api =
-		(const struct spi_driver_api *)driver_data->spi->api;
-
-	if (api->spi_nor_op && api->spi_nor_op->transceive) {
-		LOG_DBG("Using spi_nor op framework");
-		struct spi_nor_op_info op_info =
-			SPI_NOR_OP_INFO(JESD216_MODE_111, JESD216_CMD_READ_SFDP,
-				addr << 8, 3, 8, data, length, SPI_NOR_DATA_DIRECT_IN);
-
-		ret = api->spi_nor_op->transceive(driver_data->spi,
-				&driver_data->spi_cfg, op_info);
-		return ret;
-	}
-
 	return spi_nor_access(dev, JESD216_CMD_READ_SFDP,
 			      NOR_ACCESS_32BIT_ADDR | NOR_ACCESS_ADDRESSED,
 			      addr << 8, data, length);
@@ -527,12 +423,9 @@ static int read_sfdp(const struct device *const dev,
 static int enter_dpd(const struct device *const dev)
 {
 	int ret = 0;
-	struct spi_nor_op_info op_info =
-		SPI_NOR_OP_INFO(JESD216_MODE_111, SPI_NOR_CMD_DPD,
-			0, 0, 0, NULL, 0, SPI_NOR_DATA_DIRECT_OUT);
 
 	if (IS_ENABLED(DT_INST_PROP(0, has_dpd))) {
-		ret = spi_nor_op_exec(dev, op_info);
+		ret = spi_nor_cmd_write(dev, SPI_NOR_CMD_DPD);
 		if (ret == 0) {
 			record_entered_dpd(dev);
 		}
@@ -543,9 +436,6 @@ static int enter_dpd(const struct device *const dev)
 static int exit_dpd(const struct device *const dev)
 {
 	int ret = 0;
-	struct spi_nor_op_info op_info =
-		SPI_NOR_OP_INFO(JESD216_MODE_111, 0,
-			0, 0, 0, NULL, 0, SPI_NOR_DATA_DIRECT_OUT);
 
 	if (IS_ENABLED(DT_INST_PROP(0, has_dpd))) {
 		delay_until_exit_dpd_ok(dev);
@@ -559,14 +449,12 @@ static int exit_dpd(const struct device *const dev)
 		 * long enough.  This is highly likely, since the
 		 * duration is usually less than two SPI clock cycles.
 		 */
-		op_info.opcode = SPI_NOR_CMD_RDID;
-		ret = spi_nor_op_exec(dev, op_info);
+		ret = spi_nor_cmd_write(dev, SPI_NOR_CMD_RDID);
 
 		/* Deassert CSn and wait for tRDP */
 		k_sleep(K_MSEC(T_RDP_MS));
 #else /* DPD_WAKEUP_SEQUENCE */
-		op_info.opcode = SPI_NOR_CMD_RDPD;
-		ret = spi_nor_op_exec(dev, op_info);
+		ret = spi_nor_cmd_write(dev, SPI_NOR_CMD_RDPD);
 
 		if (ret == 0) {
 #if DT_INST_NODE_HAS_PROP(0, t_exit_dpd)
@@ -614,18 +502,6 @@ static void release_device(const struct device *dev)
 	}
 }
 
-static int spi_nor_wren(const struct device *dev)
-{
-	int ret;
-	struct spi_nor_op_info op_info =
-			SPI_NOR_OP_INFO(JESD216_MODE_111, SPI_NOR_CMD_WREN,
-				0, 0, 0, NULL, 0, SPI_NOR_DATA_DIRECT_OUT);
-
-	ret = spi_nor_op_exec(dev, op_info);
-
-	return ret;
-}
-
 /**
  * @brief Read the status register.
  *
@@ -639,27 +515,7 @@ static int spi_nor_wren(const struct device *dev)
 static int spi_nor_rdsr(const struct device *dev)
 {
 	uint8_t reg;
-	struct spi_nor_op_info op_info =
-			SPI_NOR_OP_INFO(JESD216_MODE_111, SPI_NOR_CMD_RDSR,
-				0, 0, 0, &reg, sizeof(reg), SPI_NOR_DATA_DIRECT_IN);
-
-	int ret = spi_nor_op_exec(dev, op_info);
-
-	if (ret == 0) {
-		ret = reg;
-	}
-
-	return ret;
-}
-
-static int spi_nor_rdsr2(const struct device *dev)
-{
-	uint8_t reg;
-	struct spi_nor_op_info op_info =
-			SPI_NOR_OP_INFO(JESD216_MODE_111, SPI_NOR_CMD_RDSR2,
-				0, 0, 0, &reg, sizeof(reg), SPI_NOR_DATA_DIRECT_IN);
-
-	int ret = spi_nor_op_exec(dev, op_info);
+	int ret = spi_nor_cmd_read(dev, SPI_NOR_CMD_RDSR, &reg, sizeof(reg));
 
 	if (ret == 0) {
 		ret = reg;
@@ -682,177 +538,22 @@ static int spi_nor_rdsr2(const struct device *dev)
 static int spi_nor_wrsr(const struct device *dev,
 			uint8_t sr)
 {
-	int ret;
-	struct spi_nor_op_info op_info =
-			SPI_NOR_OP_INFO(JESD216_MODE_111, SPI_NOR_CMD_WRSR,
-				0, 0, 0, &sr, sizeof(sr), SPI_NOR_DATA_DIRECT_OUT);
-
-	ret = spi_nor_wren(dev);
+	int ret = spi_nor_cmd_write(dev, SPI_NOR_CMD_WREN);
 
 	if (ret == 0) {
-		ret = spi_nor_op_exec(dev, op_info);
+		ret = spi_nor_access(dev, SPI_NOR_CMD_WRSR, NOR_ACCESS_WRITE, 0, &sr,
+				     sizeof(sr));
 		spi_nor_wait_until_ready(dev);
 	}
 
 	return ret;
 }
-
-static int spi_nor_wrsr2(const struct device *dev,
-			uint8_t sr)
-{
-	int ret;
-	struct spi_nor_op_info op_info =
-			SPI_NOR_OP_INFO(JESD216_MODE_111, SPI_NOR_CMD_WRSR2,
-				0, 0, 0, &sr, sizeof(sr), SPI_NOR_DATA_DIRECT_OUT);
-
-	ret = spi_nor_wren(dev);
-
-	if (ret == 0) {
-		ret = spi_nor_op_exec(dev, op_info);
-		spi_nor_wait_until_ready(dev);
-	}
-
-	return ret;
-}
-
-#ifndef CONFIG_SPI_NOR_SFDP_MINIMAL
-/* MXIC, ISSI */
-static int spi_nor_sr1_bit6_config(const struct device *dev)
-{
-	int sr;
-
-	sr = spi_nor_rdsr(dev);
-	if (sr < 0)
-		return sr;
-
-	if ((sr & BIT(6)) != 0)
-		return 0;
-
-	sr |= BIT(6);
-
-	sr = spi_nor_wrsr(dev, (uint8_t)sr);
-	if (sr != 0)
-		return sr;
-
-	sr = spi_nor_rdsr(dev);
-	if ((sr & BIT(6)) == 0) {
-		LOG_ERR("Fail to set SR1[6]");
-		return -ENOTSUP;
-	}
-
-	return 0;
-}
-
-/* Winbond */
-static int spi_nor_sr2_bit1_config(const struct device *dev)
-{
-	int sr;
-
-	sr = spi_nor_rdsr2(dev);
-	if (sr < 0)
-		return sr;
-
-	if ((sr & BIT(1)) != 0)
-		return 0;
-
-	sr |= BIT(1);
-
-	sr = spi_nor_wrsr2(dev, (uint8_t)sr);
-	if (sr != 0)
-		return sr;
-
-	sr = spi_nor_rdsr2(dev);
-	if ((sr & BIT(1)) == 0) {
-		LOG_ERR("Fail to set SR2[1]");
-		return -ENOTSUP;
-	}
-
-	return 0;
-}
-
-/* Cypress */
-static int spi_nor_cf1_bit1_config(const struct device *dev)
-{
-	int ret;
-	uint8_t sr[2];
-	struct spi_nor_op_info op_info =
-			SPI_NOR_OP_INFO(JESD216_MODE_111, SPI_NOR_CMD_WRSR,
-				0, 0, 0, sr, sizeof(sr), SPI_NOR_DATA_DIRECT_OUT);
-
-	ret = spi_nor_rdsr(dev);
-	if (ret < 0)
-		return ret;
-	sr[0] = (uint8_t)ret;
-
-	ret = spi_nor_rdsr2(dev);
-	if (ret < 0)
-		return ret;
-	sr[1] = (uint8_t)(ret | BIT(1));
-
-	ret = spi_nor_wren(dev);
-	if (ret != 0)
-		return ret;
-
-	ret = spi_nor_op_exec(dev, op_info);
-	spi_nor_wait_until_ready(dev);
-	if (ret != 0)
-		return ret;
-
-	ret = spi_nor_rdsr2(dev);
-	if ((ret & BIT(1)) == 0) {
-		LOG_ERR("Fail to set SR2[1]");
-		return -ENOTSUP;
-	}
-
-	return 0;
-}
-
-#define SPI_NOR_QE_NO_NEED        0x0 /* Micron, Gigadevice */
-#define SPI_NOR_QE_NOT_SUPPORTED  0x7
-#define SPI_NOR_QE_SR1_BIT6       0x2 /* MXIC, ISSI */
-#define SPI_NOR_QE_SR2_BIT1       0x4 /* Winbond */
-#define SPI_NOR_QE_CF1_BIT1       0x5 /* Cypress */
-
-static int spi_nor_qe_config(const struct device *dev, uint32_t qer)
-{
-	int ret = 0;
-	struct spi_nor_data *data = dev->data;
-
-	switch (qer) {
-	case SPI_NOR_QE_NO_NEED:
-		break;
-	case SPI_NOR_QE_SR1_BIT6:
-		ret = spi_nor_sr1_bit6_config(dev);
-		break;
-	case SPI_NOR_QE_SR2_BIT1:
-		ret = spi_nor_sr2_bit1_config(dev);
-		break;
-	case SPI_NOR_QE_CF1_BIT1:
-		ret = spi_nor_cf1_bit1_config(dev);
-		break;
-	case SPI_NOR_QE_NOT_SUPPORTED:
-	default:
-		LOG_INF("Disable QSPI bit");
-		data->cap_mask &= ~SPI_NOR_QUAD_CAP_MASK;
-		break;
-	}
-
-	return ret;
-}
-
-#endif /* CONFIG_SPI_NOR_SFDP_MINIMAL */
 
 static int spi_nor_read(const struct device *dev, off_t addr, void *dest,
 			size_t size)
 {
-	struct spi_nor_data *data = dev->data;
-	struct spi_nor_cmd_info cmd_info = data->cmd_info;
 	const size_t flash_size = dev_flash_size(dev);
 	int ret;
-	struct spi_nor_op_info op_info =
-			SPI_NOR_OP_INFO(cmd_info.read_mode, cmd_info.read_opcode,
-				addr, data->flag_access_32bit ? 4 : 3, cmd_info.read_dummy,
-				dest, size, SPI_NOR_DATA_DIRECT_IN);
 
 	/* should be between 0 and flash size */
 	if ((addr < 0) || ((addr + size) > flash_size)) {
@@ -861,7 +562,7 @@ static int spi_nor_read(const struct device *dev, off_t addr, void *dest,
 
 	acquire_device(dev);
 
-	ret = spi_nor_op_exec(dev, op_info);
+	ret = spi_nor_cmd_addr_read(dev, SPI_NOR_CMD_READ, addr, dest, size);
 
 	release_device(dev);
 	return ret;
@@ -873,13 +574,7 @@ static int spi_nor_write(const struct device *dev, off_t addr,
 {
 	const size_t flash_size = dev_flash_size(dev);
 	const uint16_t page_size = dev_page_size(dev);
-	struct spi_nor_data *data = dev->data;
-	struct spi_nor_cmd_info cmd_info = data->cmd_info;
 	int ret = 0;
-	struct spi_nor_op_info op_info =
-			SPI_NOR_OP_INFO(cmd_info.pp_mode, cmd_info.pp_opcode,
-				addr, data->flag_access_32bit ? 4 : 3, 0,
-				(void *)src, size, SPI_NOR_DATA_DIRECT_OUT);
 
 	/* should be between 0 and flash size */
 	if ((addr < 0) || ((size + addr) > flash_size)) {
@@ -903,15 +598,9 @@ static int spi_nor_write(const struct device *dev, off_t addr,
 				to_write = page_size - (addr % page_size);
 			}
 
-			ret = spi_nor_wren(dev);
-			if (ret != 0)
-				break;
-
-			op_info.addr = addr;
-			op_info.buf = (void *)src;
-			op_info.data_len = to_write;
-
-			ret = spi_nor_op_exec(dev, op_info);
+			spi_nor_cmd_write(dev, SPI_NOR_CMD_WREN);
+			ret = spi_nor_cmd_addr_write(dev, SPI_NOR_CMD_PP, addr,
+						src, to_write);
 			if (ret != 0) {
 				break;
 			}
@@ -938,12 +627,6 @@ static int spi_nor_erase(const struct device *dev, off_t addr, size_t size)
 {
 	const size_t flash_size = dev_flash_size(dev);
 	int ret = 0;
-	struct spi_nor_data *data = dev->data;
-	struct spi_nor_cmd_info cmd_info = data->cmd_info;
-	struct spi_nor_op_info op_info =
-			SPI_NOR_OP_INFO(cmd_info.se_mode, cmd_info.se_opcode,
-				addr, data->flag_access_32bit ? 4 : 3, 0,
-				NULL, 0, SPI_NOR_DATA_DIRECT_OUT);
 
 	/* erase area must be subregion of device */
 	if ((addr < 0) || ((size + addr) > flash_size)) {
@@ -964,16 +647,11 @@ static int spi_nor_erase(const struct device *dev, off_t addr, size_t size)
 	ret = spi_nor_write_protection_set(dev, false);
 
 	while ((size > 0) && (ret == 0)) {
-		ret = spi_nor_wren(dev);
-		if (ret != 0)
-			break;
+		spi_nor_cmd_write(dev, SPI_NOR_CMD_WREN);
 
 		if (size == flash_size) {
-			struct spi_nor_op_info op_ce_info =
-			SPI_NOR_OP_INFO(cmd_info.se_mode, SPI_NOR_CMD_CE,
-				0, 0, 0, NULL, 0, SPI_NOR_DATA_DIRECT_OUT);
 			/* chip erase */
-			spi_nor_op_exec(dev, op_ce_info);
+			spi_nor_cmd_write(dev, SPI_NOR_CMD_CE);
 			size -= flash_size;
 		} else {
 			const struct jesd216_erase_type *erase_types =
@@ -993,10 +671,7 @@ static int spi_nor_erase(const struct device *dev, off_t addr, size_t size)
 				}
 			}
 			if (bet != NULL) {
-				op_info.opcode = bet->cmd;
-				op_info.addr = addr;
-
-				spi_nor_op_exec(dev, op_info);
+				spi_nor_cmd_addr_write(dev, bet->cmd, addr, NULL, 0);
 				addr += BIT(bet->exp);
 				size -= BIT(bet->exp);
 			} else {
@@ -1026,18 +701,14 @@ static int spi_nor_write_protection_set(const struct device *dev,
 					bool write_protect)
 {
 	int ret;
-	struct spi_nor_op_info op_info =
-			SPI_NOR_OP_INFO(JESD216_MODE_111, 0,
-				0, 0, 0, NULL, 0, SPI_NOR_DATA_DIRECT_OUT);
 
-	op_info.opcode = (write_protect) ? SPI_NOR_CMD_WRDI : SPI_NOR_CMD_WREN;
-	ret = spi_nor_op_exec(dev, op_info);
+	ret = spi_nor_cmd_write(dev, (write_protect) ?
+	      SPI_NOR_CMD_WRDI : SPI_NOR_CMD_WREN);
 
 	if (IS_ENABLED(DT_INST_PROP(0, requires_ulbpr))
 	    && (ret == 0)
 	    && !write_protect) {
-		op_info.opcode = SPI_NOR_CMD_ULBPR;
-		ret = spi_nor_op_exec(dev, op_info);
+		ret = spi_nor_cmd_write(dev, SPI_NOR_CMD_ULBPR);
 	}
 
 	return ret;
@@ -1062,17 +733,13 @@ static int spi_nor_sfdp_read(const struct device *dev, off_t addr,
 static int spi_nor_read_jedec_id(const struct device *dev,
 				 uint8_t *id)
 {
-	struct spi_nor_op_info op_info =
-			SPI_NOR_OP_INFO(JESD216_MODE_111, SPI_NOR_CMD_RDID,
-				0, 0, 0, id, SPI_NOR_MAX_ID_LEN, SPI_NOR_DATA_DIRECT_IN);
-
 	if (id == NULL) {
 		return -EINVAL;
 	}
 
 	acquire_device(dev);
 
-	int ret = spi_nor_op_exec(dev, op_info);
+	int ret = spi_nor_cmd_read(dev, SPI_NOR_CMD_RDID, id, SPI_NOR_MAX_ID_LEN);
 
 	release_device(dev);
 
@@ -1101,9 +768,6 @@ static int spi_nor_set_address_mode(const struct device *dev,
 				    uint8_t enter_4byte_addr)
 {
 	int ret = 0;
-	struct spi_nor_op_info op_info =
-			SPI_NOR_OP_INFO(JESD216_MODE_111, SPI_NOR_CMD_4BA,
-				0, 0, 0, NULL, 0, SPI_NOR_DATA_DIRECT_OUT);
 
 	/* Do nothing if not provided (either no bits or all bits
 	 * set).
@@ -1126,10 +790,10 @@ static int spi_nor_set_address_mode(const struct device *dev,
 
 	if ((enter_4byte_addr & 0x02) != 0) {
 		/* Enter after WREN. */
-		ret = spi_nor_wren(dev);
+		ret = spi_nor_cmd_write(dev, SPI_NOR_CMD_WREN);
 	}
 	if (ret == 0) {
-		ret = spi_nor_op_exec(dev, op_info);
+		ret = spi_nor_cmd_write(dev, SPI_NOR_CMD_4BA);
 	}
 
 	if (ret == 0) {
@@ -1152,8 +816,6 @@ static int spi_nor_process_bfp(const struct device *dev,
 	struct spi_nor_data *data = dev->data;
 	struct jesd216_erase_type *etp = data->erase_types;
 	const size_t flash_size = jesd216_bfp_density(bfp) / 8U;
-	struct jesd216_instr instr;
-	int rc = 0;
 
 	LOG_INF("%s: %u MiBy flash", dev->name, (uint32_t)(flash_size >> 20));
 
@@ -1166,16 +828,6 @@ static int spi_nor_process_bfp(const struct device *dev,
 			LOG_DBG("Erase %u with %02x", (uint32_t)BIT(etp->exp), etp->cmd);
 		}
 		++etp;
-	}
-
-	for (uint8_t ti = 0; ti < JESD216_NUM_ERASE_TYPES; ti++) {
-		if (data->erase_types[ti].exp != 0) {
-			data->cmd_info.se_opcode = data->erase_types[ti].cmd;
-			data->sector_size = BIT(data->erase_types[ti].exp);
-			data->cmd_info.se_mode = JESD216_MODE_111;
-			flash_nor_parameters.write_block_size = data->sector_size;
-			break;
-		}
 	}
 
 	data->page_size = jesd216_bfp_page_size(php, bfp);
@@ -1193,6 +845,7 @@ static int spi_nor_process_bfp(const struct device *dev,
 	/* If 4-byte addressing is supported, switch to it. */
 	if (jesd216_bfp_addrbytes(bfp) != JESD216_SFDP_BFP_DW1_ADDRBYTES_VAL_3B) {
 		struct jesd216_bfp_dw16 dw16;
+		int rc = 0;
 
 		if (jesd216_bfp_decode_dw16(php, bfp, &dw16) == 0) {
 			rc = spi_nor_set_address_mode(dev, dw16.enter_4ba);
@@ -1203,108 +856,18 @@ static int spi_nor_process_bfp(const struct device *dev,
 			return rc;
 		}
 	}
-
-	struct jesd216_bfp_dw15 dw15;
-
-	if (jesd216_bfp_decode_dw15(php, bfp, &dw15) == 0) {
-		rc = spi_nor_qe_config(dev, dw15.qer);
-		if (rc != 0) {
-			LOG_ERR("Fail to configure QE bit : %d\n", rc);
-			return rc;
-		}
-	}
-
-	/* get read cmd info from bfp */
-	for (uint8_t mc = 0; mc < ARRAY_SIZE(mode_cap_map); mc++) {
-		if ((data->cap_mask & mode_cap_map[mc].cap) != 0) {
-			rc = jesd216_bfp_read_support(php, bfp, mode_cap_map[mc].mode, &instr);
-			if (rc > 0) {
-				spi_nor_assign_read_cmd(data, mode_cap_map[mc].mode,
-					instr.instr, instr.mode_clocks + instr.wait_states);
-				break;
-			} else if (rc == 0) {
-				/* do nothing for unsupport and pre-init mode */
-				break;
-			}
-		}
-	}
-
-	LOG_DBG("[bfp][mode] read: %08x, write: %08x, erase: %08x",
-		data->cmd_info.read_mode, data->cmd_info.pp_mode, data->cmd_info.se_mode);
-	LOG_DBG("[bfp] read op: %02xh (%02x), write op: %02xh, erase op: %02xh",
-		data->cmd_info.read_opcode, data->cmd_info.read_dummy,
-		data->cmd_info.pp_opcode, data->cmd_info.se_opcode);
-
 	return 0;
 }
 
-static int spi_nor_process_4bai(const struct device *dev,
-			       uint32_t *jedec_4bai)
-{
-	struct spi_nor_data *data = dev->data;
-	int rv;
-	uint8_t cmd;
-	uint8_t ti;
-
-	LOG_DBG("4bai dw: [0x%08x, 0x%08x]", jedec_4bai[0], jedec_4bai[1]);
-
-	data->jedec_4bai_support = false;
-
-	rv = jesd216_4bai_read_support(jedec_4bai, data->cmd_info.read_mode, &cmd);
-	if (rv < 0)
-		goto end;
-
-	data->cmd_info.read_opcode = cmd;
-
-	rv = jesd216_4bai_pp_support(jedec_4bai, data->cmd_info.pp_mode, &cmd);
-	if (rv < 0)
-		goto end;
-
-	data->cmd_info.pp_opcode = cmd;
-
-	for (ti = 0; ti < JESD216_NUM_ERASE_TYPES; ti++) {
-		if (data->erase_types[ti].exp != 0) {
-			rv = jesd216_4bai_se_support(jedec_4bai, ti + 1, &cmd);
-			if (rv < 0)
-				goto end;
-			data->cmd_info.se_opcode = cmd;
-			data->erase_types[ti].cmd = cmd;
-			data->sector_size = BIT(data->erase_types[ti].exp);
-			flash_nor_parameters.write_block_size = data->sector_size;
-			break;
-		}
-	}
-
-	if (ti > JESD216_NUM_ERASE_TYPES) {
-		rv = -ENOTSUP;
-		goto end;
-	}
-
-	data->jedec_4bai_support = true;
-	data->flag_access_32bit = true;
-
-end:
-	LOG_DBG("[4bai][mode] read: %08x, write: %08x, erase: %08x",
-		data->cmd_info.read_mode, data->cmd_info.pp_mode, data->cmd_info.se_mode);
-	LOG_DBG("[4bai] read op: %02xh (%02x), write op: %02xh, erase op: %02xh(%dKB)",
-		data->cmd_info.read_opcode, data->cmd_info.read_dummy,
-		data->cmd_info.pp_opcode, data->cmd_info.se_opcode, data->sector_size / 1024);
-
-	return 0;
-}
-
-
-static int spi_nor_process_sfdp(
-	const struct device *dev)
+static int spi_nor_process_sfdp(const struct device *dev)
 {
 	int rc;
-	struct spi_nor_data *data = dev->data;
 
 #if defined(CONFIG_SPI_NOR_SFDP_RUNTIME)
 	/* For runtime we need to read the SFDP table, identify the
 	 * BFP block, and process it.
 	 */
-	const uint8_t decl_nph = 4;
+	const uint8_t decl_nph = 2;
 	union {
 		/* We only process BFP so use one parameter block */
 		uint8_t raw[JESD216_SFDP_SIZE(decl_nph)];
@@ -1334,13 +897,13 @@ static int spi_nor_process_sfdp(
 	while (php != phpe) {
 		uint16_t id = jesd216_param_id(php);
 
-		LOG_DBG("PH%u: %04x rev %u.%u: %u DW @ %x",
+		LOG_INF("PH%u: %04x rev %u.%u: %u DW @ %x",
 			(php - hp->phdr), id, php->rev_major, php->rev_minor,
 			php->len_dw, jesd216_param_addr(php));
 
 		if (id == JESD216_SFDP_PARAM_ID_BFP) {
 			union {
-				uint32_t dw[MIN(php->len_dw, JESD216_MAX_DWORD)];
+				uint32_t dw[MIN(php->len_dw, 20)];
 				struct jesd216_bfp bfp;
 			} u;
 			const struct jesd216_bfp *bfp = &u.bfp;
@@ -1355,22 +918,6 @@ static int spi_nor_process_sfdp(
 				break;
 			}
 		}
-
-		if (id == JESD216_SFDP_PARAM_ID_4B_ADDR_INSTR) {
-			uint32_t jedec_4bai_dw[2];
-
-			rc = read_sfdp(dev, jesd216_param_addr(php),
-					jedec_4bai_dw, sizeof(jedec_4bai_dw));
-			if (rc == 0) {
-				rc = spi_nor_process_4bai(dev, jedec_4bai_dw);
-			}
-
-			if (rc != 0) {
-				LOG_INF("SFDP 4BAI failed: %d", rc);
-				break;
-			}
-		}
-
 		++php;
 	}
 #elif defined(CONFIG_SPI_NOR_SFDP_DEVICETREE)
@@ -1386,12 +933,6 @@ static int spi_nor_process_sfdp(
 #else
 #error Unhandled SFDP choice
 #endif
-
-	LOG_INF("[sfdp][mode] read: %08x, write: %08x, erase: %08x",
-		data->cmd_info.read_mode, data->cmd_info.pp_mode, data->cmd_info.se_mode);
-	LOG_INF("[sfdp] read op: %02xh (%d), write op: %02xh, erase op: %02xh(%dKB)",
-		data->cmd_info.read_opcode, data->cmd_info.read_dummy,
-		data->cmd_info.pp_opcode, data->cmd_info.se_opcode, data->sector_size / 1024);
 
 	return rc;
 }
@@ -1463,41 +1004,6 @@ static int setup_pages_layout(const struct device *dev)
 #endif /* CONFIG_FLASH_PAGE_LAYOUT */
 #endif /* CONFIG_SPI_NOR_SFDP_MINIMAL */
 
-static void spi_nor_info_init_params(
-	const struct device *dev)
-{
-	struct spi_nor_data *data = dev->data;
-
-	memset(&data->cmd_info, 0x0, sizeof(struct spi_nor_cmd_info));
-
-#if defined(CONFIG_SPI_NOR_SFDP_MINIMAL)
-	spi_nor_assign_read_cmd(data, JESD216_MODE_111, SPI_NOR_CMD_READ, 0);
-	spi_nor_assign_pp_cmd(data, JESD216_MODE_111, SPI_NOR_CMD_PP);
-#else /* CONFIG_SPI_NOR_SFDP_MINIMAL */
-	const struct spi_nor_config *cfg = dev->config;
-
-	data->cap_mask = ~(cfg->spi_ctrl_caps_mask | cfg->spi_nor_caps_mask);
-
-	/* 4-4-4 QPI format is not supported */
-	data->cap_mask &= ~SPI_NOR_MODE_4_4_4_CAP;
-
-	if (cfg->spi_max_buswidth < 2)
-		data->cap_mask &= ~(SPI_NOR_DUAL_CAP_MASK | SPI_NOR_QUAD_CAP_MASK);
-	else if (cfg->spi_max_buswidth < 4)
-		data->cap_mask &= ~SPI_NOR_QUAD_CAP_MASK;
-
-	/* initial basic command */
-	if (data->cap_mask & SPI_NOR_MODE_1_1_1_FAST_CAP)
-		spi_nor_assign_read_cmd(data, JESD216_MODE_111_FAST, SPI_NOR_CMD_READ_FAST, 8);
-	else if (data->cap_mask & SPI_NOR_MODE_1_1_1_CAP)
-		spi_nor_assign_read_cmd(data, JESD216_MODE_111, SPI_NOR_CMD_READ, 0);
-
-	spi_nor_assign_pp_cmd(data, JESD216_MODE_111, SPI_NOR_CMD_PP);
-
-	LOG_INF("bus_width: %d, cap: %08x", cfg->spi_max_buswidth, data->cap_mask);
-#endif /* CONFIG_SPI_NOR_SFDP_MINIMAL */
-}
-
 /**
  * @brief Configure the flash
  *
@@ -1508,6 +1014,7 @@ static void spi_nor_info_init_params(
 static int spi_nor_configure(const struct device *dev)
 {
 	struct spi_nor_data *data = dev->data;
+	uint8_t jedec_id[SPI_NOR_MAX_ID_LEN];
 	const struct spi_nor_config *cfg = dev->config;
 	int rc;
 
@@ -1541,7 +1048,7 @@ static int spi_nor_configure(const struct device *dev)
 	 * connectivity by reading the JEDEC ID.
 	 */
 
-	rc = spi_nor_read_jedec_id(dev, data->jedec_id);
+	rc = spi_nor_read_jedec_id(dev, jedec_id);
 	if (rc != 0) {
 		LOG_ERR("JEDEC ID read failed: %d", rc);
 		return -ENODEV;
@@ -1553,9 +1060,9 @@ static int spi_nor_configure(const struct device *dev)
 	 * device that has different parameters.
 	 */
 
-	if (memcmp(data->jedec_id, cfg->jedec_id, SPI_NOR_MAX_ID_LEN) != 0) {
+	if (memcmp(jedec_id, cfg->jedec_id, sizeof(jedec_id)) != 0) {
 		LOG_ERR("Device id %02x %02x %02x does not match config %02x %02x %02x",
-			data->jedec_id[0], data->jedec_id[1], data->jedec_id[2],
+			jedec_id[0], jedec_id[1], jedec_id[2],
 			cfg->jedec_id[0], cfg->jedec_id[1], cfg->jedec_id[2]);
 		return -EINVAL;
 	}
@@ -1584,8 +1091,6 @@ static int spi_nor_configure(const struct device *dev)
 		release_device(dev);
 	}
 
-	spi_nor_info_init_params(dev);
-
 #ifdef CONFIG_SPI_NOR_SFDP_MINIMAL
 	/* For minimal we support some overrides from specific
 	 * devicertee properties.
@@ -1603,7 +1108,6 @@ static int spi_nor_configure(const struct device *dev)
 	/* For devicetree and runtime we need to process BFP data and
 	 * set up or validate page layout.
 	 */
-
 	rc = spi_nor_process_sfdp(dev);
 	if (rc != 0) {
 		LOG_ERR("SFDP read failed: %d", rc);
@@ -1619,38 +1123,9 @@ static int spi_nor_configure(const struct device *dev)
 #endif /* CONFIG_FLASH_PAGE_LAYOUT */
 #endif /* CONFIG_SPI_NOR_SFDP_MINIMAL */
 
-	flash_nor_parameters.flash_size = dev_flash_size(dev);
-
 	if (IS_ENABLED(CONFIG_SPI_NOR_IDLE_IN_DPD)
 	    && (enter_dpd(dev) != 0)) {
 		return -ENODEV;
-	}
-
-	const struct spi_driver_api *api =
-			(const struct spi_driver_api *)data->spi->api;
-
-	if (api->spi_nor_op && api->spi_nor_op->read_init) {
-		struct spi_nor_op_info read_op_info =
-			SPI_NOR_OP_INFO(data->cmd_info.read_mode, data->cmd_info.read_opcode,
-				0, data->flag_access_32bit ? 4 : 3, data->cmd_info.read_dummy,
-				NULL, dev_flash_size(dev), SPI_NOR_DATA_DIRECT_IN);
-
-		rc = api->spi_nor_op->read_init(data->spi,
-				&data->spi_cfg, read_op_info);
-		if (rc != 0)
-			return -ENODEV;
-	}
-
-	if (api->spi_nor_op && api->spi_nor_op->write_init) {
-		struct spi_nor_op_info write_op_info =
-			SPI_NOR_OP_INFO(data->cmd_info.pp_mode, data->cmd_info.pp_opcode,
-				0, data->flag_access_32bit ? 4 : 3, 0,
-				NULL, dev_flash_size(dev), SPI_NOR_DATA_DIRECT_OUT);
-
-		rc = api->spi_nor_op->write_init(data->spi,
-				&data->spi_cfg, write_op_info);
-		if (rc != 0)
-			return -ENODEV;
 	}
 
 	return 0;
@@ -1791,15 +1266,8 @@ static const struct spi_nor_config spi_nor_config_0 = {
 	.bfp_len = sizeof(bfp_data_0) / 4,
 	.bfp = (const struct jesd216_bfp *)bfp_data_0,
 #endif /* CONFIG_SPI_NOR_SFDP_DEVICETREE */
-#endif /* CONFIG_SPI_NOR_SFDP_RUNTIME */
 
-#if !defined(CONFIG_SPI_NOR_SFDP_MINIMAL)
-	.spi_max_buswidth = DT_INST_PROP_OR(0, spi_max_buswidth, 1),
-	.spi_ctrl_caps_mask =
-		DT_PROP_OR(DT_PARENT(DT_INST(0, DT_DRV_COMPAT)),
-			spi_ctrl_caps_mask, 0),
-	.spi_nor_caps_mask = DT_INST_PROP_OR(0, spi_nor_caps_mask, 0),
-#endif
+#endif /* CONFIG_SPI_NOR_SFDP_RUNTIME */
 };
 
 static struct spi_nor_data spi_nor_data_0;
