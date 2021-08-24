@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 config SPI_ASPEED
+	select SPI_NOR_MULTI_DEV
 	bool "ASPEED SPI(FMC) driver"
 	help
 	  Enable ASPEED SPI(FMC) controller driver.

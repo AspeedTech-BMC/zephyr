@@ -725,23 +725,101 @@
 			reg = <0x7e620000 0xc4>, <0x80000000 0x10000000>;
 			reg-names = "ctrl_reg", "spi_mmap";
 			clocks = <&sysclk ASPEED_CLK_HCLK>;
-			num-cs = <3>;
+			pinctrl-0 = <&pinctrl_fmc_quad>;
+			num-cs = <2>;
 			ast-platform = <1030>;
 			ctrl-type = "bspi";
-			label = "SPI0";
+			label = "FMC";
 			#address-cells = <1>;
 			#size-cells = <0>;
+			spi-ctrl-caps-mask = <0x000e0c0c>;
 			status = "okay";
 
 			flash@0 {
 				compatible = "jedec,spi-nor";
 				reg = <0>;
+				spi-max-buswidth = <4>;
 				spi-max-frequency = <50000000>;
+				broken-sfdp;
 				size = <DT_SIZE_M(8)>;
-				jedec-id = [ef 40 14];
-				label = "FLASH_0";
+				label = "fmc_cs0";
+			};
+
+			flash@1 {
+				compatible = "jedec,spi-nor";
+				reg = <1>;
+				spi-max-buswidth = <4>;
+				spi-max-frequency = <50000000>;
+				label = "fmc_cs1";
 			};
 		};
+
+		spi1: spi@7e630000 {
+			compatible = "aspeed,spi-controller";
+			reg = <0x7e630000 0xc4>, <0x90000000 0x10000000>;
+			reg-names = "ctrl_reg", "spi_mmap";
+			clocks = <&sysclk ASPEED_CLK_HCLK>;
+			pinctrl-0 = <&pinctrl_spi1_quad>;
+			num-cs = <2>;
+			ast-platform = <1030>;
+			ctrl-type = "hspi";
+			label = "SPI1";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			spi-ctrl-caps-mask = <0x000e0c0c>;
+			status = "okay";
+
+			flash@0 {
+				compatible = "jedec,spi-nor";
+				reg = <0>;
+				spi-max-buswidth = <4>;
+				spi-max-frequency = <50000000>;
+				label = "spi1_cs0";
+			};
+
+			flash@1 {
+				compatible = "jedec,spi-nor";
+				reg = <1>;
+				spi-max-buswidth = <4>;
+				spi-max-frequency = <50000000>;
+				label = "spi1_cs1";
+			};
+		};
+
+		spi2: spi@7e640000 {
+			compatible = "aspeed,spi-controller";
+			reg = <0x7e640000 0xc4>, <0xb0000000 0x10000000>;
+			reg-names = "ctrl_reg", "spi_mmap";
+			clocks = <&sysclk ASPEED_CLK_HCLK>;
+			pinctrl-0 = <&pinctrl_spi2_default
+						&pinctrl_spi2_cs1
+						&pinctrl_spi2_quad>;
+			num-cs = <2>;
+			ast-platform = <1030>;
+			ctrl-type = "nspi";
+			label = "SPI2";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			spi-ctrl-caps-mask = <0x000e0c0c>;
+			status = "okay";
+
+			flash@0 {
+				compatible = "jedec,spi-nor";
+				reg = <0>;
+				spi-max-buswidth = <4>;
+				spi-max-frequency = <50000000>;
+				label = "spi2_cs0";
+			};
+
+			flash@1 {
+				compatible = "jedec,spi-nor";
+				reg = <1>;
+				spi-max-buswidth = <4>;
+				spi-max-frequency = <50000000>;
+				label = "spi2_cs1";
+			};
+		};
+
 		i3c: bus@7e7a0000 {
 			compatible = "simple-bus";
 			#address-cells = <1>;

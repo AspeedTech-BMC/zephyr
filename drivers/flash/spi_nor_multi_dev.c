@@ -1442,11 +1442,11 @@ static int spi_nor_configure(const struct device *dev)
 			return -ENODEV;
 	}
 
-	LOG_INF("%s: %d MB flash", dev->name, dev_flash_size(dev) >> 20);
-	LOG_INF("bus_width: %d, cap: %08x", cfg->spi_max_buswidth, data->cap_mask);
-	LOG_INF("read: %08x, write: %08x, erase: %08x",
+	LOG_DBG("%s: %d MB flash", dev->name, dev_flash_size(dev) >> 20);
+	LOG_DBG("bus_width: %d, cap: %08x", cfg->spi_max_buswidth, data->cap_mask);
+	LOG_DBG("read: %08x, write: %08x, erase: %08x",
 		data->cmd_info.read_mode, data->cmd_info.pp_mode, data->cmd_info.se_mode);
-	LOG_INF("read op: %02xh (%d), write op: %02xh, erase op: %02xh(%dKB)",
+	LOG_DBG("read op: %02xh (%d), write op: %02xh, erase op: %02xh(%dKB)",
 		data->cmd_info.read_opcode, data->cmd_info.read_dummy,
 		data->cmd_info.pp_opcode, data->cmd_info.se_opcode, data->sector_size / 1024);
 
