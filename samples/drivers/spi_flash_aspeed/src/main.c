@@ -33,7 +33,7 @@ LOG_MODULE_REGISTER(app);
  * Otherwise the device can be set at runtime with the set_device command.
  */
 #ifndef DT_CHOSEN_ZEPHYR_FLASH_CONTROLLER_LABEL
-#define DT_CHOSEN_ZEPHYR_FLASH_CONTROLLER_LABEL "spi2_cs0"
+#define DT_CHOSEN_ZEPHYR_FLASH_CONTROLLER_LABEL "fmc_cs0"
 #endif
 
 /* Command usage info. */
@@ -498,7 +498,7 @@ static int cmd_rw_pattern_test(const struct shell *shell, size_t argc, char **ar
 		}
 	}
 
-	ret = do_update(flash_device, 0x100, test_array, RW_TEST_PATTERN_SIZE);
+	ret = do_update(flash_device, 0xFE100, test_array, RW_TEST_PATTERN_SIZE);
 	if (ret != 0)
 		PR_ERROR(shell, "RW test fail\n");
 	else

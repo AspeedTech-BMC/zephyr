@@ -92,6 +92,7 @@
 	pinctrl_hvi3c1_default: hvi3c1_default {};
 	pinctrl_hvi3c2_default: hvi3c2_default {};
 	pinctrl_hvi3c3_default: hvi3c3_default {};
+	pinctrl_fmc_quad: fmc_quad {};
 	pinctrl_spi1_quad: spi1_quad {};
 	pinctrl_spi2_default: spi2_default {};
 	pinctrl_spi2_cs1: spi2_cs1 {};

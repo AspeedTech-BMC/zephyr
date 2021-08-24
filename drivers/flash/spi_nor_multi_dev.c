@@ -34,8 +34,10 @@ LOG_MODULE_REGISTER(spi_nor_multi_dev, CONFIG_FLASH_LOG_LEVEL);
 
 /* Build-time data associated with the device. */
 struct spi_nor_config {
-	/* Runtime SFDP stores no static configuration. */
+	/* Size of device in bytes, from size property */
+	uint32_t flash_size;
 
+	bool broken_sfdp;
 	/* Optional bits in SR to be cleared on startup.
 	 *
 	 * This information cannot be derived from SFDP.
@@ -126,6 +128,11 @@ dev_erase_types(const struct device *dev)
 static inline uint32_t dev_flash_size(const struct device *dev)
 {
 	const struct spi_nor_data *data = dev->data;
+	const struct spi_nor_config *cfg = dev->config;
+
+	/* flash size set in device tree has higher priority */
+	if (cfg->flash_size != 0)
+		return cfg->flash_size;
 
 	return data->flash_size;
 }
@@ -261,6 +268,35 @@ static inline void spi_nor_assign_pp_cmd(
 	data->cmd_info.pp_opcode = opcode;
 }
 
+static inline uint8_t covert_se_size_to_exp(uint32_t size)
+{
+	uint8_t ret = 0;
+
+	size--;
+
+	while (size != 0) {
+		size >>= 1;
+		ret++;
+	}
+
+	return ret;
+}
+
+static inline void spi_nor_assign_se_cmd(
+	struct spi_nor_data *data, enum jesd216_mode_type mode,
+	uint8_t type, uint8_t opcode, uint32_t size)
+{
+	if (type < 1)
+		return;
+
+	data->erase_types[type - 1].cmd = opcode;
+	data->erase_types[type - 1].exp = covert_se_size_to_exp(size);
+	data->cmd_info.se_opcode = opcode;
+	data->sector_size = size;
+	data->cmd_info.se_mode = mode;
+	data->flash_nor_parameter.write_block_size = data->sector_size;
+}
+
 static int spi_nor_op_exec(const struct device *dev,
 	struct spi_nor_op_info op_info)
 {
@@ -356,7 +392,7 @@ static int read_sfdp(const struct device *const dev,
 		LOG_DBG("Using spi_nor op framework");
 		struct spi_nor_op_info op_info =
 			SPI_NOR_OP_INFO(JESD216_MODE_111, JESD216_CMD_READ_SFDP,
-				addr << 8, 3, 8, data, length, SPI_NOR_DATA_DIRECT_IN);
+				addr, 3, 8, data, length, SPI_NOR_DATA_DIRECT_IN);
 
 		ret = api->spi_nor_op->transceive(driver_data->spi,
 				&driver_data->spi_cfg, op_info);
@@ -408,6 +444,19 @@ static int spi_nor_wren(const struct device *dev)
 
 	return ret;
 }
+
+static int spi_nor_wrdi(const struct device *dev)
+{
+	int ret;
+	struct spi_nor_op_info op_info =
+			SPI_NOR_OP_INFO(JESD216_MODE_111, SPI_NOR_CMD_WRDI,
+				0, 0, 0, NULL, 0, SPI_NOR_DATA_DIRECT_OUT);
+
+	ret = spi_nor_op_exec(dev, op_info);
+
+	return ret;
+}
+
 
 /**
  * @brief Read the status register.
@@ -600,6 +649,8 @@ static int spi_nor_qe_config(const struct device *dev, uint32_t qer)
 	int ret = 0;
 	struct spi_nor_data *data = dev->data;
 
+	acquire_device(dev);
+
 	switch (qer) {
 	case SPI_NOR_QE_NO_NEED:
 		break;
@@ -617,6 +668,24 @@ static int spi_nor_qe_config(const struct device *dev, uint32_t qer)
 		LOG_INF("Disable QSPI bit");
 		data->cap_mask &= ~SPI_NOR_QUAD_CAP_MASK;
 		break;
+	}
+
+	release_device(dev);
+
+	return ret;
+}
+
+static int winbond_w25q80dv_fixup(const struct device *dev)
+{
+	int ret = 0;
+	struct spi_nor_data *data = dev->data;
+
+	if (data->cap_mask & SPI_NOR_MODE_1_1_4_CAP) {
+		spi_nor_assign_read_cmd(data, JESD216_MODE_114, SPI_NOR_CMD_READ_1_1_4, 8);
+		/* SFDP is broken on some w25q80dv flash parts.
+		 * Thus, force to set QE bit here.
+		 */
+		ret = spi_nor_sr2_bit1_config(dev);
 	}
 
 	return ret;
@@ -919,6 +988,30 @@ static int spi_nor_set_address_mode(const struct device *dev,
 	return ret;
 }
 
+static int spi_nor_force_4byte_mode(const struct device *dev)
+{
+	int ret = 0;
+	struct spi_nor_data *data = dev->data;
+	struct spi_nor_op_info op_info =
+			SPI_NOR_OP_INFO(JESD216_MODE_111, SPI_NOR_CMD_4BA,
+				0, 0, 0, NULL, 0, SPI_NOR_DATA_DIRECT_OUT);
+
+	acquire_device(dev);
+
+	ret = spi_nor_wren(dev);
+	if (ret == 0) {
+		ret = spi_nor_op_exec(dev, op_info);
+	}
+
+	ret = spi_nor_wrdi(dev);
+
+	data->flag_access_32bit = true;
+
+	release_device(dev);
+
+	return ret;
+}
+
 static int spi_nor_process_bfp(const struct device *dev,
 			       const struct jesd216_param_header *php,
 			       const struct jesd216_bfp *bfp)
@@ -929,7 +1022,7 @@ static int spi_nor_process_bfp(const struct device *dev,
 	struct jesd216_instr instr;
 	int rc = 0;
 
-	LOG_INF("%s: %u MiBy flash", dev->name, (uint32_t)(flash_size >> 20));
+	LOG_DBG("%s: %u MiBy flash", dev->name, (uint32_t)(flash_size >> 20));
 
 	/* Copy over the erase types, preserving their order.  (The
 	 * Sector Map Parameter table references them by index.)
@@ -1065,7 +1158,6 @@ static int spi_nor_process_sfdp(
 	const struct device *dev)
 {
 	int rc;
-	struct spi_nor_data *data = dev->data;
 
 	/* For runtime we need to read the SFDP table, identify the
 	 * BFP block, and process it.
@@ -1091,7 +1183,7 @@ static int spi_nor_process_sfdp(
 		return -EINVAL;
 	}
 
-	LOG_INF("%s: SFDP v %u.%u AP %x with %u PH", dev->name,
+	LOG_DBG("%s: SFDP v %u.%u AP %x with %u PH", dev->name,
 		hp->rev_major, hp->rev_minor, hp->access, 1 + hp->nph);
 
 	const struct jesd216_param_header *php = hp->phdr;
@@ -1140,13 +1232,27 @@ static int spi_nor_process_sfdp(
 		++php;
 	}
 
-	LOG_INF("[sfdp][mode] read: %08x, write: %08x, erase: %08x",
-		data->cmd_info.read_mode, data->cmd_info.pp_mode, data->cmd_info.se_mode);
-	LOG_INF("[sfdp] read op: %02xh (%d), write op: %02xh, erase op: %02xh(%dKB)",
-		data->cmd_info.read_opcode, data->cmd_info.read_dummy,
-		data->cmd_info.pp_opcode, data->cmd_info.se_opcode, data->sector_size / 1024);
-
 	return rc;
+}
+
+#define SPI_NOR_GET_JESDID(id) ((id[1] << 8) | id[2])
+
+static int sfdp_post_fixup(const struct device *dev)
+{
+	int ret = 0;
+	struct spi_nor_data *data = dev->data;
+
+	switch (data->jedec_id[0]) {
+	case SPI_NOR_MFR_ID_WINBOND:
+		if (SPI_NOR_GET_JESDID(data->jedec_id) == 0x4014)
+			ret = winbond_w25q80dv_fixup(dev);
+		break;
+	default:
+		/* do nothing */
+		break;
+	}
+
+	return ret;
 }
 
 static int setup_pages_layout(const struct device *dev)
@@ -1225,7 +1331,9 @@ static void spi_nor_info_init_params(
 
 	spi_nor_assign_pp_cmd(data, JESD216_MODE_111, SPI_NOR_CMD_PP);
 
-	LOG_INF("bus_width: %d, cap: %08x", cfg->spi_max_buswidth, data->cap_mask);
+	spi_nor_assign_se_cmd(data, JESD216_MODE_111, 1, SPI_NOR_CMD_SE, 0x1000);
+
+	data->page_size = 256;
 }
 
 /**
@@ -1281,11 +1389,17 @@ static int spi_nor_configure(const struct device *dev)
 
 	spi_nor_info_init_params(dev);
 
-	rc = spi_nor_process_sfdp(dev);
-	if (rc != 0) {
-		LOG_ERR("SFDP read failed: %d", rc);
-		return -ENODEV;
+	if (!cfg->broken_sfdp) {
+		rc = spi_nor_process_sfdp(dev);
+		if (rc != 0) {
+			LOG_ERR("SFDP read failed: %d", rc);
+			return -ENODEV;
+		}
 	}
+
+	rc = sfdp_post_fixup(dev);
+	if (rc != 0)
+		return -ENODEV;
 
 	rc = setup_pages_layout(dev);
 	if (rc != 0) {
@@ -1294,6 +1408,12 @@ static int spi_nor_configure(const struct device *dev)
 	}
 
 	data->flash_nor_parameter.flash_size = dev_flash_size(dev);
+
+	if (data->flash_size > 0x1000000 && !data->flag_access_32bit) {
+		rc = spi_nor_force_4byte_mode(dev);
+		if (rc != 0)
+			return -ENODEV;
+	}
 
 	const struct spi_driver_api *api =
 			(const struct spi_driver_api *)data->spi->api;
@@ -1321,6 +1441,14 @@ static int spi_nor_configure(const struct device *dev)
 		if (rc != 0)
 			return -ENODEV;
 	}
+
+	LOG_INF("%s: %d MB flash", dev->name, dev_flash_size(dev) >> 20);
+	LOG_INF("bus_width: %d, cap: %08x", cfg->spi_max_buswidth, data->cap_mask);
+	LOG_INF("read: %08x, write: %08x, erase: %08x",
+		data->cmd_info.read_mode, data->cmd_info.pp_mode, data->cmd_info.se_mode);
+	LOG_INF("read op: %02xh (%d), write op: %02xh, erase op: %02xh(%dKB)",
+		data->cmd_info.read_opcode, data->cmd_info.read_dummy,
+		data->cmd_info.pp_opcode, data->cmd_info.se_opcode, data->sector_size / 1024);
 
 	return 0;
 }
@@ -1373,12 +1501,14 @@ static const struct flash_driver_api spi_nor_api = {
 
 #define SPI_NOR_MULTI_INIT(n)	\
 	static const struct spi_nor_config spi_nor_config_##n = {	\
+		.flash_size = DT_INST_PROP_OR(n, size, 0) / 8,	\
+		.broken_sfdp = DT_PROP(DT_INST(n, DT_DRV_COMPAT), broken_sfdp),	\
 		.spi_max_buswidth = DT_INST_PROP_OR(n, spi_max_buswidth, 1),	\
 		.spi_ctrl_caps_mask =	\
 			DT_PROP_OR(DT_PARENT(DT_INST(n, DT_DRV_COMPAT)),	\
 				spi_ctrl_caps_mask, 0),	\
 		.spi_nor_caps_mask = DT_INST_PROP_OR(n, spi_nor_caps_mask, 0),	\
-		\
+	};	\
 	static struct spi_nor_data spi_nor_data_##n = {	\
 		.dev_name = DT_INST_BUS_LABEL(n),	\
 		.spi_cfg = {	\

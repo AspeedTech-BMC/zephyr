@@ -95,3 +95,11 @@ properties:
 
       This value, when present, identifies bits in the status register
       that should be cleared when the device is initialized.
+
+  broken-sfdp:
+    type: boolean
+    required: false
+    description: |
+      Some flash's SFDP includes some bugs which may result in
+      abnormal error when parsing SFDP table. Using this property
+      to force the driver to skip the step of parsing SFDP.

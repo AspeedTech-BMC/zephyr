@@ -278,7 +278,12 @@ static void aspeed_spi_nor_transceive_user(const struct device *dev,
 	sys_write32(ASPEED_SPI_USER |
 		aspeed_spi_io_mode(JESD216_GET_ADDR_BUSWIDTH(op_info.mode)),
 		config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
+
+	if (op_info.addr_len == 3)
+		op_info.addr <<= 8;
+
 	op_info.addr = sys_cpu_to_be32(op_info.addr);
+
 	aspeed_spi_write_data(data->decode_addr[cs].start,
 		(const uint8_t *)&op_info.addr, op_info.addr_len);
 
