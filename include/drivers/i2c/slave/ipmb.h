@@ -43,16 +43,6 @@ struct ipmb_msg {
 int ipmb_slave_read(const struct device *dev, struct ipmb_msg **ipmb_data, uint8_t *length);
 
 /**
- * @brief Remove single buffer of virtual IPMB memory
- *
- * @param dev Pointer to the device structure for the driver instance.
- *
- * @retval 0 If successful.
- * @retval -EINVAL Invalid data pointer or offset
- */
-int ipmb_slave_remove(const struct device *dev);
-
-/**
  * @}
  */
 
