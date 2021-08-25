@@ -52,9 +52,10 @@ int mbox_aspeed_read(const struct device *dev, uint8_t *buf, size_t count, uint3
 	if (!(bcr & MBXBCR_RECV))
 		return -ENODATA;
 
-	rc = k_sem_take(&data->lock, K_MSEC(100));
-	if (rc)
+	rc = k_sem_take(&data->lock, K_NO_WAIT);
+	if (rc) {
 		return rc;
+	}
 
 	for (i = 0; i < count; ++i)
 		buf[i] = (uint8_t)(LPC_RD(MBXDAT(i + off) & 0xff));
@@ -78,9 +79,10 @@ int mbox_aspeed_write(const struct device *dev, uint8_t *buf, size_t count, uint
 	if (off + count > MBX_DAT_REG_NUM)
 		return -EINVAL;
 
-	rc = k_sem_take(&data->lock, K_MSEC(100));
-	if (rc)
+	rc = k_sem_take(&data->lock, K_NO_WAIT);
+	if (rc) {
 		return rc;
+	}
 
 	for (i = 0; i < count ; ++i)
 		LPC_WR(buf[i], MBXDAT(i + off));
