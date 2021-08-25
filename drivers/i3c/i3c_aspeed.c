@@ -202,6 +202,24 @@ union i3c_queue_status_level_s {
 	} fields;
 }; /* offset 0x4c */
 
+union i3c_present_state_s {
+	volatile uint32_t value;
+	struct {
+		volatile uint32_t scl_signal_level : 1;		/* bit[0] */
+		volatile uint32_t sda_signal_level : 1;		/* bit[1] */
+		volatile uint32_t current_master : 1;		/* bit[2] */
+		volatile uint32_t reserved0 : 5;		/* bit[7:3] */
+#define CM_TFR_STS_SLAVE_HALT	0x6
+		volatile uint32_t cm_tfr_sts : 6;		/* bit[13:8] */
+		volatile uint32_t reserved1 : 2;		/* bit[15:14] */
+		volatile uint32_t cm_tfr_st_sts : 6;		/* bit[21:16] */
+		volatile uint32_t reserved2 : 2;		/* bit[23:22] */
+		volatile uint32_t cmd_tid : 4;			/* bit[27:24] */
+		volatile uint32_t master_role : 1;		/* bit[28] */
+		volatile uint32_t reserved3 : 3;		/* bit[31:29] */
+	} fields;
+}; /* offset 0x54 */
+
 union i3c_dev_addr_tbl_ptr_s {
 	volatile uint32_t value;
 	struct {
@@ -320,7 +338,9 @@ struct i3c_register_s {
 	union i3c_intr_s intr_signal_en;			/* 0x44 */
 	union i3c_intr_s intr_force_en;				/* 0x48 */
 	union i3c_queue_status_level_s queue_status_level;	/* 0x4c */
-	uint32_t reserved1[3];					/* 0x50 ~ 0x58 */
+	uint32_t reserved1[1];					/* 0x50 */
+	union i3c_present_state_s present_state;		/* 0x54 */
+	uint32_t ccc_device_status;				/* 0x58 */
 	union i3c_dev_addr_tbl_ptr_s dev_addr_tbl_ptr;		/* 0x5c */
 	uint32_t reserved2[4];					/* 0x60 ~ 0x6c */
 	union i3c_slave_pid_hi_s slave_pid_hi;			/* 0x70 */
@@ -437,6 +457,34 @@ static void i3c_aspeed_end_xfer(struct i3c_aspeed_obj *obj)
 	k_sem_give(&obj->curr_xfer->sem);
 }
 
+static void i3c_aspeed_slave_rx_data(struct i3c_aspeed_obj *obj)
+{
+	struct i3c_register_s *i3c_register = obj->config->base;
+	uint32_t nresp, i, j;
+	int ret = 0;
+
+	nresp = i3c_register->queue_status_level.fields.resp_buf_blr;
+	for (i = 0; i < nresp; i++) {
+		union i3c_device_resp_queue_port_s resp;
+		struct i3c_aspeed_cmd cmd;
+
+		resp.value = i3c_register->resp_queue_port.value;
+		cmd.rx_length = resp.fields.data_length;
+		cmd.ret = resp.fields.err_status;
+
+		if (cmd.rx_length) {
+			uint8_t *buf = k_malloc(cmd.rx_length);
+
+			cmd.rx_buf = buf;
+			i3c_aspeed_rd_rx_fifo(obj, cmd.rx_buf, cmd.rx_length);
+			for (j = 0; j < cmd.rx_length; j++) {
+				printk("%02x\n", buf[j]);
+			}
+			k_free(cmd.rx_buf);
+		}
+	}
+}
+
 static void i3c_aspeed_isr(const struct device *dev)
 {
 	struct i3c_aspeed_config *config = DEV_CFG(dev);
@@ -450,7 +498,28 @@ static void i3c_aspeed_isr(const struct device *dev)
 	}
 
 	if (status.fields.resp_q_ready) {
-		i3c_aspeed_end_xfer(obj);
+		if (config->secondary) {
+			i3c_aspeed_slave_rx_data(obj);
+		} else {
+			i3c_aspeed_end_xfer(obj);
+		}
+	}
+
+	if (status.fields.ccc_update) {
+		uint32_t cm_tfr_sts = i3c_register->present_state.fields.cm_tfr_sts;
+
+		if (cm_tfr_sts == CM_TFR_STS_SLAVE_HALT) {
+			LOG_DBG("slave halt resume\n");
+			i3c_register->device_ctrl.fields.resume = 1;
+		}
+	}
+
+	if (status.fields.xfr_error) {
+		i3c_register->device_ctrl.fields.resume = 1;
+	}
+
+	if (config->secondary && status.fields.dyn_addr_assign) {
+		LOG_DBG("dynamic address assigned\n");
 	}
 
 	i3c_register->intr_status.value = status.value;
