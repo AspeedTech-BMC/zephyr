@@ -826,9 +826,9 @@ static int espi_aspeed_send_oob(const struct device *dev, struct espi_oob_packet
 	struct espi_aspeed_data *data = (struct espi_aspeed_data *)dev->data;
 	struct espi_aspeed_oob *oob = &data->oob;
 
-	rc = k_sem_take(&oob->tx_lock, K_MSEC(100));
-	if (rc == -EAGAIN) {
-		return -ETIMEDOUT;
+	rc = k_sem_take(&oob->tx_lock, K_NO_WAIT);
+	if (rc) {
+		return rc;
 	}
 
 	if (oob->dma_mode) {
@@ -934,9 +934,9 @@ static int espi_aspeed_flash_read(const struct device *dev, struct espi_flash_pa
 	struct espi_aspeed_data *data = (struct espi_aspeed_data *)dev->data;
 	struct espi_aspeed_flash *flash = &data->flash;
 
-	rc = k_sem_take(&flash->tx_lock, K_MSEC(100));
-	if (rc == -EAGAIN) {
-		return -ETIMEDOUT;
+	rc = k_sem_take(&flash->tx_lock, K_NO_WAIT);
+	if (rc) {
+		return rc;
 	}
 
 	if (flash->dma_mode) {
@@ -975,9 +975,9 @@ static int espi_aspeed_flash_write(const struct device *dev, struct espi_flash_p
 	struct espi_aspeed_data *data = (struct espi_aspeed_data *)dev->data;
 	struct espi_aspeed_flash *flash = &data->flash;
 
-	rc = k_sem_take(&flash->tx_lock, K_MSEC(100));
-	if (rc == -EAGAIN) {
-		return -ETIMEDOUT;
+	rc = k_sem_take(&flash->tx_lock, K_NO_WAIT);
+	if (rc) {
+		return rc;
 	}
 
 	if (flash->dma_mode) {
@@ -1017,9 +1017,9 @@ static int espi_aspeed_flash_erase(const struct device *dev, struct espi_flash_p
 	struct espi_aspeed_data *data = (struct espi_aspeed_data *)dev->data;
 	struct espi_aspeed_flash *flash = &data->flash;
 
-	rc = k_sem_take(&flash->tx_lock, K_MSEC(100));
-	if (rc == -EAGAIN) {
-		return -ETIMEDOUT;
+	rc = k_sem_take(&flash->tx_lock, K_NO_WAIT);
+	if (rc) {
+		return rc;
 	}
 
 	if (flash->dma_mode) {
