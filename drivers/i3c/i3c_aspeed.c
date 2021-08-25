@@ -1016,7 +1016,7 @@ static int i3c_aspeed_init(const struct device *dev)
 		.i2c_scl_hz = DT_INST_PROP_OR(n, i2c_scl_hz, 0),                                   \
 		.i3c_scl_hz = DT_INST_PROP_OR(n, i3c_scl_hz, 0),                                   \
 		.secondary = DT_INST_PROP_OR(n, secondary, 0),                                     \
-		.assigned_addr = DT_INST_PROP_OR(n, assigned_addr, 0),                             \
+		.assigned_addr = DT_INST_PROP_OR(n, assigned_address, 0),                          \
 		.inst_id = DT_INST_PROP_OR(n, instance_id, 0),                                     \
 	};                                                                                         \
 												   \
