@@ -12,6 +12,7 @@
 
 /* external reference */
 int i3c_aspeed_master_attach_device(const struct device *dev, struct i3c_device *slave);
+int i3c_aspeed_master_deattach_device(const struct device *dev, struct i3c_device *slave);
 int i3c_aspeed_master_send_ccc(const struct device *dev, struct i3c_ccc_cmd *ccc);
 int i3c_aspeed_master_priv_xfer(struct i3c_device *i3cdev, struct i3c_priv_xfer *xfers, int nxfers);
 
@@ -63,6 +64,11 @@ int i3c_jesd_read(struct i3c_device *slave, uint8_t addr, uint8_t *buf, int leng
 		return -1;
 	}
 
+	if (slave->info.i2c_mode) {
+		printk("Not I3C device\n");
+		return -2;
+	}
+
 	xfer[0].rnw = 0;
 	xfer[0].len = 1;
 	xfer[0].data.out = &mode_reg;
@@ -72,6 +78,36 @@ int i3c_jesd_read(struct i3c_device *slave, uint8_t addr, uint8_t *buf, int leng
 	xfer[1].data.in = buf;
 
 	return i3c_aspeed_master_priv_xfer(slave, xfer, 2);
+}
+
+int i3c_i2c_read(struct i3c_device *slave, uint8_t addr, uint8_t *buf, int length)
+{
+	struct i3c_priv_xfer xfer;
+	uint8_t mode_reg = addr;
+	int ret;
+
+	if (!slave->master_dev) {
+		printk("unregistered device\n");
+		return -1;
+	}
+
+	if (!slave->info.i2c_mode) {
+		printk("Not I2C device\n");
+		return -2;
+	}
+
+	xfer.rnw = 0;
+	xfer.len = 1;
+	xfer.data.out = &mode_reg;
+	ret = i3c_aspeed_master_priv_xfer(slave, &xfer, 1);
+	if (ret) {
+		return ret;
+	}
+
+	xfer.rnw = 1;
+	xfer.len = length;
+	xfer.data.in = buf;
+	return i3c_aspeed_master_priv_xfer(slave, &xfer, 1);
 }
 
 void main(void)
@@ -87,8 +123,10 @@ void main(void)
 		goto test_fail;
 	}
 
+	/* Renesas IMX3102 */
 	slave.info.static_addr = 0xf;
-	slave.info.dynamic_addr = 0xf;
+	slave.info.assigned_dynamic_addr = 0xf;
+	slave.info.i2c_mode = 1;
 	ret = i3c_aspeed_master_attach_device(master, &slave);
 	if (ret) {
 		printk("failed to attach slave\n");
@@ -101,18 +139,28 @@ void main(void)
 		goto test_fail;
 	}
 
+	ret = i3c_i2c_read(&slave, 0, id, 2);
+	if (ret) {
+		printk("i2c xfer failed\n");
+		goto test_fail;
+	}
+	printk("device ID in I2C mode %02x %02x\n", id[0], id[1]);
+
+	i3c_aspeed_master_deattach_device(master, &slave);
+	slave.info.i2c_mode = 0;
+	ret = i3c_aspeed_master_attach_device(master, &slave);
 	ret = i3c_send_setaasa(master);
 	if (ret) {
 		printk("SETAASA failed\n");
 		goto test_fail;
 	}
-
 	/* read device ID */
 	ret = i3c_jesd_read(&slave, 0, id, 2);
 	if (ret) {
 		printk("priv xfer failed\n");
+		goto test_fail;
 	}
-	printk("i3cdev id = %02x %02x\n", id[0], id[1]);
+	printk("device ID in I3C mode %02x %02x\n", id[0], id[1]);
 
 test_fail:
 	while (1) {
