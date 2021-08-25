@@ -6,9 +6,3 @@ description: ASPEED LPC Mailbox
 compatible: "aspeed,mbox"
 
 include: base.yaml
-
-properties:
-    port:
-      type: int
-      required: true
-      description: Mailbox I/O port address
