@@ -282,6 +282,24 @@ union i3c_ext_termn_timing_s {
 	} fields;
 }; /* offset 0xcc */
 
+union i3c_dev_addr_tbl_s {
+	volatile uint32_t value;
+	struct {
+		volatile uint32_t static_addr : 7;		/* bit[6:0] */
+		volatile uint32_t reserved0 : 4;		/* bit[10:7] */
+		volatile uint32_t ibi_pec_en : 1;		/* bit[11] */
+		volatile uint32_t ibi_with_data : 1;		/* bit[12] */
+		volatile uint32_t sir_reject : 1;		/* bit[13] */
+		volatile uint32_t mr_reject : 1;		/* bit[14] */
+		volatile uint32_t reserved1 : 1;		/* bit[15] */
+		volatile uint32_t dynamic_addr : 8;		/* bit[23:16] */
+		volatile uint32_t ibi_mask : 2;			/* bit[25:24] */
+		volatile uint32_t reserved2 : 3;		/* bit[28:26] */
+		volatile uint32_t dev_nack_retry_cnt : 2;	/* bit[30:29] */
+		volatile uint32_t i2c_device : 1;		/* bit[31] */
+	} fields;
+};
+
 struct i3c_register_s {
 	union i3c_device_ctrl_s device_ctrl;			/* 0x0 */
 	union i3c_device_addr_s device_addr;			/* 0x4 */
@@ -701,11 +719,32 @@ int i3c_aspeed_master_priv_xfer(struct i3c_device *i3cdev, struct i3c_priv_xfer 
 	return 0;
 }
 
-int i3c_aspeed_master_attach_device(const struct device *dev, struct i3c_device *slave)
+int i3c_aspeed_master_deattach_device(const struct device *dev, struct i3c_device *slave)
 {
 	struct i3c_aspeed_obj *obj = DEV_DATA(dev);
 	uint32_t dat_addr;
-	int i;
+	int pos;
+
+	pos = i3c_aspeed_get_pos(obj, slave->info.dynamic_addr);
+	if (pos < 0) {
+		return pos;
+	}
+
+	obj->hw_dat_free_pos &= ~BIT(pos);
+	obj->dev_addr_tbl[pos] = 0;
+
+	dat_addr = (uint32_t)obj->config->base + obj->hw_dat.fields.start_addr + (pos << 4);
+	sys_write32(0, dat_addr);
+
+	return 0;
+}
+
+int i3c_aspeed_master_attach_device(const struct device *dev, struct i3c_device *slave)
+{
+	struct i3c_aspeed_obj *obj = DEV_DATA(dev);
+	union i3c_dev_addr_tbl_s dat;
+	uint32_t dat_addr;
+	int i, pos;
 
 	slave->master_dev = dev;
 
@@ -720,13 +759,35 @@ int i3c_aspeed_master_attach_device(const struct device *dev, struct i3c_device 
 		return i;
 	}
 
+	if (slave->info.i2c_mode) {
+		slave->info.dynamic_addr = slave->info.static_addr;
+	} else if (slave->info.assigned_dynamic_addr) {
+		slave->info.dynamic_addr = slave->info.assigned_dynamic_addr;
+	}
+
+	pos = i3c_aspeed_get_pos(obj, slave->info.dynamic_addr);
+	if (pos >= 0) {
+		LOG_WRN("addr %x has been registered at %d\n", slave->info.dynamic_addr, pos);
+		return pos;
+	}
 	obj->dev_addr_tbl[i] = slave->info.dynamic_addr;
+
 	dat_addr = (uint32_t)obj->config->base + obj->hw_dat.fields.start_addr + (i << 4);
-	*(volatile uint32_t *)dat_addr = slave->info.dynamic_addr << 16;
+
+	dat.value = 0;
+	dat.fields.dynamic_addr = slave->info.dynamic_addr;
+	dat.fields.static_addr = slave->info.static_addr;
+	dat.fields.mr_reject = 1;
+	dat.fields.sir_reject = 1;
+	if (slave->info.i2c_mode) {
+		dat.fields.i2c_device = 1;
+	}
+	sys_write32(dat.value, dat_addr);
 
 	return 0;
 
 }
+
 int i3c_aspeed_master_send_ccc(const struct device *dev, struct i3c_ccc_cmd *ccc)
 {
 	struct i3c_aspeed_obj *obj = DEV_DATA(dev);

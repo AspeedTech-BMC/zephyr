@@ -31,7 +31,7 @@
 
 /**
  * @brief I3C Common-Command-Codes (CCC) structure
- * @param rnw 1'b0 = write command
+ * @param rnw 1'b0 = write command, 1'b1 = read command
  * @param id command code
  * @param addr address of slave device
  * @param ret return value
@@ -52,7 +52,7 @@ struct i3c_ccc_cmd {
  * @brief I3C private transfer structure
  * @param data pointer to the read/write data
  * @param len length of the data
- * @param rnw 1'b0 = write command
+ * @param rnw 1'b0 = write command, 1'b1 = read command
  */
 struct i3c_priv_xfer {
 	union {
@@ -69,7 +69,9 @@ struct i3c_device_info {
 	uint8_t dcr;
 	uint8_t bcr;
 	uint8_t static_addr;
+	uint8_t assigned_dynamic_addr;
 	uint8_t dynamic_addr;
+	uint32_t i2c_mode;
 };
 
 struct i3c_device {
