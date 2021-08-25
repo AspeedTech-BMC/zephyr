@@ -495,11 +495,11 @@ static uint32_t i2c_aspeed_select_clock(const struct device *dev)
 	int divider_ratio = 0;
 	uint32_t clk_div_reg;
 	int inc = 0;
-	unsigned long base_clk1, base_clk2, base_clk3, base_clk4;
+	unsigned long base_clk4;
 	uint32_t scl_low, scl_high;
+	uint32_t hl_ratio_term = 3;
 
 	/*LOG_DBG("clk src %d, targe %d\n", config->clk_src, data->bus_frequency);*/
-
 	if (config->clk_div_mode) {
 		clk_div_reg = sys_read32(config->global_reg + ASPEED_I2CG_CLK_DIV_CTRL);
 		base_clk4 = (config->clk_src * 10) /
@@ -516,8 +516,16 @@ static uint32_t i2c_aspeed_select_clock(const struct device *dev)
 		divider_ratio += inc;
 
 		div &= 0xf;
+
 		scl_low = ((divider_ratio >> 1) - 1) & 0xf;
 		scl_high = (divider_ratio - scl_low - 2) & 0xf;
+
+		if (data->bus_frequency == I2C_BITRATE_STANDARD)
+			hl_ratio_term = 1;
+
+		scl_low += hl_ratio_term;
+		scl_high -= hl_ratio_term;
+
 		/*Divisor : Base Clock : tCKHighMin : tCK High : tCK Low*/
 		ac_timing = ((scl_high-1) << 20) | (scl_high << 16) | (scl_low << 12) | (div);
 	} else {
