@@ -897,8 +897,11 @@ static int i3c_aspeed_init(const struct device *dev)
 	i3c_aspeed_set_role(obj, config->secondary);
 	i3c_aspeed_init_clock(obj);
 
-	/* setup the dynamic address if playing the role as the main master */
-	if (!config->secondary) {
+	if (config->secondary) {
+		/* setup static address so that we can support SETAASA and SETDASA */
+		i3c_register->device_addr.fields.static_addr = config->assigned_addr;
+		i3c_register->device_addr.fields.static_addr_valid = 1;
+	} else {
 		union i3c_device_addr_s reg;
 
 		reg.value = 0;
