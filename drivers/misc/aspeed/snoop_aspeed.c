@@ -62,7 +62,7 @@ int snoop_aspeed_read(const struct device *dev, uint32_t ch, uint8_t *out)
 	int rc;
 	struct snoop_aspeed_data *data = (struct snoop_aspeed_data *)dev->data;
 
-	rc = k_sem_take(&data->rx[ch].lock, K_MSEC(100));
+	rc = k_sem_take(&data->rx[ch].lock, K_NO_WAIT);
 	if (rc) {
 		return rc;
 	}
