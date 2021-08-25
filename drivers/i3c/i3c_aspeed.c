@@ -562,7 +562,7 @@ static void i3c_aspeed_init_queues(struct i3c_aspeed_obj *obj)
 	 * So the max number of the IBI status = ceil(256 / 124) = 3
 	 */
 	queue_thld_ctrl.fields.ibi_data_thld = MAX_IBI_CHUNK_IN_BYTE >> 2;
-	queue_thld_ctrl.fields.ibi_status_thld = 3;
+	queue_thld_ctrl.fields.ibi_status_thld = 3 - 1;
 	i3c_register->queue_thld_ctrl.value = queue_thld_ctrl.value;
 
 	data_buff_ctrl.value = 0;
@@ -645,6 +645,8 @@ static void i3c_aspeed_start_xfer(struct i3c_aspeed_obj *obj, struct i3c_aspeed_
 			i3c_aspeed_wr_tx_fifo(obj, cmd->tx_buf, cmd->tx_length);
 		}
 	}
+
+	i3c_register->queue_thld_ctrl.fields.resp_q_thld = xfer->ncmds - 1;
 
 	for (i = 0; i < xfer->ncmds; i++) {
 		cmd = &xfer->cmds[i];
