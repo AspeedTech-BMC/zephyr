@@ -716,7 +716,7 @@ int i3c_aspeed_master_priv_xfer(struct i3c_device *i3cdev, struct i3c_priv_xfer 
 	ret = xfer.ret;
 	k_free(xfer.cmds);
 
-	return 0;
+	return ret;
 }
 
 int i3c_aspeed_master_deattach_device(const struct device *dev, struct i3c_device *slave)
