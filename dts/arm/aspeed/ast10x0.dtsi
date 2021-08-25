@@ -648,6 +648,7 @@
 			compatible = "aspeed,espi";
 			reg = <0x7e6ee000 0x800>;
 			interrupts = <INTR_ESPI AST10X0_IRQ_DEFAULT_PRIORITY>;
+			aspeed,scu = <&syscon>;
 			status = "disabled";
 			label = "ESPI";
 		};

@@ -12,6 +12,11 @@ properties:
       description: mmio register space
       required: true
 
+    aspeed,scu:
+      type: phandle
+      required: true
+      description: phandle to SCU device tree node
+
     perif,dma-mode:
       type: boolean
       required: false

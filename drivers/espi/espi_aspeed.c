@@ -14,6 +14,10 @@
 #include <logging/log.h>
 LOG_MODULE_REGISTER(espi, CONFIG_ESPI_LOG_LEVEL);
 
+/* SCU register offset */
+#define SCU_HWSTRAP2		0x510
+#define SCU_HWSTRAP2_LPC	BIT(6)
+
 /* eSPI register offset */
 #define ESPI_CTRL                       0x000
 #define   ESPI_CTRL_OOB_RX_SW_RST               BIT(28)
@@ -290,9 +294,9 @@ struct espi_comm_hdr {
 	uint8_t len_l;
 };
 
-static uint32_t espi_aspeed_base;
-#define ESPI_RD(reg)            sys_read32(espi_aspeed_base + reg)
-#define ESPI_WR(val, reg)       sys_write32((uint32_t)val, espi_aspeed_base + reg)
+static uint32_t espi_base;
+#define ESPI_RD(reg)            sys_read32(espi_base + reg)
+#define ESPI_WR(val, reg)       sys_write32((uint32_t)val, espi_base + reg)
 #define ESPI_PLD_LEN_MAX        (1UL << 12)
 
 /* peripheral channel */
@@ -711,6 +715,7 @@ static void espi_aspeed_isr(const struct device *dev)
 
 static int espi_aspeed_init(const struct device *dev)
 {
+	uint32_t reg, scu_base;
 	struct espi_aspeed_config *cfg = (struct espi_aspeed_config *)dev->config;
 	struct espi_aspeed_data *data = (struct espi_aspeed_data *)dev->data;
 	struct espi_aspeed_perif *perif = &data->perif;
@@ -718,7 +723,14 @@ static int espi_aspeed_init(const struct device *dev)
 	struct espi_aspeed_oob *oob = &data->oob;
 	struct espi_aspeed_flash *flash = &data->flash;
 
-	espi_aspeed_base = cfg->base;
+	espi_base = cfg->base;
+	scu_base = DT_REG_ADDR_BY_IDX(DT_INST_PHANDLE_BY_IDX(0, aspeed_scu, 0), 0);
+
+	/* abort initialization if LPC mode is selected */
+	reg = sys_read32(scu_base + SCU_HWSTRAP2);
+	if (reg & SCU_HWSTRAP2_LPC) {
+		return -ENODEV;
+	}
 
 	/* init private data */
 	perif->dma_mode = DT_INST_PROP(0, perif_dma_mode);
@@ -874,9 +886,9 @@ static int espi_aspeed_receive_oob(const struct device *dev, struct espi_oob_pac
 	struct espi_aspeed_oob *oob = &data->oob;
 	struct oob_rx_dma_desc *d;
 
-	rc = k_sem_take(&oob->rx_lock, K_MSEC(100));
-	if (rc == -EAGAIN) {
-		return -ETIMEDOUT;
+	rc = k_sem_take(&oob->rx_lock, K_NO_WAIT);
+	if (rc) {
+		return rc;
 	}
 
 	if (oob->dma_mode) {
