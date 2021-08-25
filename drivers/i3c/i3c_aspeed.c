@@ -442,7 +442,7 @@ static void i3c_aspeed_end_xfer(struct i3c_aspeed_obj *obj)
 		cmd = &xfer->cmds[resp.fields.tid];
 		cmd->rx_length = resp.fields.data_length;
 		cmd->ret = resp.fields.err_status;
-		if (cmd->rx_length) {
+		if (cmd->rx_length && !cmd->ret) {
 			i3c_aspeed_rd_rx_fifo(obj, cmd->rx_buf, cmd->rx_length);
 		}
 	}
@@ -453,6 +453,18 @@ static void i3c_aspeed_end_xfer(struct i3c_aspeed_obj *obj)
 		}
 	}
 
+	if (ret) {
+		union i3c_reset_ctrl_s reset_ctrl;
+
+		reset_ctrl.value = 0;
+		reset_ctrl.fields.rx_queue_reset = 1;
+		reset_ctrl.fields.tx_queue_reset = 1;
+		reset_ctrl.fields.resp_queue_reset = 1;
+		reset_ctrl.fields.cmd_queue_reset = 1;
+		i3c_register->reset_ctrl.value = reset_ctrl.value;
+		i3c_register->device_ctrl.fields.resume = 1;
+	}
+
 	xfer->ret = ret;
 	k_sem_give(&obj->curr_xfer->sem);
 }
@@ -461,7 +473,6 @@ static void i3c_aspeed_slave_rx_data(struct i3c_aspeed_obj *obj)
 {
 	struct i3c_register_s *i3c_register = obj->config->base;
 	uint32_t nresp, i, j;
-	int ret = 0;
 
 	nresp = i3c_register->queue_status_level.fields.resp_buf_blr;
 	for (i = 0; i < nresp; i++) {
