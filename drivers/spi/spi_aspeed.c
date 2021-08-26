@@ -53,6 +53,9 @@ LOG_MODULE_REGISTER(spi_aspeed, CONFIG_SPI_LOG_LEVEL);
 #define SPIA4_ADDR_FILTER_CTRL      (0x00A4)
 #define SPIA8_REG_LOCK_SRST         (0x00A8)
 #define SPIAC_REG_LOCK_WDT          (0x00AC)
+/* used for HW SAFS setting */
+#define SPIR6C_HOST_DIRECT_ACCESS_CMD_CTRL4	(0x006c)
+#define SPIR74_HOST_DIRECT_ACCESS_CMD_CTRL2	(0x0074)
 
 #define ASPEED_MAX_CS               3
 
@@ -477,10 +480,11 @@ static int aspeed_spi_nor_read_init(const struct device *dev,
 						const struct spi_config *spi_cfg,
 						struct spi_nor_op_info op_info)
 {
+	int ret = 0;
 	struct aspeed_spi_data *data = dev->data;
 	const struct aspeed_spi_config *config = dev->config;
 	struct spi_context *ctx = &data->ctx;
-	int ret = 0;
+	uint32_t reg_val;
 
 	spi_context_lock(ctx, false, NULL, spi_cfg);
 
@@ -499,11 +503,61 @@ static int aspeed_spi_nor_read_init(const struct device *dev,
 				op_info.dummy_cycle)) | ASPEED_SPI_NORMAL_READ;
 	sys_write32(data->cmd_mode[spi_cfg->slave].normal_read,
 			config->ctrl_base + SPI10_CE0_CTRL + spi_cfg->slave * 4);
+
+	/* set controller to 4-byte mode */
+	if (op_info.addr_len == 4) {
+		sys_write32(sys_read32(config->ctrl_base + SPI04_CE_CTRL) |
+			(0x11 << spi_cfg->slave), config->ctrl_base + SPI04_CE_CTRL);
+	}
+
+	/* config for SAFS */
+	if (config->ctrl_type == HOST_SPI) {
+		reg_val = sys_read32(config->ctrl_base + SPIR6C_HOST_DIRECT_ACCESS_CMD_CTRL4);
+		if (op_info.addr_len == 4)
+			reg_val = (reg_val & 0xffff00ff) | (op_info.opcode << 8);
+		else
+			reg_val = (reg_val & 0xffffff00) | op_info.opcode;
+
+		reg_val = (reg_val & 0x0fffffff) | aspeed_spi_io_mode(op_info.mode);
+		sys_write32(reg_val, config->ctrl_base + SPIR6C_HOST_DIRECT_ACCESS_CMD_CTRL4);
+	}
+
 end:
 
 	spi_context_release(ctx, ret);
 
 	return ret;
+}
+
+static int aspeed_spi_nor_write_init(const struct device *dev,
+						const struct spi_config *spi_cfg,
+						struct spi_nor_op_info op_info)
+{
+	int ret = 0;
+	struct aspeed_spi_data *data = dev->data;
+	const struct aspeed_spi_config *config = dev->config;
+	struct spi_context *ctx = &data->ctx;
+	uint32_t reg_val;
+
+	spi_context_lock(ctx, false, NULL, spi_cfg);
+
+	if (config->ctrl_type == HOST_SPI) {
+		reg_val = sys_read32(config->ctrl_base + SPIR6C_HOST_DIRECT_ACCESS_CMD_CTRL4);
+		reg_val = (reg_val & 0xf0ffffff) | (aspeed_spi_io_mode(op_info.mode) >> 8);
+		sys_write32(reg_val, config->ctrl_base + SPIR6C_HOST_DIRECT_ACCESS_CMD_CTRL4);
+		reg_val = sys_read32(config->ctrl_base + SPIR74_HOST_DIRECT_ACCESS_CMD_CTRL2);
+		if (op_info.addr_len == 4)
+			reg_val = (reg_val & 0xffff00ff) | (op_info.opcode << 8);
+		else
+			reg_val = (reg_val & 0xffffff00) | op_info.opcode;
+
+		sys_write32(reg_val, config->ctrl_base + SPIR74_HOST_DIRECT_ACCESS_CMD_CTRL2);
+	}
+
+	spi_context_release(ctx, ret);
+
+	return ret;
+
 }
 
 static int aspeed_spi_release(const struct device *dev,
@@ -615,7 +669,7 @@ static int aspeed_spi_init(const struct device *dev)
 static const struct spi_nor_ops aspeed_spi_nor_ops = {
 	.transceive = aspeed_spi_nor_transceive,
 	.read_init = aspeed_spi_nor_read_init,
-	.write_init = NULL,
+	.write_init = aspeed_spi_nor_write_init,
 };
 
 static const struct spi_driver_api aspeed_spi_driver_api = {
