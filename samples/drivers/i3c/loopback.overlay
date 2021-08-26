@@ -1,0 +1,5 @@
+&i3c1 {
+	status = "okay";
+	assigned-address = <0x9>;
+	secondary = <1>;
+};
