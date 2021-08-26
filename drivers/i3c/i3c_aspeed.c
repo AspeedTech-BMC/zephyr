@@ -812,7 +812,7 @@ int i3c_aspeed_master_deattach_device(const struct device *dev, struct i3c_devic
 		return pos;
 	}
 
-	obj->hw_dat_free_pos &= ~BIT(pos);
+	obj->hw_dat_free_pos |= BIT(pos);
 	obj->dev_addr_tbl[pos] = 0;
 
 	dat_addr = (uint32_t)obj->config->base + obj->hw_dat.fields.start_addr + (pos << 4);
@@ -854,7 +854,7 @@ int i3c_aspeed_master_attach_device(const struct device *dev, struct i3c_device 
 	}
 	obj->dev_addr_tbl[i] = slave->info.dynamic_addr;
 
-	dat_addr = (uint32_t)obj->config->base + obj->hw_dat.fields.start_addr + (i << 4);
+	dat_addr = (uint32_t)obj->config->base + obj->hw_dat.fields.start_addr + (i << 2);
 
 	dat.value = 0;
 	dat.fields.dynamic_addr = slave->info.dynamic_addr;
