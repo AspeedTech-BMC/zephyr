@@ -7,16 +7,16 @@
 #define DT_DRV_COMPAT aspeed_spi_controller
 
 #include <device.h>
+#include <drivers/clock_control.h>
+#include <drivers/flash.h>
 #include <drivers/spi.h>
 #include <drivers/spi_nor.h>
-#include <drivers/flash.h>
 #include <errno.h>
 #include <logging/log.h>
 LOG_MODULE_REGISTER(spi_aspeed, CONFIG_SPI_LOG_LEVEL);
+#include "spi_context.h"
 #include <sys/sys_io.h>
 #include <sys/__assert.h>
-#include "spi_context.h"
-
 
 #define SPI00_CE_TYPE_SETTING       (0x0000)
 #define SPI04_CE_CTRL               (0x0004)
@@ -43,8 +43,7 @@ LOG_MODULE_REGISTER(spi_aspeed, CONFIG_SPI_LOG_LEVEL);
 #define SPI84_DMA_FLASH_ADDR        (0x0084)
 #define SPI88_DMA_RAM_ADDR          (0x0088)
 #define SPI8C_DMA_LEN               (0x008C)
-#define SPI90_CHECKSUM              (0x0090)
-
+#define SPI90_CHECKSUM_RESULT       (0x0090)
 #define SPI94_CE0_TIMING_CTRL       (0x0094)
 #define SPI98_CE1_TIMING_CTRL       (0x0098)
 #define SPI9C_CE2_TIMING_CTRL       (0x009C)
@@ -57,13 +56,25 @@ LOG_MODULE_REGISTER(spi_aspeed, CONFIG_SPI_LOG_LEVEL);
 #define SPIR6C_HOST_DIRECT_ACCESS_CMD_CTRL4	(0x006c)
 #define SPIR74_HOST_DIRECT_ACCESS_CMD_CTRL2	(0x0074)
 
+#define SPI_CALIB_LEN               0x400
+#define SPI_DMA_IRQ_EN              BIT(3)
+#define SPI_DAM_REQUEST             BIT(31)
+#define SPI_DAM_GRANT               BIT(30)
+#define SPI_DMA_CALIB_MODE          BIT(3)
+#define SPI_DMA_CALC_CKSUM          BIT(2)
+#define SPI_DMA_ENABLE              BIT(0)
+#define SPI_DMA_STATUS              BIT(11)
+#define SPI_DMA_GET_REQ_MAGIC       0xaeed0000
+#define SPI_DMA_DISCARD_REQ_MAGIC   0xdeea0000
+
+#define SPI_CTRL_FREQ_MASK          0x0F000F00
+
 #define ASPEED_MAX_CS               3
 
 #define ASPEED_SPI_NORMAL_READ      0x1
 #define ASPEED_SPI_NORMAL_WRITE     0x2
 #define ASPEED_SPI_USER             0x3
 #define ASPEED_SPI_USER_INACTIVE    BIT(2)
-
 
 #define ASPEED_SPI_SZ_2M            0x200000
 #define ASPEED_SPI_SZ_256M          0x10000000
@@ -95,6 +106,7 @@ struct aspeed_spi_data {
 	uint32_t (*segment_value)(uint32_t start, uint32_t end);
 	struct aspeed_spi_decoded_addr decode_addr[ASPEED_MAX_CS];
 	struct aspeed_cmd_mode cmd_mode[ASPEED_MAX_CS];
+	uint32_t hclk;
 };
 
 struct aspeed_spi_config {
@@ -103,6 +115,8 @@ struct aspeed_spi_config {
 	uint32_t max_cs;
 	uint32_t platform;
 	enum aspeed_ctrl_type ctrl_type;
+	const struct device *clock_dev;
+	const clock_control_subsys_t clk_id;
 };
 
 uint32_t ast2600_segment_addr_start(uint32_t reg_val)
@@ -319,19 +333,19 @@ static void aspeed_spi_nor_transceive_user(const struct device *dev,
 	uint32_t cs = ctx->config->slave;
 	uint8_t dummy[12] = {0};
 
-	sys_write32(ASPEED_SPI_USER_INACTIVE | ASPEED_SPI_USER,
+	sys_write32(data->cmd_mode[cs].user | ASPEED_SPI_USER_INACTIVE,
 		config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
-	sys_write32(ASPEED_SPI_USER, config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
+	sys_write32(data->cmd_mode[cs].user, config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
 
 	/* cmd */
-	sys_write32(ASPEED_SPI_USER |
+	sys_write32(data->cmd_mode[cs].user |
 		aspeed_spi_io_mode_user(JESD216_GET_CMD_BUSWIDTH(op_info.mode)),
 		config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
 
 	aspeed_spi_write_data(data->decode_addr[cs].start, &op_info.opcode, 1);
 
 	/* addr */
-	sys_write32(ASPEED_SPI_USER |
+	sys_write32(data->cmd_mode[cs].user |
 		aspeed_spi_io_mode_user(JESD216_GET_ADDR_BUSWIDTH(op_info.mode)),
 		config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
 
@@ -349,7 +363,7 @@ static void aspeed_spi_nor_transceive_user(const struct device *dev,
 		(op_info.dummy_cycle / (8 / JESD216_GET_ADDR_BUSWIDTH(op_info.mode))));
 
 	/* data */
-	sys_write32(ASPEED_SPI_USER |
+	sys_write32(data->cmd_mode[cs].user |
 			aspeed_spi_io_mode_user(JESD216_GET_DATA_BUSWIDTH(op_info.mode)),
 			config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
 
@@ -363,7 +377,10 @@ static void aspeed_spi_nor_transceive_user(const struct device *dev,
 				op_info.buf, op_info.data_len);
 	}
 
-	sys_write32(ASPEED_SPI_USER_INACTIVE | ASPEED_SPI_USER,
+	sys_write32(data->cmd_mode[cs].user | ASPEED_SPI_USER_INACTIVE,
+		config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
+
+	sys_write32(data->cmd_mode[cs].normal_read,
 		config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
 
 	spi_context_complete(ctx, 0);
@@ -394,6 +411,250 @@ static int aspeed_spi_transceive(const struct device *dev,
 	return ret;
 }
 
+uint32_t aspeed_get_spi_freq_div(uint32_t bus_clk, uint32_t max_freq)
+{
+	uint32_t div_arr[16] = {15, 7, 14, 6, 13, 5, 12, 4, 11, 3, 10, 2, 9, 1, 8, 0};
+	uint32_t i, j;
+	bool find = false;
+
+	for (i = 0; i < 0xf; i++) {
+		for (j = 0; j < 16; j++) {
+			if (i == 0 && j == 0)
+				continue;
+
+			if (max_freq >= (bus_clk / (j + 1 + (i * 16)))) {
+				find = true;
+				break;
+			}
+		}
+
+		if (find)
+			break;
+	}
+
+	if (i == 0xf && j == 16) {
+		LOG_ERR("%s %d cannot get correct frequence division.", __func__, __LINE__);
+		return 0;
+	}
+
+	return ((i << 24) | (div_arr[j] << 8));
+}
+
+/*
+ * Check whether the data is not all 0 or 1 in order to
+ * avoid calibriate umount spi-flash.
+ */
+static bool aspeed_spi_calibriation_enable(const uint8_t *buf, uint32_t sz)
+{
+	const uint32_t *buf_32 = (const uint32_t *)buf;
+	uint32_t i;
+	uint32_t valid_count = 0;
+
+	for (i = 0; i < (sz / 4); i++) {
+		if (buf_32[i] != 0 && buf_32[i] != 0xffffffff)
+			valid_count++;
+		if (valid_count > 100)
+			return true;
+	}
+
+	return false;
+}
+
+static uint32_t aspeed_spi_dma_checksum(const struct device *dev,
+	uint32_t div, uint32_t delay)
+{
+	struct aspeed_spi_data *data = dev->data;
+	const struct aspeed_spi_config *config = dev->config;
+	struct spi_context *ctx = &data->ctx;
+	uint32_t ctrl_reg = config->ctrl_base;
+	uint32_t ctrl_val;
+	uint32_t checksum;
+
+	sys_write32(SPI_DMA_GET_REQ_MAGIC, ctrl_reg + SPI80_DMA_CTRL);
+	if (sys_read32(ctrl_reg + SPI80_DMA_CTRL) & SPI_DAM_REQUEST) {
+		while (!(sys_read32(ctrl_reg + SPI80_DMA_CTRL) & SPI_DAM_GRANT))
+			;
+	}
+
+	sys_write32(data->decode_addr[ctx->config->slave].start,
+	       ctrl_reg + SPI84_DMA_FLASH_ADDR);
+	sys_write32(SPI_CALIB_LEN, ctrl_reg + SPI8C_DMA_LEN);
+
+	ctrl_val = SPI_DMA_ENABLE | SPI_DMA_CALC_CKSUM | SPI_DMA_CALIB_MODE |
+		   (delay << 8) | ((div & 0xf) << 16);
+	sys_write32(ctrl_val, ctrl_reg + SPI80_DMA_CTRL);
+	while (!(sys_read32(ctrl_reg + SPI08_INTR_CTRL) & SPI_DMA_STATUS))
+		;
+
+	checksum = sys_read32(ctrl_reg + SPI90_CHECKSUM_RESULT);
+
+	sys_write32(0x0, ctrl_reg + SPI80_DMA_CTRL);
+	sys_write32(SPI_DMA_DISCARD_REQ_MAGIC, ctrl_reg + SPI80_DMA_CTRL);
+
+	return checksum;
+}
+
+static int aspeed_get_mid_point_of_longest_one(uint8_t *buf, uint32_t len)
+{
+	int i;
+	int start = 0, mid_point = 0;
+	int max_cnt = 0, cnt = 0;
+
+	for (i = 0; i < len; i++) {
+		if (buf[i] == 1) {
+			cnt++;
+		} else {
+			cnt = 0;
+			start = i;
+		}
+
+		if (max_cnt < cnt) {
+			max_cnt = cnt;
+			mid_point = start + (cnt / 2);
+		}
+	}
+
+	/*
+	 * In order to get a stable SPI read timing,
+	 * abandon the result if the length of longest
+	 * consecutive good points is too short.
+	 */
+	if (max_cnt < 4)
+		return -1;
+
+	return mid_point;
+}
+
+void aspeed_spi_timing_calibration(const struct device *dev)
+{
+	struct aspeed_spi_data *data = dev->data;
+	const struct aspeed_spi_config *config = dev->config;
+	struct spi_context *ctx = &data->ctx;
+	uint32_t ctrl_reg = config->ctrl_base;
+	uint32_t cs = ctx->config->slave;
+	uint32_t max_freq = ctx->config->frequency;
+	/* HCLK/2, ..., HCKL/5 */
+	uint32_t hclk_masks[] = {7, 14, 6, 13};
+	uint8_t *calib_res = NULL;
+	uint8_t *check_buf = NULL;
+	uint32_t reg_val;
+	uint32_t checksum, gold_checksum;
+	uint32_t i, hcycle, delay_ns, final_delay = 0;
+	uint32_t hclk_div;
+	bool pass;
+	int calib_point;
+
+	reg_val =
+		sys_read32(ctrl_reg + SPI94_CE0_TIMING_CTRL + cs * 4);
+	if (reg_val != 0) {
+		LOG_DBG("Already executed calibration.");
+		goto no_calib;
+	}
+
+	LOG_DBG("Calculate timing compensation:");
+	/*
+	 * use the related low frequency to get check calibration data
+	 * and get golden data.
+	 */
+	reg_val = sys_read32(ctrl_reg + SPI10_CE0_CTRL + cs * 4);
+	reg_val &= (~SPI_CTRL_FREQ_MASK);
+	sys_write32(reg_val, ctrl_reg + SPI10_CE0_CTRL + cs * 4);
+
+	check_buf = k_malloc(SPI_CALIB_LEN);
+	if (!check_buf) {
+		LOG_ERR("Insufficient buffer for calibration.");
+		goto no_calib;
+	}
+
+	LOG_DBG("reg_val = 0x%x", reg_val);
+	memcpy(check_buf, (uint8_t *)data->decode_addr[cs].start, SPI_CALIB_LEN);
+
+	if (!aspeed_spi_calibriation_enable(check_buf, SPI_CALIB_LEN)) {
+		LOG_INF("Flash data is monotonous, skip calibration.");
+		goto no_calib;
+	}
+
+	gold_checksum = aspeed_spi_dma_checksum(dev, 0, 0);
+
+	/*
+	 * allocate a space to record calibration result for
+	 * different timing compensation with fixed
+	 * HCLK division.
+	 */
+	calib_res = k_malloc(6 * 17);
+	if (!calib_res) {
+		LOG_ERR("Insufficient buffer for calibration result.");
+		goto no_calib;
+	}
+
+	/* From HCLK/2 to HCLK/5 */
+	for (i = 0; i < ARRAY_SIZE(hclk_masks); i++) {
+		if (max_freq < data->hclk / (i + 2)) {
+			LOG_DBG("skipping freq %d", data->hclk / (i + 2));
+			continue;
+		}
+		max_freq = data->hclk / (i + 2);
+
+		checksum = aspeed_spi_dma_checksum(dev, hclk_masks[i], 0);
+		pass = (checksum == gold_checksum);
+		LOG_DBG("HCLK/%d, no timing compensation: %s", i + 2,
+			pass ? "PASS" : "FAIL");
+
+		memset(calib_res, 0x0, 6 * 17);
+
+		for (hcycle = 0; hcycle <= 5; hcycle++) {
+			/* increase DI delay by the step of 0.5ns */
+			LOG_DBG("Delay Enable : hcycle %x", hcycle);
+			for (delay_ns = 0; delay_ns <= 0xf; delay_ns++) {
+				checksum = aspeed_spi_dma_checksum(dev, hclk_masks[i],
+					BIT(3) | hcycle | (delay_ns << 4));
+				pass = (checksum == gold_checksum);
+				calib_res[hcycle * 17 + delay_ns] = pass;
+				LOG_DBG("HCLK/%d, %d HCLK cycle, %d delay_ns : %s",
+					i + 2, hcycle, delay_ns,
+					pass ? "PASS" : "FAIL");
+			}
+		}
+
+		calib_point = aspeed_get_mid_point_of_longest_one(calib_res, 6 * 17);
+		if (calib_point < 0) {
+			LOG_INF("cannot get good calibration point.");
+			continue;
+		}
+
+		hcycle = calib_point / 17;
+		delay_ns = calib_point % 17;
+		LOG_DBG("final hcycle: %d, delay_ns: %d", hcycle, delay_ns);
+
+		final_delay = (BIT(3) | hcycle | (delay_ns << 4)) << (i * 8);
+		sys_write32(final_delay, ctrl_reg + SPI94_CE0_TIMING_CTRL + cs * 4);
+		break;
+	}
+
+no_calib:
+
+	hclk_div = aspeed_get_spi_freq_div(data->hclk, max_freq);
+
+	/* configure SPI clock frequency */
+	reg_val = sys_read32(ctrl_reg + SPI10_CE0_CTRL + cs * 4);
+	reg_val = (reg_val & (~SPI_CTRL_FREQ_MASK)) | hclk_div;
+	sys_write32(reg_val, ctrl_reg + SPI10_CE0_CTRL + cs * 4);
+
+	data->cmd_mode[cs].normal_read =
+		(data->cmd_mode[cs].normal_read & (~SPI_CTRL_FREQ_MASK)) | hclk_div;
+
+	data->cmd_mode[cs].user =
+		(data->cmd_mode[cs].user & (~SPI_CTRL_FREQ_MASK)) | hclk_div;
+
+	/* add clock setting info for CE ctrl setting */
+	LOG_DBG("freq: %dMHz", max_freq / 1000000);
+
+	if (check_buf)
+		k_free(check_buf);
+	if (calib_res)
+		k_free(calib_res);
+}
+
 static int aspeed_spi_nor_transceive(const struct device *dev,
 						const struct spi_config *spi_cfg,
 						struct spi_nor_op_info op_info)
@@ -415,12 +676,12 @@ static int aspeed_spi_nor_transceive(const struct device *dev,
 }
 
 static int aspeed_spi_decode_range_reinit(const struct device *dev,
-						const struct spi_config *spi_cfg,
 						uint32_t flash_sz)
 {
 	uint32_t cs, tmp;
 	const struct aspeed_spi_config *config = dev->config;
 	struct aspeed_spi_data *data = dev->data;
+	struct spi_context *ctx = &data->ctx;
 	uint32_t decode_sz_arr[ASPEED_MAX_CS] = {0};
 	uint32_t total_decode_range = 0;
 	uint32_t start_addr, end_addr, pre_end_addr = 0;
@@ -437,9 +698,9 @@ static int aspeed_spi_decode_range_reinit(const struct device *dev,
 	}
 
 	/* prepare new decode sz array */
-	if (total_decode_range - decode_sz_arr[spi_cfg->slave]
+	if (total_decode_range - decode_sz_arr[ctx->config->slave]
 		+ flash_sz < ASPEED_SPI_SZ_256M) {
-		decode_sz_arr[spi_cfg->slave] = flash_sz;
+		decode_sz_arr[ctx->config->slave] = flash_sz;
 	} else {
 		/* do nothing, otherwise, decode range will be larger than 256MB */
 		LOG_WRN("decode size out of range 0x%08x", flash_sz);
@@ -462,7 +723,7 @@ static int aspeed_spi_decode_range_reinit(const struct device *dev,
 		sys_write32(data->segment_value(start_addr, end_addr),
 			config->ctrl_base + SPI30_CE0_ADDR_DEC + cs * 4);
 		data->decode_addr[cs].start = start_addr;
-		if (cs == spi_cfg->slave)
+		if (cs == ctx->config->slave)
 			data->decode_addr[cs].len = flash_sz;
 
 		pre_end_addr = end_addr + 1;
@@ -486,28 +747,31 @@ static int aspeed_spi_nor_read_init(const struct device *dev,
 	struct spi_context *ctx = &data->ctx;
 	uint32_t reg_val;
 
+
 	spi_context_lock(ctx, false, NULL, spi_cfg);
+	if (!spi_context_configured(ctx, spi_cfg))
+		ctx->config = spi_cfg;
 
 	LOG_DBG("[%s] mode %08x, cmd: %x, dummy: %d, frequency: %d",
 		__func__, op_info.mode, op_info.opcode, op_info.dummy_cycle,
-		spi_cfg->frequency);
+		ctx->config->frequency);
 
-	ret = aspeed_spi_decode_range_reinit(dev, spi_cfg, op_info.data_len);
+	ret = aspeed_spi_decode_range_reinit(dev, op_info.data_len);
 	if (ret != 0)
 		goto end;
 
-	data->cmd_mode[spi_cfg->slave].normal_read =
+	data->cmd_mode[ctx->config->slave].normal_read =
 		ASPEED_SPI_CTRL_VAL(aspeed_spi_io_mode(op_info.mode),
 			op_info.opcode,
 			aspeed_spi_cal_dummy_cycle(JESD216_GET_ADDR_BUSWIDTH(op_info.mode),
 				op_info.dummy_cycle)) | ASPEED_SPI_NORMAL_READ;
-	sys_write32(data->cmd_mode[spi_cfg->slave].normal_read,
-			config->ctrl_base + SPI10_CE0_CTRL + spi_cfg->slave * 4);
+	sys_write32(data->cmd_mode[ctx->config->slave].normal_read,
+			config->ctrl_base + SPI10_CE0_CTRL + ctx->config->slave * 4);
 
 	/* set controller to 4-byte mode */
 	if (op_info.addr_len == 4) {
 		sys_write32(sys_read32(config->ctrl_base + SPI04_CE_CTRL) |
-			(0x11 << spi_cfg->slave), config->ctrl_base + SPI04_CE_CTRL);
+			(0x11 << ctx->config->slave), config->ctrl_base + SPI04_CE_CTRL);
 	}
 
 	/* config for SAFS */
@@ -521,6 +785,8 @@ static int aspeed_spi_nor_read_init(const struct device *dev,
 		reg_val = (reg_val & 0x0fffffff) | aspeed_spi_io_mode(op_info.mode);
 		sys_write32(reg_val, config->ctrl_base + SPIR6C_HOST_DIRECT_ACCESS_CMD_CTRL4);
 	}
+
+	aspeed_spi_timing_calibration(dev);
 
 end:
 
@@ -649,6 +915,7 @@ static int aspeed_spi_init(const struct device *dev)
 	struct aspeed_spi_data *data = dev->data;
 	uint32_t cs;
 	uint32_t reg_val;
+	int ret;
 
 	for (cs = 0; cs < config->max_cs; cs++) {
 		reg_val = sys_read32(config->ctrl_base + SPI00_CE_TYPE_SETTING);
@@ -657,9 +924,13 @@ static int aspeed_spi_init(const struct device *dev)
 		data->cmd_mode[cs].user = ASPEED_SPI_USER;
 	}
 
+	ret = clock_control_get_rate(config->clock_dev, config->clk_id,
+			       &data->hclk);
+	if (ret != 0)
+		return ret;
+
 	aspeed_segment_function_init(config, data);
 	aspeed_decode_range_pre_init(config, data);
-
 
 	spi_context_unlock_unconditionally(&data->ctx);
 
@@ -685,6 +956,8 @@ static const struct spi_driver_api aspeed_spi_driver_api = {
 		.max_cs = DT_INST_PROP(n, num_cs),	\
 		.platform = DT_INST_PROP(n, ast_platform), \
 		.ctrl_type = DT_ENUM_IDX(DT_INST(n, DT_DRV_COMPAT), ctrl_type),	\
+		.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(n)),	\
+		.clk_id = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(n, clk_id),	\
 	};								\
 									\
 	static struct aspeed_spi_data aspeed_spi_data_##n = {	\
