@@ -122,10 +122,9 @@ static int gpio_aspeed_cmd_src_set(const struct device *dev, gpio_pin_t pin, uin
 	gpio_set_permit_t permit;
 	uint32_t group_idx = pin_offset >> 5;
 	uint8_t byte_idx;
-#else
+#endif
 	volatile gpio_register_t *gpio_reg = DEV_CFG(dev)->base;
 	gpio_index_register_t index;
-#endif
 
 	if (pin >= 32) {
 		LOG_ERR("Invalid gpio pin #%d", pin);
@@ -147,7 +146,7 @@ static int gpio_aspeed_cmd_src_set(const struct device *dev, gpio_pin_t pin, uin
 	temp.value = new_cmd_src->value;
 	temp.fields.sets[byte_idx] = permit.byte;
 	new_cmd_src->value = temp.value;
-#else
+#endif
 	pin += pin_offset;
 	index.value = 0;
 	index.fields.index_type = ASPEED_GPIO_CMD_SRC;
@@ -155,7 +154,6 @@ static int gpio_aspeed_cmd_src_set(const struct device *dev, gpio_pin_t pin, uin
 	index.fields.index_number = pin;
 	index.fields.index_data = cmd_src;
 	gpio_reg->index.value = index.value;
-#endif
 	return 0;
 }
 
