@@ -5,6 +5,8 @@
 
 include: base.yaml
 
+bus: i3c
+
 properties:
     label:
       required: true
