@@ -398,6 +398,9 @@ struct i3c_aspeed_obj {
 	union i3c_dev_addr_tbl_ptr_s hw_dat;
 	uint32_t hw_dat_free_pos;
 	uint8_t dev_addr_tbl[32];
+
+	/* slave mode data */
+	struct i3c_slave_setup slave_data;
 };
 
 #define DEV_CFG(dev)			((struct i3c_aspeed_config *)(dev)->config)
@@ -472,28 +475,35 @@ static void i3c_aspeed_end_xfer(struct i3c_aspeed_obj *obj)
 static void i3c_aspeed_slave_rx_data(struct i3c_aspeed_obj *obj)
 {
 	struct i3c_register_s *i3c_register = obj->config->base;
-	uint32_t nresp, i, j;
+	const struct i3c_slave_callbacks *cb;
+	uint32_t nresp, i;
+
+	cb = obj->slave_data.callbacks;
+	if (!cb) {
+		goto flush;
+	}
 
 	nresp = i3c_register->queue_status_level.fields.resp_buf_blr;
 	for (i = 0; i < nresp; i++) {
 		union i3c_device_resp_queue_port_s resp;
-		struct i3c_aspeed_cmd cmd;
+		struct i3c_slave_payload *payload;
 
 		resp.value = i3c_register->resp_queue_port.value;
-		cmd.rx_length = resp.fields.data_length;
-		cmd.ret = resp.fields.err_status;
-
-		if (cmd.rx_length) {
-			uint8_t *buf = k_malloc(cmd.rx_length);
-
-			cmd.rx_buf = buf;
-			i3c_aspeed_rd_rx_fifo(obj, cmd.rx_buf, cmd.rx_length);
-			for (j = 0; j < cmd.rx_length; j++) {
-				printk("%02x\n", buf[j]);
+		if (resp.fields.data_length && !resp.fields.err_status) {
+			if (cb->write_requested) {
+				payload = cb->write_requested(obj->slave_data.dev);
+				payload->size = resp.fields.data_length;
+				i3c_aspeed_rd_rx_fifo(obj, payload->buf, payload->size);
 			}
-			k_free(cmd.rx_buf);
+
+			if (cb->write_done) {
+				cb->write_done(obj->slave_data.dev);
+			}
 		}
 	}
+	return;
+flush:
+	printk("flush rx fifo\n");
 }
 
 static void i3c_aspeed_isr(const struct device *dev)
@@ -868,6 +878,17 @@ int i3c_aspeed_master_attach_device(const struct device *dev, struct i3c_device 
 
 	return 0;
 
+}
+
+int i3c_aspeed_slave_register(const struct device *dev, struct i3c_slave_setup *slave_data)
+{
+	struct i3c_aspeed_obj *obj = DEV_DATA(dev);
+
+	obj->slave_data.max_payload_len = slave_data->max_payload_len;
+	obj->slave_data.callbacks = slave_data->callbacks;
+	obj->slave_data.dev = slave_data->dev;
+
+	return 0;
 }
 
 int i3c_aspeed_master_send_ccc(const struct device *dev, struct i3c_ccc_cmd *ccc)

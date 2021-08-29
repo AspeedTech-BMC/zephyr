@@ -79,3 +79,23 @@ struct i3c_device {
 	void *driver_data;
 	struct i3c_device_info info;
 };
+
+/* slave driver structure */
+struct i3c_slave_payload {
+	int size;
+	void *buf;
+};
+
+struct i3c_slave_callbacks {
+	struct i3c_slave_payload* (*write_requested)(const struct device *dev);
+	void (*write_done)(const struct device *dev);
+};
+
+struct i3c_slave_setup {
+	int max_payload_len;
+	const struct device *dev;
+	const struct i3c_slave_callbacks *callbacks;
+};
+
+/* ASPEED API */
+int i3c_aspeed_slave_register(const struct device *dev, struct i3c_slave_setup *slave_data);
