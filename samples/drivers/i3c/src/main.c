@@ -16,6 +16,8 @@ int i3c_aspeed_master_deattach_device(const struct device *dev, struct i3c_devic
 int i3c_aspeed_master_send_ccc(const struct device *dev, struct i3c_ccc_cmd *ccc);
 int i3c_aspeed_master_priv_xfer(struct i3c_device *i3cdev, struct i3c_priv_xfer *xfers, int nxfers);
 
+int i3c_slave_mqueue_read(const struct device *dev, uint8_t *dest, int budget);
+
 /* functions for sending CCC */
 static int i3c_send_rstdaa(const struct device *master)
 {
@@ -180,15 +182,21 @@ void i3c_imx3112_test(void)
  */
 void i3c_loopback_test(void)
 {
-	const struct device *master;
+	const struct device *master, *slave_mq;
 	struct i3c_device slave;
 	struct i3c_priv_xfer xfer;
-	int ret;
-	uint8_t data[4] = { 1, 2, 3, 4 };
+	int ret, i;
+	uint8_t data[16], result[16];
 
 	master = device_get_binding(DT_LABEL(DT_NODELABEL(i3c0)));
 	if (!master) {
 		printk("master device not found\n");
+		return;
+	}
+
+	slave_mq = device_get_binding(DT_LABEL(DT_NODELABEL(i3c1_smq)));
+	if (!slave_mq) {
+		printk("slave-mq device not found\n");
 		return;
 	}
 
@@ -221,15 +229,33 @@ void i3c_loopback_test(void)
 	}
 	printk("bus init done\n");
 
+	for (i = 0; i < 16; i++) {
+		data[i] = i;
+	}
+
 	xfer.rnw = 0;
 	xfer.len = 4;
-	xfer.data.out = data;
-	ret = i3c_aspeed_master_priv_xfer(&slave, &xfer, 1);
-	if (ret) {
-		printk("priv wr fail\n");
-	} else {
-		printk("priv wr pass\n");
+	for (i = 0; i < 16; i += 4) {
+		xfer.data.out = &data[i];
+		ret = i3c_aspeed_master_priv_xfer(&slave, &xfer, 1);
+		if (ret) {
+			printk("priv wr fail\n");
+			return;
+		}
 	}
+
+	for (i = 0; i < 16; i += 4) {
+		ret = i3c_slave_mqueue_read(slave_mq, &result[i], 4);
+	}
+
+	for (i = 0; i < 16; i++) {
+		if (result[i] != data[i]) {
+			printk("in: %d out: %d\n", data[i], result[i]);
+			return;
+		}
+	}
+
+	printk("loopback test pass\n");
 }
 #endif
 
