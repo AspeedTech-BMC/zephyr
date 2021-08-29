@@ -13,6 +13,7 @@ module = I3C
 module-str = I3C
 source "subsys/logging/Kconfig.template.log_config"
 
+source "drivers/i3c/slave/Kconfig"
 source "drivers/i3c/Kconfig.aspeed"
 
 endif # I3C
