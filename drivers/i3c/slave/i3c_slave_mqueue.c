@@ -18,10 +18,9 @@ LOG_MODULE_REGISTER(i3c_slave_mqueue);
 
 struct i3c_slave_mqueue_config {
 	char *controller_name;
-	char *mq_name;
-	int address;
 	int msg_size;
 	int num_of_msgs;
+	int mdb;
 };
 
 struct i3c_slave_mqueue_obj {
@@ -112,8 +111,7 @@ static void i3c_slave_mqueue_init(const struct device *dev)
 	uint8_t *buf;
 	int i;
 
-	LOG_DBG("mq name %s, addr = %d, msg size %d, n %d\n", config->mq_name, config->address,
-		config->msg_size, config->num_of_msgs);
+	LOG_DBG("msg size %d, n %d\n", config->msg_size, config->num_of_msgs);
 	LOG_DBG("bus name : %s\n", config->controller_name);
 
 	obj->i3c_controller = device_get_binding(config->controller_name);
@@ -150,10 +148,9 @@ static void i3c_slave_mqueue_init(const struct device *dev)
 	static int i3c_slave_mqueue_config_func_##n(const struct device *dev);                     \
 	static const struct i3c_slave_mqueue_config i3c_slave_mqueue_config_##n = {                \
 		.controller_name = DT_INST_BUS_LABEL(n),                                           \
-		.mq_name = DT_INST_LABEL(n),                                                       \
-		.address = DT_INST_REG_ADDR(n),                                                    \
 		.msg_size = DT_INST_PROP(n, msg_size),                                             \
 		.num_of_msgs = DT_INST_PROP(n, num_of_msgs),                                       \
+		.mdb = DT_INST_PROP(n, mandatory_data_byte),                                       \
 	};                                                                                         \
 												   \
 	static struct i3c_slave_mqueue_obj i3c_slave_mqueue_obj##n;                                \

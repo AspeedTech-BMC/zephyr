@@ -18,3 +18,8 @@ properties:
       type: int
       required: true
       description: number of the messages
+    mandatory-data-byte:
+      type: int
+      required: true
+      description: mandatory data byte (MDB) when sending IBI.
+                   See https://www.mipi.org/MIPI_I3C_mandatory_data_byte_values_public for detail.
