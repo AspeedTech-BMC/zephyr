@@ -665,7 +665,7 @@ static void i3c_aspeed_init_pid(struct i3c_aspeed_obj *obj)
 	i3c_register->slave_pid_hi.value = slave_pid_hi.value;
 
 	slave_pid_lo.value = 0;
-	slave_pid_lo.fields.part_id = rev_id >> 16;
+	slave_pid_lo.fields.part_id = rev_id;
 	slave_pid_lo.fields.inst_id = config->inst_id;
 	i3c_register->slave_pid_lo.value = slave_pid_lo.value;
 
