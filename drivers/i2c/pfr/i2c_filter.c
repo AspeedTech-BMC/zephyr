@@ -19,9 +19,21 @@
 #include <logging/log.h>
 LOG_MODULE_REGISTER(i2c_pfr_filter);
 
+/* #define ASPEED_I2C_FJ_DUMP */
+#define ASPEED_I2C_FW_DUMP
+
+#ifdef ASPEED_I2C_FJ_DUMP
 #define I2C_W_R(value, addr) LOG_INF("  dw %x %x", addr, value);
 #define I2C_LW_R(value, addr) LOG_INF("  dw %x %lx", addr, value);
-#define I2C_R(addr) LOG_INF("  dr %x", addr);
+#else
+#ifdef ASPEED_I2C_FW_DUMP
+#define I2C_W_R(value, addr) LOG_INF("  dw %x %x\n", addr, value); sys_write32(value, addr);
+#define I2C_LW_R(value, addr) LOG_INF("  dw %x %lx", addr, value); sys_write32(value, addr);
+#else
+#define I2C_W_R(value, addr) sys_write32(value, addr);
+#define I2C_LW_R(value, addr) sys_write32(value, addr);
+#endif
+#endif
 
 /* i2c filter buf */
 struct ast_i2c_f_tbl filter_tbl[AST_I2C_F_COUNT] NON_CACHED_BSS_ALIGN16;
@@ -49,7 +61,7 @@ struct ast_i2c_filter_config {
 	((struct ast_i2c_filter_data *const)(dev)->data)
 
 /* i2c filter interrupt service routine */
-static void ast_i2c_filter_isr(const struct device *dev)
+void ast_i2c_filter_isr(const struct device *dev)
 {
 	struct ast_i2c_filter_data *data = DEV_DATA(dev);
 
@@ -92,7 +104,7 @@ static void ast_i2c_filter_isr(const struct device *dev)
 }
 
 /* i2c filter default */
-static int ast_i2c_filter_default(const struct device *dev, uint8_t pass)
+int ast_i2c_filter_default(const struct device *dev, uint8_t pass)
 {
 	const struct ast_i2c_filter_config *cfg = DEV_CFG(dev);
 
@@ -120,7 +132,7 @@ static int ast_i2c_filter_default(const struct device *dev, uint8_t pass)
 }
 
 /* i2c filter update */
-static int ast_i2c_filter_update(const struct device *dev, uint8_t idx, uint8_t addr,
+int ast_i2c_filter_update(const struct device *dev, uint8_t idx, uint8_t addr,
 struct ast_i2c_f_bitmap *table)
 {
 	struct ast_i2c_filter_data *data = DEV_DATA(dev);
@@ -177,7 +189,7 @@ struct ast_i2c_f_bitmap *table)
 
 
 /* i2c filter enable */
-static int ast_i2c_filter_en(const struct device *dev, uint8_t filter_en, uint8_t wlist_en,
+int ast_i2c_filter_en(const struct device *dev, uint8_t filter_en, uint8_t wlist_en,
 uint8_t clr_idx, uint8_t clr_tbl)
 {
 	struct ast_i2c_filter_data *data = DEV_DATA(dev);
@@ -220,7 +232,7 @@ uint8_t clr_idx, uint8_t clr_tbl)
 }
 
 /* i2c filter initial */
-static int ast_i2c_filter_init(const struct device *dev)
+int ast_i2c_filter_init(const struct device *dev)
 {
 	struct ast_i2c_filter_data *data = DEV_DATA(dev);
 	const struct ast_i2c_filter_config *cfg = DEV_CFG(dev);

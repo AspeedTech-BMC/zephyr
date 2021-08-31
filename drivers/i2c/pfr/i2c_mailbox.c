@@ -9,6 +9,7 @@
 #include <sys/slist.h>
 #include <kernel.h>
 #include <errno.h>
+#include <drivers/i2c.h>
 #include <soc.h>
 #include <device.h>
 #include <string.h>
@@ -19,9 +20,21 @@
 #include <logging/log.h>
 LOG_MODULE_REGISTER(i2c_pfr_mbx);
 
+/* #define ASPEED_I2C_MJ_DUMP */
+#define ASPEED_I2C_MW_DUMP
+
+#ifdef ASPEED_I2C_MJ_DUMP
 #define I2C_W_R(value, addr) LOG_INF("  dw %x %x", addr, value);
 #define I2C_LW_R(value, addr) LOG_INF("  dw %x %lx", addr, value);
-#define I2C_R(addr) LOG_INF("  dr %x", addr);
+#else
+#ifdef ASPEED_I2C_MW_DUMP
+#define I2C_W_R(value, addr) LOG_INF("  dw %x %x\n", addr, value); sys_write32(value, addr);
+#define I2C_LW_R(value, addr) LOG_INF("  dw %x %lx", addr, value); sys_write32(value, addr);
+#else
+#define I2C_W_R(value, addr) sys_write32(value, addr);
+#define I2C_LW_R(value, addr) sys_write32(value, addr);
+#endif
+#endif
 
 struct ast_i2c_mbx_data {
 	uint32_t	i2c_dev_base;	/* i2c dev base*/
@@ -64,7 +77,7 @@ int check_ast_mbx_valid(const struct ast_i2c_mbx_config *cfg)
 }
 
 /* i2c mbx interrupt service routine */
-static void ast_i2c_mbx_isr(const struct device *dev)
+void ast_i2c_mbx_isr(const struct device *dev)
 {
 	const struct ast_i2c_mbx_config *cfg = DEV_CFG(dev);
 
@@ -89,7 +102,7 @@ static void ast_i2c_mbx_isr(const struct device *dev)
 	LOG_INF(" A mail stsfifo : %x", stsfifo);
 }
 
-static int ast_i2c_mbx_fifo_pirority(const struct device *dev, uint8_t pirority)
+int ast_i2c_mbx_fifo_pirority(const struct device *dev, uint8_t pirority)
 {
 	const struct ast_i2c_mbx_config *cfg = DEV_CFG(dev);
 
@@ -120,7 +133,7 @@ static int ast_i2c_mbx_fifo_pirority(const struct device *dev, uint8_t pirority)
 
 
 /* i2c mbx fifo apply setting */
-static int ast_i2c_mbx_fifo_apply(const struct device *dev, uint8_t idx,
+int ast_i2c_mbx_fifo_apply(const struct device *dev, uint8_t idx,
 uint8_t addr, uint8_t type)
 {
 	const struct ast_i2c_mbx_config *cfg = DEV_CFG(dev);
@@ -168,7 +181,7 @@ uint8_t addr, uint8_t type)
 }
 
 /* i2c mbx fifo enable */
-static int ast_i2c_mbx_fifo_en(const struct device *dev, uint8_t idx,
+int ast_i2c_mbx_fifo_en(const struct device *dev, uint8_t idx,
 uint16_t base, uint16_t length)
 {
 	const struct ast_i2c_mbx_config *cfg = DEV_CFG(dev);
@@ -219,7 +232,7 @@ uint16_t base, uint16_t length)
 }
 
 /* i2c mbx notify enable */
-static int ast_i2c_mbx_notify_en(const struct device *dev, uint8_t idx,
+int ast_i2c_mbx_notify_en(const struct device *dev, uint8_t idx,
 uint8_t type, uint8_t enable)
 {
 	const struct ast_i2c_mbx_config *cfg = DEV_CFG(dev);
@@ -267,7 +280,7 @@ uint8_t type, uint8_t enable)
 
 
 /* i2c mbx notify address */
-static int ast_i2c_mbx_notify_addr(const struct device *dev, uint8_t idx,
+int ast_i2c_mbx_notify_addr(const struct device *dev, uint8_t idx,
 uint8_t addr)
 {
 	const struct ast_i2c_mbx_config *cfg = DEV_CFG(dev);
@@ -301,7 +314,7 @@ uint8_t addr)
 
 
 /* i2c mbx protect address */
-static int ast_i2c_mbx_protect(const struct device *dev, uint8_t addr,
+int ast_i2c_mbx_protect(const struct device *dev, uint8_t addr,
 uint8_t enable)
 {
 	const struct ast_i2c_mbx_config *cfg = DEV_CFG(dev);
@@ -336,7 +349,7 @@ uint8_t enable)
 }
 
 /* i2c mbx enable */
-static int ast_i2c_mbx_en(const struct device *dev, uint32_t base,
+int ast_i2c_mbx_en(const struct device *dev, uint32_t base,
 uint16_t length, uint8_t enable)
 {
 	struct ast_i2c_mbx_data *data = DEV_DATA(dev);
@@ -384,7 +397,7 @@ uint16_t length, uint8_t enable)
 }
 
 /* i2c mbx set addr */
-static int ast_i2c_mbx_addr(const struct device *dev, uint8_t idx,
+int ast_i2c_mbx_addr(const struct device *dev, uint8_t idx,
 uint8_t offset, uint8_t addr, uint8_t enable)
 {
 	struct ast_i2c_mbx_data *data = DEV_DATA(dev);
@@ -445,7 +458,7 @@ uint8_t offset, uint8_t addr, uint8_t enable)
 }
 
 /* i2c mbx initial */
-static int ast_i2c_mbx_init(const struct device *dev)
+int ast_i2c_mbx_init(const struct device *dev)
 {
 	struct ast_i2c_mbx_data *data = DEV_DATA(dev);
 	const struct ast_i2c_mbx_config *cfg = DEV_CFG(dev);
@@ -457,8 +470,12 @@ static int ast_i2c_mbx_init(const struct device *dev)
 		return -EINVAL;
 
 	/* clear mbx addr /fifo irq status */
-	I2C_W_R(0xFFFFFFFF, (cfg->mail_g_base+AST_I2C_M_IRQ_STA0));
-	I2C_W_R(0xFFFFFFFF, (cfg->mail_g_base+AST_I2C_M_IRQ_STA1));
+	if (cfg->mail_dev_idx == 0) {
+		I2C_W_R(0xFFFFFFFF, (cfg->mail_g_base+AST_I2C_M_IRQ_STA0));
+	} else if (cfg->mail_dev_idx == 1) {
+		I2C_W_R(0xFFFFFFFF, (cfg->mail_g_base+AST_I2C_M_IRQ_STA1));
+	}
+
 	sts =  sys_read32(cfg->mail_g_base + AST_I2C_M_FIFO_IRQ);
 	I2C_W_R(sts, (cfg->mail_g_base+AST_I2C_M_FIFO_IRQ));
 

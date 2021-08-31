@@ -60,7 +60,7 @@ struct ast_i2c_f_tbl {
  *
  * @retval 0 If successful.
  */
-static void ast_i2c_filter_isr(const struct device *dev);
+void ast_i2c_filter_isr(const struct device *dev);
 
 /**
  * @brief set i2c filter default handle behavior
@@ -71,7 +71,7 @@ static void ast_i2c_filter_isr(const struct device *dev);
  * @retval 0 If successful.
  * @retval -EINVAL Invalid data pointer or offset
  */
-static int ast_i2c_filter_default(const struct device *dev, uint8_t pass);
+int ast_i2c_filter_default(const struct device *dev, uint8_t pass);
 
 /**
  * @brief update i2c filter device
@@ -83,7 +83,7 @@ static int ast_i2c_filter_default(const struct device *dev, uint8_t pass);
  * @retval 0 If successful.
  * @retval -EINVAL Invalid data pointer or offset
  */
-static int ast_i2c_filter_update(const struct device *dev, uint8_t idx, uint8_t addr,
+int ast_i2c_filter_update(const struct device *dev, uint8_t idx, uint8_t addr,
 struct ast_i2c_f_bitmap *table);
 
 /**
@@ -97,7 +97,7 @@ struct ast_i2c_f_bitmap *table);
  * @retval 0 If successful.
  * @retval -EINVAL Invalid data pointer or offset
  */
-static int ast_i2c_filter_en(const struct device *dev, uint8_t filter_en, uint8_t wlist_en,
+int ast_i2c_filter_en(const struct device *dev, uint8_t filter_en, uint8_t wlist_en,
 uint8_t clr_idx, uint8_t clr_tbl);
 
 /**
@@ -108,7 +108,7 @@ uint8_t clr_idx, uint8_t clr_tbl);
  * @retval 0 If successful.
  * @retval -EINVAL Invalid data pointer or offset
  */
-static int ast_i2c_filter_init(const struct device *dev);
+int ast_i2c_filter_init(const struct device *dev);
 /**
  * @}
  */

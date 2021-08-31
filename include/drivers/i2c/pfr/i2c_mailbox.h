@@ -115,7 +115,7 @@ extern "C" {
  * @retval 0 If successful
  * @retval -EINVAL Invalid data pointer or offset
  */
-static int ast_i2c_mbx_init(const struct device *dev);
+int ast_i2c_mbx_init(const struct device *dev);
 
 /**
  * @brief Set i2c mailbox device slave address
@@ -129,7 +129,7 @@ static int ast_i2c_mbx_init(const struct device *dev);
  * @retval 0 If successful
  * @retval -EINVAL Invalid data pointer or offset
  */
-static int ast_i2c_mbx_addr(const struct device *dev, uint8_t idx,
+int ast_i2c_mbx_addr(const struct device *dev, uint8_t idx,
 uint8_t offset, uint8_t addr, uint8_t enable);
 
 /**
@@ -143,7 +143,7 @@ uint8_t offset, uint8_t addr, uint8_t enable);
  * @retval 0 If successful
  * @retval -EINVAL Invalid data pointer or offset
  */
-static int ast_i2c_mbx_en(const struct device *dev, uint32_t base,
+int ast_i2c_mbx_en(const struct device *dev, uint32_t base,
 uint16_t length, uint8_t enable);
 
 /**
@@ -156,7 +156,7 @@ uint16_t length, uint8_t enable);
  * @retval 0 If successful
  * @retval -EINVAL Invalid data pointer or offset
  */
-static int ast_i2c_mbx_protect(const struct device *dev, uint8_t addr,
+int ast_i2c_mbx_protect(const struct device *dev, uint8_t addr,
 uint8_t enable);
 
 /**
@@ -169,7 +169,7 @@ uint8_t enable);
  * @retval 0 If successful
  * @retval -EINVAL Invalid data pointer or offset
  */
-static int ast_i2c_mbx_notify_addr(const struct device *dev, uint8_t idx,
+int ast_i2c_mbx_notify_addr(const struct device *dev, uint8_t idx,
 uint8_t addr);
 
 /**
@@ -183,7 +183,7 @@ uint8_t addr);
  * @retval 0 If successful
  * @retval -EINVAL Invalid data pointer or offset
  */
-static int ast_i2c_mbx_notify_en(const struct device *dev, uint8_t idx,
+int ast_i2c_mbx_notify_en(const struct device *dev, uint8_t idx,
 uint8_t type, uint8_t enable);
 
 /**
@@ -197,7 +197,7 @@ uint8_t type, uint8_t enable);
  * @retval 0 If successful
  * @retval -EINVAL Invalid data pointer or offset
  */
-static int ast_i2c_mbx_fifo_en(const struct device *dev, uint8_t idx,
+int ast_i2c_mbx_fifo_en(const struct device *dev, uint8_t idx,
 uint16_t base, uint16_t length);
 
 /**
@@ -211,7 +211,7 @@ uint16_t base, uint16_t length);
  * @retval 0 If successful
  * @retval -EINVAL Invalid data pointer or offset
  */
-static int ast_i2c_mbx_fifo_apply(const struct device *dev, uint8_t idx,
+int ast_i2c_mbx_fifo_apply(const struct device *dev, uint8_t idx,
 uint8_t addr, uint8_t type);
 
 /**
@@ -223,7 +223,7 @@ uint8_t addr, uint8_t type);
  * @retval 0 If successful
  * @retval -EINVAL Invalid data pointer or offset
  */
-static int ast_i2c_mbx_fifo_pirority(const struct device *dev, uint8_t pirority);
+int ast_i2c_mbx_fifo_pirority(const struct device *dev, uint8_t pirority);
 
 /**
  * @}
