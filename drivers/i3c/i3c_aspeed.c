@@ -441,7 +441,7 @@ struct i3c_aspeed_obj {
 	struct {
 		uint32_t enable;
 		struct i3c_ibi_callbacks *callbacks[32];
-		struct i3c_device *context[32];
+		struct i3c_dev_desc *context[32];
 		struct i3c_ibi_payload *incomplete[32];
 	} ibi;
 
@@ -867,7 +867,8 @@ static void i3c_aspeed_start_xfer(struct i3c_aspeed_obj *obj, struct i3c_aspeed_
 	k_spin_unlock(&obj->lock, key);
 }
 
-int i3c_aspeed_master_priv_xfer(struct i3c_device *i3cdev, struct i3c_priv_xfer *xfers, int nxfers)
+int i3c_aspeed_master_priv_xfer(struct i3c_dev_desc *i3cdev, struct i3c_priv_xfer *xfers,
+				int nxfers)
 {
 	struct i3c_aspeed_obj *obj = DEV_DATA(i3cdev->master_dev);
 	struct i3c_aspeed_xfer xfer;
@@ -930,7 +931,7 @@ int i3c_aspeed_master_priv_xfer(struct i3c_device *i3cdev, struct i3c_priv_xfer 
 	return ret;
 }
 
-int i3c_aspeed_master_deattach_device(const struct device *dev, struct i3c_device *slave)
+int i3c_aspeed_master_deattach_device(const struct device *dev, struct i3c_dev_desc *slave)
 {
 	struct i3c_aspeed_obj *obj = DEV_DATA(dev);
 	uint32_t dat_addr;
@@ -950,7 +951,7 @@ int i3c_aspeed_master_deattach_device(const struct device *dev, struct i3c_devic
 	return 0;
 }
 
-int i3c_aspeed_master_attach_device(const struct device *dev, struct i3c_device *slave)
+int i3c_aspeed_master_attach_device(const struct device *dev, struct i3c_dev_desc *slave)
 {
 	struct i3c_aspeed_obj *obj = DEV_DATA(dev);
 	union i3c_dev_addr_tbl_s dat;
@@ -999,7 +1000,7 @@ int i3c_aspeed_master_attach_device(const struct device *dev, struct i3c_device 
 
 }
 
-int i3c_aspeed_master_request_ibi(struct i3c_device *i3cdev, struct i3c_ibi_callbacks *cb)
+int i3c_aspeed_master_request_ibi(struct i3c_dev_desc *i3cdev, struct i3c_ibi_callbacks *cb)
 {
 	struct i3c_aspeed_obj *obj = DEV_DATA(i3cdev->master_dev);
 	int pos = 0;
@@ -1016,7 +1017,7 @@ int i3c_aspeed_master_request_ibi(struct i3c_device *i3cdev, struct i3c_ibi_call
 	return 0;
 }
 
-int i3c_aspeed_master_enable_ibi(struct i3c_device *i3cdev)
+int i3c_aspeed_master_enable_ibi(struct i3c_dev_desc *i3cdev)
 {
 	struct i3c_aspeed_obj *obj = DEV_DATA(i3cdev->master_dev);
 	struct i3c_register_s *i3c_register = obj->config->base;

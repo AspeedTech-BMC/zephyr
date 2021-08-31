@@ -84,10 +84,16 @@ struct i3c_device_info {
 #define I3C_PID_VENDOR_ID(x)            ((x) >> 33)
 #define I3C_PID_VENDOR_ID_ASPEED        0x03f6
 
-struct i3c_device {
+/**
+ * @brief descriptor of the i3c device attached to the bus
+ * @param master_dev the master device which hosts the bus
+ * @param priv_data pointer to the low level driver private data
+ * @param info the device information
+ */
+struct i3c_dev_desc {
 	const struct device *master_dev;
-	void *driver_data;
 	struct i3c_device_info info;
+	void *priv_data;
 };
 
 struct i3c_ibi_payload {
@@ -95,8 +101,8 @@ struct i3c_ibi_payload {
 	uint8_t *buf;
 };
 struct i3c_ibi_callbacks {
-	struct i3c_ibi_payload* (*write_requested)(struct i3c_device *i3cdev);
-	void (*write_done)(struct i3c_device *i3cdev);
+	struct i3c_ibi_payload* (*write_requested)(struct i3c_dev_desc *i3cdev);
+	void (*write_done)(struct i3c_dev_desc *i3cdev);
 };
 
 /* slave driver structure */
@@ -118,9 +124,10 @@ struct i3c_slave_setup {
 
 /* Aspeed HAL API */
 int i3c_aspeed_master_send_ccc(const struct device *dev, struct i3c_ccc_cmd *ccc);
-int i3c_aspeed_master_priv_xfer(struct i3c_device *i3cdev, struct i3c_priv_xfer *xfers, int nxfers);
-int i3c_aspeed_master_request_ibi(struct i3c_device *i3cdev, struct i3c_ibi_callbacks *cb);
-int i3c_aspeed_master_enable_ibi(struct i3c_device *i3cdev);
+int i3c_aspeed_master_priv_xfer(struct i3c_dev_desc *i3cdev, struct i3c_priv_xfer *xfers,
+				int nxfers);
+int i3c_aspeed_master_request_ibi(struct i3c_dev_desc *i3cdev, struct i3c_ibi_callbacks *cb);
+int i3c_aspeed_master_enable_ibi(struct i3c_dev_desc *i3cdev);
 int i3c_aspeed_slave_register(const struct device *dev, struct i3c_slave_setup *slave_data);
 int i3c_aspeed_slave_send_sir(const struct device *dev, uint8_t mdb, uint8_t *data, int nbytes);
 
@@ -139,5 +146,5 @@ int i3c_master_send_getpid(const struct device *master, uint8_t addr, uint64_t *
 #define i3c_slave_register		i3c_aspeed_slave_register
 #define i3c_slave_send_sir		i3c_aspeed_slave_send_sir
 
-int i3c_jesd_read(struct i3c_device *slave, uint8_t addr, uint8_t *buf, int length);
-int i3c_i2c_read(struct i3c_device *slave, uint8_t addr, uint8_t *buf, int length);
+int i3c_jesd_read(struct i3c_dev_desc *slave, uint8_t addr, uint8_t *buf, int length);
+int i3c_i2c_read(struct i3c_dev_desc *slave, uint8_t addr, uint8_t *buf, int length);

@@ -11,8 +11,8 @@
 #include <drivers/i3c/i3c.h>
 
 /* external reference */
-int i3c_aspeed_master_attach_device(const struct device *dev, struct i3c_device *slave);
-int i3c_aspeed_master_deattach_device(const struct device *dev, struct i3c_device *slave);
+int i3c_aspeed_master_attach_device(const struct device *dev, struct i3c_dev_desc *slave);
+int i3c_aspeed_master_deattach_device(const struct device *dev, struct i3c_dev_desc *slave);
 
 
 int i3c_slave_mqueue_read(const struct device *dev, uint8_t *dest, int budget);
@@ -23,7 +23,7 @@ int i3c_slave_mqueue_write(const struct device *dev, uint8_t *src, int size);
 void i3c_imx3112_test(void)
 {
 	const struct device *master;
-	struct i3c_device slave;
+	struct i3c_dev_desc slave;
 	int ret;
 	uint8_t id[2];
 
@@ -83,7 +83,7 @@ void i3c_imx3112_test(void)
 static uint8_t ibi_data[CONFIG_I3C_ASPEED_MAX_IBI_PAYLOAD];
 static struct i3c_ibi_payload i3c_payload;
 static struct k_sem ibi_complete;
-static struct i3c_ibi_payload *sample_ibi_write_requested(struct i3c_device *desc)
+static struct i3c_ibi_payload *sample_ibi_write_requested(struct i3c_dev_desc *desc)
 {
 	i3c_payload.buf = ibi_data;
 	i3c_payload.size = 0;
@@ -91,7 +91,7 @@ static struct i3c_ibi_payload *sample_ibi_write_requested(struct i3c_device *des
 	return &i3c_payload;
 }
 
-static void sample_ibi_write_done(struct i3c_device *desc)
+static void sample_ibi_write_done(struct i3c_dev_desc *desc)
 {
 	int i;
 	uint8_t *buf = (uint8_t *)i3c_payload.buf;
@@ -121,7 +121,7 @@ static struct i3c_ibi_callbacks i3c_ibi_def_callbacks = {
 void i3c_loopback_test(void)
 {
 	const struct device *master, *slave_mq;
-	struct i3c_device slave;
+	struct i3c_dev_desc slave;
 	struct i3c_priv_xfer xfer;
 	int ret, i;
 	uint8_t data[16], result[16];

@@ -116,7 +116,7 @@ int i3c_master_send_getpid(const struct device *master, uint8_t addr, uint64_t *
  * @param length length of the read data
  * @return -1 if the slave device is not registered
  */
-int i3c_jesd_read(struct i3c_device *slave, uint8_t addr, uint8_t *buf, int length)
+int i3c_jesd_read(struct i3c_dev_desc *slave, uint8_t addr, uint8_t *buf, int length)
 {
 	struct i3c_priv_xfer xfer[2];
 	uint8_t mode_reg = addr;
@@ -142,7 +142,7 @@ int i3c_jesd_read(struct i3c_device *slave, uint8_t addr, uint8_t *buf, int leng
 	return i3c_master_priv_xfer(slave, xfer, 2);
 }
 
-int i3c_i2c_read(struct i3c_device *slave, uint8_t addr, uint8_t *buf, int length)
+int i3c_i2c_read(struct i3c_dev_desc *slave, uint8_t addr, uint8_t *buf, int length)
 {
 	struct i3c_priv_xfer xfer;
 	uint8_t mode_reg = addr;
