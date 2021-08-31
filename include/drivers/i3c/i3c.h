@@ -12,6 +12,8 @@
 #define I3C_CCC_DIRECT          0x80
 
 /* broadcast / unicast commands */
+#define I3C_CCC_ENEC            0x00
+#define I3C_CCC_DISEC           0x01
 #define I3C_CCC_RSTDAA          0x06
 #define I3C_CCC_SETMWL          0x09
 #define I3C_CCC_SETMRL          0x0a
@@ -28,6 +30,11 @@
 #define I3C_CCC_GETBCR          (0xe | I3C_CCC_DIRECT)
 #define I3C_CCC_GETDCR          (0xf | I3C_CCC_DIRECT)
 #define I3C_CCC_GETSTATUS       (0x10 | I3C_CCC_DIRECT)
+
+/* event id */
+#define I3C_CCC_EVT_SIR         0x1
+#define I3C_CCC_EVT_MR          0x2
+#define I3C_CCC_EVT_HJ          0x8
 
 /**
  * @brief I3C Common-Command-Codes (CCC) structure
@@ -74,10 +81,22 @@ struct i3c_device_info {
 	uint32_t i2c_mode;
 };
 
+#define I3C_PID_VENDOR_ID(x)            ((x) >> 33)
+#define I3C_PID_VENDOR_ID_ASPEED        0x03f6
+
 struct i3c_device {
 	const struct device *master_dev;
 	void *driver_data;
 	struct i3c_device_info info;
+};
+
+struct i3c_ibi_payload {
+	int size;
+	uint8_t *buf;
+};
+struct i3c_ibi_callbacks {
+	struct i3c_ibi_payload* (*write_requested)(struct i3c_device *i3cdev);
+	void (*write_done)(struct i3c_device *i3cdev);
 };
 
 /* slave driver structure */
