@@ -116,5 +116,21 @@ struct i3c_slave_setup {
 	const struct i3c_slave_callbacks *callbacks;
 };
 
-/* ASPEED API */
+/* Aspeed HAL API */
+int i3c_aspeed_master_send_ccc(const struct device *dev, struct i3c_ccc_cmd *ccc);
+int i3c_aspeed_master_priv_xfer(struct i3c_device *i3cdev, struct i3c_priv_xfer *xfers, int nxfers);
+int i3c_aspeed_master_send_ccc(const struct device *dev, struct i3c_ccc_cmd *ccc);
 int i3c_aspeed_slave_register(const struct device *dev, struct i3c_slave_setup *slave_data);
+/* common API */
+int i3c_master_send_enec(const struct device *master, uint8_t addr, uint8_t evt);
+int i3c_master_send_rstdaa(const struct device *master);
+int i3c_master_send_aasa(const struct device *master);
+int i3c_master_send_setmrl(const struct device *master, uint8_t addr, uint16_t mrl,
+			   uint8_t ibi_payload_size);
+int i3c_master_send_getpid(const struct device *master, uint8_t addr, uint64_t *pid);
+
+#define i3c_master_send_ccc		i3c_aspeed_master_send_ccc
+#define i3c_master_priv_xfer		i3c_aspeed_master_priv_xfer
+#define i3c_slave_register_driver	i3c_aspeed_slave_register
+int i3c_jesd_read(struct i3c_device *slave, uint8_t addr, uint8_t *buf, int length);
+int i3c_i2c_read(struct i3c_device *slave, uint8_t addr, uint8_t *buf, int length);
