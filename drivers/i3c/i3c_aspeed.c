@@ -422,6 +422,16 @@ struct i3c_aspeed_xfer {
 	struct k_sem sem;
 };
 
+struct i3c_aspeed_dev_priv {
+	int pos;
+	struct {
+		int enable;
+		struct i3c_ibi_callbacks *callbacks;
+		struct i3c_dev_desc *context;
+		struct i3c_ibi_payload *incomplete;
+	} ibi;
+};
+
 struct i3c_aspeed_obj {
 	int init;
 	const struct device *dev;
@@ -438,12 +448,7 @@ struct i3c_aspeed_obj {
 	uint32_t hw_dat_free_pos;
 	uint8_t dev_addr_tbl[32];
 
-	struct {
-		uint32_t enable;
-		struct i3c_ibi_callbacks *callbacks[32];
-		struct i3c_dev_desc *context[32];
-		struct i3c_ibi_payload *incomplete[32];
-	} ibi;
+	struct i3c_dev_desc *dev_descs[32];
 
 	/* slave mode data */
 	struct i3c_slave_setup slave_data;
@@ -452,6 +457,7 @@ struct i3c_aspeed_obj {
 
 #define DEV_CFG(dev)			((struct i3c_aspeed_config *)(dev)->config)
 #define DEV_DATA(dev)			((struct i3c_aspeed_obj *)(dev)->data)
+#define DESC_PRIV(desc)			((struct i3c_aspeed_dev_priv *)(desc)->priv_data)
 
 static int i3c_aspeed_get_pos(struct i3c_aspeed_obj *obj, uint8_t addr)
 {
@@ -570,6 +576,8 @@ flush:
 static void i3c_aspeed_master_rx_ibi(struct i3c_aspeed_obj *obj)
 {
 	struct i3c_register_s *i3c_register = obj->config->base;
+	struct i3c_dev_desc *i3cdev;
+	struct i3c_aspeed_dev_priv *priv;
 	union i3c_ibi_queue_status_s ibi_status;
 	struct i3c_ibi_payload *payload;
 	uint32_t i, j, nstatus, nbytes, nwords, pos;
@@ -591,10 +599,12 @@ static void i3c_aspeed_master_rx_ibi(struct i3c_aspeed_obj *obj)
 		}
 
 		pos = i3c_aspeed_get_pos(obj, ibi_status.fields.id >> 1);
-		if (obj->ibi.incomplete[pos]) {
-			payload = obj->ibi.incomplete[pos];
+		i3cdev = obj->dev_descs[pos];
+		priv = DESC_PRIV(i3cdev);
+		if (priv->ibi.incomplete) {
+			payload = priv->ibi.incomplete;
 		} else {
-			payload = obj->ibi.callbacks[pos]->write_requested(obj->ibi.context[pos]);
+			payload = priv->ibi.callbacks->write_requested(priv->ibi.context);
 		}
 		dst = (uint32_t *)&(payload->buf[payload->size]);
 
@@ -611,10 +621,10 @@ static void i3c_aspeed_master_rx_ibi(struct i3c_aspeed_obj *obj)
 		}
 
 		payload->size += nbytes;
-		obj->ibi.incomplete[pos] = payload;
+		priv->ibi.incomplete = payload;
 		if (ibi_status.fields.last) {
-			obj->ibi.callbacks[pos]->write_done(obj->ibi.context[pos]);
-			obj->ibi.incomplete[pos] = NULL;
+			priv->ibi.callbacks->write_done(priv->ibi.context);
+			priv->ibi.incomplete = NULL;
 		}
 	}
 }
@@ -934,10 +944,11 @@ int i3c_aspeed_master_priv_xfer(struct i3c_dev_desc *i3cdev, struct i3c_priv_xfe
 int i3c_aspeed_master_deattach_device(const struct device *dev, struct i3c_dev_desc *slave)
 {
 	struct i3c_aspeed_obj *obj = DEV_DATA(dev);
+	struct i3c_aspeed_dev_priv *priv = DESC_PRIV(slave);
 	uint32_t dat_addr;
 	int pos;
 
-	pos = i3c_aspeed_get_pos(obj, slave->info.dynamic_addr);
+	pos = priv->pos;
 	if (pos < 0) {
 		return pos;
 	}
@@ -948,12 +959,16 @@ int i3c_aspeed_master_deattach_device(const struct device *dev, struct i3c_dev_d
 	dat_addr = (uint32_t)obj->config->base + obj->hw_dat.fields.start_addr + (pos << 4);
 	sys_write32(0, dat_addr);
 
+	k_free(slave->priv_data);
+	obj->dev_descs[pos] = (struct i3c_dev_desc *)NULL;
+
 	return 0;
 }
 
 int i3c_aspeed_master_attach_device(const struct device *dev, struct i3c_dev_desc *slave)
 {
 	struct i3c_aspeed_obj *obj = DEV_DATA(dev);
+	struct i3c_aspeed_dev_priv *priv;
 	union i3c_dev_addr_tbl_s dat;
 	uint32_t dat_addr;
 	int i, pos;
@@ -983,6 +998,12 @@ int i3c_aspeed_master_attach_device(const struct device *dev, struct i3c_dev_des
 		return pos;
 	}
 	obj->dev_addr_tbl[i] = slave->info.dynamic_addr;
+	obj->dev_descs[i] = slave;
+
+	/* allocate private data of the device */
+	priv = (struct i3c_aspeed_dev_priv *)k_calloc(sizeof(struct i3c_aspeed_dev_priv), 1);
+	priv->pos = i;
+	slave->priv_data = priv;
 
 	dat_addr = (uint32_t)obj->config->base + obj->hw_dat.fields.start_addr + (i << 2);
 
@@ -1002,17 +1023,11 @@ int i3c_aspeed_master_attach_device(const struct device *dev, struct i3c_dev_des
 
 int i3c_aspeed_master_request_ibi(struct i3c_dev_desc *i3cdev, struct i3c_ibi_callbacks *cb)
 {
-	struct i3c_aspeed_obj *obj = DEV_DATA(i3cdev->master_dev);
-	int pos = 0;
+	struct i3c_aspeed_dev_priv *priv = DESC_PRIV(i3cdev);
 
-	pos = i3c_aspeed_get_pos(obj, i3cdev->info.dynamic_addr);
-	if (pos < 0) {
-		return pos;
-	}
-
-	obj->ibi.callbacks[pos] = cb;
-	obj->ibi.context[pos] = i3cdev;
-	obj->ibi.incomplete[pos] = NULL;
+	priv->ibi.callbacks = cb;
+	priv->ibi.context = i3cdev;
+	priv->ibi.incomplete = NULL;
 
 	return 0;
 }
@@ -1021,6 +1036,7 @@ int i3c_aspeed_master_enable_ibi(struct i3c_dev_desc *i3cdev)
 {
 	struct i3c_aspeed_obj *obj = DEV_DATA(i3cdev->master_dev);
 	struct i3c_register_s *i3c_register = obj->config->base;
+	struct i3c_aspeed_dev_priv *priv = DESC_PRIV(i3cdev);
 	union i3c_dev_addr_tbl_s dat;
 	uint32_t dat_addr, sir_reject;
 	int ret;
@@ -1041,7 +1057,7 @@ int i3c_aspeed_master_enable_ibi(struct i3c_dev_desc *i3cdev)
 	dat.fields.sir_reject = 0;
 	sys_write32(dat.value, dat_addr);
 
-	obj->ibi.enable |= BIT(pos);
+	priv->ibi.enable = 1;
 
 	if (I3C_PID_VENDOR_ID(i3cdev->info.pid) == I3C_PID_VENDOR_ID_ASPEED) {
 		/*
