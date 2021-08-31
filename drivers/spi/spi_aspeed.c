@@ -302,8 +302,10 @@ static void aspeed_spi_start_tx(const struct device *dev)
 	}
 
 	/* active cs */
-	sys_write32(0x7, config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
-	sys_write32(0x3, config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
+	sys_write32(data->cmd_mode[cs].user | ASPEED_SPI_USER_INACTIVE,
+			config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
+	sys_write32(data->cmd_mode[cs].user,
+			config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
 
 	while (ctx->tx_buf && ctx->tx_len > 0) {
 		aspeed_spi_write_data(data->decode_addr[cs].start,
@@ -319,7 +321,10 @@ static void aspeed_spi_start_tx(const struct device *dev)
 		spi_context_update_rx(ctx, 1, ctx->rx_len);
 	};
 
-	sys_write32(0x7, config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
+	sys_write32(data->cmd_mode[cs].user | ASPEED_SPI_USER_INACTIVE,
+			config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
+	sys_write32(data->cmd_mode[cs].normal_read,
+			config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
 	spi_context_complete(ctx, 0);
 }
 
