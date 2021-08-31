@@ -16,6 +16,7 @@ int i3c_aspeed_master_deattach_device(const struct device *dev, struct i3c_devic
 
 
 int i3c_slave_mqueue_read(const struct device *dev, uint8_t *dest, int budget);
+int i3c_slave_mqueue_write(const struct device *dev, uint8_t *src, int size);
 
 
 #ifdef CONFIG_I3C_SAMPLE_IMX3102
@@ -79,6 +80,37 @@ void i3c_imx3112_test(void)
 #endif
 
 #ifdef CONFIG_I3C_SAMPLE_LOOPBACK
+static uint8_t ibi_data[CONFIG_I3C_ASPEED_MAX_IBI_PAYLOAD];
+static struct i3c_ibi_payload i3c_payload;
+static struct k_sem ibi_complete;
+static struct i3c_ibi_payload *sample_ibi_write_requested(struct i3c_device *desc)
+{
+	i3c_payload.buf = ibi_data;
+	i3c_payload.size = 0;
+
+	return &i3c_payload;
+}
+
+static void sample_ibi_write_done(struct i3c_device *desc)
+{
+	int i;
+	uint8_t *buf = (uint8_t *)i3c_payload.buf;
+
+	for (i = 0; i < i3c_payload.size; i++) {
+		if ((i & 0xf) == 0) {
+			printk("\n");
+		}
+		printk("%02x ", buf[i]);
+	}
+	printk("\n");
+	k_sem_give(&ibi_complete);
+}
+
+static struct i3c_ibi_callbacks i3c_ibi_def_callbacks = {
+	.write_requested = sample_ibi_write_requested,
+	.write_done = sample_ibi_write_done,
+};
+
 /**
  * @brief i3c0-to-i3c1 loopback test
  *
@@ -133,6 +165,10 @@ void i3c_loopback_test(void)
 		printk("SETAASA failed\n");
 		return;
 	}
+
+	ret = i3c_master_send_getpid(master, slave.info.dynamic_addr, &slave.info.pid);
+	printk("slave pid = %llx\n", slave.info.pid);
+
 	printk("bus init done\n");
 
 	for (i = 0; i < 16; i++) {
@@ -160,6 +196,16 @@ void i3c_loopback_test(void)
 			return;
 		}
 	}
+
+	i3c_master_request_ibi(&slave, &i3c_ibi_def_callbacks);
+	ret = i3c_master_enable_ibi(&slave);
+	if (ret) {
+		printk("failed to enable sir: %d\n", ret);
+	}
+
+	k_sem_init(&ibi_complete, 0, 1);
+	ret = i3c_slave_mqueue_write(slave_mq, data, 16);
+	k_sem_take(&ibi_complete, K_FOREVER);
 
 	printk("loopback test pass\n");
 }

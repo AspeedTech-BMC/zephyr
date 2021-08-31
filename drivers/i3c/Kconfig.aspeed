@@ -12,5 +12,5 @@ config I3C_ASPEED
 if I3C_ASPEED
 config I3C_ASPEED_MAX_IBI_PAYLOAD
 	int "max IBI payload length including MDB"
-	default 1
+	default 32
 endif
