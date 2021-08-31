@@ -37,20 +37,14 @@ LOG_MODULE_REGISTER(i2c_pfr_mbx);
 #endif
 
 struct ast_i2c_mbx_data {
-	uint32_t	i2c_dev_base;	/* i2c dev base*/
-	uint8_t	mail_addr_en;	/* mbx addr enable*/
-	uint8_t	mail_en;			/* mbx enable*/
-	uint8_t	m_fifo_en;		/* mbx fifo enable*/
-	uint8_t	mail_piroity;		/* mbx : piroity */
-	uint8_t	mail_fifo_addr;
-	uint8_t	mail_fifo_rw_disable;
-	uint8_t	mail_addr_irq[AST_I2C_M_IRQ_COUNT];
+	uint32_t	i2c_dev_base[AST_I2C_M_DEV_COUNT];	/* i2c dev base*/
+	uint8_t	mail_addr_en[AST_I2C_M_DEV_COUNT];	/* mbx addr enable*/
+	uint8_t	mail_en[AST_I2C_M_DEV_COUNT];		/* mbx enable*/
 };
 
 struct ast_i2c_mbx_config {
 	char		*mail_dev_name;
 	uint32_t	mail_g_base;
-	uint8_t	mail_dev_idx;
 	void (*irq_config_func)(const struct device *dev);
 };
 
@@ -62,13 +56,13 @@ struct ast_i2c_mbx_config {
 	((struct ast_i2c_mbx_data *const)(dev)->data)
 
 /* check common parameter valid */
-int check_ast_mbx_valid(const struct ast_i2c_mbx_config *cfg)
+int check_ast_mbx_valid(const struct ast_i2c_mbx_config *cfg, uint8_t dev_idx)
 {
 	if (!cfg->mail_dev_name) {
 		LOG_ERR("i2c mailbox not found");
 		return -EINVAL;
-	} else if ((cfg->mail_dev_idx != 0) &&
-			(cfg->mail_dev_idx != 1)) {
+	} else if ((dev_idx != 0) &&
+			(dev_idx != 1)) {
 		LOG_ERR("invalid i2c mailbox index");
 		return -EINVAL;
 	}
@@ -109,8 +103,10 @@ int ast_i2c_mbx_fifo_pirority(const struct device *dev, uint8_t pirority)
 	uint32_t value;
 
 	/* check common parameter valid */
-	if (check_ast_mbx_valid(cfg))
+	if (!cfg->mail_dev_name) {
+		LOG_ERR("i2c mailbox not found");
 		return -EINVAL;
+	}
 
 	/* invalid pirority */
 	if (pirority > AST_I2C_M_I2C1)
@@ -141,8 +137,10 @@ uint8_t addr, uint8_t type)
 	uint32_t value;
 
 	/* check common parameter valid */
-	if (check_ast_mbx_valid(cfg))
+	if (!cfg->mail_dev_name) {
+		LOG_ERR("i2c mailbox not found");
 		return -EINVAL;
+	}
 
 	/* invalid type */
 	if ((type < AST_I2C_M_R) ||
@@ -191,8 +189,10 @@ uint16_t base, uint16_t length)
 	uint32_t fifo_sts = 0;
 
 	/* check common parameter valid */
-	if (check_ast_mbx_valid(cfg))
+	if (!cfg->mail_dev_name) {
+		LOG_ERR("i2c mailbox not found");
 		return -EINVAL;
+	}
 
 	value1 = sys_read32(cfg->mail_g_base + AST_I2C_M_FIFO_IRQ);
 	fifo_int &= AST_I2C_M_FIFO_INT;
@@ -232,8 +232,8 @@ uint16_t base, uint16_t length)
 }
 
 /* i2c mbx notify enable */
-int ast_i2c_mbx_notify_en(const struct device *dev, uint8_t idx,
-uint8_t type, uint8_t enable)
+int ast_i2c_mbx_notify_en(const struct device *dev, uint8_t dev_idx,
+uint8_t idx, uint8_t type, uint8_t enable)
 {
 	const struct ast_i2c_mbx_config *cfg = DEV_CFG(dev);
 
@@ -241,7 +241,7 @@ uint8_t type, uint8_t enable)
 	uint32_t value = 0;
 
 	/* check common parameter valid */
-	if (check_ast_mbx_valid(cfg))
+	if (check_ast_mbx_valid(cfg, dev_idx))
 		return -EINVAL;
 
 	/* over notify index define */
@@ -253,7 +253,7 @@ uint8_t type, uint8_t enable)
 	(type > (AST_I2C_M_R | AST_I2C_M_W)))
 		return -EINVAL;
 
-	if (cfg->mail_dev_idx == 1)
+	if (dev_idx == 1)
 		reg_offset = AST_I2C_M_IRQ_EN1;
 
 	/* calculate the interrupt flag position */
@@ -289,8 +289,10 @@ uint8_t addr)
 	uint32_t value, byteshift;
 
 	/* check common parameter valid */
-	if (check_ast_mbx_valid(cfg))
+	if (!cfg->mail_dev_name) {
+		LOG_ERR("i2c mailbox not found");
 		return -EINVAL;
+	}
 
 	/* over notify index define */
 	if (idx > 0xF)
@@ -314,8 +316,8 @@ uint8_t addr)
 
 
 /* i2c mbx protect address */
-int ast_i2c_mbx_protect(const struct device *dev, uint8_t addr,
-uint8_t enable)
+int ast_i2c_mbx_protect(const struct device *dev, uint8_t dev_idx,
+uint8_t addr, uint8_t enable)
 {
 	const struct ast_i2c_mbx_config *cfg = DEV_CFG(dev);
 
@@ -323,11 +325,11 @@ uint8_t enable)
 	uint32_t value, base = AST_I2C_M_WP_BASE0;
 
 	/* check common parameter valid */
-	if (check_ast_mbx_valid(cfg))
+	if (check_ast_mbx_valid(cfg, dev_idx))
 		return -EINVAL;
 
 	/* change write protect base */
-	if (cfg->mail_dev_idx == 0x1)
+	if (dev_idx == 0x1)
 		base = AST_I2C_M_WP_BASE1;
 
 	/* calculte bitmap position */
@@ -349,70 +351,76 @@ uint8_t enable)
 }
 
 /* i2c mbx enable */
-int ast_i2c_mbx_en(const struct device *dev, uint32_t base,
-uint16_t length, uint8_t enable)
+int ast_i2c_mbx_en(const struct device *dev, uint8_t dev_idx,
+uint32_t base, uint16_t length, uint8_t enable)
 {
 	struct ast_i2c_mbx_data *data = DEV_DATA(dev);
 	const struct ast_i2c_mbx_config *cfg = DEV_CFG(dev);
-
+	uint32_t	dev_base = 0;
 	uint32_t value = 0;
 
 	/* check common parameter valid */
-	if (check_ast_mbx_valid(cfg))
+	if (check_ast_mbx_valid(cfg, dev_idx))
 		return -EINVAL;
 
 	/* set mbx slave address before enable it */
-	if (enable && (!(data->mail_addr_en)))
+	if (enable && (!(data->mail_addr_en[dev_idx])))
 		return -EINVAL;
+
+	/* change device base */
+	dev_base = data->i2c_dev_base[dev_idx];
 
 	/* set mbx base and length */
 	if (enable) {
-		I2C_W_R(base, data->i2c_dev_base + AST_I2C_RX_DMA);
-		I2C_W_R(base, data->i2c_dev_base + AST_I2C_TX_DMA);
-		I2C_W_R(0x400, data->i2c_dev_base + AST_I2C_MBX_LIM);
+		I2C_W_R(base, dev_base + AST_I2C_RX_DMA);
+		I2C_W_R(base, dev_base + AST_I2C_TX_DMA);
+		I2C_W_R(0x400, dev_base + AST_I2C_MBX_LIM);
 
 		value = AST_I2C_MBX_RX_DMA_LEN(length);
-		I2C_W_R(value, data->i2c_dev_base + AST_I2C_DMA_LEN);
+		I2C_W_R(value, dev_base + AST_I2C_DMA_LEN);
 		value = AST_I2C_MBX_TX_DMA_LEN(length);
-		I2C_W_R(value, data->i2c_dev_base + AST_I2C_DMA_LEN);
-		value = (sys_read32(data->i2c_dev_base + AST_I2C_CTL)
+		I2C_W_R(value, dev_base + AST_I2C_DMA_LEN);
+		value = (sys_read32(dev_base + AST_I2C_CTL)
 			|AST_I2C_MBX_EN);
-		I2C_W_R(value, data->i2c_dev_base + AST_I2C_CTL);
+		I2C_W_R(value, dev_base + AST_I2C_CTL);
 	} else {
-		value = (sys_read32(data->i2c_dev_base + AST_I2C_CTL)
+		value = (sys_read32(dev_base + AST_I2C_CTL)
 		& (~AST_I2C_MBX_EN));
-		I2C_W_R(value, data->i2c_dev_base + AST_I2C_CTL);
+		I2C_W_R(value, dev_base + AST_I2C_CTL);
 
 		/* reset dma offset */
-		value = (sys_read32(data->i2c_dev_base + AST_I2C_CTL)
+		value = (sys_read32(dev_base + AST_I2C_CTL)
 		& (~AST_I2C_MASTER_EN));
-		I2C_W_R(value, data->i2c_dev_base + AST_I2C_CTL);
+		I2C_W_R(value, dev_base + AST_I2C_CTL);
 		value |= AST_I2C_MASTER_EN;
-		I2C_W_R(value, data->i2c_dev_base + AST_I2C_CTL);
+		I2C_W_R(value, dev_base + AST_I2C_CTL);
 	}
 
-	data->mail_en = enable;
+	data->mail_en[dev_idx] = enable;
 
 	return 0;
 }
 
 /* i2c mbx set addr */
-int ast_i2c_mbx_addr(const struct device *dev, uint8_t idx,
-uint8_t offset, uint8_t addr, uint8_t enable)
+int ast_i2c_mbx_addr(const struct device *dev, uint8_t dev_idx,
+uint8_t idx, uint8_t offset, uint8_t addr, uint8_t enable)
 {
 	struct ast_i2c_mbx_data *data = DEV_DATA(dev);
 	const struct ast_i2c_mbx_config *cfg = DEV_CFG(dev);
-
+	uint32_t	dev_base = 0;
 	uint32_t mask_addr = 0;
 
 	/* check common parameter valid */
-	if (check_ast_mbx_valid(cfg))
+	if (check_ast_mbx_valid(cfg, dev_idx))
 		return -EINVAL;
+
+	/* change device base */
+	dev_base = data->i2c_dev_base[dev_idx];
 
 	/* Set slave addr. */
 	switch (idx) {
 	case 0:
-		mask_addr = (sys_read32(data->i2c_dev_base + AST_I2C_ADDR)
+		mask_addr = (sys_read32(dev_base + AST_I2C_ADDR)
 			& ~(AST_I2CS_ADDR1_CLEAR));
 		if (enable) {
 			mask_addr |= (AST_I2CS_ADDR1(addr)|
@@ -420,7 +428,7 @@ uint8_t offset, uint8_t addr, uint8_t enable)
 		}
 		break;
 	case 1:
-		mask_addr = (sys_read32(data->i2c_dev_base + AST_I2C_ADDR)
+		mask_addr = (sys_read32(dev_base + AST_I2C_ADDR)
 			& ~(AST_I2CS_ADDR2_CLEAR));
 		if (enable) {
 			mask_addr |= (AST_I2CS_ADDR2(addr)|
@@ -428,7 +436,7 @@ uint8_t offset, uint8_t addr, uint8_t enable)
 		}
 		break;
 	case 2:
-		mask_addr = (sys_read32(data->i2c_dev_base + AST_I2C_ADDR)
+		mask_addr = (sys_read32(dev_base + AST_I2C_ADDR)
 			& ~(AST_I2CS_ADDR3_CLEAR));
 		if (enable) {
 			mask_addr |= (AST_I2CS_ADDR3(addr)|
@@ -440,18 +448,18 @@ uint8_t offset, uint8_t addr, uint8_t enable)
 	}
 
 	/* fire in register */
-	I2C_W_R(mask_addr, data->i2c_dev_base + AST_I2C_ADDR);
+	I2C_W_R(mask_addr, dev_base + AST_I2C_ADDR);
 
 	/* find out if any one i2c slave is existed */
-	mask_addr = (sys_read32(data->i2c_dev_base + AST_I2C_ADDR)
+	mask_addr = (sys_read32(dev_base + AST_I2C_ADDR)
 		& (AST_I2CS_ADDR1_ENABLE|
 		AST_I2CS_ADDR2_ENABLE|
 		AST_I2CS_ADDR3_ENABLE));
 
 	if (mask_addr) {
-		data->mail_addr_en = 1;
+		data->mail_addr_en[dev_idx] = 1;
 	} else {
-		data->mail_addr_en = 0;
+		data->mail_addr_en[dev_idx] = 0;
 	}
 
 	return 0;
@@ -465,23 +473,16 @@ int ast_i2c_mbx_init(const struct device *dev)
 
 	uint32_t sts = 0;
 
-	/* check common parameter valid */
-	if (check_ast_mbx_valid(cfg))
-		return -EINVAL;
-
 	/* clear mbx addr /fifo irq status */
-	if (cfg->mail_dev_idx == 0) {
-		I2C_W_R(0xFFFFFFFF, (cfg->mail_g_base+AST_I2C_M_IRQ_STA0));
-	} else if (cfg->mail_dev_idx == 1) {
-		I2C_W_R(0xFFFFFFFF, (cfg->mail_g_base+AST_I2C_M_IRQ_STA1));
-	}
+	I2C_W_R(0xFFFFFFFF, (cfg->mail_g_base+AST_I2C_M_IRQ_STA0));
+	I2C_W_R(0xFFFFFFFF, (cfg->mail_g_base+AST_I2C_M_IRQ_STA1));
 
 	sts =  sys_read32(cfg->mail_g_base + AST_I2C_M_FIFO_IRQ);
 	I2C_W_R(sts, (cfg->mail_g_base+AST_I2C_M_FIFO_IRQ));
 
 	/* i2c device base for slave setting */
-	data->i2c_dev_base = (cfg->mail_g_base & 0xFFFF0000);
-	data->i2c_dev_base += (0x80 * (cfg->mail_dev_idx + 1));
+	data->i2c_dev_base[0] = (cfg->mail_g_base & 0xFFFF0000)+0x80;
+	data->i2c_dev_base[1] = (cfg->mail_g_base & 0xFFFF0000)+0x100;
 
 	return 0;
 }
@@ -490,14 +491,13 @@ int ast_i2c_mbx_init(const struct device *dev)
 	static void ast_i2c_mbx_cfg_##inst(const struct device *dev);	 \
 			 \
 	static struct ast_i2c_mbx_data			 \
-		ast_i2c_filter_##inst##_dev_data;	 \
+		ast_i2c_mbx_##inst##_dev_data;	 \
 			 \
 	static const struct ast_i2c_mbx_config		 \
 		ast_i2c_mbx_##inst##_cfg = {		 \
 		.mail_dev_name = DT_INST_PROP(inst, label),	 \
 		.mail_g_base = DT_INST_REG_ADDR(inst),	 \
-		.mail_dev_idx = DT_INST_PROP(inst, index),	 \
-		.irq_config_func = ast_i2c_mail_cfg_##inst,	 \
+		.irq_config_func = ast_i2c_mbx_cfg_##inst,	 \
 	};		 \
 			 \
 	DEVICE_DT_INST_DEFINE(inst,		 \

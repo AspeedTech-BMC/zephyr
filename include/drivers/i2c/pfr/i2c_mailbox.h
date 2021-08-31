@@ -121,6 +121,7 @@ int ast_i2c_mbx_init(const struct device *dev);
  * @brief Set i2c mailbox device slave address
  *
  * @param dev Pointer to the device structure for the driver instance
+ * @param dev_idx Index to the mailbox device index
  * @param idx Index to the slave address
  * @param offset Offset to the slave address length
  * @param addr Address to the mbx device
@@ -129,13 +130,14 @@ int ast_i2c_mbx_init(const struct device *dev);
  * @retval 0 If successful
  * @retval -EINVAL Invalid data pointer or offset
  */
-int ast_i2c_mbx_addr(const struct device *dev, uint8_t idx,
-uint8_t offset, uint8_t addr, uint8_t enable);
+int ast_i2c_mbx_addr(const struct device *dev, uint8_t dev_idx,
+uint8_t idx, uint8_t offset, uint8_t addr, uint8_t enable);
 
 /**
  * @brief Enable i2c mailbox device
  *
  * @param dev Pointer to the device structure for the driver instance
+ * @param dev_idx Index to the mailbox device index
  * @param base Buffer base to the mbx
  * @param length Length to the mbx
  * @param enable Enable flag to the mbx device
@@ -143,21 +145,22 @@ uint8_t offset, uint8_t addr, uint8_t enable);
  * @retval 0 If successful
  * @retval -EINVAL Invalid data pointer or offset
  */
-int ast_i2c_mbx_en(const struct device *dev, uint32_t base,
-uint16_t length, uint8_t enable);
+int ast_i2c_mbx_en(const struct device *dev, uint8_t dev_idx,
+uint32_t base, uint16_t length, uint8_t enable);
 
 /**
  * @brief Set i2c mailbox write protect index
  *
  * @param dev Pointer to the device structure for the driver instance
+ * @param dev_idx Index to the mailbox device index
  * @param addr Address to the write protect in mbx device
  * @param enable Enable flag to the write protect in mbx device
  *
  * @retval 0 If successful
  * @retval -EINVAL Invalid data pointer or offset
  */
-int ast_i2c_mbx_protect(const struct device *dev, uint8_t addr,
-uint8_t enable);
+int ast_i2c_mbx_protect(const struct device *dev, uint8_t dev_idx,
+uint8_t addr, uint8_t enable);
 
 /**
  * @brief Set i2c mailbox notify address
@@ -176,6 +179,7 @@ uint8_t addr);
  * @brief Set i2c mailbox notify enable
  *
  * @param dev Pointer to the device structure for the driver instance
+ * @param dev_idx Index to the mailbox device index
  * @param idx Index to the notify internal index position (0x0~0x15)
  * @param type Type (read / write) to the notify in mbx device
  * @param enable Enable flag to the notify
@@ -183,8 +187,8 @@ uint8_t addr);
  * @retval 0 If successful
  * @retval -EINVAL Invalid data pointer or offset
  */
-int ast_i2c_mbx_notify_en(const struct device *dev, uint8_t idx,
-uint8_t type, uint8_t enable);
+int ast_i2c_mbx_notify_en(const struct device *dev, uint8_t dev_idx,
+uint8_t idx, uint8_t type, uint8_t enable);
 
 /**
  * @brief Set i2c mailbox fifo enable

@@ -422,24 +422,13 @@
 		};
 
 		i2cmbx: i2c-mbx@7e7b3000 {
+			compatible = "aspeed,i2c-mbx";
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0x7e7b3000 0x100>;
 			interrupts = <INTR_I2CMBX AST10X0_IRQ_DEFAULT_PRIORITY>;
-
-			i2c_mbx0: i2c_mbx0 {
-				compatible = "aspeed,i2c-mbx";
-				index = <0>;
-				status = "disabled";
-				label = "I2C_MBX_0";
-			};
-
-			i2c_mbx1: i2c_mbx1 {
-				compatible = "aspeed,i2c-mbx";
-				index = <1>;
-				status = "disabled";
-				label = "I2C_MBX_1";
-			};
+			label = "I2C_MBX";
+			status = "disabled";
 		};
 
 		i2c_gr: i2c-global-regs@7e7b0000 {

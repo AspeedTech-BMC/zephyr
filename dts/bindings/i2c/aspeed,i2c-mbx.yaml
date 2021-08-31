@@ -18,10 +18,7 @@ properties:
       required: true
 
     label:
+      type: string
       required: true
 
-    index:
-      type: int
-      required: true
-      description: i2c mailbox device index
 
