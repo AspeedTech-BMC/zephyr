@@ -115,6 +115,19 @@ union i3c_device_resp_queue_port_s {
 	} fields;
 }; /* offset 0x10 */
 
+union i3c_ibi_queue_status_s {
+	volatile uint32_t value;
+	struct {
+		volatile uint32_t length : 8;			/* bit[7:0] */
+		volatile uint32_t id : 8;			/* bit[15:8] */
+		volatile uint32_t reserved0 : 8;			/* bit[23:16] */
+		volatile uint32_t last : 1;			/* bit[24] */
+		volatile uint32_t reserved1 : 5;			/* bit[29:25] */
+		volatile uint32_t error : 1;			/* bit[30] */
+		volatile uint32_t ibi_status : 1;		/* bit[31] */
+	} fields;
+}; /* offset 0x18 */
+
 union i3c_queue_thld_ctrl_s {
 	volatile uint32_t value;
 	struct {
@@ -259,6 +272,18 @@ union i3c_slave_char_s {
 	} fields;
 }; /* offset 0x78 */
 
+union i3c_slave_intr_req_s {
+	volatile uint32_t value;
+	struct {
+		volatile uint32_t sir : 1;			/* bit[0] */
+		volatile uint32_t sir_ctrl : 2;			/* bit[2:1] */
+		volatile uint32_t mr : 1;			/* bit[3] */
+		volatile uint32_t reserved0 : 4;		/* bit[7:4] */
+		volatile uint32_t ibi_sts : 2;			/* bit[9:8] */
+		volatile uint32_t reserved1 : 22;		/* bit[31:10] */
+	} fields;
+}; /* offset 0x8c */
+
 union i3c_device_ctrl_extend_s {
 	volatile uint32_t value;
 	struct {
@@ -300,6 +325,14 @@ union i3c_ext_termn_timing_s {
 	} fields;
 }; /* offset 0xcc */
 
+union i3c_ibi_payload_length_s {
+	volatile uint32_t value;
+	struct {
+		volatile uint32_t ibi_size : 16;		/* bit[15:0] */
+		volatile uint32_t max_ibi_size : 16;		/* bit[31:16] */
+	} fields;
+}; /* offset 0xec */
+
 union i3c_dev_addr_tbl_s {
 	volatile uint32_t value;
 	struct {
@@ -325,7 +358,7 @@ struct i3c_register_s {
 	union i3c_device_cmd_queue_port_s cmd_queue_port;	/* 0xc */
 	union i3c_device_resp_queue_port_s resp_queue_port;	/* 0x10 */
 	uint32_t rx_tx_data_port;				/* 0x14 */
-	uint32_t ibi_queue_data;				/* 0x18 */
+	union i3c_ibi_queue_status_s ibi_queue_status;		/* 0x18 */
 	union i3c_queue_thld_ctrl_s queue_thld_ctrl;		/* 0x1c */
 	union i3c_data_buff_ctrl_s data_buff_ctrl;		/* 0x20 */
 	uint32_t reserved0[2];					/* 0x24 ~ 0x28 */
@@ -346,14 +379,18 @@ struct i3c_register_s {
 	union i3c_slave_pid_hi_s slave_pid_hi;			/* 0x70 */
 	union i3c_slave_pid_lo_s slave_pid_lo;			/* 0x74 */
 	union i3c_slave_char_s slave_char;			/* 0x78 */
-	uint32_t reserved3[13];					/* 0x7c ~ 0xac */
+	uint32_t reserved3[4];					/* 0x7c ~ 0x88 */
+	union i3c_slave_intr_req_s i3c_slave_intr_req;		/* 0x8c */
+	uint32_t reserved4[8];					/* 0x90 ~ 0xac */
 	union i3c_device_ctrl_extend_s device_ctrl_ext;		/* 0xb0 */
 	union i3c_scl_timing_s op_timing;			/* 0xb4 */
 	union i3c_scl_timing_s pp_timing;			/* 0xb8 */
 	union i2c_scl_timing_s fm_timing;			/* 0xbc */
 	union i2c_scl_timing_s fmp_timing;			/* 0xc0 */
-	uint32_t reserved4[2];					/* 0xc4 ~ 0xc8 */
+	uint32_t reserved5[2];					/* 0xc4 ~ 0xc8 */
 	union i3c_ext_termn_timing_s ext_termn_timing;		/* 0xcc */
+	uint32_t reservedˊ[7];					/* 0xd0 ~ 0xe8 */
+	union i3c_ibi_payload_length_s ibi_payload_config;			/* 0xec */
 };
 
 struct i3c_aspeed_config {
