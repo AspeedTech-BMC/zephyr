@@ -103,6 +103,15 @@ int i3c_slave_mqueue_read(const struct device *dev, uint8_t *dest, int budget)
 	return ret;
 }
 
+
+int i3c_slave_mqueue_write(const struct device *dev, uint8_t *src, int size)
+{
+	struct i3c_slave_mqueue_config *config = DEV_CFG(dev);
+	struct i3c_slave_mqueue_obj *obj = DEV_DATA(dev);
+
+	return i3c_slave_send_sir(obj->i3c_controller, config->mdb, src, size + 1);
+}
+
 static void i3c_slave_mqueue_init(const struct device *dev)
 {
 	struct i3c_slave_mqueue_config *config = DEV_CFG(dev);
@@ -141,7 +150,7 @@ static void i3c_slave_mqueue_init(const struct device *dev)
 	slave_data.max_payload_len = config->msg_size;
 	slave_data.callbacks = &i3c_slave_mqueue_callbacks;
 	slave_data.dev = dev;
-	i3c_aspeed_slave_register(obj->i3c_controller, &slave_data);
+	i3c_slave_register(obj->i3c_controller, &slave_data);
 }
 
 #define I3C_SLAVE_MQUEUE_INIT(n)                                                                   \

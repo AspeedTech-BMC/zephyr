@@ -20,6 +20,7 @@ LOG_MODULE_REGISTER(i3c);
 
 #define I3C_ASPEED_CCC_TIMEOUT	K_MSEC(10)
 #define I3C_ASPEED_XFER_TIMEOUT	K_MSEC(10)
+#define I3C_ASPEED_SIR_TIMEOUT	K_MSEC(10)
 
 union i3c_device_ctrl_s {
 	volatile uint32_t value;
@@ -439,10 +440,25 @@ struct i3c_aspeed_obj {
 
 	/* slave mode data */
 	struct i3c_slave_setup slave_data;
+	struct k_sem sir_complete;
 };
 
 #define DEV_CFG(dev)			((struct i3c_aspeed_config *)(dev)->config)
 #define DEV_DATA(dev)			((struct i3c_aspeed_obj *)(dev)->data)
+
+static int i3c_aspeed_get_pos(struct i3c_aspeed_obj *obj, uint8_t addr)
+{
+	int pos;
+	int maxdevs = obj->hw_dat.fields.depth;
+
+	for (pos = 0; pos < maxdevs; pos++) {
+		if (addr == obj->dev_addr_tbl[pos]) {
+			return pos;
+		}
+	}
+
+	return -1;
+}
 
 static void i3c_aspeed_rd_rx_fifo(struct i3c_aspeed_obj *obj, uint8_t *bytes, int nbytes)
 {
@@ -562,6 +578,11 @@ static void i3c_aspeed_isr(const struct device *dev)
 		} else {
 			i3c_aspeed_end_xfer(obj);
 		}
+	}
+
+
+	if (config->secondary && status.fields.ibi_update) {
+		k_sem_give(&obj->sir_complete);
 	}
 
 	if (status.fields.ccc_update) {
@@ -731,20 +752,6 @@ static void i3c_aspeed_enable(struct i3c_aspeed_obj *obj)
 		reg.fields.slave_auto_mode_adapt = 1;
 	}
 	i3c_register->device_ctrl.value = reg.value;
-}
-
-static int i3c_aspeed_get_pos(struct i3c_aspeed_obj *obj, uint8_t addr)
-{
-	int pos;
-	int maxdevs = obj->hw_dat.fields.depth;
-
-	for (pos = 0; pos < maxdevs; pos++) {
-		if (addr == obj->dev_addr_tbl[pos]) {
-			return pos;
-		}
-	}
-
-	return -1;
 }
 
 static void i3c_aspeed_wr_tx_fifo(struct i3c_aspeed_obj *obj, uint8_t *bytes, int nbytes)
@@ -941,6 +948,48 @@ int i3c_aspeed_slave_register(const struct device *dev, struct i3c_slave_setup *
 	return 0;
 }
 
+int i3c_aspeed_slave_send_sir(const struct device *dev, uint8_t mdb, uint8_t *data, int nbytes)
+{
+	struct i3c_aspeed_config *config = DEV_CFG(dev);
+	struct i3c_aspeed_obj *obj = DEV_DATA(dev);
+	struct i3c_register_s *i3c_register = config->base;
+	uint8_t *buf = NULL;
+
+	if (i3c_register->slave_event_ctrl.fields.sir_allowed == 0) {
+		LOG_ERR("SIR is not enabled by the main master\n");
+		return -EACCES;
+	}
+
+	if (!nbytes) {
+		goto wr_fifo_done;
+	}
+
+	i3c_register->device_ctrl.fields.slave_mdb = mdb;
+
+	if (obj->hw_feature.ibi_flexible_length) {
+		if (nbytes > 1) {
+			i3c_aspeed_wr_tx_fifo(obj, data, nbytes - 1);
+			i3c_register->ibi_payload_config.fields.ibi_size = nbytes - 1;
+		}
+	} else {
+		buf = k_calloc(CONFIG_I3C_ASPEED_MAX_IBI_PAYLOAD - 1, sizeof(uint8_t));
+		if (nbytes > 1) {
+			memcpy(buf, data, nbytes - 1);
+		}
+		i3c_aspeed_wr_tx_fifo(obj, buf, CONFIG_I3C_ASPEED_MAX_IBI_PAYLOAD - 1);
+	}
+
+wr_fifo_done:
+	i3c_register->i3c_slave_intr_req.fields.sir = 1;
+	k_sem_take(&obj->sir_complete, I3C_ASPEED_SIR_TIMEOUT);
+
+	if (buf) {
+		k_free(buf);
+	}
+
+	return 0;
+}
+
 int i3c_aspeed_master_send_ccc(const struct device *dev, struct i3c_ccc_cmd *ccc)
 {
 	struct i3c_aspeed_obj *obj = DEV_DATA(dev);
@@ -1073,6 +1122,8 @@ static int i3c_aspeed_init(const struct device *dev)
 	i3c_register->sir_reject = 0;
 
 	i3c_aspeed_enable(obj);
+
+	k_sem_init(&obj->sir_complete, 0, 1);
 
 	return 0;
 }
