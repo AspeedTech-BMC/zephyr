@@ -438,6 +438,13 @@ struct i3c_aspeed_obj {
 	uint32_t hw_dat_free_pos;
 	uint8_t dev_addr_tbl[32];
 
+	struct {
+		uint32_t enable;
+		struct i3c_ibi_callbacks *callbacks[32];
+		struct i3c_device *context[32];
+		struct i3c_ibi_payload *incomplete[32];
+	} ibi;
+
 	/* slave mode data */
 	struct i3c_slave_setup slave_data;
 	struct k_sem sir_complete;
@@ -557,7 +564,59 @@ static void i3c_aspeed_slave_rx_data(struct i3c_aspeed_obj *obj)
 	}
 	return;
 flush:
-	printk("flush rx fifo\n");
+	__ASSERT(0, "flush rx fifo is TBD\n");
+}
+
+static void i3c_aspeed_master_rx_ibi(struct i3c_aspeed_obj *obj)
+{
+	struct i3c_register_s *i3c_register = obj->config->base;
+	union i3c_ibi_queue_status_s ibi_status;
+	struct i3c_ibi_payload *payload;
+	uint32_t i, j, nstatus, nbytes, nwords, pos;
+	uint32_t *dst;
+
+	nstatus = i3c_register->queue_status_level.fields.ibi_status_cnt;
+	if (!nstatus) {
+		return;
+	}
+
+	for (i = 0; i < nstatus; i++) {
+		ibi_status.value = i3c_register->ibi_queue_status.value;
+		if (ibi_status.fields.ibi_status) {
+			LOG_WRN("IBI NACK\n");
+		}
+
+		if (ibi_status.fields.error) {
+			LOG_ERR("IBI error\n");
+		}
+
+		pos = i3c_aspeed_get_pos(obj, ibi_status.fields.id >> 1);
+		if (obj->ibi.incomplete[pos]) {
+			payload = obj->ibi.incomplete[pos];
+		} else {
+			payload = obj->ibi.callbacks[pos]->write_requested(obj->ibi.context[pos]);
+		}
+		dst = (uint32_t *)&(payload->buf[payload->size]);
+
+		nbytes = ibi_status.fields.length;
+		nwords = nbytes >> 2;
+		for (j = 0; j < nwords; j++) {
+			dst[j] = i3c_register->ibi_queue_status.value;
+		}
+
+		if (nbytes & 0x3) {
+			uint32_t tmp = i3c_register->ibi_queue_status.value;
+
+			memcpy((uint8_t *)dst + (nbytes & ~0x3), &tmp, nbytes & 3);
+		}
+
+		payload->size += nbytes;
+		obj->ibi.incomplete[pos] = payload;
+		if (ibi_status.fields.last) {
+			obj->ibi.callbacks[pos]->write_done(obj->ibi.context[pos]);
+			obj->ibi.incomplete[pos] = NULL;
+		}
+	}
 }
 
 static void i3c_aspeed_isr(const struct device *dev)
@@ -580,6 +639,9 @@ static void i3c_aspeed_isr(const struct device *dev)
 		}
 	}
 
+	if (status.fields.ibi_thld) {
+		i3c_aspeed_master_rx_ibi(obj);
+	}
 
 	if (config->secondary && status.fields.ibi_update) {
 		k_sem_give(&obj->sir_complete);
@@ -723,7 +785,7 @@ static void i3c_aspeed_init_queues(struct i3c_aspeed_obj *obj)
 	 * So the max number of the IBI status = ceil(256 / 124) = 3
 	 */
 	queue_thld_ctrl.fields.ibi_data_thld = MAX_IBI_CHUNK_IN_BYTE >> 2;
-	queue_thld_ctrl.fields.ibi_status_thld = 3 - 1;
+	queue_thld_ctrl.fields.ibi_status_thld = 1 - 1;
 	i3c_register->queue_thld_ctrl.value = queue_thld_ctrl.value;
 
 	data_buff_ctrl.value = 0;
@@ -937,6 +999,65 @@ int i3c_aspeed_master_attach_device(const struct device *dev, struct i3c_device 
 
 }
 
+int i3c_aspeed_master_request_ibi(struct i3c_device *i3cdev, struct i3c_ibi_callbacks *cb)
+{
+	struct i3c_aspeed_obj *obj = DEV_DATA(i3cdev->master_dev);
+	int pos = 0;
+
+	pos = i3c_aspeed_get_pos(obj, i3cdev->info.dynamic_addr);
+	if (pos < 0) {
+		return pos;
+	}
+
+	obj->ibi.callbacks[pos] = cb;
+	obj->ibi.context[pos] = i3cdev;
+	obj->ibi.incomplete[pos] = NULL;
+
+	return 0;
+}
+
+int i3c_aspeed_master_enable_ibi(struct i3c_device *i3cdev)
+{
+	struct i3c_aspeed_obj *obj = DEV_DATA(i3cdev->master_dev);
+	struct i3c_register_s *i3c_register = obj->config->base;
+	union i3c_dev_addr_tbl_s dat;
+	uint32_t dat_addr, sir_reject;
+	int ret;
+	int pos = 0;
+
+	pos = i3c_aspeed_get_pos(obj, i3cdev->info.dynamic_addr);
+	if (pos < 0) {
+		return pos;
+	}
+
+	sir_reject = i3c_register->sir_reject;
+	sir_reject &= ~BIT(pos);
+	i3c_register->sir_reject = sir_reject;
+
+	dat_addr = (uint32_t)obj->config->base + obj->hw_dat.fields.start_addr + (pos << 4);
+	dat.value = sys_read32(dat_addr);
+	dat.fields.ibi_with_data = 1;
+	dat.fields.sir_reject = 0;
+	sys_write32(dat.value, dat_addr);
+
+	obj->ibi.enable |= BIT(pos);
+
+	if (I3C_PID_VENDOR_ID(i3cdev->info.pid) == I3C_PID_VENDOR_ID_ASPEED) {
+		/*
+		 * MIPI spec. violation:
+		 * MIPI: the 3rd byte in SETMRL indicates the max ibi payload length including MDB
+		 * Aspeed: the HW ibi max payload length does NOT include MDB
+		 *
+		 * Hence the last argument is "CONFIG_I3C_ASPEED_MAX_IBI_PAYLOAD - 1"
+		 */
+		ret = i3c_master_send_setmrl(i3cdev->master_dev, i3cdev->info.dynamic_addr, 256,
+				      CONFIG_I3C_ASPEED_MAX_IBI_PAYLOAD - 1);
+		__ASSERT(!ret, "failed to send SETMRL\n");
+	}
+
+	return i3c_master_send_enec(i3cdev->master_dev, i3cdev->info.dynamic_addr, I3C_CCC_EVT_SIR);
+}
+
 int i3c_aspeed_slave_register(const struct device *dev, struct i3c_slave_setup *slave_data)
 {
 	struct i3c_aspeed_obj *obj = DEV_DATA(dev);
@@ -1118,8 +1239,8 @@ static int i3c_aspeed_init(const struct device *dev)
 
 	/* Not support MR for now */
 	i3c_register->mr_reject = GENMASK(31, 0);
-	/* Disable SIR auto-reject */
-	i3c_register->sir_reject = 0;
+	/* Reject SIR by default */
+	i3c_register->sir_reject = GENMASK(31, 0);
 
 	i3c_aspeed_enable(obj);
 
