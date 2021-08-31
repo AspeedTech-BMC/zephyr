@@ -429,7 +429,8 @@ struct i3c_aspeed_obj {
 	struct i3c_aspeed_xfer *curr_xfer;
 	struct {
 		uint32_t ibi_status_correct : 1;
-		uint32_t reserved : 31;
+		uint32_t ibi_flexible_length : 1;
+		uint32_t reserved : 30;
 	} hw_feature;
 
 	union i3c_dev_addr_tbl_ptr_s hw_dat;
@@ -634,6 +635,18 @@ static void i3c_aspeed_init_hw_feature(struct i3c_aspeed_obj *obj)
 		obj->hw_feature.ibi_status_correct = 1;
 	} else {
 		obj->hw_feature.ibi_status_correct = 0;
+	}
+
+	/*
+	 * if AST10x0-A1, the IBI size is flexible.
+	 * The others need to be configured by the master device through SETMRL CCC
+	 */
+	if (rev_id == 0x8001) {
+		obj->hw_feature.ibi_flexible_length = 1;
+	} else {
+		obj->hw_feature.ibi_flexible_length = 0;
+		__ASSERT((CONFIG_I3C_ASPEED_MAX_IBI_PAYLOAD & 0x3) != 1,
+			 "the max IBI payload size shall not be (4n + 1)\n");
 	}
 }
 
