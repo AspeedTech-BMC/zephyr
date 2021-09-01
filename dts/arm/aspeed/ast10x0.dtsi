@@ -254,7 +254,6 @@
 			status = "disabled";
 		};
 
-
 		uart1: serial@7e783000 {
 			compatible = "aspeed,uart";
 			reg = <0x7e783000 0x1000>;
@@ -834,8 +833,18 @@
 			#size-cells = <1>;
 			ranges = <0 0x7e7a0000 0x8000>;
 		};
+
+		hace: hace@7e6d0000 {
+			compatible = "aspeed,hace";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			reg = <0x7e6d0000 0x200>;
+			clocks = <&sysclk ASPEED_CLK_GATE_YCLK>;
+			resets = <&sysrst ASPEED_RESET_HACE>;
+		};
 	};
 };
+
 #include "aspeed/ast10x0-pinctrl.dtsi"
 &nvic {
 	arm,num-irq-priority-bits = <3>;
