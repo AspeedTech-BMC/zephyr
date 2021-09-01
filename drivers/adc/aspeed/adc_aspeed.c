@@ -361,7 +361,7 @@ static void aspeed_acquisition_thread(struct adc_aspeed_data *data)
 }
 
 static int aspeed_adc_engine_init(const struct device *dev,
-				  uint32_t timeout_ticks)
+				  uint32_t timeout_ms)
 {
 	const struct adc_aspeed_cfg *config = DEV_CFG(dev);
 	struct adc_register_s *adc_register = config->base;
@@ -375,7 +375,7 @@ static int aspeed_adc_engine_init(const struct device *dev,
 
 	ret = reg_read_poll_timeout(
 		adc_register, engine_ctrl, engine_ctrl,
-		engine_ctrl.fields.initial_sequence_complete, 0, timeout_ticks);
+		engine_ctrl.fields.initial_sequence_complete, 0, timeout_ms);
 
 	if (ret) {
 		return ret;
