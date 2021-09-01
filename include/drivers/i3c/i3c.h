@@ -100,6 +100,12 @@ struct i3c_ibi_payload {
 	int size;
 	uint8_t *buf;
 };
+
+/**
+ * @brief IBI callback function structure
+ * @param write_requested callback function to return a memory block for receiving IBI data
+ * @param write_done callback function to process the received IBI data
+ */
 struct i3c_ibi_callbacks {
 	struct i3c_ibi_payload* (*write_requested)(struct i3c_dev_desc *i3cdev);
 	void (*write_done)(struct i3c_dev_desc *i3cdev);
@@ -111,6 +117,12 @@ struct i3c_slave_payload {
 	void *buf;
 };
 
+/**
+ * @brief slave callback function structure
+ * @param write_requested callback function to return a memory block for receiving data sent from
+ *                        the master device
+ * @param write_done callback function to process the received IBI data
+ */
 struct i3c_slave_callbacks {
 	struct i3c_slave_payload* (*write_requested)(const struct device *dev);
 	void (*write_done)(const struct device *dev);
