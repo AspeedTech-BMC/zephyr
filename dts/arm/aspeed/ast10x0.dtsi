@@ -845,7 +845,7 @@
 		i2c-scl-hz = <400000>;
 		i3c-scl-hz = <12500000>;
 		instance-id = <0>;
-		pinctrl-0 = <&pinctrl_i3c0_default>;
+		pinctrl-0 = <&pinctrl_hvi3c0_default>;
 		status = "disabled";
 		label = "I3C_0";
 	};
@@ -861,7 +861,7 @@
 		i2c-scl-hz = <400000>;
 		i3c-scl-hz = <12500000>;
 		instance-id = <1>;
-		pinctrl-0 = <&pinctrl_i3c1_default>;
+		pinctrl-0 = <&pinctrl_hvi3c1_default>;
 		status = "disabled";
 		label = "I3C_1";
 	};
