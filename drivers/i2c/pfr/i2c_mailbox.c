@@ -66,7 +66,6 @@ int check_ast_mbx_valid(const struct ast_i2c_mbx_config *cfg, uint8_t dev_idx)
 		LOG_ERR("invalid i2c mailbox index");
 		return -EINVAL;
 	}
-
 	return 0;
 }
 
@@ -367,6 +366,11 @@ uint32_t base, uint16_t length, uint8_t enable)
 	if (enable && (!(data->mail_addr_en[dev_idx])))
 		return -EINVAL;
 
+	/* check mbx base limit */
+	if ((base < MBX_MIN_BASE) ||
+	(base + length) > MBX_MAX_BASE)
+		return -EINVAL;
+
 	/* change device base */
 	dev_base = data->i2c_dev_base[dev_idx];
 
@@ -381,11 +385,11 @@ uint32_t base, uint16_t length, uint8_t enable)
 		value = AST_I2C_MBX_TX_DMA_LEN(length);
 		I2C_W_R(value, dev_base + AST_I2C_DMA_LEN);
 		value = (sys_read32(dev_base + AST_I2C_CTL)
-			|AST_I2C_MBX_EN);
+			|(AST_I2C_MBX_EN|AST_I2C_SLAVE_EN));
 		I2C_W_R(value, dev_base + AST_I2C_CTL);
 	} else {
 		value = (sys_read32(dev_base + AST_I2C_CTL)
-		& (~AST_I2C_MBX_EN));
+		& ~(AST_I2C_MBX_EN|AST_I2C_SLAVE_EN));
 		I2C_W_R(value, dev_base + AST_I2C_CTL);
 
 		/* reset dma offset */

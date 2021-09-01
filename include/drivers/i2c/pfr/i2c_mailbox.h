@@ -70,6 +70,7 @@
 #define AST_I2C_M_ADDR_IRQ3		0x7C
 
 #define AST_I2C_MASTER_EN		BIT(0)
+#define AST_I2C_SLAVE_EN		BIT(1)
 #define AST_I2C_MBX_EN			(BIT(23) | BIT(24))
 
 /* i2c slave address control */
@@ -102,6 +103,10 @@ AST_I2CS_ADDR1_ENABLE|AST_I2CS_ADDR1_MBX_TYPE(0x3))
 
 #define AST_I2C_MBX_TX_DMA_LEN(x)	\
 (((x - 1) & 0xfff) | BIT(15))
+
+/* i2c mbx internal base and length limitation */
+#define MBX_MIN_BASE 0x200
+#define MBX_MAX_BASE 0x400
 
 #ifdef __cplusplus
 extern "C" {

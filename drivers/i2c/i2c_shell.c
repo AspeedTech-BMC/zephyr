@@ -253,6 +253,70 @@ static int cmd_pfr_mbx_init(const struct shell *shell,
 
 	return ret;
 }
+
+static int cmd_pfr_mbx_addr(const struct shell *shell,
+			      size_t argc, char **argv)
+{
+	const struct device *pfr_mbx_dev = NULL;
+	int ret = 0;
+	int dev_idx;
+	int idx;
+	int offset;
+	int addr;
+	int enable;
+
+	dev_idx = strtol(argv[2], NULL, 16);
+	idx = strtol(argv[3], NULL, 16);
+	offset = strtol(argv[4], NULL, 16);
+	addr = strtol(argv[5], NULL, 16);
+	enable = strtol(argv[6], NULL, 16);
+
+	pfr_mbx_dev = device_get_binding(argv[1]);
+	if (!pfr_mbx_dev) {
+		shell_error(shell, "xx I2C: PFR MBX Device driver %s not found.",
+			    argv[1]);
+		return -ENODEV;
+	}
+
+	if (pfr_mbx_dev != NULL) {
+		ret = ast_i2c_mbx_addr(pfr_mbx_dev, (uint8_t)dev_idx,
+		(uint8_t)idx, (uint8_t)offset, (uint8_t)addr, (uint8_t)enable);
+	}
+
+	return ret;
+}
+
+static int cmd_pfr_mbx_en(const struct shell *shell,
+			      size_t argc, char **argv)
+{
+	const struct device *pfr_mbx_dev = NULL;
+	int ret = 0;
+	int dev_idx;
+	int base;
+	int length;
+	int enable;
+
+	dev_idx = strtol(argv[2], NULL, 16);
+	base = strtol(argv[3], NULL, 16);
+	length = strtol(argv[4], NULL, 16);
+	enable = strtol(argv[5], NULL, 16);
+
+	pfr_mbx_dev = device_get_binding(argv[1]);
+	if (!pfr_mbx_dev) {
+		shell_error(shell, "xx I2C: PFR MBX Device driver %s not found.",
+			    argv[1]);
+		return -ENODEV;
+	}
+
+	if (pfr_mbx_dev != NULL) {
+		ret = ast_i2c_mbx_en(pfr_mbx_dev, (uint8_t)dev_idx,
+		(uint32_t) base, (uint16_t)length, (uint8_t)enable);
+	}
+
+	return ret;
+}
+
+
 #endif
 
 #ifdef CONFIG_I2C_SLAVE
@@ -391,9 +455,15 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_i2c_cmds,
 #endif
 #endif
 #ifdef CONFIG_I2C_PFR_MAILBOX
-			       SHELL_CMD_ARG(pfr_mbx_init, &dsub_device_name,
-					 "Init pfr bmx device",
-					  cmd_pfr_mbx_init, 0, 1),
+			       SHELL_CMD_ARG(mbx_init, &dsub_device_name,
+					"Init pfr mbx device",
+					cmd_pfr_mbx_init, 0, 1),
+				SHELL_CMD_ARG(mbx_addr, &dsub_device_name,
+					"Set pfr mbx device address",
+					cmd_pfr_mbx_addr, 0, 6),
+				SHELL_CMD_ARG(mbx_enable, &dsub_device_name,
+					"Enable pfr mbx",
+					cmd_pfr_mbx_en, 0, 5),
 #endif
 			       SHELL_SUBCMD_SET_END     /* Array terminated. */
 			       );
