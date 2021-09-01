@@ -9,6 +9,9 @@
 #include <drivers/i2c.h>
 #include <drivers/i2c/slave/eeprom.h>
 #include <drivers/i2c/slave/ipmb.h>
+#include <drivers/i2c/pfr/i2c_filter.h>
+#include <drivers/i2c/pfr/i2c_mailbox.h>
+
 #include <string.h>
 #include <sys/util.h>
 #include <stdlib.h>
@@ -230,6 +233,28 @@ static int cmd_i2c_read(const struct shell *shell, size_t argc, char **argv)
 	return 0;
 }
 
+#ifdef CONFIG_I2C_PFR_MAILBOX
+static int cmd_pfr_mbx_init(const struct shell *shell,
+			      size_t argc, char **argv)
+{
+	const struct device *pfr_mbx_dev = NULL;
+	int ret = 0;
+
+	pfr_mbx_dev = device_get_binding(argv[1]);
+	if (!pfr_mbx_dev) {
+		shell_error(shell, "xx I2C: PFR MBX Device driver %s not found.",
+			    argv[1]);
+		return -ENODEV;
+	}
+
+	if (pfr_mbx_dev != NULL) {
+		ret = ast_i2c_mbx_init(pfr_mbx_dev);
+	}
+
+	return ret;
+}
+#endif
+
 #ifdef CONFIG_I2C_SLAVE
 #ifdef CONFIG_I2C_EEPROM_SLAVE
 #define EEPROM_SLAVE	0
@@ -319,7 +344,6 @@ static int cmd_i2c_ipmb_read(const struct shell *shell,
 	return ret;
 }
 #endif
-
 #endif
 
 static void device_name_get(size_t idx, struct shell_static_entry *entry);
@@ -365,6 +389,11 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_i2c_cmds,
 					     "Read ipmb buffer from slave",
 					      cmd_i2c_ipmb_read, 0, 1),
 #endif
+#endif
+#ifdef CONFIG_I2C_PFR_MAILBOX
+			       SHELL_CMD_ARG(pfr_mbx_init, &dsub_device_name,
+					 "Init pfr bmx device",
+					  cmd_pfr_mbx_init, 0, 1),
 #endif
 			       SHELL_SUBCMD_SET_END     /* Array terminated. */
 			       );
