@@ -121,13 +121,30 @@ union i3c_ibi_queue_status_s {
 	struct {
 		volatile uint32_t length : 8;			/* bit[7:0] */
 		volatile uint32_t id : 8;			/* bit[15:8] */
-		volatile uint32_t reserved0 : 8;			/* bit[23:16] */
+		volatile uint32_t reserved0 : 8;		/* bit[23:16] */
 		volatile uint32_t last : 1;			/* bit[24] */
-		volatile uint32_t reserved1 : 5;			/* bit[29:25] */
+		volatile uint32_t reserved1 : 5;		/* bit[29:25] */
 		volatile uint32_t error : 1;			/* bit[30] */
 		volatile uint32_t ibi_status : 1;		/* bit[31] */
 	} fields;
+
+	struct {
+		volatile uint32_t length : 9;			/* bit[8:0] */
+		volatile uint32_t id : 8;			/* bit[16:9] */
+		volatile uint32_t reserved0 : 8;		/* bit[24:17] */
+		volatile uint32_t last : 1;			/* bit[25] */
+		volatile uint32_t reserved1 : 5;		/* bit[30:26] */
+		volatile uint32_t error : 1;			/* bit[31] */
+	} fields_old;
 }; /* offset 0x18 */
+
+struct i3c_ibi_status {
+	uint32_t length;
+	uint8_t id;
+	uint8_t last;
+	uint8_t error;
+	uint8_t ibi_status;
+};
 
 union i3c_queue_thld_ctrl_s {
 	volatile uint32_t value;
@@ -444,6 +461,8 @@ struct i3c_aspeed_obj {
 		uint32_t reserved : 30;
 	} hw_feature;
 
+	int (*ibi_status_parser)(uint32_t value, struct i3c_ibi_status *result);
+
 	union i3c_dev_addr_tbl_ptr_s hw_dat;
 	uint32_t hw_dat_free_pos;
 	uint8_t dev_addr_tbl[32];
@@ -573,12 +592,42 @@ flush:
 	__ASSERT(0, "flush rx fifo is TBD\n");
 }
 
+static int i3c_aspeed_parse_ibi_status(uint32_t value, struct i3c_ibi_status *result)
+{
+	union i3c_ibi_queue_status_s status;
+
+	status.value = value;
+
+	result->error = status.fields.error;
+	result->ibi_status = status.fields.ibi_status;
+	result->id = status.fields.id;
+	result->last = status.fields.last;
+	result->length = status.fields.length;
+
+	return 0;
+}
+
+static int i3c_aspeed_parse_ibi_status_old(uint32_t value, struct i3c_ibi_status *result)
+{
+	union i3c_ibi_queue_status_s status;
+
+	status.value = value;
+
+	result->error = status.fields_old.error;
+	result->ibi_status = 0;
+	result->id = status.fields_old.id;
+	result->last = status.fields_old.last;
+	result->length = status.fields_old.length;
+
+	return 0;
+}
+
 static void i3c_aspeed_master_rx_ibi(struct i3c_aspeed_obj *obj)
 {
 	struct i3c_register_s *i3c_register = obj->config->base;
 	struct i3c_dev_desc *i3cdev;
 	struct i3c_aspeed_dev_priv *priv;
-	union i3c_ibi_queue_status_s ibi_status;
+	struct i3c_ibi_status ibi_status;
 	struct i3c_ibi_payload *payload;
 	uint32_t i, j, nstatus, nbytes, nwords, pos;
 	uint32_t *dst;
@@ -589,16 +638,17 @@ static void i3c_aspeed_master_rx_ibi(struct i3c_aspeed_obj *obj)
 	}
 
 	for (i = 0; i < nstatus; i++) {
-		ibi_status.value = i3c_register->ibi_queue_status.value;
-		if (ibi_status.fields.ibi_status) {
+		obj->ibi_status_parser(i3c_register->ibi_queue_status.value, &ibi_status);
+		if (ibi_status.ibi_status) {
 			LOG_WRN("IBI NACK\n");
 		}
 
-		if (ibi_status.fields.error) {
+		if (ibi_status.error) {
 			LOG_ERR("IBI error\n");
 		}
 
-		pos = i3c_aspeed_get_pos(obj, ibi_status.fields.id >> 1);
+		pos = i3c_aspeed_get_pos(obj, ibi_status.id >> 1);
+
 		i3cdev = obj->dev_descs[pos];
 		priv = DESC_PRIV(i3cdev);
 		if (priv->ibi.incomplete) {
@@ -608,7 +658,7 @@ static void i3c_aspeed_master_rx_ibi(struct i3c_aspeed_obj *obj)
 		}
 		dst = (uint32_t *)&(payload->buf[payload->size]);
 
-		nbytes = ibi_status.fields.length;
+		nbytes = ibi_status.length;
 		nwords = nbytes >> 2;
 		for (j = 0; j < nwords; j++) {
 			dst[j] = i3c_register->ibi_queue_status.value;
@@ -622,7 +672,7 @@ static void i3c_aspeed_master_rx_ibi(struct i3c_aspeed_obj *obj)
 
 		payload->size += nbytes;
 		priv->ibi.incomplete = payload;
-		if (ibi_status.fields.last) {
+		if (ibi_status.last) {
 			priv->ibi.callbacks->write_done(priv->ibi.context);
 			priv->ibi.incomplete = NULL;
 		}
@@ -726,8 +776,10 @@ static void i3c_aspeed_init_hw_feature(struct i3c_aspeed_obj *obj)
 	 */
 	if ((rev_id == 0x0503) || (rev_id == 0x8001)) {
 		obj->hw_feature.ibi_status_correct = 1;
+		obj->ibi_status_parser = i3c_aspeed_parse_ibi_status;
 	} else {
 		obj->hw_feature.ibi_status_correct = 0;
+		obj->ibi_status_parser = i3c_aspeed_parse_ibi_status_old;
 	}
 
 	/*
