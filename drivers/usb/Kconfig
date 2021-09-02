@@ -12,7 +12,6 @@ if SHELL && USB
 
 config SHELL_CMDS_USB
 	bool "Enable USB shell commands"
-	default y if (!SHELL_MINIMAL && USB)
 	help
 	  Enable usb shell commands to test driver.
 
