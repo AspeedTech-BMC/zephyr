@@ -158,17 +158,22 @@ static int gpio_aspeed_cmd_src_set(const struct device *dev, gpio_pin_t pin, uin
 	return 0;
 }
 
-static void gpio_aspeed_init_cmd_src(const struct device *dev)
+static int gpio_aspeed_init_cmd_src(const struct device *dev)
 {
 	uint32_t group_dedicated = DEV_CFG(dev)->group_dedicated;
 	uint32_t gpio_group_index;
+	int ret;
 
 	for (gpio_group_index = 0; gpio_group_index < 4; gpio_group_index++) {
 		if (group_dedicated & BIT(gpio_group_index)) {
-			gpio_aspeed_cmd_src_set(dev, gpio_group_index * 8,
-						DEV_CFG(dev)->gpio_master);
+			ret = gpio_aspeed_cmd_src_set(dev, gpio_group_index * 8,
+						      DEV_CFG(dev)->gpio_master);
+			if (ret) {
+				return ret;
+			}
 		}
 	}
+	return 0;
 }
 
 static int gpio_aspeed_set_direction(const struct device *dev, gpio_pin_t pin, int direct)
@@ -467,6 +472,10 @@ int gpio_aspeed_init(const struct device *dev)
 	int ret;
 
 	data->pinmux = DEVICE_DT_GET(DT_NODELABEL(pinmux));
+	ret = gpio_aspeed_init_cmd_src(dev);
+	if (ret) {
+		return ret;
+	}
 	ret = gpio_aspeed_persist_init(dev);
 
 	return ret;
