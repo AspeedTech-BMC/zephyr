@@ -42,6 +42,7 @@ child-binding:
 
     aspeed,cmd-src:
       type: int
+      default: 0
       required: false
       enum:
         - 0 # ARM
@@ -51,6 +52,7 @@ child-binding:
 
     aspeed,group-dedicated:
       type: int
+      default: 15
       required: false
       description: |
         Dedicated gpio group for select master, each group include 8 gpios

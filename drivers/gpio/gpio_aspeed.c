@@ -559,11 +559,9 @@ struct device_cont {
 		.parent = DEVICE_DT_GET(DT_PARENT(node_id)),		      \
 		.base = (gpio_register_t *)DT_REG_ADDR(DT_PARENT(node_id)),   \
 		.pin_offset = DT_PROP(node_id, pin_offset),		      \
-		.gpio_master = DT_PROP_OR(node_id, aspeed_cmd_src,	      \
-					  ASPEED_GPIO_CMD_SRC_ARM),	      \
-		.group_dedicated = DT_PROP_OR(node_id,			      \
-					      aspeed_group_dedicated,	      \
-					      GENMASK(3, 0)) & GENMASK(3, 0), \
+		.gpio_master = DT_PROP(node_id, aspeed_cmd_src),	      \
+		.group_dedicated = DT_PROP(node_id, aspeed_group_dedicated) & \
+				   GENMASK(3, 0),			      \
 		.persist_maps = DT_PROP(node_id, aspeed_persist_maps),	      \
 },
 
