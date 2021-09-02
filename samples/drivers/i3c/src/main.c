@@ -11,10 +11,6 @@
 #include <drivers/i3c/i3c.h>
 
 /* external reference */
-int i3c_aspeed_master_attach_device(const struct device *dev, struct i3c_dev_desc *slave);
-int i3c_aspeed_master_deattach_device(const struct device *dev, struct i3c_dev_desc *slave);
-
-
 int i3c_slave_mqueue_read(const struct device *dev, uint8_t *dest, int budget);
 int i3c_slave_mqueue_write(const struct device *dev, uint8_t *src, int size);
 
@@ -37,7 +33,7 @@ void i3c_imx3112_test(void)
 	slave.info.static_addr = 0xf;
 	slave.info.assigned_dynamic_addr = 0xf;
 	slave.info.i2c_mode = 1;
-	ret = i3c_aspeed_master_attach_device(master, &slave);
+	ret = i3c_master_attach_device(master, &slave);
 	if (ret) {
 		printk("failed to attach i2c slave\n");
 		return;
@@ -56,9 +52,9 @@ void i3c_imx3112_test(void)
 	}
 	printk("device ID in I2C mode %02x %02x\n", id[0], id[1]);
 
-	i3c_aspeed_master_deattach_device(master, &slave);
+	i3c_master_deattach_device(master, &slave);
 	slave.info.i2c_mode = 0;
-	ret = i3c_aspeed_master_attach_device(master, &slave);
+	ret = i3c_master_attach_device(master, &slave);
 	if (ret) {
 		printk("failed to attach i3c slave\n");
 		return;
@@ -141,7 +137,7 @@ void i3c_loopback_test(void)
 	slave.info.static_addr = DT_PROP(DT_NODELABEL(i3c1), assigned_address);
 	slave.info.assigned_dynamic_addr = slave.info.static_addr;
 	slave.info.i2c_mode = 0;
-	ret = i3c_aspeed_master_attach_device(master, &slave);
+	ret = i3c_master_attach_device(master, &slave);
 	if (ret) {
 		printk("failed to attach slave\n");
 		return;
