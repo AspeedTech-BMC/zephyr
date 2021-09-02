@@ -15,6 +15,7 @@
 		zephyr,console = &uart5;
 		zephyr,shell-uart = &uart5;
 		zephyr,sram = &sram0;
+		zephyr,flash = &fmc_cs0;
 	};
 };
 

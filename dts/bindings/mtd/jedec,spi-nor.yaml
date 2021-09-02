@@ -45,3 +45,7 @@ properties:
       bit 16: disable 1-1-4
       bit 17: disable 1-4-4
       bit 18: disable 4-4-4
+
+  write-block-size:
+    type: int
+    required: false

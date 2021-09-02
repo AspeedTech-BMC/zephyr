@@ -758,7 +758,7 @@
 			spi-ctrl-caps-mask = <0x000e0c0c>;
 			status = "okay";
 
-			flash@0 {
+			fmc_cs0: flash@0 {
 				compatible = "jedec,spi-nor";
 				reg = <0>;
 				spi-max-buswidth = <4>;
@@ -766,9 +766,24 @@
 				broken-sfdp;
 				size = <DT_SIZE_M(8)>;
 				label = "fmc_cs0";
+				write-block-size = <4096>;
+
+				partitions {
+					compatible = "fixed-partitions";
+					#address-cells = <1>;
+					#size-cells = <1>;
+					boot_partition: partition@0 {
+						label = "image-0";
+						reg = <0x0 0x100000>;
+					};
+					dfu_partition: partition@1 {
+						label = "image-1";
+						reg = <0x0 0x100000>;
+					};
+				};
 			};
 
-			flash@1 {
+			fmc_cs1: flash@1 {
 				compatible = "jedec,spi-nor";
 				reg = <1>;
 				spi-max-buswidth = <4>;
@@ -792,7 +807,7 @@
 			spi-ctrl-caps-mask = <0x000e0c0c>;
 			status = "okay";
 
-			flash@0 {
+			spi1_cs0: flash@0 {
 				compatible = "jedec,spi-nor";
 				reg = <0>;
 				spi-max-buswidth = <4>;
@@ -800,7 +815,7 @@
 				label = "spi1_cs0";
 			};
 
-			flash@1 {
+			spi1_cs1: lash@1 {
 				compatible = "jedec,spi-nor";
 				reg = <1>;
 				spi-max-buswidth = <4>;
@@ -826,7 +841,7 @@
 			spi-ctrl-caps-mask = <0x000e0c0c>;
 			status = "okay";
 
-			flash@0 {
+			spi2_cs0: flash@0 {
 				compatible = "jedec,spi-nor";
 				reg = <0>;
 				spi-max-buswidth = <4>;
@@ -834,7 +849,7 @@
 				label = "spi2_cs0";
 			};
 
-			flash@1 {
+			spi2_cs1: flash@1 {
 				compatible = "jedec,spi-nor";
 				reg = <1>;
 				spi-max-buswidth = <4>;
