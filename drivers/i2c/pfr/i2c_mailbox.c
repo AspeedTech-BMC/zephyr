@@ -142,8 +142,7 @@ uint8_t addr, uint8_t type)
 	}
 
 	/* invalid type */
-	if ((type < AST_I2C_M_R) ||
-	(type > (AST_I2C_M_R | AST_I2C_M_W)))
+	if (type > (AST_I2C_M_R | AST_I2C_M_W))
 		return -EINVAL;
 
 	/* apply fifo config */
@@ -192,6 +191,11 @@ uint16_t base, uint16_t length)
 		LOG_ERR("i2c mailbox not found");
 		return -EINVAL;
 	}
+
+	/* check fifo base limit */
+	if ((base < MBX_MIN_BASE) ||
+	(base + length) > MBX_MAX_BASE)
+		return -EINVAL;
 
 	value1 = sys_read32(cfg->mail_g_base + AST_I2C_M_FIFO_IRQ);
 	fifo_int &= AST_I2C_M_FIFO_INT;
@@ -487,6 +491,9 @@ int ast_i2c_mbx_init(const struct device *dev)
 	/* i2c device base for slave setting */
 	data->i2c_dev_base[0] = (cfg->mail_g_base & 0xFFFF0000)+0x80;
 	data->i2c_dev_base[1] = (cfg->mail_g_base & 0xFFFF0000)+0x100;
+
+	/* hook interrupt routine*/
+	cfg->irq_config_func(dev);
 
 	return 0;
 }

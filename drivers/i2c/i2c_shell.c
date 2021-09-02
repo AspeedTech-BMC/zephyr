@@ -424,6 +424,96 @@ static int cmd_mbx_p_en(const struct shell *shell,
 	return ret;
 }
 
+static int cmd_mbx_f_p(const struct shell *shell,
+			      size_t argc, char **argv)
+{
+	const struct device *pfr_mbx_dev = NULL;
+	int ret = 0;
+	int pirority;
+
+	pirority = strtol(argv[2], NULL, 16);
+
+	pfr_mbx_dev = device_get_binding(argv[1]);
+	if (!pfr_mbx_dev) {
+		shell_error(shell, "xx I2C: PFR MBX Device driver %s not found.",
+			    argv[1]);
+		return -ENODEV;
+	}
+
+	if (pfr_mbx_dev != NULL) {
+		ret = ast_i2c_mbx_fifo_pirority(pfr_mbx_dev, (uint8_t)pirority);
+		if (ret) {
+			shell_error(shell, "xx I2C: PFR MBX FIFO Piroity failed.");
+			return ret;
+		}
+	}
+
+	return ret;
+}
+
+static int cmd_mbx_f_set(const struct shell *shell,
+			      size_t argc, char **argv)
+{
+	const struct device *pfr_mbx_dev = NULL;
+	int ret = 0;
+	int idx;
+	int addr;
+	int type;
+
+	idx = strtol(argv[2], NULL, 16);
+	addr = strtol(argv[3], NULL, 16);
+	type = strtol(argv[4], NULL, 16);
+
+	pfr_mbx_dev = device_get_binding(argv[1]);
+	if (!pfr_mbx_dev) {
+		shell_error(shell, "xx I2C: PFR MBX Device driver %s not found.",
+			    argv[1]);
+		return -ENODEV;
+	}
+
+	if (pfr_mbx_dev != NULL) {
+		ret = ast_i2c_mbx_fifo_apply(pfr_mbx_dev, (uint8_t)idx,
+		(uint8_t)addr, (uint8_t)type);
+		if (ret) {
+			shell_error(shell, "xx I2C: PFR FIFO Set index failed.");
+			return ret;
+		}
+	}
+
+	return ret;
+}
+
+static int cmd_mbx_f_en(const struct shell *shell,
+			      size_t argc, char **argv)
+{
+	const struct device *pfr_mbx_dev = NULL;
+	int ret = 0;
+	int idx;
+	int base;
+	int length;
+
+	idx = strtol(argv[2], NULL, 16);
+	base = strtol(argv[3], NULL, 16);
+	length = strtol(argv[4], NULL, 16);
+
+	pfr_mbx_dev = device_get_binding(argv[1]);
+	if (!pfr_mbx_dev) {
+		shell_error(shell, "xx I2C: PFR MBX Device driver %s not found.",
+			    argv[1]);
+		return -ENODEV;
+	}
+
+	if (pfr_mbx_dev != NULL) {
+		ret = ast_i2c_mbx_fifo_en(pfr_mbx_dev, (uint8_t)idx,
+		(uint16_t)base, (uint16_t)length);
+		if (ret) {
+			shell_error(shell, "xx I2C: PFR MBX FIFO Enable / Disable failed.");
+			return ret;
+		}
+	}
+
+	return ret;
+}
 
 #endif
 
@@ -576,11 +666,20 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_i2c_cmds,
 					"Set pfr mbx notify address",
 					cmd_mbx_n_addr, 0, 3),
 				SHELL_CMD_ARG(mbx_notify_en, &dsub_device_name,
-					"Enable pfr mbx notify address",
+					"Enable pfr mbx notify",
 					cmd_mbx_n_en, 0, 5),
 				SHELL_CMD_ARG(mbx_protect_en, &dsub_device_name,
 					"Enable pfr mbx protect address",
-					cmd_mbx_p_en, 0, 5),
+					cmd_mbx_p_en, 0, 4),
+				SHELL_CMD_ARG(mbx_fifo_piroity, &dsub_device_name,
+					"Set pfr mbx FIFO piroity",
+					cmd_mbx_f_p, 0, 2),
+				SHELL_CMD_ARG(mbx_fifo_set, &dsub_device_name,
+					"Set pfr mbx FIFO address",
+					cmd_mbx_f_set, 0, 4),
+				SHELL_CMD_ARG(mbx_fifo_en, &dsub_device_name,
+					"Enable pfr mbx FIFO",
+					cmd_mbx_f_en, 0, 4),
 #endif
 			       SHELL_SUBCMD_SET_END     /* Array terminated. */
 			       );
