@@ -46,6 +46,7 @@ struct gpio_aspeed_config {
 	uint8_t pin_offset;
 	uint8_t gpio_master;
 	uint8_t group_dedicated;
+	uint32_t persist_maps;
 };
 
 /* Driver data */
@@ -423,14 +424,52 @@ static const struct gpio_driver_api gpio_aspeed_driver = {
 	.manage_callback = gpio_aspeed_manage_callback,
 };
 
+static int gpio_aspeed_persist_set(const struct device *dev, gpio_pin_t pin, bool en)
+{
+	volatile gpio_register_t *gpio_reg = DEV_CFG(dev)->base;
+	uint8_t pin_offset = DEV_CFG(dev)->pin_offset;
+	gpio_index_register_t index;
+
+	if (pin >= 32) {
+		LOG_ERR("Invalid gpio pin #%d", pin);
+		return -EINVAL;
+	}
+	pin += pin_offset;
+	index.value = 0;
+	index.fields.index_type = ASPEED_GPIO_TOLERANCE;
+	index.fields.index_command = ASPEED_GPIO_INDEX_WRITE;
+	index.fields.index_data = en;
+	index.fields.index_number = pin;
+	LOG_DBG("gpio index = 0x%08x\n", index.value);
+	gpio_reg->index.value = index.value;
+
+	return 0;
+}
+
+static int gpio_aspeed_persist_init(const struct device *dev)
+{
+	uint32_t persist_maps = DEV_CFG(dev)->persist_maps;
+	uint32_t pin = 0;
+	int ret;
+
+	for (pin = 0; pin < 32; pin++) {
+		ret = gpio_aspeed_persist_set(dev, pin, persist_maps & BIT(pin) ? 1 : 0);
+		if (ret) {
+			return ret;
+		}
+	}
+	return 0;
+}
+
 int gpio_aspeed_init(const struct device *dev)
 {
 	struct gpio_aspeed_data *data = DEV_DATA(dev);
+	int ret;
 
 	data->pinmux = DEVICE_DT_GET(DT_NODELABEL(pinmux));
-	gpio_aspeed_init_cmd_src(dev);
+	ret = gpio_aspeed_persist_init(dev);
 
-	return 0;
+	return ret;
 }
 
 static void gpio_aspeed_init_cmd_src_sel(const struct device *parent)
@@ -516,6 +555,7 @@ struct device_cont {
 		.group_dedicated = DT_PROP_OR(node_id,			      \
 					      aspeed_group_dedicated,	      \
 					      GENMASK(3, 0)) & GENMASK(3, 0), \
+		.persist_maps = DT_PROP(node_id, aspeed_persist_maps),	      \
 },
 
 #define GPIO_ASPEED_DT_DEFINE(node_id)                                                             \

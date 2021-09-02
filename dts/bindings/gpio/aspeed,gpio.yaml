@@ -55,6 +55,15 @@ child-binding:
       description: |
         Dedicated gpio group for select master, each group include 8 gpios
         BIT0~BIT3 => GROUP0~GROUP3.
+
+    aspeed,persist-maps:
+      type: int
+      default: 0
+      required: false
+      description: |
+        Retain gpio pin state across the wdt reset. Each bit represents each
+        gpio pin. Use 1 to enable persistent, 0 to disable persistent.
+
   gpio-cells:
   - pin
   - flags
