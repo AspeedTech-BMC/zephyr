@@ -301,7 +301,7 @@ uint8_t addr)
 	reg_index = idx >> 0x2;
 	byteshift = ((idx % 0x4) << 3);
 
-	reg_offset += (0x4 << reg_index);
+	reg_offset += (0x4 * reg_index);
 
 	value = (sys_read32(cfg->mail_g_base + reg_offset)
 	& ~(0xFF << byteshift));
