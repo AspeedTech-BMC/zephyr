@@ -366,12 +366,14 @@ static void dfu_flash_write(uint8_t *data, size_t len)
 		LOG_DBG("flash write done");
 		dfu_data.state = dfuMANIFEST_SYNC;
 		dfu_reset_counters();
+#if !CONFIG_USB_ASPEED
 		if (boot_request_upgrade(false)) {
 			dfu_data.state = dfuERROR;
 			dfu_data.status = errWRITE;
 		}
 
 		k_poll_signal_raise(&dfu_signal, 0);
+#endif
 	} else {
 		dfu_data.state = dfuDNLOAD_IDLE;
 	}
