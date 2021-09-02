@@ -5,12 +5,18 @@
 # Copyright (c) 2021 ASPEED Technology Inc.
 
 if BOARD_AST1030_EVB
-
 config BOARD
 	default "ast1030_evb"
+endif # BOARD_AST1030_EVB
+
+if BOARD_AST1060_EVB
+config BOARD
+	default "ast1060_evb"
+endif # BOARD_AST1060_EVB
+
+if BOARD_AST1030_EVB || BOARD_AST1060_EVB
 
 if USB
-
 config USB_ASPEED
 	default y
 
@@ -19,7 +25,5 @@ config USB_DEVICE_STACK
 
 config USB_DEVICE_MANUFACTURER
 	default "Aspeed"
-
 endif # USB
-
-endif # BOARD_AST1030_EVB
+endif # BOARD_AST1030_EVB || BOARD_AST1060_EVB
