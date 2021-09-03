@@ -1184,7 +1184,7 @@ int i3c_aspeed_master_send_ccc(const struct device *dev, struct i3c_ccc_cmd *ccc
 {
 	struct i3c_aspeed_obj *obj = DEV_DATA(dev);
 	struct i3c_aspeed_xfer xfer;
-	struct i3c_aspeed_cmd *cmd;
+	struct i3c_aspeed_cmd cmd;
 	union i3c_device_cmd_queue_port_s cmd_hi, cmd_lo;
 	int pos = 0;
 	int ret;
@@ -1197,19 +1197,18 @@ int i3c_aspeed_master_send_ccc(const struct device *dev, struct i3c_ccc_cmd *ccc
 	}
 
 	xfer.ncmds = 1;
-	xfer.cmds = k_calloc(sizeof(struct i3c_aspeed_cmd), xfer.ncmds);
+	xfer.cmds = &cmd;
 	xfer.ret = 0;
 
-	cmd = xfer.cmds;
-	cmd->ret = 0;
+	cmd.ret = 0;
 	if (ccc->rnw) {
-		cmd->rx_buf = ccc->payload.data;
-		cmd->rx_length = ccc->payload.length;
-		cmd->tx_length = 0;
+		cmd.rx_buf = ccc->payload.data;
+		cmd.rx_length = ccc->payload.length;
+		cmd.tx_length = 0;
 	} else {
-		cmd->tx_buf = ccc->payload.data;
-		cmd->tx_length = ccc->payload.length;
-		cmd->rx_length = 0;
+		cmd.tx_buf = ccc->payload.data;
+		cmd.tx_length = ccc->payload.length;
+		cmd.rx_length = 0;
 	}
 
 	cmd_hi.value = 0;
@@ -1224,8 +1223,8 @@ int i3c_aspeed_master_send_ccc(const struct device *dev, struct i3c_ccc_cmd *ccc
 	cmd_lo.xfer_cmd.roc = 1;
 	cmd_lo.xfer_cmd.rnw = ccc->rnw;
 	cmd_lo.xfer_cmd.toc = 1;
-	cmd->cmd_hi = cmd_hi.value;
-	cmd->cmd_lo = cmd_lo.value;
+	cmd.cmd_hi = cmd_hi.value;
+	cmd.cmd_lo = cmd_lo.value;
 
 	k_sem_init(&xfer.sem, 0, 1);
 	xfer.ret = -ETIMEDOUT;
@@ -1235,7 +1234,6 @@ int i3c_aspeed_master_send_ccc(const struct device *dev, struct i3c_ccc_cmd *ccc
 	k_sem_take(&xfer.sem, I3C_ASPEED_CCC_TIMEOUT);
 
 	ret = xfer.ret;
-	k_free(xfer.cmds);
 
 	return ret;
 }
