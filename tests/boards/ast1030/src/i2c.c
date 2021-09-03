@@ -58,6 +58,8 @@ void test_i2c_slave_EEPROM(void)
 		sprintf(num, "%d", (i+1));
 		strcat(name_s, num);
 
+		printk("I2C M : %d - EE S : %d\n", i, (i+1));
+
 		/* obtain i2c master device */
 		master_dev = device_get_binding(name_m);
 		ast_zassert_not_null(master_dev, "I2C: %s Master device is got failed",
@@ -67,6 +69,7 @@ void test_i2c_slave_EEPROM(void)
 		i2c_clock = i2c_speed[i%3];
 		dev_config_raw = I2C_MODE_MASTER |
 		I2C_SPEED_SET(i2c_clock);
+		printk("I2C SPEED : %d\n", i2c_clock);
 		i2c_configure(master_dev, dev_config_raw);
 
 		/* obtain i2c slave device */
@@ -77,6 +80,8 @@ void test_i2c_slave_EEPROM(void)
 		/* register i2c slave device */
 		ast_zassert_false(i2c_slave_driver_register(slave_dev),
 		"I2C: %s Slave register is got failed", name_s);
+
+		printk("I2C Data Add : %d\n", data_add);
 
 		for (j = 0; j < DATA_COUNT; j++) {
 			data_s[j] = data_add + j;
@@ -95,7 +100,8 @@ void test_i2c_slave_EEPROM(void)
 
 		for (j = 0; j < DATA_COUNT; j++) {
 			ast_zassert_equal(data_s[j], data_r[j],
-			"I2C: %s EEPROM R/W is got failed at %d", name_m, j);
+			"I2C: %s EEPROM R/W is got failed at %d, s: %d-r: %d",
+			name_m, j, data_s[j], data_r[j]);
 		}
 
 		/* un-register i2c slave device */
@@ -124,6 +130,8 @@ void test_i2c_slave_IPMB(void)
 	for (i = 0; i < ASPEED_I2C_NUMBER ; i += 2) {
 		dev_addr = IPMB_ADDR + i;
 
+		printk("I2C M : %d - IPMB S : %d:\n", (i+1), i);
+
 		strcpy(name_m, I2CMDRV);
 		sprintf(num, "%d", (i+1));
 		strcat(name_m, num);
@@ -141,6 +149,7 @@ void test_i2c_slave_IPMB(void)
 		i2c_clock = i2c_speed[i%3];
 		dev_config_raw = I2C_MODE_MASTER |
 		I2C_SPEED_SET(i2c_clock);
+		printk("I2C SPEED : %d\n", i2c_clock);
 		i2c_configure(master_dev, dev_config_raw);
 
 		/* obtain i2c slave device */
@@ -151,6 +160,8 @@ void test_i2c_slave_IPMB(void)
 		/* register i2c slave device */
 		ast_zassert_false(i2c_slave_driver_register(slave_dev),
 		"I2C: %s Slave register is got failed", name_s);
+
+		printk("I2C Data Add : %d\n", data_add);
 
 		for (j = 0; j < DATA_COUNT; j++) {
 			data_s[j] = data_add + j;
@@ -178,8 +189,9 @@ void test_i2c_slave_IPMB(void)
 
 			/* check message value */
 			for (j = 2; j < length; j++) {
-				ast_zassert_equal(buf[j], data_s[j-2],
-				"I2C: %s IPMB R/W is got failed at %d", name_m, j);
+				ast_zassert_equal(data_s[j-2], buf[j],
+				"I2C: %s IPMB R/W is got failed at %d, s: %d-r: %d",
+				name_m, j, data_s[j-2], buf[j]);
 			}
 		}
 
@@ -196,7 +208,10 @@ int test_i2c(int count, enum aspeed_test_type type)
 {
 	printk("%s, count: %d, type: %d\n", __func__, count, type);
 
+	printk("I2C slave EEPROM\n");
 	test_i2c_slave_EEPROM();
+
+	printk("I2C slave IPMB\n");
 	test_i2c_slave_IPMB();
 
 	return ast_ztest_result();
