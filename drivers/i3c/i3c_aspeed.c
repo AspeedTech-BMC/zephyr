@@ -933,6 +933,7 @@ int i3c_aspeed_master_priv_xfer(struct i3c_dev_desc *i3cdev, struct i3c_priv_xfe
 				int nxfers)
 {
 	struct i3c_aspeed_obj *obj = DEV_DATA(i3cdev->master_dev);
+	struct i3c_aspeed_dev_priv *priv = DESC_PRIV(i3cdev);
 	struct i3c_aspeed_xfer xfer;
 	union i3c_device_cmd_queue_port_s cmd_hi, cmd_lo;
 	int pos = 0;
@@ -942,7 +943,7 @@ int i3c_aspeed_master_priv_xfer(struct i3c_dev_desc *i3cdev, struct i3c_priv_xfe
 		return 0;
 	}
 
-	pos = i3c_aspeed_get_pos(obj, i3cdev->info.dynamic_addr);
+	pos = priv->pos;
 	if (pos < 0) {
 		return pos;
 	}
@@ -1094,7 +1095,7 @@ int i3c_aspeed_master_enable_ibi(struct i3c_dev_desc *i3cdev)
 	int ret;
 	int pos = 0;
 
-	pos = i3c_aspeed_get_pos(obj, i3cdev->info.dynamic_addr);
+	pos = priv->pos;
 	if (pos < 0) {
 		return pos;
 	}
