@@ -360,3 +360,27 @@
 &udc {
 	status = "okay";
 };
+
+&i3c_gr {
+	status = "okay";
+};
+
+&i3c0 {
+	status = "okay";
+	assigned-address = <0x8>;
+};
+
+&i3c1 {
+	status = "okay";
+	assigned-address = <0x9>;
+	secondary = <1>;
+	i3c1_smq:i3c-slave-mqueue@9 {
+		compatible = "aspeed,i3c-slave-mqueue";
+		reg = <0x9>;
+		msg-size = <256>;
+		num-of-msgs = <4>;
+		mandatory-data-byte = <0x0>;
+		label = "I3C_1_SMQ";
+		status = "okay";
+	};
+};
