@@ -134,7 +134,7 @@ void i3c_loopback_test(void)
 		return;
 	}
 
-	slave.info.static_addr = DT_PROP(DT_NODELABEL(i3c1), assigned_address);
+	slave.info.static_addr = DT_PROP(DT_BUS(DT_NODELABEL(i3c1_smq)), assigned_address);
 	slave.info.assigned_dynamic_addr = slave.info.static_addr;
 	slave.info.i2c_mode = 0;
 	ret = i3c_master_attach_device(master, &slave);
