@@ -57,7 +57,7 @@ static void i3c_slave_mqueue_write_done(const struct device *dev)
 #endif
 
 	/* update pointer */
-	if (obj->in++ == config->num_of_msgs) {
+	if (++obj->in == config->num_of_msgs) {
 		obj->in = 0;
 	}
 	obj->msg_curr = &obj->msg_queue[obj->in];
@@ -96,7 +96,7 @@ int i3c_slave_mqueue_read(const struct device *dev, uint8_t *dest, int budget)
 	ret = (msg->size > budget) ? budget : msg->size;
 	memcpy(dest, msg->buf, ret);
 
-	if (obj->out++ == config->num_of_msgs) {
+	if (++obj->out == config->num_of_msgs) {
 		obj->out = 0;
 	}
 
