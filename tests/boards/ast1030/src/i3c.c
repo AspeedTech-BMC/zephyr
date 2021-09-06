@@ -66,7 +66,7 @@ static void test_i3c_ci(int count)
 	const struct device *master, *slave_mq;
 	struct i3c_dev_desc slave;
 	struct i3c_priv_xfer xfer;
-	int ret;
+	int ret, i;
 
 	master = device_get_binding(DT_LABEL(DT_NODELABEL(i3c0)));
 	ast_zassert_not_null(master, "failed to get master device");
@@ -92,42 +92,47 @@ static void test_i3c_ci(int count)
 	ast_zassert_equal(I3C_PID_VENDOR_ID(slave.info.pid), I3C_PID_VENDOR_ID_ASPEED,
 			  "incorrect vendor ID %llx", slave.info.pid);
 
-	/* generate random data for private transfer */
-	prepare_test_data(test_data_tx, TEST_PRIV_XFER_SIZE);
+	for (i = 0; i < count; i++) {
+		/* generate random data for private transfer */
+		prepare_test_data(test_data_tx, TEST_PRIV_XFER_SIZE);
 
-	/* setup the private transfer */
-	xfer.rnw = 0;
-	xfer.len = TEST_PRIV_XFER_SIZE;
-	xfer.data.out = test_data_tx;
-	ret = i3c_master_priv_xfer(&slave, &xfer, 1);
-	ast_zassert_equal(ret, 0, "failed to do private transfer");
+		/* setup the private transfer */
+		xfer.rnw = 0;
+		xfer.len = TEST_PRIV_XFER_SIZE;
+		xfer.data.out = test_data_tx;
+		ret = i3c_master_priv_xfer(&slave, &xfer, 1);
+		ast_zassert_equal(ret, 0, "failed to do private transfer");
 
-	k_sleep(K_USEC(1));
+		k_sleep(K_USEC(1));
 
-	ret = i3c_slave_mqueue_read(slave_mq, (uint8_t *)test_data_rx, TEST_PRIV_XFER_SIZE);
-	ast_zassert_equal(ret, TEST_PRIV_XFER_SIZE, "failed to do mqueue read: %d", ret);
+		ret = i3c_slave_mqueue_read(slave_mq, (uint8_t *)test_data_rx, TEST_PRIV_XFER_SIZE);
+		ast_zassert_equal(ret, TEST_PRIV_XFER_SIZE, "failed to do mqueue read: %d", ret);
 
-	ast_zassert_mem_equal(test_data_tx, test_data_rx, TEST_PRIV_XFER_SIZE, "data mismatch");
+		ast_zassert_mem_equal(test_data_tx, test_data_rx, TEST_PRIV_XFER_SIZE,
+				      "data mismatch");
 
-	i3c_master_request_ibi(&slave, &i3c_ibi_def_callbacks);
-	ret = i3c_master_enable_ibi(&slave);
-	if (ret) {
-		printk("failed to enable sir: %d\n", ret);
+		ret = i3c_master_request_ibi(&slave, &i3c_ibi_def_callbacks);
+		ast_zassert_equal(ret, 0, "failed to request sir");
+		ret = i3c_master_enable_ibi(&slave);
+		ast_zassert_equal(ret, 0, "failed to enable sir");
+
+		/* setup IBI data */
+		prepare_test_data(test_data_tx, TEST_IBI_PAYLOAD_SIZE);
+		k_sem_init(&ibi_complete, 0, 1);
+
+		ret = i3c_slave_mqueue_write(slave_mq, test_data_tx, TEST_IBI_PAYLOAD_SIZE);
+		k_sem_take(&ibi_complete, K_FOREVER);
+
+		/* IBI test done, check result */
+		ret = DT_PROP(DT_NODELABEL(i3c1_smq), mandatory_data_byte);
+		ast_zassert_equal(ret, test_data_rx[0], "IBI MDB mismatch: %02x %02x\n", ret,
+				  test_data_rx[0]);
+		ast_zassert_mem_equal(test_data_tx, &test_data_rx[1], TEST_IBI_PAYLOAD_SIZE,
+				      "data mismatch");
 	}
 
-	/* setup IBI data */
-	prepare_test_data(test_data_tx, TEST_IBI_PAYLOAD_SIZE);
-	k_sem_init(&ibi_complete, 0, 1);
-
-	ret = i3c_slave_mqueue_write(slave_mq, test_data_tx, TEST_IBI_PAYLOAD_SIZE);
-	k_sem_take(&ibi_complete, K_FOREVER);
-
-	/* IBI test done, check result */
-	ret = DT_PROP(DT_NODELABEL(i3c1_smq), mandatory_data_byte);
-	ast_zassert_equal(ret, test_data_rx[0], "IBI MDB mismatch: %02x %02x\n", ret,
-			  test_data_rx[0]);
-	ast_zassert_mem_equal(test_data_tx, &test_data_rx[1], TEST_IBI_PAYLOAD_SIZE,
-			      "data mismatch");
+	ret = i3c_master_deattach_device(master, &slave);
+	ast_zassert_equal(ret, 0, "failed to deattach device");
 }
 
 int test_i3c(int count, enum aspeed_test_type type)
