@@ -950,7 +950,7 @@ int i3c_aspeed_master_priv_xfer(struct i3c_dev_desc *i3cdev, struct i3c_priv_xfe
 	}
 
 	cmds = (struct i3c_aspeed_cmd *)k_calloc(sizeof(struct i3c_aspeed_cmd), nxfers);
-	__ASSERT(cmd, "failed to allocat cmd\n");
+	__ASSERT(cmds, "failed to allocat cmd\n");
 
 	xfer.ncmds = nxfers;
 	xfer.cmds = cmds;
