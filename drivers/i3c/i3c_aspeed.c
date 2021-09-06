@@ -935,6 +935,7 @@ int i3c_aspeed_master_priv_xfer(struct i3c_dev_desc *i3cdev, struct i3c_priv_xfe
 	struct i3c_aspeed_obj *obj = DEV_DATA(i3cdev->master_dev);
 	struct i3c_aspeed_dev_priv *priv = DESC_PRIV(i3cdev);
 	struct i3c_aspeed_xfer xfer;
+	struct i3c_aspeed_cmd *cmds;
 	union i3c_device_cmd_queue_port_s cmd_hi, cmd_lo;
 	int pos = 0;
 	int i, ret;
@@ -948,8 +949,11 @@ int i3c_aspeed_master_priv_xfer(struct i3c_dev_desc *i3cdev, struct i3c_priv_xfe
 		return pos;
 	}
 
+	cmds = (struct i3c_aspeed_cmd *)k_calloc(sizeof(struct i3c_aspeed_cmd), nxfers);
+	__ASSERT(cmd, "failed to allocat cmd\n");
+
 	xfer.ncmds = nxfers;
-	xfer.cmds = k_calloc(sizeof(struct i3c_aspeed_cmd), xfer.ncmds);
+	xfer.cmds = cmds;
 	xfer.ret = 0;
 
 	for (i = 0; i < nxfers; i++) {
@@ -989,7 +993,7 @@ int i3c_aspeed_master_priv_xfer(struct i3c_dev_desc *i3cdev, struct i3c_priv_xfe
 	k_sem_take(&xfer.sem, I3C_ASPEED_XFER_TIMEOUT);
 
 	ret = xfer.ret;
-	k_free(xfer.cmds);
+	k_free(cmds);
 
 	return ret;
 }
@@ -1055,6 +1059,8 @@ int i3c_aspeed_master_attach_device(const struct device *dev, struct i3c_dev_des
 
 	/* allocate private data of the device */
 	priv = (struct i3c_aspeed_dev_priv *)k_calloc(sizeof(struct i3c_aspeed_dev_priv), 1);
+	__ASSERT(priv, "failed to allocat device private data\n");
+
 	priv->pos = i;
 	slave->priv_data = priv;
 
@@ -1164,6 +1170,8 @@ int i3c_aspeed_slave_send_sir(const struct device *dev, uint8_t mdb, uint8_t *da
 		}
 	} else {
 		buf = k_calloc(CONFIG_I3C_ASPEED_MAX_IBI_PAYLOAD - 1, sizeof(uint8_t));
+		__ASSERT(buf, "failed to allocat sir data buffer\n");
+
 		if (nbytes > 1) {
 			memcpy(buf, data, nbytes - 1);
 		}
