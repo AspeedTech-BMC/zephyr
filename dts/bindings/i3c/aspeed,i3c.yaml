@@ -10,7 +10,7 @@ include: [i3c-controller.yaml, aspeed-pinctrl.yaml]
 properties:
   secondary:
     required: false
-    type: int
+    type: boolean
     description: Initialized as a secondary master / slave device
   assigned-address:
     required: true
