@@ -14,3 +14,7 @@ properties:
     ni3cs:
       type: int
       required: true
+    pull-up-resistor-ohm:
+      type: array
+      default: [2000]
+      required: false
