@@ -265,15 +265,10 @@ int ast_i2c_filter_init(const struct device *dev)
 	if (!cfg->filter_dev_name) {
 		LOG_ERR("i2c filter not found");
 		return -EINVAL;
+	} else if (!data->filter_dev_base) {
+		LOG_ERR("i2c filter not be initial");
+		return -EINVAL;
 	}
-
-	const struct ast_i2c_filter_config *gcfg = DEV_CFG(cfg->parent);
-
-	/* assign filter device base */
-	data->filter_dev_base = (gcfg->filter_g_base + AST_I2C_F_D_BASE);
-	data->filter_dev_base += (cfg->index * AST_I2C_F_D_OFFSET);
-
-	int i = 0;
 
 	/* close filter first and fill initial timing setting */
 	data->filter_dev_en = 0;
@@ -285,6 +280,24 @@ int ast_i2c_filter_init(const struct device *dev)
 	/* clear and enable local interrupt */
 	I2C_W_R(0x1, (data->filter_dev_base+AST_I2C_F_INT_STS));
 	I2C_W_R(0x1, (data->filter_dev_base+AST_I2C_F_INT_EN));
+
+	return 0;
+}
+
+/* i2c filter child initial */
+int ast_i2c_filter_child_init(const struct device *dev)
+{
+	const struct ast_i2c_filter_child_config *cfg = DEV_C_CFG(dev);
+	struct ast_i2c_filter_child_data *data = DEV_C_DATA(dev);
+	const struct ast_i2c_filter_config *gcfg = DEV_CFG(cfg->parent);
+	int i = 0;
+
+	/* assign filter device base */
+	data->filter_dev_base = (gcfg->filter_g_base + AST_I2C_F_D_BASE);
+	data->filter_dev_base += (cfg->index * AST_I2C_F_D_OFFSET);
+
+	LOG_DBG("Filter Base is %x", data->filter_dev_base);
+	LOG_DBG("Filter Index is %d", cfg->index);
 
 	/* clear filter re-map index table */
 	for (i = 0; i < AST_I2C_F_REMAP_SIZE; i++) {
@@ -325,7 +338,7 @@ struct filter_info {
 		.parent = DEVICE_DT_GET(DT_PARENT(node_id)),	\
 },
 #define ASPEED_FILTER_CHILD_DEFINE(node_id)				\
-	DEVICE_DT_DEFINE(node_id, NULL, NULL, \
+	DEVICE_DT_DEFINE(node_id, ast_i2c_filter_child_init, NULL, \
 	&DT_PARENT(node_id).data[node_id],		\
 	&DT_PARENT(node_id).cfg[node_id], POST_KERNEL, 0, NULL);
 
