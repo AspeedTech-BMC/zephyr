@@ -81,13 +81,13 @@ void test_pwm_tach_loopback_accurate(void)
 			k_usleep(rand_cycles * USEC_PER_SEC / cycles_per_sec);
 			expected_rpm = cycles_per_min / rand_cycles;
 			err = sensor_sample_fetch(tach_dev);
-			zassert_ok(err, "Failed to read sensor %s\n",
-				   fan_list[hw_pwm].device_label);
+			ast_zassert_ok(err, "Failed to read sensor %s\n",
+				       fan_list[hw_pwm].device_label);
 			sensor_channel_get(tach_dev, SENSOR_CHAN_RPM, &sensor_value);
 			LOG_DBG("%d value = %10.6f expected = %d rand_cycles = %d", hw_pwm,
 				sensor_value_to_double(&sensor_value), expected_rpm, rand_cycles);
-			zassert_equal(sensor_value.val1, expected_rpm, "PWM%d(%d == %d)", hw_pwm,
-				      sensor_value.val1, expected_rpm);
+			ast_zassert_equal(sensor_value.val1, expected_rpm, "PWM%d(%d == %d)",
+					  hw_pwm, sensor_value.val1, expected_rpm);
 		}
 	}
 }
@@ -114,13 +114,13 @@ void test_pwm_tach_loopback_rough(void)
 			k_usleep(rand_cycles * USEC_PER_SEC / cycles_per_sec);
 			expected_rpm = cycles_per_min / rand_cycles;
 			err = sensor_sample_fetch(tach_dev);
-			zassert_ok(err, "Failed to read sensor %s\n",
-				   fan_list[hw_pwm].device_label);
+			ast_zassert_ok(err, "Failed to read sensor %s\n",
+				       fan_list[hw_pwm].device_label);
 			sensor_channel_get(tach_dev, SENSOR_CHAN_RPM, &sensor_value);
 			LOG_DBG("%d value = %10.6f expected = %d rand_cycles = %d", hw_pwm,
 				sensor_value_to_double(&sensor_value), expected_rpm, rand_cycles);
-			zassert_true(sensor_value.val1 >= expected_rpm, "PWM%d(%d < %d)", hw_pwm,
-				     sensor_value.val1, expected_rpm);
+			ast_zassert_true(sensor_value.val1 >= expected_rpm, "PWM%d(%d < %d)",
+					 hw_pwm, sensor_value.val1, expected_rpm);
 		}
 	}
 }
@@ -157,13 +157,13 @@ void test_pwm_tach_fan(void)
 			/* Wait Fan stable */
 			k_msleep(3000);
 			err = sensor_sample_fetch(tach_dev);
-			zassert_ok(err, "Failed to read sensor %s\n",
-				   fan_list[hw_pwm].device_label);
+			ast_zassert_ok(err, "Failed to read sensor %s\n",
+				       fan_list[hw_pwm].device_label);
 			sensor_channel_get(tach_dev, SENSOR_CHAN_RPM, &sensor_value);
 			LOG_DBG("duty: %d%% rpm = %d", AFB0812SH_FAN_DUTY[j], sensor_value.val1);
-			zassert_within(sensor_value.val1, AFB0812SH_FAN_RPM[j], AFB0812SH_FAN_ERROR,
-				       "%d != %d+-%d", sensor_value.val1, AFB0812SH_FAN_RPM[j],
-				       AFB0812SH_FAN_ERROR);
+			ast_zassert_within(sensor_value.val1, AFB0812SH_FAN_RPM[j],
+					   AFB0812SH_FAN_ERROR, "%d != %d+-%d", sensor_value.val1,
+					   AFB0812SH_FAN_RPM[j], AFB0812SH_FAN_ERROR);
 		}
 	}
 }

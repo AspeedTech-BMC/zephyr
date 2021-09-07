@@ -14,4 +14,8 @@ config BOARD
 	default "ast1060_evb"
 endif # BOARD_AST1060_EVB
 
+if BOARD_AST1030_FT
+config BOARD
+	default "ast1030_ft"
+endif # BOARD_AST1030_EVB
 

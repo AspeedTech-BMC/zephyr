@@ -80,12 +80,13 @@ void test_adc_normal_mode(void)
 						      &val);
 				LOG_DBG("%s:[%d] %dmv(raw:%d)", adc_list[i].device_label, j, val,
 					m_sample_buffer[j]);
-				zassert_within(val, golden_value[i * ASPEED_ADC_CH_NUMBER + j],
-					       adc_get_ref(adc_dev) / TOLERANCE_ERROR_RATE,
-					       "%s:[%d] %dmv(raw:%d) check %d+-%d failed!!",
-					       adc_list[i].device_label, j, val, m_sample_buffer[j],
-					       golden_value[i * ASPEED_ADC_CH_NUMBER + j],
-					       adc_get_ref(adc_dev) / TOLERANCE_ERROR_RATE);
+				ast_zassert_within(val, golden_value[i * ASPEED_ADC_CH_NUMBER + j],
+						   adc_get_ref(adc_dev) / TOLERANCE_ERROR_RATE,
+						   "%s:[%d] %dmv(raw:%d) check %d+-%d failed!!",
+						   adc_list[i].device_label, j, val,
+						   m_sample_buffer[j],
+						   golden_value[i * ASPEED_ADC_CH_NUMBER + j],
+						   adc_get_ref(adc_dev) / TOLERANCE_ERROR_RATE);
 			}
 		}
 	}
@@ -121,12 +122,12 @@ void test_adc_battery_mode(void)
 					      adc_list[i].channel_config[7].gain, 10, &val);
 			LOG_DBG("%s:[%d] %dmv(raw:%d)", adc_list[i].device_label, 7, val,
 				m_sample_buffer[0]);
-			zassert_within(val, golden_value[i * ASPEED_ADC_CH_NUMBER + 7],
-				       adc_get_ref(adc_dev) / TOLERANCE_ERROR_RATE,
-				       "%s:[%d] %dmv(raw:%d) check %d+-%d failed!!",
-				       adc_list[i].device_label, 7, val, m_sample_buffer[0],
-				       golden_value[i * ASPEED_ADC_CH_NUMBER + 7],
-				       adc_get_ref(adc_dev) / TOLERANCE_ERROR_RATE);
+			ast_zassert_within(val, golden_value[i * ASPEED_ADC_CH_NUMBER + 7],
+					   adc_get_ref(adc_dev) / TOLERANCE_ERROR_RATE,
+					   "%s:[%d] %dmv(raw:%d) check %d+-%d failed!!",
+					   adc_list[i].device_label, 7, val, m_sample_buffer[0],
+					   golden_value[i * ASPEED_ADC_CH_NUMBER + 7],
+					   adc_get_ref(adc_dev) / TOLERANCE_ERROR_RATE);
 		}
 	}
 }

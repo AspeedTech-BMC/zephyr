@@ -34,18 +34,20 @@ extern void aspeed_ft_post_init(struct aspeed_tests *testcase, int count);
 #define TEST_MODULE_CNT		12
 #define TEST_STACKSIZE		1024
 
-#define TEST_TIMEOUT		20
+#define TEST_CI_TIMEOUT		20
+#define TEST_SLT_TIMEOUT	20
+#define TEST_FT_TIMEOUT		5
 
 #define TEST_CI_FUNC_COUNT	100
-#define TEST_SLT_FUNC_COUNT	100
-#define TEST_FT_FUNC_COUNT	100
+#define TEST_SLT_FUNC_COUNT	1
+#define TEST_FT_FUNC_COUNT	1
 
 K_THREAD_STACK_ARRAY_DEFINE(test_thread_stack, TEST_MODULE_CNT, TEST_STACKSIZE);
 
 static struct aspeed_test_param test_params[] = {
-	{ AST_TEST_CI, "AST_TEST_CI", TEST_CI_FUNC_COUNT, TEST_TIMEOUT },
-	{ AST_TEST_SLT, "AST_TEST_SLT", TEST_SLT_FUNC_COUNT, TEST_TIMEOUT },
-	{ AST_TEST_FT, "AST_TEST_FT", TEST_FT_FUNC_COUNT, TEST_TIMEOUT },
+	{ AST_TEST_CI, "AST_TEST_CI", TEST_CI_FUNC_COUNT, TEST_CI_TIMEOUT },
+	{ AST_TEST_SLT, "AST_TEST_SLT", TEST_SLT_FUNC_COUNT, TEST_SLT_TIMEOUT },
+	{ AST_TEST_FT, "AST_TEST_FT", TEST_FT_FUNC_COUNT, TEST_FT_TIMEOUT },
 };
 
 typedef int (*test_func_t) (int count, enum aspeed_test_type);
