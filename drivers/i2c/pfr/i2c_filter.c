@@ -41,12 +41,12 @@ struct ast_i2c_f_tbl filter_tbl[AST_I2C_F_COUNT] NON_CACHED_BSS_ALIGN16;
 /* Filter child config */
 struct ast_i2c_filter_child_config {
 	char		*filter_dev_name; /* i2c filter device name */
-	uint32_t	filter_dev_base; /* i2c filter device base */
 	const struct device *parent; /* Parent device handler */
 	uint8_t	index; /* i2c filter index */
 };
 
 struct ast_i2c_filter_child_data {
+	uint32_t	filter_dev_base;	/* i2c filter device base */
 	uint8_t	filter_dev_en;	/* i2cflt04 : filter enable */
 	uint8_t	filter_en;		/* i2cflt0c : white list */
 	uint8_t	filter_idx[AST_I2C_F_REMAP_SIZE];
@@ -167,6 +167,9 @@ struct ast_i2c_f_bitmap *table)
 	if (!cfg->filter_dev_name) {
 		LOG_ERR("i2c filter not found");
 		return -EINVAL;
+	} else if (!data->filter_dev_base) {
+		LOG_ERR("i2c filter not be initial");
+		return -EINVAL;
 	} else if (idx > 15) {
 		LOG_ERR("i2c filter index invalid");
 		return -EINVAL;
@@ -181,16 +184,16 @@ struct ast_i2c_f_bitmap *table)
 
 	switch (offset) {
 	case 0:
-		I2C_W_R((*list_index), (cfg->filter_dev_base + AST_I2C_F_MAP0));
+		I2C_W_R((*list_index), (data->filter_dev_base + AST_I2C_F_MAP0));
 		break;
 	case 1:
-		I2C_W_R((*list_index), (cfg->filter_dev_base + AST_I2C_F_MAP1));
+		I2C_W_R((*list_index), (data->filter_dev_base + AST_I2C_F_MAP1));
 		break;
 	case 2:
-		I2C_W_R((*list_index), (cfg->filter_dev_base + AST_I2C_F_MAP2));
+		I2C_W_R((*list_index), (data->filter_dev_base + AST_I2C_F_MAP2));
 		break;
 	case 3:
-		I2C_W_R((*list_index), (cfg->filter_dev_base + AST_I2C_F_MAP3));
+		I2C_W_R((*list_index), (data->filter_dev_base + AST_I2C_F_MAP3));
 		break;
 	default:
 		LOG_ERR("i2c filter invalid re-map index");
@@ -217,6 +220,9 @@ uint8_t clr_idx, uint8_t clr_tbl)
 	if (!cfg->filter_dev_name) {
 		LOG_ERR("i2c filter not found");
 		return -EINVAL;
+	} else if (!data->filter_dev_base) {
+		LOG_ERR("i2c filter not be initial");
+		return -EINVAL;
 	}
 
 	data->filter_dev_en = filter_en;
@@ -225,47 +231,60 @@ uint8_t clr_idx, uint8_t clr_tbl)
 	/* set white list buffer into device */
 	if ((data->filter_dev_en) && (data->filter_en)) {
 		I2C_LW_R(TO_PHY_ADDR(&(filter_tbl[(cfg->index)])),
-		(cfg->filter_dev_base+AST_I2C_F_BUF));
+		(data->filter_dev_base+AST_I2C_F_BUF));
 	}
 
 	/* clear re-map index */
 	if (clr_idx) {
-		I2C_W_R(0x0, (cfg->filter_dev_base+AST_I2C_F_MAP0));
-		I2C_W_R(0x0, (cfg->filter_dev_base+AST_I2C_F_MAP1));
-		I2C_W_R(0x0, (cfg->filter_dev_base+AST_I2C_F_MAP2));
-		I2C_W_R(0x0, (cfg->filter_dev_base+AST_I2C_F_MAP3));
+		I2C_W_R(0x0, (data->filter_dev_base+AST_I2C_F_MAP0));
+		I2C_W_R(0x0, (data->filter_dev_base+AST_I2C_F_MAP1));
+		I2C_W_R(0x0, (data->filter_dev_base+AST_I2C_F_MAP2));
+		I2C_W_R(0x0, (data->filter_dev_base+AST_I2C_F_MAP3));
 	}
 
 	/* clear white list table */
 	if (clr_tbl) {
-		I2C_W_R(0, (cfg->filter_dev_base+AST_I2C_F_BUF));
+		I2C_W_R(0, (data->filter_dev_base+AST_I2C_F_BUF));
 		data->filter_en = 0x0;
 	}
 
 	/* apply filter setting */
-	I2C_W_R(data->filter_dev_en, (cfg->filter_dev_base+AST_I2C_F_EN));
-	I2C_W_R(data->filter_en, (cfg->filter_dev_base+AST_I2C_F_CFG));
+	I2C_W_R(data->filter_dev_en, (data->filter_dev_base+AST_I2C_F_EN));
+	I2C_W_R(data->filter_en, (data->filter_dev_base+AST_I2C_F_CFG));
 
 	return 0;
 }
 
-/* i2c filter child initial */
-int ast_i2c_filter_child_init(const struct device *dev)
+/* i2c filter initial */
+int ast_i2c_filter_init(const struct device *dev)
 {
 	const struct ast_i2c_filter_child_config *cfg = DEV_C_CFG(dev);
 	struct ast_i2c_filter_child_data *data = DEV_C_DATA(dev);
+
+	/* check parameter valid */
+	if (!cfg->filter_dev_name) {
+		LOG_ERR("i2c filter not found");
+		return -EINVAL;
+	}
+
+	const struct ast_i2c_filter_config *gcfg = DEV_CFG(cfg->parent);
+
+	/* assign filter device base */
+	data->filter_dev_base = (gcfg->filter_g_base + AST_I2C_F_D_BASE);
+	data->filter_dev_base += (cfg->index * AST_I2C_F_D_OFFSET);
+
 	int i = 0;
 
 	/* close filter first and fill initial timing setting */
 	data->filter_dev_en = 0;
-	I2C_W_R(0, (cfg->filter_dev_base+AST_I2C_F_EN));
+	I2C_W_R(0, (data->filter_dev_base+AST_I2C_F_EN));
 	data->filter_en = 0;
-	I2C_W_R(0, (cfg->filter_dev_base+AST_I2C_F_CFG));
-	I2C_W_R(AST_I2C_F_TIMING_VAL, (cfg->filter_dev_base+AST_I2C_F_TIMING));
+	I2C_W_R(0, (data->filter_dev_base+AST_I2C_F_CFG));
+	I2C_W_R(AST_I2C_F_TIMING_VAL, (data->filter_dev_base+AST_I2C_F_TIMING));
 
 	/* clear and enable local interrupt */
-	I2C_W_R(0x1, (cfg->filter_dev_base+AST_I2C_F_INT_STS));
-	I2C_W_R(0x1, (cfg->filter_dev_base+AST_I2C_F_INT_EN));
+	I2C_W_R(0x1, (data->filter_dev_base+AST_I2C_F_INT_STS));
+	I2C_W_R(0x1, (data->filter_dev_base+AST_I2C_F_INT_EN));
 
 	/* clear filter re-map index table */
 	for (i = 0; i < AST_I2C_F_REMAP_SIZE; i++) {
@@ -279,7 +298,7 @@ int ast_i2c_filter_child_init(const struct device *dev)
 }
 
 /* i2c filter initial */
-int ast_i2c_filter_init(const struct device *dev)
+int ast_i2c_filter_global_init(const struct device *dev)
 {
 	const struct ast_i2c_filter_config *cfg = DEV_CFG(dev);
 
@@ -302,12 +321,11 @@ struct filter_info {
 #define ASPEED_FILTER_CHILD_DATA(node_id) {},
 #define ASPEED_FILTER_CHILD_CFG(node_id) {			\
 		.filter_dev_name = DT_PROP(node_id, label),	\
-		.filter_dev_base = DT_REG_ADDR(node_id),	\
 		.index = DT_PROP(node_id, index),	\
 		.parent = DEVICE_DT_GET(DT_PARENT(node_id)),	\
 },
 #define ASPEED_FILTER_CHILD_DEFINE(node_id)				\
-	DEVICE_DT_DEFINE(node_id, ast_i2c_filter_child_init, NULL, \
+	DEVICE_DT_DEFINE(node_id, NULL, NULL, \
 	&DT_PARENT(node_id).data[node_id],		\
 	&DT_PARENT(node_id).cfg[node_id], POST_KERNEL, 0, NULL);
 
@@ -337,14 +355,14 @@ struct filter_info {
 		.irq_config_func = ast_i2c_filter_cfg_##inst,	 \
 	};\
 	\
-	DEVICE_DT_INST_DEFINE(inst,		 \
-			      &ast_i2c_filter_init,	 \
-			      NULL,				 \
-			      NULL,	 \
-			      &ast_i2c_filter_##inst##_cfg,		 \
-			      POST_KERNEL,			 \
-			      CONFIG_KERNEL_INIT_PRIORITY_DEVICE,	 \
-			      NULL);								 \
+	DEVICE_DT_INST_DEFINE(inst, \
+			      &ast_i2c_filter_global_init, \
+			      NULL, \
+			      NULL, \
+			      &ast_i2c_filter_##inst##_cfg, \
+			      POST_KERNEL, \
+			      CONFIG_KERNEL_INIT_PRIORITY_DEVICE, \
+			      NULL); \
 	enum { DT_FOREACH_CHILD(DT_DRV_INST(inst), FILTER_ENUM) }; \
 	DT_FOREACH_CHILD(DT_DRV_INST(inst), ASPEED_FILTER_CHILD_DEFINE)\
 	\
