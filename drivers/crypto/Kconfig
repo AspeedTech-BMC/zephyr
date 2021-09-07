@@ -18,6 +18,13 @@ config HASH_SHELL
 	help
 	  Enable Hash Shell for testing.
 
+config RSA_SHELL
+	bool "Enable RSA Shell"
+	default y
+	depends on SHELL
+	help
+	  Enable RSA Shell for testing.
+
 config CRYPTO_INIT_PRIORITY
 	int "Crypto devices init priority"
 	default 90

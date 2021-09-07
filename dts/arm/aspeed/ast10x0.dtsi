@@ -842,6 +842,16 @@
 			clocks = <&sysclk ASPEED_CLK_GATE_YCLK>;
 			resets = <&sysrst ASPEED_RESET_HACE>;
 		};
+
+		rsa: rsa@7e6f2000 {
+			compatible = "aspeed,rsa";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			reg = <0x7e6f2000 0x100
+				   0x79000000 0x1800>;
+			clocks = <&sysclk ASPEED_CLK_GATE_RSACLK>;
+			label = "RSA";
+		};
 	};
 };
 
