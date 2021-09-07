@@ -144,7 +144,7 @@
 				ngpios = <32>;
 				interrupt-controller;
 				#interrupt-cells = <2>;
-				gpio-reserved = <0>;
+				gpio-reserved = <0xc0>;
 				label = "GPIO0_M_P";
 				pin-offset = <96>;
 			};
@@ -153,7 +153,7 @@
 				#gpio-cells = <2>;
 				gpio-controller;
 				ngpios = <32>;
-				gpio-reserved = <0x1f3e7c0>;
+				gpio-reserved = <0xf9f3e0>;
 				interrupt-controller;
 				#interrupt-cells = <2>;
 				label = "GPIO0_Q_T";
