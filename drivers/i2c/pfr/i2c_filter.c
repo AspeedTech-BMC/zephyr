@@ -38,18 +38,29 @@ LOG_MODULE_REGISTER(i2c_pfr_filter);
 /* i2c filter buf */
 struct ast_i2c_f_tbl filter_tbl[AST_I2C_F_COUNT] NON_CACHED_BSS_ALIGN16;
 
-struct ast_i2c_filter_data {
-	uint32_t	filter_g_base;	/* i2cflt global base*/
+/* Filter child config */
+struct ast_i2c_filter_child_config {
+	char		*filter_dev_name; /* i2c filter device name */
+	uint32_t	filter_dev_base; /* i2c filter device base */
+	const struct device *parent; /* Parent device handler */
+	uint8_t	index; /* i2c filter index */
+};
+
+struct ast_i2c_filter_child_data {
 	uint8_t	filter_dev_en;	/* i2cflt04 : filter enable */
 	uint8_t	filter_en;		/* i2cflt0c : white list */
 	uint8_t	filter_idx[AST_I2C_F_REMAP_SIZE];
 	uint8_t	*filter_buf;
 };
 
+struct filter_array {
+	const struct device *dev;
+};
+
 struct ast_i2c_filter_config {
-	char		*filter_dev_name;
-	uint32_t	filter_dev_base;
-	uint8_t	filter_dev_idx;
+	uint32_t	filter_g_base;
+	struct filter_array *filter_child;
+	uint32_t filter_child_num;
 	void (*irq_config_func)(const struct device *dev);
 };
 
@@ -57,24 +68,28 @@ struct ast_i2c_filter_config {
 #define DEV_CFG(dev)				     \
 	((const struct ast_i2c_filter_config *const) \
 	 (dev)->config)
-#define DEV_DATA(dev) \
-	((struct ast_i2c_filter_data *const)(dev)->data)
+#define DEV_C_CFG(dev)				     \
+		((const struct ast_i2c_filter_child_config *const) \
+		 (dev)->config)
+#define DEV_C_DATA(dev) \
+	((struct ast_i2c_filter_child_data *const)(dev)->data)
 
 /* i2c filter interrupt service routine */
 void ast_i2c_filter_isr(const struct device *dev)
 {
-	struct ast_i2c_filter_data *data = DEV_DATA(dev);
+	const struct ast_i2c_filter_config *cfg = DEV_CFG(dev);
 
 	uint8_t index = 0, i, infowp, inforp;
-	uint32_t stsg = sys_read32(data->filter_g_base + AST_I2C_F_G_INT_STS);
-	uint32_t filter_dev_base = 0, stsl = 0, sts = 0;
+	uint32_t stsg = sys_read32(cfg->filter_g_base + AST_I2C_F_G_INT_STS);
+	uint32_t filter_dev_base = 0, dev_base = 0, stsl = 0, sts = 0;
 	uint32_t value = 0, count = 0;
+	dev_base = cfg->filter_g_base + AST_I2C_F_D_BASE;
 
 	/* find which one local filter interrupt status */
 	for (index = 0; index < AST_I2C_F_COUNT; index++) {
 		/* local filter */
 		if (stsg & (1 << index)) {
-			filter_dev_base = (data->filter_g_base + (index * AST_I2C_F_D_OFFSET));
+			filter_dev_base = (dev_base + (index * AST_I2C_F_D_OFFSET));
 			stsl = sys_read32(filter_dev_base + AST_I2C_F_INT_STS);
 
 			if (stsl) {
@@ -103,14 +118,16 @@ void ast_i2c_filter_isr(const struct device *dev)
 	}
 }
 
+
 /* i2c filter default */
 int ast_i2c_filter_default(const struct device *dev, uint8_t pass)
 {
-	const struct ast_i2c_filter_config *cfg = DEV_CFG(dev);
+	const struct ast_i2c_filter_child_config *cfg = DEV_C_CFG(dev);
 
 	uint8_t i;
 	uint32_t value = 0;
-	struct ast_i2c_f_tbl *dev_wl_tbl = &(filter_tbl[(cfg->filter_dev_idx)]);
+
+	struct ast_i2c_f_tbl *dev_wl_tbl = &(filter_tbl[(cfg->index)]);
 	struct ast_i2c_f_bitmap *bmp_buf = &(dev_wl_tbl->filter_tbl[0]);
 
 	/* check parameter valid */
@@ -131,17 +148,19 @@ int ast_i2c_filter_default(const struct device *dev, uint8_t pass)
 	return 0;
 }
 
+
 /* i2c filter update */
 int ast_i2c_filter_update(const struct device *dev, uint8_t idx, uint8_t addr,
 struct ast_i2c_f_bitmap *table)
 {
-	struct ast_i2c_filter_data *data = DEV_DATA(dev);
-	const struct ast_i2c_filter_config *cfg = DEV_CFG(dev);
+	struct ast_i2c_filter_child_data *data = DEV_C_DATA(dev);
+	const struct ast_i2c_filter_child_config *cfg = DEV_C_CFG(dev);
 
 	uint8_t i;
 	uint8_t offset = idx >> 2;
 	uint32_t *list_index = (uint32_t *)(data->filter_idx);
-	struct ast_i2c_f_tbl *dev_wl_tbl = &(filter_tbl[(cfg->filter_dev_idx)]);
+
+	struct ast_i2c_f_tbl *dev_wl_tbl = &(filter_tbl[(cfg->index)]);
 	struct ast_i2c_f_bitmap *bmp_buf = &(dev_wl_tbl->filter_tbl[0]);
 
 	/* check parameter valid */
@@ -187,13 +206,12 @@ struct ast_i2c_f_bitmap *table)
 	return 0;
 }
 
-
 /* i2c filter enable */
 int ast_i2c_filter_en(const struct device *dev, uint8_t filter_en, uint8_t wlist_en,
 uint8_t clr_idx, uint8_t clr_tbl)
 {
-	struct ast_i2c_filter_data *data = DEV_DATA(dev);
-	const struct ast_i2c_filter_config *cfg = DEV_CFG(dev);
+	struct ast_i2c_filter_child_data *data = DEV_C_DATA(dev);
+	const struct ast_i2c_filter_child_config *cfg = DEV_C_CFG(dev);
 
 	/* check parameter valid */
 	if (!cfg->filter_dev_name) {
@@ -206,7 +224,7 @@ uint8_t clr_idx, uint8_t clr_tbl)
 
 	/* set white list buffer into device */
 	if ((data->filter_dev_en) && (data->filter_en)) {
-		I2C_LW_R(TO_PHY_ADDR(&(filter_tbl[(cfg->filter_dev_idx)])),
+		I2C_LW_R(TO_PHY_ADDR(&(filter_tbl[(cfg->index)])),
 		(cfg->filter_dev_base+AST_I2C_F_BUF));
 	}
 
@@ -231,22 +249,12 @@ uint8_t clr_idx, uint8_t clr_tbl)
 	return 0;
 }
 
-/* i2c filter initial */
-int ast_i2c_filter_init(const struct device *dev)
+/* i2c filter child initial */
+int ast_i2c_filter_child_init(const struct device *dev)
 {
-	struct ast_i2c_filter_data *data = DEV_DATA(dev);
-	const struct ast_i2c_filter_config *cfg = DEV_CFG(dev);
-	uint8_t i = 0;
-	uint32_t val = 0;
-
-	/* check parameter valid */
-	if (!cfg->filter_dev_name) {
-		LOG_ERR("i2c filter not found");
-		return -EINVAL;
-	}
-
-	/* fill the global base */
-	data->filter_g_base = cfg->filter_dev_base & 0xFFFFF000;
+	const struct ast_i2c_filter_child_config *cfg = DEV_C_CFG(dev);
+	struct ast_i2c_filter_child_data *data = DEV_C_DATA(dev);
+	int i = 0;
 
 	/* close filter first and fill initial timing setting */
 	data->filter_dev_en = 0;
@@ -255,55 +263,99 @@ int ast_i2c_filter_init(const struct device *dev)
 	I2C_W_R(0, (cfg->filter_dev_base+AST_I2C_F_CFG));
 	I2C_W_R(AST_I2C_F_TIMING_VAL, (cfg->filter_dev_base+AST_I2C_F_TIMING));
 
-	/* clear and enable global interrupt */
-	I2C_W_R(0x1F, (data->filter_g_base+AST_I2C_F_G_INT_STS));
-	I2C_W_R(0x1, (data->filter_g_base+AST_I2C_F_G_INT_EN));
-
 	/* clear and enable local interrupt */
 	I2C_W_R(0x1, (cfg->filter_dev_base+AST_I2C_F_INT_STS));
-	/* val = I2C_R(AST_I2C_F_INT_EN); */
-	val |= 1 << (cfg->filter_dev_idx);
-	I2C_W_R(val, (cfg->filter_dev_base+AST_I2C_F_INT_EN));
+	I2C_W_R(0x1, (cfg->filter_dev_base+AST_I2C_F_INT_EN));
 
 	/* clear filter re-map index table */
 	for (i = 0; i < AST_I2C_F_REMAP_SIZE; i++) {
 		data->filter_idx[i] = 0x0;
 	}
 
+	/* initial filter buffer */
+	data->filter_buf = NULL;
+
 	return 0;
 }
 
+/* i2c filter initial */
+int ast_i2c_filter_init(const struct device *dev)
+{
+	const struct ast_i2c_filter_config *cfg = DEV_CFG(dev);
+
+	/* clear and enable global interrupt */
+	I2C_W_R(0x1F, (cfg->filter_g_base+AST_I2C_F_G_INT_STS));
+	I2C_W_R(0x1F, (cfg->filter_g_base+AST_I2C_F_G_INT_EN));
+
+	/* hook interrupt routine*/
+	cfg->irq_config_func(dev);
+
+	return 0;
+}
+
+struct filter_info {
+	const struct ast_i2c_filter_child_config *cfg;
+	struct ast_i2c_filter_child_data *data;
+};
+
+#define FILTER_ENUM(node_id) node_id,
+#define ASPEED_FILTER_CHILD_DATA(node_id) {},
+#define ASPEED_FILTER_CHILD_CFG(node_id) {			\
+		.filter_dev_name = DT_PROP(node_id, label),	\
+		.filter_dev_base = DT_REG_ADDR(node_id),	\
+		.index = DT_PROP(node_id, index),	\
+		.parent = DEVICE_DT_GET(DT_PARENT(node_id)),	\
+},
+#define ASPEED_FILTER_CHILD_DEFINE(node_id)				\
+	DEVICE_DT_DEFINE(node_id, ast_i2c_filter_child_init, NULL, \
+	&DT_PARENT(node_id).data[node_id],		\
+	&DT_PARENT(node_id).cfg[node_id], POST_KERNEL, 0, NULL);
+
+#define ASPEED_FILTER_CHILD_DEV(node_id) { .dev = DEVICE_DT_GET(node_id) },
+
 #define I2C_FILTER_INIT(inst)				 \
+	static struct filter_array child_filter_##inst[] = { DT_FOREACH_CHILD( \
+		DT_DRV_INST(inst), ASPEED_FILTER_CHILD_DEV) }; \
+	static const struct ast_i2c_filter_child_config \
+	aspeed_filter_child_cfg_##inst[] = { DT_FOREACH_CHILD( \
+	DT_DRV_INST(inst), ASPEED_FILTER_CHILD_CFG) }; \
+	static struct ast_i2c_filter_child_data \
+	aspeed_filter_child_data_##inst[] = { DT_FOREACH_CHILD( \
+	DT_DRV_INST(inst), ASPEED_FILTER_CHILD_DATA) }; \
+	\
+	static const struct filter_info DT_DRV_INST(inst) = {  \
+		.cfg = aspeed_filter_child_cfg_##inst,             \
+		.data = aspeed_filter_child_data_##inst,           \
+	};										\
 	static void ast_i2c_filter_cfg_##inst(const struct device *dev);	 \
-			 \
-	static struct ast_i2c_filter_data			 \
-		ast_i2c_filter_##inst##_dev_data;	 \
-			 \
+	\
 	static const struct ast_i2c_filter_config		 \
 		ast_i2c_filter_##inst##_cfg = {		 \
-		.filter_dev_name = DT_INST_PROP(inst, label),	 \
-		.filter_dev_base = DT_INST_REG_ADDR(inst),	 \
-		.filter_dev_idx = DT_INST_PROP(inst, index),	 \
+		.filter_g_base = DT_INST_REG_ADDR(inst),	 \
+		.filter_child = child_filter_##inst,	 \
+		.filter_child_num = ARRAY_SIZE(child_filter_##inst), \
 		.irq_config_func = ast_i2c_filter_cfg_##inst,	 \
-	};		 \
-			 \
+	};\
+	\
 	DEVICE_DT_INST_DEFINE(inst,		 \
 			      &ast_i2c_filter_init,	 \
 			      NULL,				 \
-			      &ast_i2c_filter_##inst##_dev_data,	 \
+			      NULL,	 \
 			      &ast_i2c_filter_##inst##_cfg,		 \
 			      POST_KERNEL,			 \
 			      CONFIG_KERNEL_INIT_PRIORITY_DEVICE,	 \
 			      NULL);								 \
-			 \
+	enum { DT_FOREACH_CHILD(DT_DRV_INST(inst), FILTER_ENUM) }; \
+	DT_FOREACH_CHILD(DT_DRV_INST(inst), ASPEED_FILTER_CHILD_DEFINE)\
+	\
 	static void ast_i2c_filter_cfg_##inst(const struct device *dev) \
 	{									 \
 		ARG_UNUSED(dev);					 \
-										 \
+	\
 		IRQ_CONNECT(DT_INST_IRQN(inst),	 \
 				DT_INST_IRQ(inst, priority),	 \
 				ast_i2c_filter_isr, DEVICE_DT_INST_GET(inst), 0); \
-			 \
+	\
 		irq_enable(DT_INST_IRQN(inst));		 \
 	}
 
