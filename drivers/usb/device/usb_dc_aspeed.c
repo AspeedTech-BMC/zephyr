@@ -1184,6 +1184,9 @@ int usb_dc_ep_mps(uint8_t ep)
 {
 	uint32_t ep_num = USB_EP_GET_IDX(ep);
 
+	if (ep_num >= NUM_OF_EP_MAX)
+		return 0;
+
 	LOG_DBG("ep[%d] mps: 0x%x", ep, dev_data.ep_data[ep_num].mps);
 
 	return dev_data.ep_data[ep_num].mps;

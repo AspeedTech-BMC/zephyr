@@ -14,16 +14,4 @@ config BOARD
 	default "ast1060_evb"
 endif # BOARD_AST1060_EVB
 
-if BOARD_AST1030_EVB || BOARD_AST1060_EVB
 
-if USB
-config USB_ASPEED
-	default y
-
-config USB_DEVICE_STACK
-	default y
-
-config USB_DEVICE_MANUFACTURER
-	default "Aspeed"
-endif # USB
-endif # BOARD_AST1030_EVB || BOARD_AST1060_EVB

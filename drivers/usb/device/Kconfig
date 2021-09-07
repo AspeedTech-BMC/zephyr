@@ -117,6 +117,8 @@ config USB_NATIVE_POSIX
 
 config USB_ASPEED
 	bool "ASPEED USB Device Controller Driver"
+	select USB_DEVICE_DRIVER
+	select USB_DEVICE_STACK
 	help
 	  ASPEED USB Device Controller Driver
 

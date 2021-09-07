@@ -181,10 +181,6 @@ static void test_usb_dc_api_invalid(void)
 			  TC_PASS, "usb_dc_ep_read_wait(INVALID_EP)");
 	ast_zassert_not_equal(usb_dc_ep_read_continue(INVALID_EP), TC_PASS,
 			  "usb_dc_ep_read_continue(INVALID_EP)");
-
-	/* Get endpoint max packet size for invalid EP */
-	ast_zassert_not_equal(usb_dc_ep_mps(INVALID_EP), TC_PASS,
-			  "usb_dc_ep_mps(INVALID_EP)");
 }
 
 static void test_usb_dc_api_read_write(void)
