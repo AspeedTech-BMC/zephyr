@@ -414,7 +414,7 @@
 			compatible = "aspeed,i2c-filter";
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x7e7b2000 0x100>;
+			reg = <0x7e7b2000 0x200>;
 			interrupts = <INTR_I2CFILTER AST10X0_IRQ_DEFAULT_PRIORITY>;
 			status = "disabled";
 			i2cfilter0: i2cfilter0@7e7b2200_100 {
@@ -424,12 +424,33 @@
 				index = <0>;
 				label = "I2C_FILTER_0";
 			};
-			i2cfilter1: i2cfilter1@7e7b2400_100 {
+			i2cfilter1: i2cfilter1@7e7b2300_100 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				reg = <0x7e7b2300 0x100>;
+				index = <1>;
+				label = "I2C_FILTER_1";
+			};
+			i2cfilter2: i2cfilter2@7e7b2400_100 {
 				#address-cells = <1>;
 				#size-cells = <0>;
 				reg = <0x7e7b2400 0x100>;
-				index = <1>;
-				label = "I2C_FILTER_1";
+				index = <2>;
+				label = "I2C_FILTER_2";
+			};
+			i2cfilter3: i2cfilter3@7e7b2500_100 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				reg = <0x7e7b2500 0x100>;
+				index = <3>;
+				label = "I2C_FILTER_3";
+			};
+			i2cfilter4: i2cfilter4@7e7b2600_100 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				reg = <0x7e7b2600 0x100>;
+				index = <4>;
+				label = "I2C_FILTER_4";
 			};
 		};
 
