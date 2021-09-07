@@ -9,6 +9,14 @@ menuconfig I3C
 	  Enable I3C Driver.
 
 if I3C
+config I3C_SHELL
+	bool "Enable I3C Shell"
+	default y
+	depends on SHELL
+	select SHELL_GETOPT
+	help
+	  Enable I3C Shell for testing.
+
 module = I3C
 module-str = I3C
 source "subsys/logging/Kconfig.template.log_config"
