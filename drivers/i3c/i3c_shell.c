@@ -275,9 +275,65 @@ static int cmd_attach(const struct shell *shell, size_t argc, char **argv)
 	return ret;
 }
 
+
+#ifdef CONFIG_I3C_SLAVE_MQUEUE
+int i3c_slave_mqueue_read(const struct device *dev, uint8_t *dest, int budget);
+int i3c_slave_mqueue_write(const struct device *dev, uint8_t *src, int size);
+
+static const char smq_xfer_helper[] = "i3c smq <dev> -w <wdata> -r <read length>";
+static int cmd_smq_xfer(const struct shell *shell, size_t argc, char **argv)
+{
+	const struct device *dev;
+	struct getopt_state *state;
+	int c, len, ret;
+
+	dev = device_get_binding(argv[1]);
+	if (!dev) {
+		shell_error(shell, "I3C: Device driver %s not found.", argv[1]);
+		return -ENODEV;
+	}
+
+	while ((c = shell_getopt(shell, argc - 1, &argv[1], "w:r:h")) != -1) {
+		state = shell_getopt_state_get(shell);
+		switch (c) {
+		case 'w':
+			len = args_to_wdata(state->optarg, data_buf[0]);
+			ret = i3c_slave_mqueue_write(dev, data_buf[0], len);
+			return 0;
+		case 'r':
+			len = strtoul(state->optarg, NULL, 0);
+			i3c_slave_mqueue_read(dev, data_buf[0], len);
+			shell_hexdump(shell, data_buf[0], len);
+			return 0;
+		case 'h':
+			shell_help(shell);
+			return SHELL_CMD_HELP_PRINTED;
+		case '?':
+			if ((state->optopt == 'r') || (state->optopt == 'w')) {
+				shell_print(shell, "Option -%c requires an argument.",
+					    state->optopt);
+			} else if (isprint(state->optopt)) {
+				shell_print(shell, "Unknown option `-%c'.", state->optopt);
+			} else {
+				shell_print(shell, "Unknown option character `\\x%x'.",
+					    state->optopt);
+			}
+			return 1;
+		default:
+			break;
+		}
+	}
+
+	return 0;
+}
+#endif
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_i3c_cmds,
 	SHELL_CMD(attach, &dsub_device_name, attach_helper, cmd_attach),
 	SHELL_CMD(ccc, &dsub_device_name, send_ccc_helper, cmd_send_ccc),
 	SHELL_CMD(xfer, &dsub_device_name, priv_xfer_helper, cmd_priv_xfer),
+#ifdef CONFIG_I3C_SLAVE_MQUEUE
+	SHELL_CMD(smq, &dsub_device_name, smq_xfer_helper, cmd_smq_xfer),
+#endif
 	SHELL_SUBCMD_SET_END);
 SHELL_CMD_REGISTER(i3c, &sub_i3c_cmds, "I3C commands", NULL);
