@@ -20,10 +20,6 @@ properties:
 child-binding:
   description: i2c filter child node
   properties:
-    reg:
-      type: array
-      required: true
-
     index:
       type: int
       required: true
