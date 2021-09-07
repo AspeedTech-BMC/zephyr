@@ -17,11 +17,21 @@ properties:
     interrupts:
       required: true
 
-    label:
+child-binding:
+  description: i2c filter child node
+  properties:
+    reg:
+      type: array
       required: true
 
     index:
       type: int
       required: true
       description: i2c filter device index
+
+    label:
+      type: string
+      required: true
+
+
 

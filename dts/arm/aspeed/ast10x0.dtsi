@@ -410,15 +410,27 @@
 			reg = <0x7e79e000 0x1000>;
 		};
 
-		i2cf0: i2c-filter@7e7b2200 {
+		i2cfilter: i2c-filter@7e7b2000 {
 			compatible = "aspeed,i2c-filter";
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x7e7b2200 0x100>;
+			reg = <0x7e7b2000 0x100>;
 			interrupts = <INTR_I2CFILTER AST10X0_IRQ_DEFAULT_PRIORITY>;
-			index = <0>;
 			status = "disabled";
-			label = "I2C_Filter_0";
+			i2cfilter0: i2cfilter0@7e7b2200_100 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				reg = <0x7e7b2200 0x100>;
+				index = <0>;
+				label = "I2C_FILTER_0";
+			};
+			i2cfilter1: i2cfilter1@7e7b2400_100 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				reg = <0x7e7b2400 0x100>;
+				index = <1>;
+				label = "I2C_FILTER_1";
+			};
 		};
 
 		i2cmbx: i2c-mbx@7e7b3000 {
