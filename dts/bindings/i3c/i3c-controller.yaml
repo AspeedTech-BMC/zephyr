@@ -13,8 +13,10 @@ properties:
     i2c-scl-hz:
       required: false
       type: int
+      default: 1000000
       description: I2C mode and Open-drain mode SCL frequency in HZ
     i3c-scl-hz:
       required: false
       type: int
+      default: 12500000
       description: I3C Push-Pull mode SCL frequency in HZ
