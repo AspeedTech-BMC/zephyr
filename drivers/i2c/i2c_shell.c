@@ -233,6 +233,175 @@ static int cmd_i2c_read(const struct shell *shell, size_t argc, char **argv)
 	return 0;
 }
 
+#ifdef CONFIG_I2C_PFR_FILTER
+
+struct ast_i2c_f_bitmap data_flt[] = {
+{
+{	/* block all */
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000
+}
+},
+{
+{	/* accept all */
+	0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
+	0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF
+}
+},
+{
+{	/* block every 16 byte */
+	0xFFFF0000, 0xFFFF0000, 0xFFFF0000, 0xFFFF0000,
+	0xFFFF0000, 0xFFFF0000, 0xFFFF0000, 0xFFFF0000
+}
+},
+{
+{	/* block first 16 byte */
+	0xFFFF0000, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
+	0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF
+}
+},
+{
+{	/* block first 128 byte */
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF
+}
+},
+{
+{	/* block last 128 byte */
+	0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+}
+}
+};
+
+int tbl_size = sizeof(data_flt) / (sizeof(struct ast_i2c_f_bitmap));
+
+static int cmd_flt_init(const struct shell *shell,
+			      size_t argc, char **argv)
+{
+	const struct device *pfr_flt_dev = NULL;
+	int ret = 0;
+
+	pfr_flt_dev = device_get_binding(argv[1]);
+	if (!pfr_flt_dev) {
+		shell_error(shell, "xx I2C: PFR FLT Device driver %s not found.",
+			    argv[1]);
+		return -ENODEV;
+	}
+
+	if (pfr_flt_dev != NULL) {
+		ret = ast_i2c_filter_init(pfr_flt_dev);
+		if (ret) {
+			shell_error(shell, "xx I2C: PFR FLT Initial failed.");
+			return ret;
+		}
+	}
+
+	return ret;
+}
+
+static int cmd_flt_en(const struct shell *shell,
+			      size_t argc, char **argv)
+{
+	const struct device *pfr_flt_dev = NULL;
+	int ret = 0;
+	int flt_en;
+	int wlist_en;
+	int clr_idx;
+	int clr_tbl;
+
+	flt_en = strtol(argv[2], NULL, 16);
+	wlist_en = strtol(argv[3], NULL, 16);
+	clr_idx = strtol(argv[4], NULL, 16);
+	clr_tbl = strtol(argv[5], NULL, 16);
+
+	pfr_flt_dev = device_get_binding(argv[1]);
+	if (!pfr_flt_dev) {
+		shell_error(shell, "xx I2C: PFR FLT Device driver %s not found.",
+			    argv[1]);
+		return -ENODEV;
+	}
+
+	if (pfr_flt_dev != NULL) {
+		ret = ast_i2c_filter_en(pfr_flt_dev, (uint8_t)flt_en,
+		(uint8_t) wlist_en, (uint8_t)clr_idx, (uint8_t)clr_tbl);
+		if (ret) {
+			shell_error(shell, "xx I2C: PFR FLT Enable / Disable failed.");
+			return ret;
+		}
+	}
+
+	return ret;
+}
+
+static int cmd_flt_update(const struct shell *shell,
+			      size_t argc, char **argv)
+{
+	const struct device *pfr_flt_dev = NULL;
+	int ret = 0;
+	int idx;
+	int addr;
+	int tbl_idx;
+
+	idx = strtol(argv[2], NULL, 16);
+	addr = strtol(argv[3], NULL, 16);
+	tbl_idx = strtol(argv[4], NULL, 16);
+
+	pfr_flt_dev = device_get_binding(argv[1]);
+	if (!pfr_flt_dev) {
+		shell_error(shell, "xx I2C: PFR FLT Device driver %s not found.",
+			    argv[1]);
+		return -ENODEV;
+	} else if (tbl_idx > tbl_size) {
+		shell_error(shell, "xx I2C: PFR FLT Table Index %s not found.",
+			    argv[4]);
+		shell_error(shell, "xx I2C: PFR FLT Table MAX Index is %d ",
+			    tbl_size);
+		return -ENODEV;
+	}
+
+	if (pfr_flt_dev != NULL) {
+		ret = ast_i2c_filter_update(pfr_flt_dev, (uint8_t)idx,
+		(uint8_t) addr, &data_flt[tbl_idx]);
+		if (ret) {
+			shell_error(shell, "xx I2C: PFR FLT Update failed.");
+			return ret;
+		}
+	}
+
+	return ret;
+}
+
+static int cmd_flt_default(const struct shell *shell,
+			      size_t argc, char **argv)
+{
+	const struct device *pfr_flt_dev = NULL;
+	int ret = 0;
+	int pass;
+
+	pass = strtol(argv[2], NULL, 16);
+
+	pfr_flt_dev = device_get_binding(argv[1]);
+	if (!pfr_flt_dev) {
+		shell_error(shell, "xx I2C: PFR FLT Device driver %s not found.",
+			    argv[1]);
+		return -ENODEV;
+	}
+
+	if (pfr_flt_dev != NULL) {
+		ret = ast_i2c_filter_default(pfr_flt_dev, (uint8_t)pass);
+		if (ret) {
+			shell_error(shell, "xx I2C: PFR FLT Set Default failed.");
+			return ret;
+		}
+	}
+
+	return ret;
+}
+
+
+#endif
+
 #ifdef CONFIG_I2C_PFR_MAILBOX
 static int cmd_mbx_init(const struct shell *shell,
 			      size_t argc, char **argv)
@@ -652,8 +821,23 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_i2c_cmds,
 					      cmd_i2c_ipmb_read, 0, 1),
 #endif
 #endif
+#ifdef CONFIG_I2C_PFR_FILTER
+				SHELL_CMD_ARG(flt_init, &dsub_device_name,
+				 "Init pfr filter device",
+				 cmd_flt_init, 0, 1),
+				SHELL_CMD_ARG(flt_en, &dsub_device_name,
+				"Enable pfr flt",
+				cmd_flt_en, 0, 5),
+				SHELL_CMD_ARG(flt_update, &dsub_device_name,
+				"Update pfr flt",
+				cmd_flt_update, 0, 4),
+				SHELL_CMD_ARG(flt_default, &dsub_device_name,
+				"Set pfr flt default",
+				cmd_flt_default, 0, 2),
+
+#endif
 #ifdef CONFIG_I2C_PFR_MAILBOX
-			       SHELL_CMD_ARG(mbx_init, &dsub_device_name,
+				SHELL_CMD_ARG(mbx_init, &dsub_device_name,
 					"Init pfr mbx device",
 					cmd_mbx_init, 0, 1),
 				SHELL_CMD_ARG(mbx_addr, &dsub_device_name,

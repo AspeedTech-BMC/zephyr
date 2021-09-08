@@ -27,7 +27,7 @@ LOG_MODULE_REGISTER(i2c_pfr_filter);
 #define I2C_LW_R(value, addr) LOG_INF("  dw %x %lx", addr, value);
 #else
 #ifdef ASPEED_I2C_FW_DUMP
-#define I2C_W_R(value, addr) LOG_INF("  dw %x %x\n", addr, value); sys_write32(value, addr);
+#define I2C_W_R(value, addr) LOG_INF("  dw %x %x", addr, value); sys_write32(value, addr);
 #define I2C_LW_R(value, addr) LOG_INF("  dw %x %lx", addr, value); sys_write32(value, addr);
 #else
 #define I2C_W_R(value, addr) sys_write32(value, addr);
@@ -89,6 +89,7 @@ void ast_i2c_filter_isr(const struct device *dev)
 	for (index = 0; index < AST_I2C_F_COUNT; index++) {
 		/* local filter */
 		if (stsg & (1 << index)) {
+			LOG_INF("%d flt block occur!", index);
 			filter_dev_base = (dev_base + (index * AST_I2C_F_D_OFFSET));
 			stsl = sys_read32(filter_dev_base + AST_I2C_F_INT_STS);
 
@@ -107,7 +108,7 @@ void ast_i2c_filter_isr(const struct device *dev)
 				/* read back from  */
 				for (i = 0; i < count; i++) {
 					value = sys_read32(filter_dev_base + AST_I2C_F_INFO);
-					LOG_INF(" dr %x", value);
+					LOG_INF(" flt block %d info %x", i, value);
 				}
 
 				/* clear status */
@@ -228,6 +229,8 @@ uint8_t clr_idx, uint8_t clr_tbl)
 	data->filter_dev_en = filter_en;
 	data->filter_en = wlist_en;
 
+	LOG_DBG("i2c filter tbl : %x", (uint32_t)(&(filter_tbl[(cfg->index)])));
+
 	/* set white list buffer into device */
 	if ((data->filter_dev_en) && (data->filter_en)) {
 		I2C_LW_R(TO_PHY_ADDR(&(filter_tbl[(cfg->index)])),
@@ -260,6 +263,8 @@ int ast_i2c_filter_init(const struct device *dev)
 {
 	const struct ast_i2c_filter_child_config *cfg = DEV_C_CFG(dev);
 	struct ast_i2c_filter_child_data *data = DEV_C_DATA(dev);
+	const struct ast_i2c_filter_config *gcfg = DEV_CFG(cfg->parent);
+	uint32_t ginten;
 
 	/* check parameter valid */
 	if (!cfg->filter_dev_name) {
@@ -280,6 +285,11 @@ int ast_i2c_filter_init(const struct device *dev)
 	/* clear and enable local interrupt */
 	I2C_W_R(0x1, (data->filter_dev_base+AST_I2C_F_INT_STS));
 	I2C_W_R(0x1, (data->filter_dev_base+AST_I2C_F_INT_EN));
+
+	/* enable global interrupt */
+	ginten = sys_read32(gcfg->filter_g_base + AST_I2C_F_G_INT_EN);
+	ginten |= (0x1 << (cfg->index));
+	I2C_W_R(ginten, (gcfg->filter_g_base + AST_I2C_F_G_INT_EN));
 
 	return 0;
 }
@@ -314,10 +324,6 @@ int ast_i2c_filter_child_init(const struct device *dev)
 int ast_i2c_filter_global_init(const struct device *dev)
 {
 	const struct ast_i2c_filter_config *cfg = DEV_CFG(dev);
-
-	/* clear and enable global interrupt */
-	I2C_W_R(0x1F, (cfg->filter_g_base+AST_I2C_F_G_INT_STS));
-	I2C_W_R(0x1F, (cfg->filter_g_base+AST_I2C_F_G_INT_EN));
 
 	/* hook interrupt routine*/
 	cfg->irq_config_func(dev);

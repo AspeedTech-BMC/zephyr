@@ -20,7 +20,7 @@
 #define AST_I2C_F_G_INT_STS	0x0C
 
 /* device define */
-#define AST_I2C_F_D_BASE		0x2200
+#define AST_I2C_F_D_BASE		0x200
 #define AST_I2C_F_D_OFFSET	0x100
 
 /* device registers */
