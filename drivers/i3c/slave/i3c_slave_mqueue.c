@@ -50,23 +50,20 @@ static void i3c_slave_mqueue_write_done(const struct device *dev)
 	int i;
 	uint8_t *buf = (uint8_t *)obj->msg_curr->buf;
 
-	printk("%s\n", __func__);
+	printk("%s: %d %d\n", __func__, obj->in, obj->out);
 	for (i = 0; i < obj->msg_curr->size; i++) {
 		printk("%02x\n", buf[i]);
 	}
 #endif
 
 	/* update pointer */
-	if (++obj->in == config->num_of_msgs) {
-		obj->in = 0;
-	}
+	obj->in = (obj->in + 1) & (config->num_of_msgs - 1);
 	obj->msg_curr = &obj->msg_queue[obj->in];
 
 	/* if queue full, skip the oldest un-read message */
 	if (obj->in == obj->out) {
-		if (obj->out++ == config->num_of_msgs) {
-			obj->out = 0;
-		}
+		LOG_WRN("buffer overflow\n");
+		obj->out = (obj->out + 1) & (config->num_of_msgs - 1);
 	}
 }
 
@@ -96,9 +93,7 @@ int i3c_slave_mqueue_read(const struct device *dev, uint8_t *dest, int budget)
 	ret = (msg->size > budget) ? budget : msg->size;
 	memcpy(dest, msg->buf, ret);
 
-	if (++obj->out == config->num_of_msgs) {
-		obj->out = 0;
-	}
+	obj->out = (obj->out + 1) & (config->num_of_msgs - 1);
 
 	return ret;
 }
@@ -122,6 +117,7 @@ static void i3c_slave_mqueue_init(const struct device *dev)
 
 	LOG_DBG("msg size %d, n %d\n", config->msg_size, config->num_of_msgs);
 	LOG_DBG("bus name : %s\n", config->controller_name);
+	__ASSERT(!(config->num_of_msgs & 0x1), "number of msgs must be power of 2\n");
 
 	obj->i3c_controller = device_get_binding(config->controller_name);
 
@@ -145,7 +141,7 @@ static void i3c_slave_mqueue_init(const struct device *dev)
 
 	obj->in = 0;
 	obj->out = 0;
-	obj->msg_curr = &obj->msg_queue[obj->in];
+	obj->msg_curr = &obj->msg_queue[0];
 
 	slave_data.max_payload_len = config->msg_size;
 	slave_data.callbacks = &i3c_slave_mqueue_callbacks;
