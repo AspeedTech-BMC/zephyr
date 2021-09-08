@@ -59,6 +59,10 @@ union i3c_device_cmd_queue_port_s {
 
 #define COMMAND_PORT_XFER_CMD 0x0
 #define COMMAND_PORT_XFER_ARG 0x1
+
+#define COMMAND_PORT_SPEED_I3C_SDR	0
+#define COMMAND_PORT_SPEED_I2C_FM	0
+#define COMMAND_PORT_SPEED_I2C_FMP	1
 	struct {
 		volatile uint32_t cmd_attr : 3;			/* bit[2:0] */
 		volatile uint32_t tid : 4;			/* bit[6:3] */
@@ -731,35 +735,53 @@ static void i3c_aspeed_init_clock(struct i3c_aspeed_obj *obj)
 {
 	struct i3c_aspeed_config *config = obj->config;
 	struct i3c_register_s *i3c_register = config->base;
-	union i3c_scl_timing_s reg;
-	int i3cclk, tck_ns, period, hcnt, lcnt;
+	union i3c_scl_timing_s i3c_scl;
+	union i2c_scl_timing_s i2c_scl;
+	int i3cclk, period, hcnt, lcnt;
 
 	clock_control_get_rate(config->clock_dev, config->clock_id, &i3cclk);
 	LOG_DBG("i3cclk %d hz\n", i3cclk);
 
-	tck_ns = 1000000000 / i3cclk;
-	__ASSERT(tck_ns > 0, "i3c clock too fast\n");
-
 	LOG_INF("i2c-scl = %d, i3c-scl = %d\n", config->i2c_scl_hz, config->i3c_scl_hz);
 
-	/* Configure OP mode timing parameters */
-	period = (1000000000 / config->i2c_scl_hz) >> 1;
-	hcnt = lcnt = DIV_ROUND_UP(period, tck_ns);
+	/* Configure I2C FM mode timing parameters */
+	period = DIV_ROUND_UP(i3cclk, 400000);
 
-	reg.value = 0;
-	reg.fields.hcnt = hcnt;
-	reg.fields.lcnt = lcnt;
-	i3c_register->op_timing.value = reg.value;
-	i3c_register->fm_timing.value = reg.value;
-	i3c_register->fmp_timing.value = reg.value;
+	/* 40-60 of the clock duty configuration to meet JESD300-5 timing constrain */
+	lcnt = DIV_ROUND_UP(period * 6, 10);
+	hcnt = period - lcnt;
+
+	i2c_scl.value = 0;
+	i2c_scl.fields.lcnt = lcnt;
+	i2c_scl.fields.hcnt = hcnt;
+	i3c_register->fm_timing.value = i2c_scl.value;
+
+	/* Configure I2C FM+ mode timing parameters */
+	period = DIV_ROUND_UP(i3cclk, 1000000);
+	lcnt = DIV_ROUND_UP(period * 6, 10);
+	hcnt = period - lcnt;
+
+	i2c_scl.value = 0;
+	i2c_scl.fields.lcnt = lcnt;
+	i2c_scl.fields.hcnt = hcnt;
+	i3c_register->fmp_timing.value = i2c_scl.value;
+
+	/* Configure I3C OP mode timing parameters */
+	lcnt = lcnt > 255 ? 255 : lcnt;
+	hcnt = period - lcnt;
+	i3c_scl.value = 0;
+	i3c_scl.fields.hcnt = hcnt;
+	i3c_scl.fields.lcnt = lcnt;
+	i3c_register->op_timing.value = i3c_scl.value;
 
 	/* Configure PP mode timing parameters */
-	period = (1000000000 / config->i3c_scl_hz) >> 1;
-	hcnt = lcnt = DIV_ROUND_UP(period, tck_ns);
+	period = DIV_ROUND_UP(i3cclk, config->i3c_scl_hz);
+	hcnt = period >> 1;
+	lcnt = period - hcnt;
 
-	reg.fields.hcnt = hcnt;
-	reg.fields.lcnt = lcnt;
-	i3c_register->pp_timing.value = reg.value;
+	i3c_scl.fields.hcnt = hcnt;
+	i3c_scl.fields.lcnt = lcnt;
+	i3c_register->pp_timing.value = i3c_scl.value;
 
 	/* Configure extra termination timing */
 	i3c_register->ext_termn_timing.fields.lcnt = DEFAULT_EXT_TERMN_LCNT;
