@@ -176,21 +176,15 @@ void i3c_loopback_test(void)
 	for (i = 0; i < 16; i += 4) {
 		xfer.data.out = &data[i];
 		ret = i3c_master_priv_xfer(&slave, &xfer, 1);
-		if (ret) {
-			printk("priv wr fail\n");
-			return;
-		}
-	}
+		__ASSERT(!ret, "failed to private xfer at loop %d\n", i);
 
-	for (i = 0; i < 16; i += 4) {
 		ret = i3c_slave_mqueue_read(slave_mq, &result[i], 4);
+		__ASSERT(ret == 4, "failed to read mqueue at loop %d\n", i);
 	}
 
 	for (i = 0; i < 16; i++) {
-		if (result[i] != data[i]) {
-			printk("in: %d out: %d\n", data[i], result[i]);
-			return;
-		}
+		__ASSERT(result[i] == data[i], "data mismatch: got %d, expected %d\n", result[i],
+			 data[i]);
 	}
 
 	i3c_master_request_ibi(&slave, &i3c_ibi_def_callbacks);
