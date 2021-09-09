@@ -34,7 +34,7 @@ extern void aspeed_ft_post_init(struct aspeed_tests *testcase, int count);
 #define TEST_MODULE_CNT		12
 #define TEST_STACKSIZE		1024
 
-#define TEST_CI_TIMEOUT		20
+#define TEST_CI_TIMEOUT		30
 #define TEST_SLT_TIMEOUT	20
 #define TEST_FT_TIMEOUT		5
 
