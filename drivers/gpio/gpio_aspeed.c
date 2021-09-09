@@ -496,14 +496,14 @@ static void gpio_aspeed_init_cmd_src_sel(const struct device *parent)
 	gpio_reg->cmd_src_sel.value = cmd_src_sel.value;
 }
 
-static int gpio_aspeed_msec_to_cycles(const struct device *parent, uint32_t ms, uint32_t *cycles)
+static int gpio_aspeed_usec_to_cycles(const struct device *parent, uint32_t us, uint32_t *cycles)
 {
 	uint32_t clk_rate;
 	uint64_t temp_64;
 
 	clock_control_get_rate(DEV_PARENT_CFG(parent)->clock_dev, DEV_PARENT_CFG(parent)->clk_id,
 			       &clk_rate);
-	temp_64 = ceiling_fraction(((uint64_t)ms * clk_rate), MSEC_PER_SEC);
+	temp_64 = ceiling_fraction(((uint64_t)us * clk_rate), USEC_PER_SEC);
 	if (temp_64 > GENMASK(23, 0)) {
 		return -ERANGE;
 	}
@@ -512,18 +512,18 @@ static int gpio_aspeed_msec_to_cycles(const struct device *parent, uint32_t ms, 
 	return 0;
 }
 
-static int gpio_aspeed_deb_init(const struct device *parent, uint32_t ms)
+static int gpio_aspeed_deb_init(const struct device *parent, uint32_t us)
 {
 	volatile gpio_register_t *gpio_reg = DEV_PARENT_CFG(parent)->base;
 	uint32_t cycles;
 	int ret;
 
-	ret = gpio_aspeed_msec_to_cycles(parent, ms, &cycles);
+	ret = gpio_aspeed_usec_to_cycles(parent, us, &cycles);
 	if (ret) {
 		LOG_ERR("Err: %d", ret);
 		return ret;
 	}
-	LOG_DBG("Init debounce timer for waiting %dms(%d cycles)", ms, cycles);
+	LOG_DBG("Init debounce timer for waiting %dus(%d cycles)", us, cycles);
 	gpio_reg->debounce_time[0].fields.debounce_time = cycles;
 
 	return 0;
@@ -582,7 +582,7 @@ struct device_cont {
 		.irq_prio = DT_INST_IRQ(inst, priority),                                           \
 		.child_dev = child_dev_##inst,                                                     \
 		.child_num = ARRAY_SIZE(child_dev_##inst),                                         \
-		.deb_interval = DT_INST_PROP(inst, aspeed_deb_interval_ms),                        \
+		.deb_interval = DT_INST_PROP(inst, aspeed_deb_interval_us),                        \
 	};                                                                                         \
 	DEVICE_DT_INST_DEFINE(inst, gpio_aspeed_parent_init, NULL, NULL,                           \
 			      &gpio_aspeed_parent_cfg_##inst, POST_KERNEL,                         \
