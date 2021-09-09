@@ -11,5 +11,5 @@ int test_peci(int count, enum aspeed_test_type type)
 {
 	printk("%s, count: %d, type: %d\n", __func__, count, type);
 
-	return 0;
+	return ast_ztest_result();
 }

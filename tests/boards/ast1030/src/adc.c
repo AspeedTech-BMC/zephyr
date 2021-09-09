@@ -142,5 +142,5 @@ int test_adc(int count, enum aspeed_test_type type)
 		test_adc_battery_mode();
 	}
 
-	return 0;
+	return ast_ztest_result();
 }

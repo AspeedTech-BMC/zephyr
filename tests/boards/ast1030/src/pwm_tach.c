@@ -182,5 +182,5 @@ int test_pwm(int count, enum aspeed_test_type type)
 	}
 	test_pwm_tach_fan();
 
-	return 0;
+	return ast_ztest_result();
 }
