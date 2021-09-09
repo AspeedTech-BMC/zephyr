@@ -1,3 +1,11 @@
+/ {
+	resources {
+		compatible = "test,gpio_basic_api";
+		out-gpios = <&gpio0_e_h 0 0>;
+		in-gpios = <&gpio0_e_h 1 0>;
+	};
+};
+
 &pwm {
 	status = "okay";
 	pinctrl-0 = <&pinctrl_pwm0_default &pinctrl_pwm1_default
