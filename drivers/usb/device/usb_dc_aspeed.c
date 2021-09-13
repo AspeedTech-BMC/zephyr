@@ -260,7 +260,7 @@ static void aspeed_udc_ep0_handle_ack(bool in_ack)
 
 			} else {
 				LOG_DBG("trigger next rx");
-				aspeed_udc_ep0_rx(rx_len);
+				aspeed_udc_ep0_rx(dev_data.ep_data[0].rx_last % RX_DMA_BUFF_SIZE);
 			}
 		}
 	}
