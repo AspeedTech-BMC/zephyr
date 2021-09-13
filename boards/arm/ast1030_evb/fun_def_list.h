@@ -18,7 +18,7 @@ FUN_DEFINE(DT_NODELABEL(pinctrl_adc4_default), ADC4)
 FUN_DEFINE(DT_NODELABEL(pinctrl_adc5_default), ADC5)
 FUN_DEFINE(DT_NODELABEL(pinctrl_adc6_default), ADC6)
 FUN_DEFINE(DT_NODELABEL(pinctrl_adc7_default), ADC7)
-#endif /* end of "#if CONFIG_DEVICE_ADC" */
+#endif
 
 #if DT_NODE_HAS_STATUS(DT_NODELABEL(adc1), okay) &&  CONFIG_ADC_ASPEED
 FUN_DEFINE(DT_NODELABEL(pinctrl_adc8_default), ADC8)
@@ -29,7 +29,7 @@ FUN_DEFINE(DT_NODELABEL(pinctrl_adc12_default), ADC12)
 FUN_DEFINE(DT_NODELABEL(pinctrl_adc13_default), ADC13)
 FUN_DEFINE(DT_NODELABEL(pinctrl_adc14_default), ADC14)
 FUN_DEFINE(DT_NODELABEL(pinctrl_adc15_default), ADC15)
-#endif /* end of "#if CONFIG_DEVICE_ADC" */
+#endif
 
 #if DT_NODE_HAS_STATUS(DT_NODELABEL(pwm), okay) && CONFIG_PWM_ASPEED
 FUN_DEFINE(DT_NODELABEL(pinctrl_pwm0_default), PWM0)
