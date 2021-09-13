@@ -97,8 +97,7 @@ static int do_update(const struct device *flash_device,
 	uint8_t *update_ptr = buf, *op_buf = NULL, *read_back_buf = NULL;
 	bool update_it = false;
 
-	LOG_INF("Writing %d bytes to %s (offset: 0x%08x)...",
-			len, flash_device->name, offset);
+	LOG_INF("Udpating %s...", flash_device->name);
 
 	if (flash_sz < flash_offset + len) {
 		LOG_ERR("ERROR: update boundary exceeds flash size. (%d, %d, %d)",
@@ -198,46 +197,87 @@ int test_spi(int count, enum aspeed_test_type type)
 	static bool test_repeat = true;
 	uint32_t i;
 	uint32_t exec_cnt = 0;
+	uint32_t id = 0;
+	uint8_t golden_id[4] = {0xef, 0x40, 0x14, 0x00}; /* w25q80dv */
 
 	LOG_INF("%s, count: %d, type: %d", __func__, count, type);
 
-	if (type != AST_TEST_CI)
+	if (type == AST_TEST_SLT)
 		return AST_TEST_PASS;
 
-	if (type == AST_TEST_CI)
+	if (type == AST_TEST_CI) {
 		count = 10;
+		while (count > 0) {
+			LOG_INF("flash update count = %d", exec_cnt);
+			if (test_repeat) {
+				for (i = 0; i < UPDATE_TEST_PATTERN_SIZE; i++) {
+					test_arr[i] = 'a' + (i % 26);
+				}
+			} else {
+				for (i = 0; i < UPDATE_TEST_PATTERN_SIZE; i++) {
+					test_arr[i] = 'z' - (i % 26);
+				}
+			}
 
-	while (count > 0) {
-		LOG_INF("flash update count = %d", exec_cnt);
-		if (test_repeat) {
-			for (i = 0; i < UPDATE_TEST_PATTERN_SIZE; i++) {
-				test_arr[i] = 'a' + (i % 26);
+			for (i = 0; i < 6; i++) {
+				flash_dev = device_get_binding(flash_device[i]);
+				if (!flash_dev) {
+					LOG_ERR("No device named %s.", flash_device[i]);
+					return -ENOEXEC;
+				}
+				ret = do_update(flash_dev, 0xFE100,
+						test_arr, UPDATE_TEST_PATTERN_SIZE);
+				if (ret != 0) {
+					LOG_ERR("RW test fail");
+					goto end;
+				}
 			}
-		} else {
-			for (i = 0; i < UPDATE_TEST_PATTERN_SIZE; i++) {
-				test_arr[i] = 'z' - (i % 26);
-			}
+
+			LOG_INF("RW test pass");
+
+			test_repeat ^= true;
+			count--;
+			exec_cnt++;
+		}
+	} else if (type == AST_TEST_FT) {
+		LOG_INF("[FT]flash update test");
+		for (i = 0; i < UPDATE_TEST_PATTERN_SIZE; i++) {
+			test_arr[i] = 'a' + (i % 26);
 		}
 
-		for (i = 0; i < 6; i++) {
+		/* Don't update FMC CS0 which includes customer's image */
+		for (i = 1; i < 6; i++) {
 			flash_dev = device_get_binding(flash_device[i]);
 			if (!flash_dev) {
 				LOG_ERR("No device named %s.", flash_device[i]);
 				return -ENOEXEC;
 			}
-			ret = do_update(flash_dev, 0xFE100, test_arr, UPDATE_TEST_PATTERN_SIZE);
+			ret = do_update(flash_dev, 0x0, test_arr, UPDATE_TEST_PATTERN_SIZE);
 			if (ret != 0) {
-				LOG_ERR("RW test fail");
-				break;
+				LOG_ERR("[%s]RW test fail", flash_device[i]);
+				goto end;
 			}
 		}
 
-		LOG_INF("RW test pass");
+		LOG_INF("[CS0] Read ID test");
+		flash_dev = device_get_binding(flash_device[0]);
+		if (!flash_dev) {
+			LOG_ERR("No device named %s.", flash_device[i]);
+			return -ENOEXEC;
+		}
+		ret = flash_read_jedec_id(flash_dev, (uint8_t *)&id);
+		if (ret)
+			goto end;
 
-		test_repeat ^= true;
-		count--;
-		exec_cnt++;
+		if (memcmp(&id, golden_id, 3) != 0) {
+			LOG_ERR("[CS0]fail to read id 0x%x\n", id);
+			ret = -EINVAL;
+			goto end;
+		}
+
+		LOG_INF("[FT]RW test pass");
 	}
 
+end:
 	return ret;
 }
