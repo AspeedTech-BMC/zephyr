@@ -36,17 +36,7 @@ static struct adc_hdl {
 #define ERROR_RATE(percentage) (100 / percentage)
 #define TOLERANCE_ERROR_RATE ERROR_RATE(2)
 
-static const uint16_t golden_value[16] = {
-	620, 1202, 1800, 620, 1145, 1873, 1126, 3000,
-	620, 1202, 1800, 620, 1145, 1873, 1126, 3000,
-};
-
-void test_adc_enable(void)
-{
-	printk("Do nothing\n");
-}
-
-void test_adc_normal_mode(void)
+void test_adc_normal_mode(const uint16_t *golden_value, float tolerance)
 {
 	int i, j;
 	int retval;
@@ -81,18 +71,18 @@ void test_adc_normal_mode(void)
 				LOG_DBG("%s:[%d] %dmv(raw:%d)", adc_list[i].device_label, j, val,
 					m_sample_buffer[j]);
 				ast_zassert_within(val, golden_value[i * ASPEED_ADC_CH_NUMBER + j],
-						   adc_get_ref(adc_dev) / TOLERANCE_ERROR_RATE,
-						   "%s:[%d] %dmv(raw:%d) check %d+-%d failed!!",
+						   adc_get_ref(adc_dev) * tolerance,
+						   "%s:[%d] %dmv(raw:%d) check %d+-%f failed!!",
 						   adc_list[i].device_label, j, val,
 						   m_sample_buffer[j],
 						   golden_value[i * ASPEED_ADC_CH_NUMBER + j],
-						   adc_get_ref(adc_dev) / TOLERANCE_ERROR_RATE);
+						   adc_get_ref(adc_dev) * tolerance);
 			}
 		}
 	}
 }
 
-void test_adc_battery_mode(void)
+void test_adc_battery_mode(const uint16_t *golden_value, float tolerance)
 {
 	int i;
 	int retval;
@@ -123,23 +113,49 @@ void test_adc_battery_mode(void)
 			LOG_DBG("%s:[%d] %dmv(raw:%d)", adc_list[i].device_label, 7, val,
 				m_sample_buffer[0]);
 			ast_zassert_within(val, golden_value[i * ASPEED_ADC_CH_NUMBER + 7],
-					   adc_get_ref(adc_dev) / TOLERANCE_ERROR_RATE,
-					   "%s:[%d] %dmv(raw:%d) check %d+-%d failed!!",
+					   adc_get_ref(adc_dev) * tolerance,
+					   "%s:[%d] %dmv(raw:%d) check %d+-%f failed!!",
 					   adc_list[i].device_label, 7, val, m_sample_buffer[0],
 					   golden_value[i * ASPEED_ADC_CH_NUMBER + 7],
-					   adc_get_ref(adc_dev) / TOLERANCE_ERROR_RATE);
+					   adc_get_ref(adc_dev) * tolerance);
 		}
 	}
 }
 
+static const uint16_t ci_golden_value[16] = {
+	620, 1202, 1800, 620, 1145, 1873, 1126, 3000,
+	620, 1202, 1800, 620, 1145, 1873, 1126, 3000,
+};
+
+static const uint16_t ft_golden_value[16] = {
+	616, 1546, 1885, 1009, 616, 1546, 1885, 1009,
+	616, 1546, 1885, 1009, 616, 1546, 1885, 1009,
+};
+
 int test_adc(int count, enum aspeed_test_type type)
 {
 	int times;
+	const uint16_t *gv;
+	float tolerance;
+
+	switch (type) {
+	case AST_TEST_CI:
+		gv = ci_golden_value;
+		tolerance = 0.02;
+		break;
+	case AST_TEST_SLT:
+	case AST_TEST_FT:
+		gv = ft_golden_value;
+		tolerance = 0.01;
+		break;
+	default:
+		return -EINVAL;
+	};
 
 	printk("%s, count: %d, type: %d\n", __func__, count, type);
 	for (times = 0; times < count; times++) {
-		test_adc_normal_mode();
-		test_adc_battery_mode();
+		test_adc_normal_mode(gv, tolerance);
+		test_adc_battery_mode(gv, tolerance);
 	}
 
 	return ast_ztest_result();
