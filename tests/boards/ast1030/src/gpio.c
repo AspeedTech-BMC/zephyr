@@ -10,6 +10,9 @@
 
 int test_gpio(int count, enum aspeed_test_type type)
 {
+	if (type != AST_TEST_CI)
+		return AST_TEST_PASS;
+
 	ast_test_fail |= test_gpio_port();
 	ast_test_fail |= test_gpio_callback_add_remove();
 	ast_test_fail |= test_gpio_callback_self_remove();

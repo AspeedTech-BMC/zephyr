@@ -173,6 +173,9 @@ int test_pwm(int count, enum aspeed_test_type type)
 	int times;
 
 	printk("%s, count: %d, type: %d\n", __func__, count, type);
+	if (type != AST_TEST_CI)
+		return AST_TEST_PASS;
+
 	for (times = 0; times < count; times++) {
 #if CONFIG_PWM_ASPEED_ACCURATE_FREQ
 		test_pwm_tach_loopback_accurate();
