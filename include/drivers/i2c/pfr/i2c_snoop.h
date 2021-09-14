@@ -1,0 +1,66 @@
+/*
+ * Copyright (c) 2021 Aspeed Technology Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+#ifndef ZEPHYR_INCLUDE_DRIVERS_I2C_SNOOP_H_
+#define ZEPHYR_INCLUDE_DRIVERS_I2C_SNOOP_H_
+
+/* snoop define */
+#define AST_I2C_SP_DEV_COUNT	2
+#define AST_I2C_SP_MSG_COUNT	1024
+
+#define AST_I2C_SP_LOOP			BIT(12)
+#define AST_I2C_SP_EN			BIT(11)
+
+#define AST_I2C_SP_PKT_MODE_EN	BIT(16)
+#define AST_I2C_SP_RX_DMA_EN	BIT(9)
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/**
+ * @brief I2C Snoop Driver API
+ * @{
+ */
+/**
+ * @brief update i2c snoop buffer
+ *
+ * @param dev Pointer to the device structure for the driver instance.
+ * @param size Value to the read back size.
+ * @retval 0 If successful.
+ * @retval -EINVAL Invalid data pointer or offset
+ */
+int ast_i2c_snoop_update(const struct device *dev, uint32_t size);
+
+/**
+ * @brief enable i2c snoop device
+ *
+ * @param dev Pointer to the device structure for the driver instance.
+ * @param snoop_en Value to the snoop device enable.
+ * @param idx Value to the snoop device index.
+ * @param addr Value to the device address that is needed snoop.
+ * @retval 0 If successful.
+ * @retval -EINVAL Invalid data pointer or offset
+ */
+int ast_i2c_snoop_en(const struct device *dev, uint8_t snoop_en, uint8_t idx,
+uint8_t addr);
+
+/**
+ * @brief Initial i2c snoop device
+ *
+ * @param dev Pointer to the device structure for the driver instance.
+ *
+ * @retval 0 If successful.
+ * @retval -EINVAL Invalid data pointer or offset
+ */
+int ast_i2c_snoop_init(const struct device *dev);
+/**
+ * @}
+ */
+#ifdef __cplusplus
+	}
+#endif
+
+#endif /* ZEPHYR_INCLUDE_DRIVERS_I2C_SNOOP_H_ */

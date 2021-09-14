@@ -411,8 +411,6 @@
 
 		i2cfilter: i2c-filter@7e7b2000 {
 			compatible = "aspeed,i2c-filter";
-			#address-cells = <1>;
-			#size-cells = <0>;
 			reg = <0x7e7b2000 0x200>;
 			interrupts = <INTR_I2CFILTER AST10X0_IRQ_DEFAULT_PRIORITY>;
 			status = "disabled";
@@ -436,6 +434,24 @@
 				index = <4>;
 				label = "I2C_FILTER_4";
 			};
+		};
+
+		i2csp0: i2c-sp0@7e7b0780 {
+			compatible = "aspeed,i2c-snoop";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x7e7b0780 0x80>;
+			label = "I2C_SP_0";
+			status = "disabled";
+		};
+
+		i2csp1: i2c-sp1@7e7b0800 {
+			compatible = "aspeed,i2c-snoop";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x7e7b0800 0x80>;
+			label = "I2C_SP_1";
+			status = "disabled";
 		};
 
 		i2cmbx: i2c-mbx@7e7b3000 {
