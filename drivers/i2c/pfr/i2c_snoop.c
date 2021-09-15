@@ -120,7 +120,7 @@ uint8_t filter_idx, uint8_t addr)
 	addr =  sys_read32(base + AST_I2C_ADDR_CTRL) & ~(AST_I2CS_ADDR_CLEAR);
 
 	if (snoop_en)
-		addr |= (AST_I2C_ADDR(addr)|AST_I2C_ADDR_ENABLE);
+		addr |= (AST_I2C_SP_ADDR(addr)|AST_I2C_ADDR_ENABLE);
 
 	I2C_W_R(addr, (base+AST_I2C_ADDR_CTRL));
 

@@ -9,6 +9,7 @@
 #include <drivers/i2c.h>
 #include <drivers/i2c/slave/eeprom.h>
 #include <drivers/i2c/slave/ipmb.h>
+#include <drivers/i2c/pfr/i2c_snoop.h>
 #include <drivers/i2c/pfr/i2c_filter.h>
 #include <drivers/i2c/pfr/i2c_mailbox.h>
 
@@ -232,6 +233,70 @@ static int cmd_i2c_read(const struct shell *shell, size_t argc, char **argv)
 
 	return 0;
 }
+
+#ifdef CONFIG_I2C_PFR_SNOOP
+static int cmd_sp_en(const struct shell *shell,
+			      size_t argc, char **argv)
+{
+	const struct device *pfr_sp_dev = NULL;
+	int ret = 0;
+	int sp_en;
+	int sp_idx;
+	int flt_idx;
+	int addr;
+
+	sp_en = strtol(argv[2], NULL, 16);
+	sp_idx = strtol(argv[3], NULL, 16);
+	flt_idx = strtol(argv[4], NULL, 16);
+	addr = strtol(argv[5], NULL, 16);
+
+	pfr_sp_dev = device_get_binding(argv[1]);
+	if (!pfr_sp_dev) {
+		shell_error(shell, "xx I2C: PFR SP Device driver %s not found.",
+			    argv[1]);
+		return -ENODEV;
+	}
+
+	if (pfr_sp_dev != NULL) {
+		ret = ast_i2c_snoop_en(pfr_sp_dev, (uint8_t)sp_en,
+		(uint8_t) sp_idx, (uint8_t)flt_idx, (uint8_t)addr);
+		if (ret) {
+			shell_error(shell, "xx I2C: PFR SP Enable / Disable failed.");
+			return ret;
+		}
+	}
+
+	return ret;
+
+}
+
+static int cmd_sp_update(const struct shell *shell,
+			      size_t argc, char **argv)
+{
+	const struct device *pfr_sp_dev = NULL;
+	int ret = 0;
+	int byte_size;
+
+	byte_size = strtol(argv[2], NULL, 16);
+
+	pfr_sp_dev = device_get_binding(argv[1]);
+	if (!pfr_sp_dev) {
+		shell_error(shell, "xx I2C: PFR SP Device driver %s not found.",
+				argv[1]);
+		return -ENODEV;
+	}
+
+	if (pfr_sp_dev != NULL) {
+		ret = ast_i2c_snoop_update(pfr_sp_dev, byte_size);
+		if (ret) {
+			shell_error(shell, "xx I2C: PFR SP Update failed.");
+			return ret;
+		}
+	}
+
+	return ret;
+}
+#endif
 
 #ifdef CONFIG_I2C_PFR_FILTER
 
@@ -820,6 +885,14 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_i2c_cmds,
 					     "Read ipmb buffer from slave",
 					      cmd_i2c_ipmb_read, 0, 1),
 #endif
+#endif
+#ifdef CONFIG_I2C_PFR_SNOOP
+				SHELL_CMD_ARG(sp_en, &dsub_device_name,
+				"Enable pfr snoop",
+				cmd_sp_en, 0, 5),
+				SHELL_CMD_ARG(sp_update, &dsub_device_name,
+				"Update pfr snoop",
+				cmd_sp_update, 0, 2),
 #endif
 #ifdef CONFIG_I2C_PFR_FILTER
 				SHELL_CMD_ARG(flt_init, &dsub_device_name,

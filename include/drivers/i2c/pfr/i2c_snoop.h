@@ -22,7 +22,7 @@
 
 #define AST_I2C_ADDR_TYPE(x)	(x << 24)
 #define AST_I2C_ADDR_ENABLE	BIT(7)
-#define AST_I2C_ADDR(x)	(x & 0x7f)
+#define AST_I2C_SP_ADDR(x)	(x & 0x7f)
 
 #define	AST_I2C_ADDR_MASK	0x7f
 
