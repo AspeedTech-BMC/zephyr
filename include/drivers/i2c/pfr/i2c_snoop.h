@@ -12,9 +12,38 @@
 
 #define AST_I2C_SP_LOOP			BIT(12)
 #define AST_I2C_SP_EN			BIT(11)
+#define AST_I2C_PKT_MODE_EN	BIT(16)
+#define AST_I2C_RX_DMA_EN		BIT(9)
 
-#define AST_I2C_SP_PKT_MODE_EN	BIT(16)
-#define AST_I2C_SP_RX_DMA_EN	BIT(9)
+#define AST_I2C_SP_CMD	\
+(AST_I2C_SP_LOOP | AST_I2C_SP_EN | AST_I2C_PKT_MODE_EN\
+| AST_I2C_RX_DMA_EN)
+
+#define AST_I2C_ADDR_TYPE(x)	(x << 24)
+#define AST_I2C_ADDR_ENABLE	BIT(7)
+#define AST_I2C_ADDR(x)	(x & 0x7f)
+
+#define	AST_I2C_ADDR_MASK	0x7f
+
+#define	AST_I2CS_ADDR_CLEAR		\
+(AST_I2C_ADDR_MASK | AST_I2C_ADDR_ENABLE |\
+AST_I2C_ADDR_TYPE(0x3))
+
+#define AST_I2CS_SET_RX_DMA_LEN(x)\
+((((x - 1) & 0xfff) << 16) | BIT(31))
+
+#define AST_I2C_S_EN	BIT(1)
+#define AST_I2C_M_EN	BIT(0)
+
+/* register define */
+#define  AST_I2C_CTRL		0x00
+#define  AST_I2CS_IER			0x20
+#define  AST_I2CS_CMD		0x28
+#define  AST_I2C_RX_DMA_LEN	0x2C
+#define  AST_I2C_RX_DMA		0x3C
+#define AST_I2C_ADDR_CTRL	0x40
+#define  AST_I2C_SP_DMA_RPT	0x58
+
 
 #ifdef __cplusplus
 extern "C" {

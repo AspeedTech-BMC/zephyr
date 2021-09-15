@@ -35,6 +35,7 @@ uint8_t snoop_msg1[AST_I2C_SP_MSG_COUNT] NON_CACHED_BSS_ALIGN16;
 
 struct ast_i2c_snoop_data {
 	uint8_t	snoop_dev_en;	/* i2c snoop device enable */
+	uint8_t	*snoop_buf;		/* i2c snoop base */
 	uint32_t	snoop_dev_read;	/* i2c snoop device read pos */
 	uint32_t	snoop_dev_write;	/* i2c snoop device write pos */
 };
@@ -60,12 +61,62 @@ int ast_i2c_snoop_update(const struct device *dev, uint32_t size)
 
 /* i2c snoop enable */
 int ast_i2c_snoop_en(const struct device *dev, uint8_t snoop_en, uint8_t idx,
-uint8_t addr)
+uint8_t filter_idx, uint8_t addr)
 {
+	uint32_t base = DEV_BASE(dev);
+	struct ast_i2c_snoop_data *data = DEV_DATA(dev);
+	uint32_t addr;
+
 	/* check parameter valid */
 	if (idx >= AST_I2C_SP_DEV_COUNT) {
 		LOG_ERR("i2c snoop not be support");
 		return -EINVAL;
+	}
+
+	/* set i2c slave addr */
+	addr =  sys_read32(base + AST_I2C_ADDR_CTRL) & ~(AST_I2CS_ADDR_CLEAR);
+
+	if (snoop_en)
+		addr |= (AST_I2C_ADDR(addr)|AST_I2C_ADDR_ENABLE);
+
+	I2C_W_R(addr, (base+AST_I2C_ADDR_CTRL));
+
+	/* set i2c snoop */
+	if (snoop_en) {
+		/* close interrupt */
+		I2C_W_R(0, (base+AST_I2CS_IER));
+
+		/* fill snoop buffer */
+		if (idx == 0) {
+			data->snoop_buf = &(snoop_msg0[0]);
+		} else {
+			data->snoop_buf = &(snoop_msg1[0]);
+		}
+
+		I2C_LW_R(TO_PHY_ADDR(data->snoop_buf)), (base + AST_I2C_F_BUF));
+
+		/* re-set read pos */
+		I2C_W_R(0, (base+AST_I2C_SP_DMA_RPT));
+
+		/* set dma size */
+		I2C_W_R(AST_I2CS_SET_RX_DMA_LEN(AST_I2C_SP_MSG_COUNT), (base+AST_I2C_RX_DMA_LEN));
+
+		/* set snoop function */
+		I2C_W_R(AST_I2C_SP_CMD, (base+AST_I2CS_CMD));
+
+		/* set i2c slave support*/
+		I2C_W_R(AST_I2C_S_EN | sys_read32(base + AST_I2C_CTRL), base + AST_I2C_CTRL);
+	} else {
+
+		/* clear snoop function */
+		I2C_W_R(~(AST_I2C_SP_CMD) & sys_read32(base + AST_I2CS_CMD), base + AST_I2CS_CMD);
+
+		/* re-set dma size */
+		I2C_W_R(~(AST_I2C_S_EN | AST_I2C_M_EN) &
+		sys_read32(base + AST_I2C_CTRL), base + AST_I2C_CTRL);
+
+		/* set master back */
+		I2C_W_R((AST_I2C_M_EN) | sys_read32(base + AST_I2C_CTRL), base + AST_I2C_CTRL);
 	}
 
 	return 0;
@@ -77,6 +128,7 @@ int ast_i2c_snoop_init(const struct device *dev)
 	struct ast_i2c_snoop_data *data = DEV_DATA(dev);
 
 	data->snoop_dev_en = 0;
+	data->snoop_buf = NULL;
 	data->snoop_dev_read = 0;
 	data->snoop_dev_write = 0;
 
