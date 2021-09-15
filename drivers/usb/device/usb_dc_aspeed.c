@@ -309,16 +309,19 @@ static void usb_aspeed_isr(void)
 		LOG_DBG("ISR_BUS_RESET");
 		sys_write32(ISR_BUS_RESET, isr_reg);
 		dev_data.ep_data[0].state = ep_state_token;
+		dev_data.status_cb(USB_DC_RESET, NULL);
 	}
 
 	if (isr & ISR_BUS_SUSPEND) {
 		LOG_DBG("ISR_BUS_SUSPEND");
 		sys_write32(ISR_BUS_SUSPEND, isr_reg);
+		dev_data.status_cb(USB_DC_SUSPEND, NULL);
 	}
 
 	if (isr & ISR_SUSPEND_RESUME) {
 		LOG_DBG("ISR_SUSPEND_RESUME");
 		sys_write32(ISR_SUSPEND_RESUME, isr_reg);
+		dev_data.status_cb(USB_DC_RESUME, NULL);
 	}
 
 	if (isr & ISR_EP0_IN_ACK_STALL) {
