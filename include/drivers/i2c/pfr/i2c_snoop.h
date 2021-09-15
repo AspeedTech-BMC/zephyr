@@ -9,6 +9,7 @@
 /* snoop define */
 #define AST_I2C_SP_DEV_COUNT	2
 #define AST_I2C_SP_MSG_COUNT	1024
+#define AST_I2C_F_COUNT			5
 
 #define AST_I2C_SP_LOOP			BIT(12)
 #define AST_I2C_SP_EN			BIT(11)
@@ -42,8 +43,11 @@ AST_I2C_ADDR_TYPE(0x3))
 #define  AST_I2C_RX_DMA_LEN	0x2C
 #define  AST_I2C_RX_DMA		0x3C
 #define AST_I2C_ADDR_CTRL	0x40
-#define  AST_I2C_SP_DMA_RPT	0x58
+#define  AST_I2C_SP_DMA_WPT		0x50
+#define  AST_I2C_SP_DMA_RPT		0x58
+#define  AST_I2C_SP_R_DMA_WPT	0x5C
 
+#define  AST_I2C_SP_SWITCH	0x7e6e20f8
 
 #ifdef __cplusplus
 extern "C" {
@@ -68,13 +72,15 @@ int ast_i2c_snoop_update(const struct device *dev, uint32_t size);
  *
  * @param dev Pointer to the device structure for the driver instance.
  * @param snoop_en Value to the snoop device enable.
+ * @param filter_idx Value to the filter device index.
  * @param idx Value to the snoop device index.
  * @param addr Value to the device address that is needed snoop.
  * @retval 0 If successful.
  * @retval -EINVAL Invalid data pointer or offset
  */
 int ast_i2c_snoop_en(const struct device *dev, uint8_t snoop_en, uint8_t idx,
-uint8_t addr);
+uint8_t filter_idx, uint8_t addr);
+
 
 /**
  * @brief Initial i2c snoop device
