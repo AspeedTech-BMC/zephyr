@@ -38,10 +38,10 @@ AST_I2C_ADDR_TYPE(0x3))
 
 /* register define */
 #define  AST_I2C_CTRL		0x00
+#define  AST_I2C_RX_DMA_BUF	0x08
 #define  AST_I2CS_IER			0x20
 #define  AST_I2CS_CMD		0x28
 #define  AST_I2C_RX_DMA_LEN	0x2C
-#define  AST_I2C_RX_DMA		0x3C
 #define AST_I2C_ADDR_CTRL	0x40
 #define  AST_I2C_SP_DMA_WPT		0x50
 #define  AST_I2C_SP_DMA_RPT		0x58

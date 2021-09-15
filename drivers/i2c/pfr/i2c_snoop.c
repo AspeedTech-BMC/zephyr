@@ -103,7 +103,7 @@ uint8_t filter_idx, uint8_t addr)
 {
 	uint32_t base = DEV_BASE(dev);
 	struct ast_i2c_snoop_data *data = DEV_DATA(dev);
-	uint32_t addr;
+	uint32_t sp_addr;
 	uint8_t sp_switch = sys_read8(AST_I2C_SP_SWITCH);
 
 	/* check parameter valid */
@@ -117,12 +117,12 @@ uint8_t filter_idx, uint8_t addr)
 	data->snoop_dev_en = snoop_en;
 
 	/* set i2c slave addr */
-	addr =  sys_read32(base + AST_I2C_ADDR_CTRL) & ~(AST_I2CS_ADDR_CLEAR);
+	sp_addr =  sys_read32(base + AST_I2C_ADDR_CTRL) & ~(AST_I2CS_ADDR_CLEAR);
 
 	if (snoop_en)
-		addr |= (AST_I2C_SP_ADDR(addr)|AST_I2C_ADDR_ENABLE);
+		sp_addr |= (AST_I2C_SP_ADDR(addr)|AST_I2C_ADDR_ENABLE);
 
-	I2C_W_R(addr, (base+AST_I2C_ADDR_CTRL));
+	I2C_W_R(sp_addr, (base+AST_I2C_ADDR_CTRL));
 
 	/* set i2c snoop */
 	if (snoop_en) {
@@ -132,11 +132,11 @@ uint8_t filter_idx, uint8_t addr)
 		/* fill snoop buffer and switch control */
 		if (idx == 0) {
 			data->snoop_buf = &(snoop_msg0[0]);
-			sp_switch & = ~(0xF);
+			sp_switch &= ~(0xF);
 			sp_switch |= (filter_idx + 1);
 		} else {
 			data->snoop_buf = &(snoop_msg1[0]);
-			sp_switch & = ~(0xF0);
+			sp_switch &= ~(0xF0);
 			sp_switch |= (filter_idx + 1) << 1;
 		}
 
@@ -145,30 +145,30 @@ uint8_t filter_idx, uint8_t addr)
 
 		sys_write8(sp_switch, AST_I2C_SP_SWITCH);
 
-		I2C_LW_R(TO_PHY_ADDR(data->snoop_buf)), (base + AST_I2C_F_BUF));
+		I2C_LW_R((TO_PHY_ADDR(data->snoop_buf)), (base + AST_I2C_RX_DMA_BUF));
 
 		/* re-set read pos */
 		I2C_W_R(0, (base+AST_I2C_SP_DMA_RPT));
 
 		/* set dma size */
-		I2C_W_R(AST_I2CS_SET_RX_DMA_LEN(AST_I2C_SP_MSG_COUNT), (base+AST_I2C_RX_DMA_LEN));
+		I2C_LW_R(AST_I2CS_SET_RX_DMA_LEN(AST_I2C_SP_MSG_COUNT), (base+AST_I2C_RX_DMA_LEN));
 
 		/* set snoop function */
-		I2C_W_R(AST_I2C_SP_CMD, (base+AST_I2CS_CMD));
+		I2C_LW_R(AST_I2C_SP_CMD, (base+AST_I2CS_CMD));
 
 		/* set i2c slave support*/
-		I2C_W_R(AST_I2C_S_EN | sys_read32(base + AST_I2C_CTRL), base + AST_I2C_CTRL);
+		I2C_LW_R(AST_I2C_S_EN | sys_read32(base + AST_I2C_CTRL), base + AST_I2C_CTRL);
 	} else {
 
 		/* clear snoop function */
-		I2C_W_R(~(AST_I2C_SP_CMD) & sys_read32(base + AST_I2CS_CMD), base + AST_I2CS_CMD);
+		I2C_LW_R(~(AST_I2C_SP_CMD) & sys_read32(base + AST_I2CS_CMD), base + AST_I2CS_CMD);
 
 		/* re-set dma size */
-		I2C_W_R(~(AST_I2C_S_EN | AST_I2C_M_EN) &
+		I2C_LW_R(~(AST_I2C_S_EN | AST_I2C_M_EN) &
 		sys_read32(base + AST_I2C_CTRL), base + AST_I2C_CTRL);
 
 		/* set master back */
-		I2C_W_R((AST_I2C_M_EN) | sys_read32(base + AST_I2C_CTRL), base + AST_I2C_CTRL);
+		I2C_LW_R((AST_I2C_M_EN) | sys_read32(base + AST_I2C_CTRL), base + AST_I2C_CTRL);
 	}
 
 	return 0;
@@ -200,10 +200,9 @@ int ast_i2c_snoop_init(const struct device *dev)
 			&ast_i2c_snoop_init, \
 			NULL, \
 			&ast_i2c_snoop_##inst##_data, \
-			&ast_i2c_snoop_##inst##_config, \
+			&ast_i2c_snoop_##inst##_cfg, \
 			POST_KERNEL, \
 			CONFIG_KERNEL_INIT_PRIORITY_DEVICE, \
 			NULL); \
-	}
 
 DT_INST_FOREACH_STATUS_OKAY(I2C_SNOOP_INIT)
