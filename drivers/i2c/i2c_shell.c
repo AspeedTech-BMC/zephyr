@@ -241,14 +241,12 @@ static int cmd_sp_en(const struct shell *shell,
 	const struct device *pfr_sp_dev = NULL;
 	int ret = 0;
 	int sp_en;
-	int sp_idx;
 	int flt_idx;
 	int addr;
 
 	sp_en = strtol(argv[2], NULL, 16);
-	sp_idx = strtol(argv[3], NULL, 16);
-	flt_idx = strtol(argv[4], NULL, 16);
-	addr = strtol(argv[5], NULL, 16);
+	flt_idx = strtol(argv[3], NULL, 16);
+	addr = strtol(argv[4], NULL, 16);
 
 	pfr_sp_dev = device_get_binding(argv[1]);
 	if (!pfr_sp_dev) {
@@ -259,7 +257,7 @@ static int cmd_sp_en(const struct shell *shell,
 
 	if (pfr_sp_dev != NULL) {
 		ret = ast_i2c_snoop_en(pfr_sp_dev, (uint8_t)sp_en,
-		(uint8_t) sp_idx, (uint8_t)flt_idx, (uint8_t)addr);
+		(uint8_t)flt_idx, (uint8_t)addr);
 		if (ret) {
 			shell_error(shell, "xx I2C: PFR SP Enable / Disable failed.");
 			return ret;
@@ -889,7 +887,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_i2c_cmds,
 #ifdef CONFIG_I2C_PFR_SNOOP
 				SHELL_CMD_ARG(sp_en, &dsub_device_name,
 				"Enable pfr snoop",
-				cmd_sp_en, 0, 5),
+				cmd_sp_en, 0, 4),
 				SHELL_CMD_ARG(sp_update, &dsub_device_name,
 				"Update pfr snoop",
 				cmd_sp_update, 0, 2),

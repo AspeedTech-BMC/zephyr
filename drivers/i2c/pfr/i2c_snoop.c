@@ -68,52 +68,60 @@ int ast_i2c_snoop_update(const struct device *dev, uint32_t size)
 		return -EINVAL;
 	}
 
-	LOG_DBG("sp R: %x", sp_R);
-	LOG_DBG("sp W: %x", sp_W);
+	LOG_INF("sp R: %x", sp_R);
+	LOG_INF("sp W: %x", sp_W);
 
 	if (sp_R != sp_W) {
 		if (data->snoop_dev_read + size <= data->snoop_dev_max) {
 			/* read from read pos */
 			/* normal case */
 			I2C_W_R(0, (base+AST_I2C_SP_DMA_RPT));
-			LOG_DBG("normal sp R: %x", sys_read32(base + AST_I2C_SP_DMA_RPT));
+			LOG_INF("normal sp R: %x", sys_read32(base + AST_I2C_SP_DMA_RPT));
 			data->snoop_dev_read += size;
 		} else {
 			/* loop case */
 			still_size = data->snoop_dev_max - data->snoop_dev_read;
-			LOG_DBG("still_size : %x", still_size);
+			LOG_INF("still_size : %x", still_size);
 			/* read from read pos */
 			remain_size = size - still_size;
-			LOG_DBG("remain_size : %x", remain_size);
+			LOG_INF("remain_size : %x", remain_size);
 			/* read from base */
 			data->snoop_dev_read = (uint32_t)(data->snoop_buf) + remain_size;
 			I2C_W_R(0, (base+AST_I2C_SP_DMA_RPT));
-			LOG_DBG("loop sp R: %x", sys_read32(base + AST_I2C_SP_DMA_RPT));
+			LOG_INF("loop sp R: %x", sys_read32(base + AST_I2C_SP_DMA_RPT));
 		}
-		LOG_DBG("R 0x54: %x", sys_read32(base + 0x54));
-		LOG_DBG("R 0x28: %x", sys_read32(base + 0x28));
+		LOG_INF("R 0x54: %x", sys_read32(base + 0x54));
+		LOG_INF("R 0x28: %x", sys_read32(base + 0x28));
 	}
 
 	return 0;
 }
 
 /* i2c snoop enable */
-int ast_i2c_snoop_en(const struct device *dev, uint8_t snoop_en, uint8_t idx,
+int ast_i2c_snoop_en(const struct device *dev, uint8_t snoop_en,
 uint8_t filter_idx, uint8_t addr)
 {
 	uint32_t base = DEV_BASE(dev);
 	struct ast_i2c_snoop_data *data = DEV_DATA(dev);
 	uint32_t sp_addr;
-	uint8_t sp_switch = sys_read8(AST_I2C_SP_SWITCH);
+	uint32_t sp_switch = sys_read32(AST_I2C_SP_SWITCH);
+	uint8_t idx;
 
-	/* check parameter valid */
-	if (idx >= AST_I2C_SP_DEV_COUNT) {
+	if (base == AST_SP0_BASE) {
+		idx = 0;
+	} else if (base == AST_SP1_BASE) {
+		idx = 1;
+	} else {
 		LOG_ERR("i2c snoop not be support");
 		return -EINVAL;
-	} else if (filter_idx > AST_I2C_F_COUNT) {
+	}
+
+	/* check parameter valid */
+	if (filter_idx > AST_I2C_F_COUNT) {
 		LOG_ERR("i2c filter not be support");
 		return -EINVAL;
 	}
+
 	data->snoop_dev_en = snoop_en;
 
 	/* set i2c slave addr */
@@ -126,24 +134,31 @@ uint8_t filter_idx, uint8_t addr)
 
 	/* set i2c snoop */
 	if (snoop_en) {
+
+		LOG_INF("SP_EN");
 		/* close interrupt */
 		I2C_W_R(0, (base+AST_I2CS_IER));
+
+		sp_switch = sys_read32(AST_I2C_SP_SWITCH);
 
 		/* fill snoop buffer and switch control */
 		if (idx == 0) {
 			data->snoop_buf = &(snoop_msg0[0]);
 			sp_switch &= ~(0xF);
 			sp_switch |= (filter_idx + 1);
+			LOG_INF("SP_0: %x", (uint32_t)data->snoop_buf);
 		} else {
 			data->snoop_buf = &(snoop_msg1[0]);
 			sp_switch &= ~(0xF0);
-			sp_switch |= (filter_idx + 1) << 1;
+			sp_switch |= (filter_idx + 1) << 4;
+			LOG_INF("SP_1: %x", (uint32_t)data->snoop_buf);
 		}
 
 		data->snoop_dev_read = (uint32_t) data->snoop_buf;
 		data->snoop_dev_max = data->snoop_dev_read + AST_I2C_SP_MSG_COUNT;
 
-		sys_write8(sp_switch, AST_I2C_SP_SWITCH);
+		LOG_INF("switch: %x", sp_switch);
+		I2C_W_R(sp_switch, AST_I2C_SP_SWITCH);
 
 		I2C_LW_R((TO_PHY_ADDR(data->snoop_buf)), (base + AST_I2C_RX_DMA_BUF));
 
@@ -159,6 +174,16 @@ uint8_t filter_idx, uint8_t addr)
 		/* set i2c slave support*/
 		I2C_LW_R(AST_I2C_S_EN | sys_read32(base + AST_I2C_CTRL), base + AST_I2C_CTRL);
 	} else {
+		LOG_INF("SP_DIS");
+		/* fill snoop buffer and switch control */
+		if (idx == 0) {
+			sp_switch &= ~(0xF);
+		} else {
+			sp_switch &= ~(0xF0);
+		}
+
+		/* clear snoop connect */
+		I2C_W_R(sp_switch, AST_I2C_SP_SWITCH);
 
 		/* clear snoop function */
 		I2C_LW_R(~(AST_I2C_SP_CMD) & sys_read32(base + AST_I2CS_CMD), base + AST_I2CS_CMD);
