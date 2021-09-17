@@ -34,8 +34,6 @@
 	pinctrl_i2c11_default: i2c11_default {};
 	pinctrl_i2c12_default: i2c12_default {};
 	pinctrl_i2c13_default: i2c13_default {};
-	pinctrl_i2c14_default: i2c14_default {};
-	pinctrl_i2c15_default: i2c15_default {};
 	pinctrl_arm_ice_default: arm_ice_default {};
 	pinctrl_jtagm0_default: jtagm0_default {};
 	pinctrl_jtagm1_default: jtagm1_default {};
