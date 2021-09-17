@@ -31,6 +31,10 @@
 	status = "okay";
 };
 
+&sgpiom{
+	status = "okay";
+};
+
 &tach {
 	status = "okay";
 	pinctrl-0 = <&pinctrl_tach0_default &pinctrl_tach1_default
