@@ -65,7 +65,7 @@ void test_pwm_tach_loopback_accurate(void)
 
 	for (i = 0; i < ARRAY_SIZE(pwm_list); i++) {
 		pwm_dev = device_get_binding(pwm_list[i].device_label);
-		for (hw_pwm = 0; hw_pwm < pwm_list[i].npwms - 2; hw_pwm++) {
+		for (hw_pwm = 0; hw_pwm < pwm_list[i].npwms - 1; hw_pwm++) {
 			pwm_get_cycles_per_sec(pwm_dev, hw_pwm, &cycles_per_sec);
 			cycles_per_min = cycles_per_sec * 60;
 			tach_dev = device_get_binding(fan_list[hw_pwm].device_label);
@@ -103,7 +103,7 @@ void test_pwm_tach_loopback_rough(void)
 
 	for (i = 0; i < ARRAY_SIZE(pwm_list); i++) {
 		pwm_dev = device_get_binding(pwm_list[i].device_label);
-		for (hw_pwm = 0; hw_pwm < pwm_list[i].npwms - 2; hw_pwm++) {
+		for (hw_pwm = 0; hw_pwm < pwm_list[i].npwms - 1; hw_pwm++) {
 			pwm_get_cycles_per_sec(pwm_dev, hw_pwm, &cycles_per_sec);
 			cycles_per_min = cycles_per_sec * 60;
 			tach_dev = device_get_binding(fan_list[hw_pwm].device_label);
