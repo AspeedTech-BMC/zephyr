@@ -92,10 +92,7 @@ static int cmd_usb_enable(const struct shell *shell, size_t argc, char **argv)
 	}
 
 	dev = device_get_binding("CDC_ACM_0");
-	if (!dev) {
-		shell_print(shell, "This device supports USB DFU class.\n");
-
-	} else {
+	if (dev) {
 		shell_print(shell, "This device supports USB CDC_ACM class.\n");
 
 		uart_irq_callback_set(dev, interrupt_handler);
