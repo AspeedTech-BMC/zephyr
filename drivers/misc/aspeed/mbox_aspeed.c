@@ -58,7 +58,7 @@ int mbox_aspeed_read(const struct device *dev, uint8_t *buf, size_t count, uint3
 	}
 
 	for (i = 0; i < count; ++i)
-		buf[i] = (uint8_t)(LPC_RD(MBXDAT(i + off) & 0xff));
+		buf[i] = (uint8_t)(LPC_RD(MBXDAT(i + off)) & 0xff);
 
 	/* write 1 clear RECV and unmask as well */
 	LPC_WR(MBXBCR_RECV, MBXBCR);
