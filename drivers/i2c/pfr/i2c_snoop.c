@@ -202,12 +202,19 @@ uint8_t filter_idx, uint8_t addr)
 /* i2c snoop initial */
 int ast_i2c_snoop_init(const struct device *dev)
 {
+	uint32_t base = DEV_BASE(dev);
 	struct ast_i2c_snoop_data *data = DEV_DATA(dev);
 
 	data->snoop_dev_en = 0;
 	data->snoop_buf = NULL;
 	data->snoop_dev_read = 0;
 	data->snoop_dev_write = 0;
+
+	if (base == AST_SP0_BASE) {
+		memset(snoop_msg0, 0, AST_I2C_SP_MSG_COUNT);
+	} else if (base == AST_SP1_BASE) {
+		memset(snoop_msg1, 0, AST_I2C_SP_MSG_COUNT);
+	}
 
 	return 0;
 }
