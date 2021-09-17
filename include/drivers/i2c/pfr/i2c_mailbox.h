@@ -42,6 +42,7 @@
 
 /* i2c device registers */
 #define AST_I2C_CTL				0x00
+#define AST_I2C_S_IER				0x20
 #define AST_I2C_DMA_LEN			0x2C
 #define AST_I2C_TX_DMA			0x38
 #define AST_I2C_RX_DMA			0x3C

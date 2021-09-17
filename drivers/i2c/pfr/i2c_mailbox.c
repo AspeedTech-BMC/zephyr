@@ -40,6 +40,7 @@ struct ast_i2c_mbx_data {
 	uint32_t	i2c_dev_base[AST_I2C_M_DEV_COUNT];	/* i2c dev base*/
 	uint8_t	mail_addr_en[AST_I2C_M_DEV_COUNT];	/* mbx addr enable*/
 	uint8_t	mail_en[AST_I2C_M_DEV_COUNT];		/* mbx enable*/
+	uint32_t	i2c_s_ier;							/* slave ier keep */
 };
 
 struct ast_i2c_mbx_config {
@@ -384,6 +385,10 @@ uint32_t base, uint16_t length, uint8_t enable)
 		I2C_W_R(base, dev_base + AST_I2C_TX_DMA);
 		I2C_W_R(0x400, dev_base + AST_I2C_MBX_LIM);
 
+		/* save and clear slave interrupt */
+		data->i2c_s_ier = sys_read32(base + AST_I2C_S_IER);
+		I2C_W_R(0x0, dev_base + AST_I2C_S_IER);
+
 		value = AST_I2C_MBX_RX_DMA_LEN(length);
 		I2C_W_R(value, dev_base + AST_I2C_DMA_LEN);
 		value = AST_I2C_MBX_TX_DMA_LEN(length);
@@ -395,6 +400,9 @@ uint32_t base, uint16_t length, uint8_t enable)
 		value = (sys_read32(dev_base + AST_I2C_CTL)
 		& ~(AST_I2C_MBX_EN|AST_I2C_SLAVE_EN));
 		I2C_W_R(value, dev_base + AST_I2C_CTL);
+
+		/* restore the slave interrupt */
+		I2C_W_R(data->i2c_s_ier, dev_base + AST_I2C_S_IER);
 
 		/* reset dma offset */
 		value = (sys_read32(dev_base + AST_I2C_CTL)
