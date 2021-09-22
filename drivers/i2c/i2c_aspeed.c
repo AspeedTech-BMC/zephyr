@@ -861,6 +861,13 @@ static int i2c_aspeed_transfer(const struct device *dev, struct i2c_msg *msgs,
 		return -ETIMEDOUT;
 	}
 
+	if (msgs->flags & I2C_MSG_READ) {
+		if (config->mode == DMA_MODE) {
+			cache_data_range(&(msgs->buf)
+			, msgs->len, K_CACHE_INVD);
+		}
+	}
+
 	LOG_DBG(" end %d\n", data->cmd_err);
 
 	return data->cmd_err;
@@ -1279,11 +1286,11 @@ int aspeed_i2c_slave_irq(const struct device *dev)
 				slave_rx_len =
 				AST_I2C_GET_RX_DMA_LEN(sys_read32(i2c_base + AST_I2CS_DMA_LEN_STS));
 				/*aspeed_cache_invalid_data*/
+				cache_data_range((&data->slave_dma_buf[i])
+				, slave_rx_len, K_CACHE_INVD);
 				for (i = 0; i < slave_rx_len; i++) {
 				/*LOG_DBG(data->dev, "[%02x]", data->slave_dma_buf[i]);*/
 					if (slave_cb->write_received) {
-						cache_data_range((&data->slave_dma_buf[i])
-						, 0, K_CACHE_INVD);
 						slave_cb->write_received(data->slave_cfg
 						, data->slave_dma_buf[i]);
 					}
@@ -1345,6 +1352,8 @@ int aspeed_i2c_slave_irq(const struct device *dev)
 				AST_I2C_GET_RX_DMA_LEN(sys_read32(i2c_base + AST_I2CS_DMA_LEN_STS));
 
 				for (i = 0; i < slave_rx_len; i++) {
+					cache_data_range((&data->slave_dma_buf[i])
+					, 1, K_CACHE_INVD);
 					LOG_DBG("rx [%02x]", data->slave_dma_buf[i]);
 					if (slave_cb->write_received) {
 						slave_cb->write_received(data->slave_cfg
@@ -1471,7 +1480,7 @@ int aspeed_i2c_slave_irq(const struct device *dev)
 					slave_cb->read_processed(data->slave_cfg
 					, &data->slave_dma_buf[0]);
 				}
-				LOG_DBG("tx : [%02x]", data->slave_dma_buf[0]);
+				LOG_DBG("rx : [%02x]", data->slave_dma_buf[0]);
 				sys_write32(0, i2c_base + AST_I2CS_DMA_LEN_STS);
 				sys_write32(AST_I2CS_SET_TX_DMA_LEN(1)
 				, i2c_base + AST_I2CS_DMA_LEN);
