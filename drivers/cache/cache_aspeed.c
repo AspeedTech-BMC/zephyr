@@ -194,8 +194,13 @@ int cache_data_range(void *addr, size_t size, int op)
 {
 	uint32_t aligned_addr, i, n;
 	uint32_t base = DT_REG_ADDR(DT_NODELABEL(syscon));
+	unsigned int key = 0;
 
 	ARG_UNUSED(op);
+
+	/* enter critical section */
+	if (!k_is_in_isr())
+		key = irq_lock();
 
 	if (((uint32_t)addr < CACHED_SRAM_ADDR) ||
 	    ((uint32_t)addr > CACHED_SRAM_END)) {
@@ -210,6 +215,10 @@ int cache_data_range(void *addr, size_t size, int op)
 		aligned_addr += CACHE_LINE_SIZE;
 	}
 	__DSB();
+
+	/* exit critical section */
+	if (!k_is_in_isr())
+		irq_unlock(key);
 
 	return 0;
 }
