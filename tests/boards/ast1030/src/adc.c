@@ -146,7 +146,7 @@ int test_adc(int count, enum aspeed_test_type type)
 	case AST_TEST_SLT:
 	case AST_TEST_FT:
 		gv = ft_golden_value;
-		tolerance = 0.01;
+		tolerance = 0.03;
 		break;
 	default:
 		return -EINVAL;
