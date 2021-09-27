@@ -14,8 +14,8 @@
 #define AST_I2C_M_R		1
 #define AST_I2C_M_W		2
 
-#define AST_I2C_M_I2C0	1
-#define AST_I2C_M_I2C1	2
+#define AST_I2C_M_I2C1	1
+#define AST_I2C_M_I2C2	2
 
 /* mail box fifo define */
 #define AST_I2C_M_FIFO_COUNT	2
@@ -34,8 +34,8 @@
 #define AST_I2C_M_FIFO_R_NAK	BIT(28)
 #define AST_I2C_M_FIFO_INT	0xF0000
 #define AST_I2C_M_FIFO_STS	0xF
-#define AST_I2C_M_FIFO_I2C0_H	BIT(24)
-#define AST_I2C_M_FIFO_I2C1_H	BIT(25)
+#define AST_I2C_M_FIFO_I2C1_H	BIT(24)
+#define AST_I2C_M_FIFO_I2C2_H	BIT(25)
 
 /* mail box base define */
 #define AST_I2C_M_BASE			0x3000

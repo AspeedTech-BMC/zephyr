@@ -114,12 +114,12 @@ int ast_i2c_mbx_fifo_priority(const struct device *dev, uint8_t priority)
 
 	/* apply fifo config */
 	value = (sys_read32(cfg->mail_g_base + AST_I2C_M_CFG) &
-		~(AST_I2C_M_FIFO_I2C0_H | AST_I2C_M_FIFO_I2C1_H));
+		~(AST_I2C_M_FIFO_I2C1_H | AST_I2C_M_FIFO_I2C2_H));
 
-	if (priority == AST_I2C_M_I2C0) {
-		value |= AST_I2C_M_FIFO_I2C0_H;
-	} else if (priority == AST_I2C_M_I2C1) {
+	if (priority == AST_I2C_M_I2C1) {
 		value |= AST_I2C_M_FIFO_I2C1_H;
+	} else if (priority == AST_I2C_M_I2C2) {
+		value |= AST_I2C_M_FIFO_I2C2_H;
 	}
 
 	I2C_W_R(value, cfg->mail_g_base + AST_I2C_M_CFG);
@@ -193,10 +193,12 @@ uint16_t base, uint16_t length)
 		return -EINVAL;
 	}
 
-	/* check fifo base limit */
-	if ((base < MBX_MIN_BASE) ||
-	(base + length) > MBX_MAX_BASE)
-		return -EINVAL;
+	/* check fifo base limit if length not equal 0*/
+	if (length) {
+		if ((base < MBX_MIN_BASE) ||
+		(base + length) > MBX_MAX_BASE)
+			return -EINVAL;
+	}
 
 	value1 = sys_read32(cfg->mail_g_base + AST_I2C_M_FIFO_IRQ);
 	fifo_int &= AST_I2C_M_FIFO_INT;
@@ -372,9 +374,11 @@ uint32_t base, uint16_t length, uint8_t enable)
 		return -EINVAL;
 
 	/* check mbx base limit */
-	if ((base < MBX_MIN_BASE) ||
-	(base + length) > MBX_MAX_BASE)
-		return -EINVAL;
+	if (enable) {
+		if ((base < MBX_MIN_BASE) ||
+		(base + length) > MBX_MAX_BASE)
+			return -EINVAL;
+	}
 
 	/* change device base */
 	dev_base = data->i2c_dev_base[dev_idx];

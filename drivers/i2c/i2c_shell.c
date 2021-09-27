@@ -673,7 +673,7 @@ static int cmd_mbx_f_p(const struct shell *shell,
 	if (pfr_mbx_dev != NULL) {
 		ret = ast_i2c_mbx_fifo_priority(pfr_mbx_dev, (uint8_t)priority);
 		if (ret) {
-			shell_error(shell, "xx I2C: PFR MBX FIFO Prioity failed.");
+			shell_error(shell, "xx I2C: PFR MBX FIFO Priority failed.");
 			return ret;
 		}
 	}
@@ -924,8 +924,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_i2c_cmds,
 				SHELL_CMD_ARG(mbx_protect_en, &dsub_device_name,
 					"Enable pfr mbx protect address",
 					cmd_mbx_p_en, 0, 4),
-				SHELL_CMD_ARG(mbx_fifo_prioity, &dsub_device_name,
-					"Set pfr mbx FIFO prioity",
+				SHELL_CMD_ARG(mbx_fifo_priority, &dsub_device_name,
+					"Set pfr mbx FIFO priority",
 					cmd_mbx_f_p, 0, 2),
 				SHELL_CMD_ARG(mbx_fifo_set, &dsub_device_name,
 					"Set pfr mbx FIFO address",
