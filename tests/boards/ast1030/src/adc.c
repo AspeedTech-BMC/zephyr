@@ -128,8 +128,8 @@ static const uint16_t ci_golden_value[16] = {
 };
 
 static const uint16_t ft_golden_value[16] = {
-	616, 1546, 1885, 1009, 616, 1546, 1885, 1009,
-	616, 1546, 1885, 1009, 616, 1546, 1885, 1009,
+	600, 1650, 2000, 1000, 600, 1650, 2000, 1000,
+	600, 1650, 2000, 1000, 600, 1650, 2000, 1000,
 };
 
 int test_adc(int count, enum aspeed_test_type type)
