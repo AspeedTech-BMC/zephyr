@@ -96,7 +96,7 @@ void ast_i2c_mbx_isr(const struct device *dev)
 	LOG_INF(" A mail stsfifo : %x", stsfifo);
 }
 
-int ast_i2c_mbx_fifo_pirority(const struct device *dev, uint8_t pirority)
+int ast_i2c_mbx_fifo_priority(const struct device *dev, uint8_t priority)
 {
 	const struct ast_i2c_mbx_config *cfg = DEV_CFG(dev);
 
@@ -108,17 +108,17 @@ int ast_i2c_mbx_fifo_pirority(const struct device *dev, uint8_t pirority)
 		return -EINVAL;
 	}
 
-	/* invalid pirority */
-	if (pirority > AST_I2C_M_I2C1)
+	/* invalid priority */
+	if (priority > AST_I2C_M_I2C1)
 		return -EINVAL;
 
 	/* apply fifo config */
 	value = (sys_read32(cfg->mail_g_base + AST_I2C_M_CFG) &
 		~(AST_I2C_M_FIFO_I2C0_H | AST_I2C_M_FIFO_I2C1_H));
 
-	if (pirority == AST_I2C_M_I2C0) {
+	if (priority == AST_I2C_M_I2C0) {
 		value |= AST_I2C_M_FIFO_I2C0_H;
-	} else if (pirority == AST_I2C_M_I2C1) {
+	} else if (priority == AST_I2C_M_I2C1) {
 		value |= AST_I2C_M_FIFO_I2C1_H;
 	}
 
@@ -502,6 +502,10 @@ int ast_i2c_mbx_init(const struct device *dev)
 
 	/* hook interrupt routine*/
 	cfg->irq_config_func(dev);
+
+	/* temp clear internal SRAM for mailbox verified */
+	sts = 0x7e7b0e00;
+	memset((uint32_t *)sts, 0, 0x200);
 
 	return 0;
 }

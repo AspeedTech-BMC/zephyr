@@ -497,15 +497,13 @@ static int cmd_mbx_addr(const struct shell *shell,
 	int ret = 0;
 	int dev_idx;
 	int idx;
-	int offset;
 	int addr;
 	int enable;
 
 	dev_idx = strtol(argv[2], NULL, 16);
 	idx = strtol(argv[3], NULL, 16);
-	offset = strtol(argv[4], NULL, 16);
-	addr = strtol(argv[5], NULL, 16);
-	enable = strtol(argv[6], NULL, 16);
+	addr = strtol(argv[4], NULL, 16);
+	enable = strtol(argv[5], NULL, 16);
 
 	pfr_mbx_dev = device_get_binding(argv[1]);
 	if (!pfr_mbx_dev) {
@@ -516,7 +514,7 @@ static int cmd_mbx_addr(const struct shell *shell,
 
 	if (pfr_mbx_dev != NULL) {
 		ret = ast_i2c_mbx_addr(pfr_mbx_dev, (uint8_t)dev_idx,
-		(uint8_t)idx, (uint8_t)offset, (uint8_t)addr, (uint8_t)enable);
+		(uint8_t)idx, 0x1, (uint8_t)addr, (uint8_t)enable);
 		if (ret) {
 			shell_error(shell, "xx I2C: PFR MBX Set address failed.");
 			return ret;
@@ -661,9 +659,9 @@ static int cmd_mbx_f_p(const struct shell *shell,
 {
 	const struct device *pfr_mbx_dev = NULL;
 	int ret = 0;
-	int pirority;
+	int priority;
 
-	pirority = strtol(argv[2], NULL, 16);
+	priority = strtol(argv[2], NULL, 16);
 
 	pfr_mbx_dev = device_get_binding(argv[1]);
 	if (!pfr_mbx_dev) {
@@ -673,9 +671,9 @@ static int cmd_mbx_f_p(const struct shell *shell,
 	}
 
 	if (pfr_mbx_dev != NULL) {
-		ret = ast_i2c_mbx_fifo_pirority(pfr_mbx_dev, (uint8_t)pirority);
+		ret = ast_i2c_mbx_fifo_priority(pfr_mbx_dev, (uint8_t)priority);
 		if (ret) {
-			shell_error(shell, "xx I2C: PFR MBX FIFO Piroity failed.");
+			shell_error(shell, "xx I2C: PFR MBX FIFO Prioity failed.");
 			return ret;
 		}
 	}
@@ -926,8 +924,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_i2c_cmds,
 				SHELL_CMD_ARG(mbx_protect_en, &dsub_device_name,
 					"Enable pfr mbx protect address",
 					cmd_mbx_p_en, 0, 4),
-				SHELL_CMD_ARG(mbx_fifo_piroity, &dsub_device_name,
-					"Set pfr mbx FIFO piroity",
+				SHELL_CMD_ARG(mbx_fifo_prioity, &dsub_device_name,
+					"Set pfr mbx FIFO prioity",
 					cmd_mbx_f_p, 0, 2),
 				SHELL_CMD_ARG(mbx_fifo_set, &dsub_device_name,
 					"Set pfr mbx FIFO address",

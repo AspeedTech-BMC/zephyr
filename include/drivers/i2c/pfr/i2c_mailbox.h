@@ -225,15 +225,15 @@ int ast_i2c_mbx_fifo_apply(const struct device *dev, uint8_t idx,
 uint8_t addr, uint8_t type);
 
 /**
- * @brief Set i2c mailbox fifo pirority
+ * @brief Set i2c mailbox fifo priority
  *
  * @param dev Pointer to the device structure for the driver instance
- * @param pirority I2C access pirority (0x0~0x2) 0x0 means no pirority setting
+ * @param pirority I2C access priority (0x0~0x2) 0x0 means no pirority setting
  *
  * @retval 0 If successful
  * @retval -EINVAL Invalid data pointer or offset
  */
-int ast_i2c_mbx_fifo_pirority(const struct device *dev, uint8_t pirority);
+int ast_i2c_mbx_fifo_priority(const struct device *dev, uint8_t priority);
 
 /**
  * @}
