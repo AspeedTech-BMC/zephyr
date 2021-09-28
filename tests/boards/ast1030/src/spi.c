@@ -106,14 +106,14 @@ static int do_update(const struct device *flash_device,
 		goto end;
 	}
 
-	op_buf = (uint8_t *)k_malloc(sector_sz);
+	op_buf = (uint8_t *)malloc(sector_sz);
 	if (op_buf == NULL) {
 		LOG_ERR("heap full %d %d", __LINE__, sector_sz);
 		ret = -EINVAL;
 		goto end;
 	}
 
-	read_back_buf = (uint8_t *)k_malloc(sector_sz);
+	read_back_buf = (uint8_t *)malloc(sector_sz);
 	if (read_back_buf == NULL) {
 		LOG_ERR("heap full %d %d", __LINE__, sector_sz);
 		ret = -EINVAL;
@@ -183,9 +183,9 @@ end:
 	LOG_INF("Update %s.", ret ? "FAILED" : "done");
 
 	if (op_buf != NULL)
-		k_free(op_buf);
+		free(op_buf);
 	if (read_back_buf != NULL)
-		k_free(read_back_buf);
+		free(read_back_buf);
 
 	return ret;
 }
@@ -225,7 +225,7 @@ int test_spi(int count, enum aspeed_test_type type)
 					LOG_ERR("No device named %s.", flash_device[i]);
 					return -ENOEXEC;
 				}
-				ret = do_update(flash_dev, 0xFE100,
+				ret = do_update(flash_dev, 0xE0000,
 						test_arr, UPDATE_TEST_PATTERN_SIZE);
 				if (ret != 0) {
 					LOG_ERR("RW test fail");

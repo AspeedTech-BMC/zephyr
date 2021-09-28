@@ -304,14 +304,14 @@ static int do_update(const struct device *flash_device,
 		goto end;
 	}
 
-	op_buf = (uint8_t *)k_malloc(sector_sz);
+	op_buf = (uint8_t *)malloc(sector_sz);
 	if (op_buf == NULL) {
 		printk("heap full %d %d\n", __LINE__, sector_sz);
 		ret = -EINVAL;
 		goto end;
 	}
 
-	read_back_buf = (uint8_t *)k_malloc(sector_sz);
+	read_back_buf = (uint8_t *)malloc(sector_sz);
 	if (read_back_buf == NULL) {
 		printk("heap full %d %d\n", __LINE__, sector_sz);
 		ret = -EINVAL;
@@ -381,9 +381,9 @@ end:
 	printk("Update %s.\n", ret ? "FAILED" : "done");
 
 	if (op_buf != NULL)
-		k_free(op_buf);
+		free(op_buf);
 	if (read_back_buf != NULL)
-		k_free(read_back_buf);
+		free(read_back_buf);
 
 	return ret;
 }
