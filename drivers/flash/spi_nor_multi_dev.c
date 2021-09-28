@@ -289,6 +289,10 @@ static inline void spi_nor_assign_se_cmd(
 	if (type < 1)
 		return;
 
+	if (data->flash_nor_parameter.write_block_size != 0 &&
+		data->flash_nor_parameter.write_block_size != size)
+		return;
+
 	data->erase_types[type - 1].cmd = opcode;
 	data->erase_types[type - 1].exp = covert_se_size_to_exp(size);
 	data->cmd_info.se_opcode = opcode;
@@ -825,34 +829,19 @@ static int spi_nor_erase(const struct device *dev, off_t addr, size_t size)
 			spi_nor_op_exec(dev, op_ce_info);
 			size -= flash_size;
 		} else {
-			const struct jesd216_erase_type *erase_types =
-				dev_erase_types(dev);
-			const struct jesd216_erase_type *bet = NULL;
-
-			for (uint8_t ei = 0; ei < JESD216_NUM_ERASE_TYPES; ++ei) {
-				const struct jesd216_erase_type *etp =
-					&erase_types[ei];
-
-				if ((etp->exp != 0)
-				    && SPI_NOR_IS_ALIGNED(addr, etp->exp)
-				    && SPI_NOR_IS_ALIGNED(size, etp->exp)
-				    && ((bet == NULL)
-					|| (etp->exp > bet->exp))) {
-					bet = etp;
-				}
-			}
-			if (bet != NULL) {
-				op_info.opcode = bet->cmd;
-				op_info.addr = addr;
-
-				spi_nor_op_exec(dev, op_info);
-				addr += BIT(bet->exp);
-				size -= BIT(bet->exp);
-			} else {
-				LOG_DBG("Can't erase %zu at 0x%lx",
-					size, (long)addr);
+			if (size % data->sector_size != 0) {
+				LOG_ERR("Erase sz is not multiple of se sz");
+				LOG_ERR("sz: %d, se sz: %d", size, data->sector_size);
 				ret = -EINVAL;
+				break;
 			}
+
+			op_info.opcode = cmd_info.se_opcode;
+			op_info.addr = addr;
+
+			spi_nor_op_exec(dev, op_info);
+			addr += data->sector_size;
+			size -= data->sector_size;
 		}
 		spi_nor_wait_until_ready(dev);
 	}
@@ -1035,16 +1024,6 @@ static int spi_nor_process_bfp(const struct device *dev,
 		++etp;
 	}
 
-	for (uint8_t ti = 0; ti < JESD216_NUM_ERASE_TYPES; ti++) {
-		if (data->erase_types[ti].exp != 0) {
-			data->cmd_info.se_opcode = data->erase_types[ti].cmd;
-			data->sector_size = BIT(data->erase_types[ti].exp);
-			data->cmd_info.se_mode = JESD216_MODE_111;
-			data->flash_nor_parameter.write_block_size = data->sector_size;
-			break;
-		}
-	}
-
 	data->page_size = jesd216_bfp_page_size(php, bfp);
 	data->flash_size = flash_size;
 
@@ -1127,11 +1106,7 @@ static int spi_nor_process_4bai(const struct device *dev,
 			rv = jesd216_4bai_se_support(jedec_4bai, ti + 1, &cmd);
 			if (rv < 0)
 				goto end;
-			data->cmd_info.se_opcode = cmd;
 			data->erase_types[ti].cmd = cmd;
-			data->sector_size = BIT(data->erase_types[ti].exp);
-			data->flash_nor_parameter.write_block_size = data->sector_size;
-			break;
 		}
 	}
 
@@ -1158,6 +1133,8 @@ static int spi_nor_process_sfdp(
 	const struct device *dev)
 {
 	int rc;
+	struct spi_nor_data *data = dev->data;
+	uint8_t ti;
 
 	/* For runtime we need to read the SFDP table, identify the
 	 * BFP block, and process it.
@@ -1232,6 +1209,24 @@ static int spi_nor_process_sfdp(
 		++php;
 	}
 
+	for (ti = 0; ti < JESD216_NUM_ERASE_TYPES; ti++) {
+		if (data->flash_nor_parameter.write_block_size == 0 &&
+				data->erase_types[ti].exp != 0) {
+			break;
+		}
+
+		if (data->flash_nor_parameter.write_block_size ==
+			BIT(data->erase_types[ti].exp)) {
+			break;
+		}
+	}
+
+	if (ti >= JESD216_NUM_ERASE_TYPES || data->erase_types[ti].exp == 0)
+		return -EINVAL;
+
+	spi_nor_assign_se_cmd(data, JESD216_MODE_111, ti + 1,
+		data->erase_types[ti].cmd, BIT(data->erase_types[ti].exp));
+
 	return rc;
 }
 
@@ -1241,11 +1236,14 @@ static int sfdp_post_fixup(const struct device *dev)
 {
 	int ret = 0;
 	struct spi_nor_data *data = dev->data;
+	const struct spi_nor_config *cfg = dev->config;
 
 	switch (data->jedec_id[0]) {
 	case SPI_NOR_MFR_ID_WINBOND:
-		if (SPI_NOR_GET_JESDID(data->jedec_id) == 0x4014)
-			ret = winbond_w25q80dv_fixup(dev);
+		if (SPI_NOR_GET_JESDID(data->jedec_id) == 0x4014) {
+			if (cfg->broken_sfdp)
+				ret = winbond_w25q80dv_fixup(dev);
+		}
 		break;
 	default:
 		/* do nothing */
@@ -1517,7 +1515,7 @@ static const struct flash_driver_api spi_nor_api = {
 			.slave = DT_INST_REG_ADDR(n),	\
 		},	\
 		.flash_nor_parameter = {	\
-			.write_block_size = 1,	\
+			.write_block_size = DT_INST_PROP_OR(n, write_block_size, 0),	\
 			.erase_value = 0xff,	\
 			.flash_size = 0,	\
 		},	\
