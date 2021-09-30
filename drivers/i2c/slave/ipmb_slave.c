@@ -136,7 +136,7 @@ int ipmb_slave_read(const struct device *dev, struct ipmb_msg **ipmb_data, uint8
 
 		return 0;
 	} else {
-		LOG_ERR("ipmb slave read: buffer empty!");
+		LOG_DBG("ipmb slave read: buffer empty!");
 		return 1;
 	}
 
