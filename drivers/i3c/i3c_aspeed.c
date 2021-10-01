@@ -1142,14 +1142,15 @@ int i3c_aspeed_master_enable_ibi(struct i3c_dev_desc *i3cdev)
 
 	if (I3C_PID_VENDOR_ID(i3cdev->info.pid) == I3C_PID_VENDOR_ID_ASPEED) {
 		/*
-		 * MIPI spec. violation:
-		 * MIPI: the 3rd byte in SETMRL indicates the max ibi payload length including MDB
-		 * Aspeed: the HW ibi max payload length does NOT include MDB
-		 *
-		 * Hence the last argument is "CONFIG_I3C_ASPEED_MAX_IBI_PAYLOAD - 1"
+		 * Warning: MIPI spec. violation
+		 * The MIPI specification defines the 3rd byte of the SETMRL CCC as the
+		 * max ibi payload length including the MDB.  However, the Aspeed implementation
+		 * does NOT include the MDB length in the 3rd byte of the SETMRL CCC.
+		 * Therefore, the last argument of i3c_master_send_setmrl is set to
+		 * "CONFIG_I3C_ASPEED_MAX_IBI_PAYLOAD - 1"
 		 */
 		ret = i3c_master_send_setmrl(i3cdev->master_dev, i3cdev->info.dynamic_addr, 256,
-				      CONFIG_I3C_ASPEED_MAX_IBI_PAYLOAD - 1);
+					     CONFIG_I3C_ASPEED_MAX_IBI_PAYLOAD - 1);
 		__ASSERT(!ret, "failed to send SETMRL\n");
 	}
 
