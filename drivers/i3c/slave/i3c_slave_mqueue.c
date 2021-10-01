@@ -104,7 +104,7 @@ int i3c_slave_mqueue_write(const struct device *dev, uint8_t *src, int size)
 	struct i3c_slave_mqueue_config *config = DEV_CFG(dev);
 	struct i3c_slave_mqueue_obj *obj = DEV_DATA(dev);
 
-	return i3c_slave_send_sir(obj->i3c_controller, config->mdb, src, size + 1);
+	return i3c_slave_send_sir(obj->i3c_controller, config->mdb, src, size);
 }
 
 static void i3c_slave_mqueue_init(const struct device *dev)

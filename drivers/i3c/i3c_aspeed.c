@@ -1180,24 +1180,21 @@ int i3c_aspeed_slave_send_sir(const struct device *dev, uint8_t mdb, uint8_t *da
 		return -EACCES;
 	}
 
-	if (!nbytes) {
+	i3c_register->device_ctrl.fields.slave_mdb = mdb;
+	if (!data || !nbytes) {
 		goto wr_fifo_done;
 	}
 
-	i3c_register->device_ctrl.fields.slave_mdb = mdb;
-
 	if (obj->hw_feature.ibi_flexible_length) {
-		if (nbytes > 1) {
-			i3c_aspeed_wr_tx_fifo(obj, data, nbytes - 1);
-			i3c_register->ibi_payload_config.fields.ibi_size = nbytes - 1;
-		}
+		i3c_aspeed_wr_tx_fifo(obj, data, nbytes);
+		i3c_register->ibi_payload_config.fields.ibi_size = nbytes;
 	} else {
-		buf = k_calloc(CONFIG_I3C_ASPEED_MAX_IBI_PAYLOAD - 1, sizeof(uint8_t));
-		__ASSERT(buf, "failed to allocat sir data buffer\n");
+		__ASSERT(nbytes < CONFIG_I3C_ASPEED_MAX_IBI_PAYLOAD - 1, "data size too large\n");
 
-		if (nbytes > 1) {
-			memcpy(buf, data, nbytes - 1);
-		}
+		buf = k_calloc(CONFIG_I3C_ASPEED_MAX_IBI_PAYLOAD - 1, sizeof(uint8_t));
+		__ASSERT(buf, "failed to allocate sir data buffer\n");
+
+		memcpy(buf, data, nbytes);
 		i3c_aspeed_wr_tx_fifo(obj, buf, CONFIG_I3C_ASPEED_MAX_IBI_PAYLOAD - 1);
 	}
 
