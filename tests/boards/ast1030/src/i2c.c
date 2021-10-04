@@ -91,12 +91,12 @@ void test_i2c_slave_EEPROM(void)
 		/* burst transfer data */
 		result = i2c_burst_write(master_dev, dev_addr, 0, data_s, DATA_COUNT);
 		ast_zassert_false(result,
-		"I2C: %s Master transfer is got failed", name_m);
+		"I2C: %s EEPROM write is got failed %d", name_m, result);
 
 		/* burst receive data */
 		result = i2c_burst_read(master_dev, dev_addr, 0, data_r, DATA_COUNT);
 		ast_zassert_false(result,
-		"I2C: %s Master read is got failed", name_m);
+		"I2C: %s EEPROM read is got failed %d", name_m, result);
 
 		for (j = 0; j < DATA_COUNT; j++) {
 			ast_zassert_equal(data_s[j], data_r[j],
@@ -170,11 +170,11 @@ void test_i2c_slave_IPMB(void)
 		/* burst transfer data */
 		result = i2c_burst_write(master_dev, dev_addr, 0, data_s, DATA_COUNT);
 		ast_zassert_false(result,
-		"I2C: %s Master transfer is got failed", name_m);
+		"I2C: %s IPMB write is got failed %d", name_m, result);
 
 		result = ipmb_slave_read(slave_dev, &msg, &length);
 		ast_zassert_false(result,
-		"I2C: %s ipmb read is got failed", name_s);
+		"I2C: %s IPMB read is got failed %d", name_s, result);
 
 		if (!result) {
 			/* check length */
