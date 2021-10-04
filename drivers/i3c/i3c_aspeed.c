@@ -18,6 +18,8 @@
 #define LOG_LEVEL CONFIG_I3C_LOG_LEVEL
 LOG_MODULE_REGISTER(i3c);
 
+#include <portability/cmsis_os2.h>
+
 #define I3C_ASPEED_CCC_TIMEOUT	K_MSEC(10)
 #define I3C_ASPEED_XFER_TIMEOUT	K_MSEC(10)
 #define I3C_ASPEED_SIR_TIMEOUT	K_MSEC(10)
@@ -475,7 +477,7 @@ struct i3c_aspeed_obj {
 
 	/* slave mode data */
 	struct i3c_slave_setup slave_data;
-	struct k_sem sir_complete;
+	osEventFlagsId_t event_id;
 };
 
 #define DEV_CFG(dev)			((struct i3c_aspeed_config *)(dev)->config)
@@ -707,9 +709,6 @@ static void i3c_aspeed_isr(const struct device *dev)
 		i3c_aspeed_master_rx_ibi(obj);
 	}
 
-	if (config->secondary && status.fields.ibi_update) {
-		k_sem_give(&obj->sir_complete);
-	}
 
 	if (status.fields.ccc_update) {
 		uint32_t cm_tfr_sts = i3c_register->present_state.fields.cm_tfr_sts;
@@ -726,6 +725,10 @@ static void i3c_aspeed_isr(const struct device *dev)
 
 	if (config->secondary && status.fields.dyn_addr_assign) {
 		LOG_DBG("dynamic address assigned\n");
+	}
+
+	if (config->secondary) {
+		osEventFlagsSet(obj->event_id, status.value);
 	}
 
 	i3c_register->intr_status.value = status.value;
@@ -1173,6 +1176,7 @@ int i3c_aspeed_slave_send_sir(const struct device *dev, uint8_t mdb, uint8_t *da
 	struct i3c_aspeed_config *config = DEV_CFG(dev);
 	struct i3c_aspeed_obj *obj = DEV_DATA(dev);
 	struct i3c_register_s *i3c_register = config->base;
+	union i3c_intr_s events;
 	uint8_t *buf = NULL;
 
 	if (i3c_register->slave_event_ctrl.fields.sir_allowed == 0) {
@@ -1199,8 +1203,14 @@ int i3c_aspeed_slave_send_sir(const struct device *dev, uint8_t mdb, uint8_t *da
 	}
 
 wr_fifo_done:
+	events.value = 0;
+	osEventFlagsClear(obj->event_id, ~events.value);
+	events.fields.ibi_update = 1;
+	events.fields.resp_q_ready = 1;
+
+	/* trigger the hw and wait done */
 	i3c_register->i3c_slave_intr_req.fields.sir = 1;
-	k_sem_take(&obj->sir_complete, I3C_ASPEED_SIR_TIMEOUT);
+	osEventFlagsWait(obj->event_id, events.value, osFlagsWaitAll, osWaitForever);
 
 	if (buf) {
 		k_free(buf);
@@ -1340,7 +1350,7 @@ static int i3c_aspeed_init(const struct device *dev)
 
 	i3c_aspeed_enable(obj);
 
-	k_sem_init(&obj->sir_complete, 0, 1);
+	obj->event_id = osEventFlagsNew(NULL);
 
 	return 0;
 }
