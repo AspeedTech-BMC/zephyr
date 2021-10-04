@@ -20,12 +20,14 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
 #define TEST_PRIV_XFER_SIZE	128
 #define TEST_IBI_PAYLOAD_SIZE	2
+#define MAX_DATA_SIZE		256
+
 /* external reference */
 int i3c_slave_mqueue_read(const struct device *dev, uint8_t *dest, int budget);
 int i3c_slave_mqueue_write(const struct device *dev, uint8_t *src, int size);
 
-static uint8_t test_data_tx[TEST_PRIV_XFER_SIZE];
-static uint8_t test_data_rx[TEST_PRIV_XFER_SIZE];
+static uint8_t test_data_tx[MAX_DATA_SIZE];
+static uint8_t test_data_rx[MAX_DATA_SIZE];
 static struct i3c_ibi_payload i3c_payload;
 static struct k_sem ibi_complete;
 static struct i3c_ibi_payload *test_ibi_write_requested(struct i3c_dev_desc *desc)
