@@ -94,6 +94,11 @@ static void test_i3c_ci(int count)
 	ast_zassert_equal(I3C_PID_VENDOR_ID(slave.info.pid), I3C_PID_VENDOR_ID_ASPEED,
 			  "incorrect vendor ID %llx", slave.info.pid);
 
+	ret = i3c_master_request_ibi(&slave, &i3c_ibi_def_callbacks);
+	ast_zassert_equal(ret, 0, "failed to request sir");
+	ret = i3c_master_enable_ibi(&slave);
+	ast_zassert_equal(ret, 0, "failed to enable sir");
+
 	for (i = 0; i < count; i++) {
 		/* generate random data for private transfer */
 		prepare_test_data(test_data_tx, TEST_PRIV_XFER_SIZE);
@@ -112,11 +117,6 @@ static void test_i3c_ci(int count)
 
 		ast_zassert_mem_equal(test_data_tx, test_data_rx, TEST_PRIV_XFER_SIZE,
 				      "data mismatch");
-
-		ret = i3c_master_request_ibi(&slave, &i3c_ibi_def_callbacks);
-		ast_zassert_equal(ret, 0, "failed to request sir");
-		ret = i3c_master_enable_ibi(&slave);
-		ast_zassert_equal(ret, 0, "failed to enable sir");
 
 		/* setup IBI data */
 		prepare_test_data(test_data_tx, TEST_IBI_PAYLOAD_SIZE);
