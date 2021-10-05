@@ -333,6 +333,9 @@ struct i2c_aspeed_data {
 	uint32_t slave_xfer_len;
 	uint32_t slave_xfer_cnt;
 
+	/* byte mode check re-start */
+	uint8_t slave_addr_last;
+
 #ifdef CONFIG_I2C_SLAVE
 	unsigned char slave_dma_buf[I2C_SLAVE_BUF_SIZE];
 	struct i2c_slave_config *slave_cfg;
@@ -1570,16 +1573,25 @@ int aspeed_i2c_slave_irq(const struct device *dev)
 		sys_write32(AST_I2CS_PKT_DONE, i2c_base + AST_I2CS_ISR);
 		ret = 1;
 	} else {
-		LOG_DBG("byte mode todo check\n");
+		LOG_DBG("byte mode\n");
 		/*only coming for byte mode*/
 		cmd = AST_I2CS_ACTIVE_ALL;
 		switch (sts) {
 		case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE | AST_I2CS_Wait_RX_DMA:
 			LOG_DBG("S : Sw|D\n");
+
 			/* first address match is address */
 			byte_data =
 			AST_I2CC_GET_RX_BUFF(sys_read32(i2c_base + AST_I2CC_STS_AND_BUFF));
 			LOG_DBG("addr [%x]", byte_data);
+
+			/* If the record address is still same, it is re-start case. */
+			if ((slave_cb->write_requested) &&
+			byte_data != data->slave_addr_last) {
+				slave_cb->write_requested(data->slave_cfg);
+			}
+
+			data->slave_addr_last = byte_data;
 			break;
 		case AST_I2CS_RX_DONE | AST_I2CS_Wait_RX_DMA:
 			LOG_DBG("S : D\n");
@@ -1587,6 +1599,10 @@ int aspeed_i2c_slave_irq(const struct device *dev)
 			AST_I2CC_GET_RX_BUFF(sys_read32(i2c_base + AST_I2CC_STS_AND_BUFF));
 			LOG_DBG("rx [%x]", byte_data);
 
+			if (slave_cb->write_received) {
+				slave_cb->write_received(data->slave_cfg
+				, byte_data);
+			}
 			break;
 		case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE | AST_I2CS_Wait_TX_DMA:
 			cmd |= AST_I2CS_TX_CMD;
@@ -1594,21 +1610,34 @@ int aspeed_i2c_slave_irq(const struct device *dev)
 			byte_data =
 			AST_I2CC_GET_RX_BUFF(sys_read32(i2c_base + AST_I2CC_STS_AND_BUFF));
 			LOG_DBG("addr : [%02x]", byte_data);
-			/*i2c_slave_event(obj, I2C_SLAVE_READ_REQUESTED);*/
+
+			if (slave_cb->read_requested) {
+				slave_cb->read_requested(data->slave_cfg
+				, &byte_data);
+			}
+
 			LOG_DBG("tx: [%02x]\n", byte_data);
 			sys_write32(byte_data, i2c_base + AST_I2CC_STS_AND_BUFF);
 			break;
 		case AST_I2CS_TX_ACK | AST_I2CS_Wait_TX_DMA:
 			cmd |= AST_I2CS_TX_CMD;
 			LOG_DBG("S : D\n");
-			/*i2c_slave_event(obj, I2C_SLAVE_READ_PROCESSED);*/
+
+			if (slave_cb->read_processed) {
+				slave_cb->read_processed(data->slave_cfg
+				, &byte_data);
+			}
+
 			LOG_DBG("tx: [%02x]\n", byte_data);
 			sys_write32(byte_data, i2c_base + AST_I2CC_STS_AND_BUFF);
 			break;
 		case AST_I2CS_STOP:
+			if (slave_cb->stop) {
+				slave_cb->stop(data->slave_cfg);
+			}
 		case AST_I2CS_STOP | AST_I2CS_TX_NAK:
 			LOG_DBG("S : P\n");
-			/* i2c_slave_event(obj, I2C_SLAVE_STOP); */
+			data->slave_addr_last = 0xFF;
 			break;
 		default:
 			LOG_DBG("TODO no pkt_done intr ~~~ ***** sts %x\n", sts);
@@ -1664,6 +1693,9 @@ static int i2c_aspeed_init(const struct device *dev)
 	/* buffer mode base and size */
 	config->buf_base = config->global_reg + i2c_base_offset;
 	config->buf_size = I2C_BUF_SIZE;
+
+	/* byte mode check re-start */
+	data->slave_addr_last = 0xFF;
 
 	clock_control_get_rate(config->clock_dev, config->clk_id, &config->clk_src);
 	LOG_DBG("clk src %d, div mode %d, multi-master %d, xfer mode %d\n",
