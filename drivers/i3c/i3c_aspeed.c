@@ -1212,6 +1212,25 @@ int i3c_aspeed_slave_send_sir(const struct device *dev, uint8_t mdb, uint8_t *da
 	}
 
 	if (obj->hw_feature.ibi_flexible_length) {
+		/*
+		 * Workaround for AST1030A1:
+		 * reg 0xec[23:16] is wired to reg 0x00[23:16] by mistake.  This will cause the IBI
+		 * transfer size varies with the MDB value.
+		 *
+		 * case 1: IBI size == MDB value: no issue
+		 * case 2: IBI size < MDB value: the actual transfer size is rounded up by 4
+		 *         ---> actual IBI transfer size = ((IBI size + 3) >> 2) << 2
+		 * case 3: IBI size > MDB value: unable to handle this case
+		 *
+		 * Regarding to case 2, when the IBI FIFO is read done, a transfer error status will
+		 * be set because the actual IBI size does not match the size set in 0xec[23:16]. So
+		 * check xfr_error bit additionally.
+		 */
+		__ASSERT(nbytes <= mdb, "hw limitation: IBI size must be less than the MDB");
+		if (mdb != nbytes) {
+			events.fields.xfr_error = 1;
+		}
+
 		i3c_aspeed_wr_tx_fifo(obj, data, nbytes);
 		i3c_register->ibi_payload_config.fields.ibi_size = nbytes;
 	} else {
