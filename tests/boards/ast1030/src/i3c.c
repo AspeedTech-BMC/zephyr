@@ -26,6 +26,12 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 int i3c_slave_mqueue_read(const struct device *dev, uint8_t *dest, int budget);
 int i3c_slave_mqueue_write(const struct device *dev, uint8_t *src, int size);
 
+#define TEST_I3C_SLAVE_THREAD_STACK_SIZE	512
+#define TEST_I3C_SLAVE_THREAD_PRIO		(CONFIG_ZTEST_THREAD_PRIORITY + 1)
+
+K_THREAD_STACK_DEFINE(test_i3c_slave_thread_stack_area, TEST_I3C_SLAVE_THREAD_STACK_SIZE);
+static struct k_thread test_i3c_slave_thread;
+
 static uint8_t test_data_tx[MAX_DATA_SIZE];
 static uint8_t test_data_rx[MAX_DATA_SIZE];
 static struct i3c_ibi_payload i3c_payload;
@@ -63,6 +69,27 @@ static void prepare_test_data(uint8_t *data, int nbytes)
 	}
 }
 
+static void test_i3c_slave_task(void *arg1, void *arg2, void *arg3)
+{
+	const struct device *slave_mq = (const struct device *)arg1;
+	int ret;
+
+	for (;;) {
+		/* Test part 1: read and compare the data */
+		while (i3c_slave_mqueue_read(slave_mq, (uint8_t *)test_data_rx,
+					     TEST_PRIV_XFER_SIZE) == 0) {
+			k_sleep(K_USEC(1));
+		}
+		ast_zassert_mem_equal(test_data_tx, test_data_rx, TEST_PRIV_XFER_SIZE,
+				      "i3c private write test fail: data mismatch");
+
+		/* Test part 2: send IBI to notify the master device to get the pending data */
+		prepare_test_data(test_data_tx, TEST_IBI_PAYLOAD_SIZE);
+		ret = i3c_slave_mqueue_write(slave_mq, test_data_tx, TEST_IBI_PAYLOAD_SIZE);
+		ast_zassert_equal(ret, 0, "failed to do slave mqueue write");
+	}
+}
+
 static void test_i3c_ci(int count)
 {
 	const struct device *master, *slave_mq;
@@ -75,6 +102,12 @@ static void test_i3c_ci(int count)
 
 	slave_mq = device_get_binding(DT_LABEL(DT_NODELABEL(i3c1_smq)));
 	ast_zassert_not_null(slave_mq, "failed to get slave mqueue device");
+
+	/* create slave thread to service the slave actions */
+	k_thread_create(&test_i3c_slave_thread,
+			test_i3c_slave_thread_stack_area, TEST_I3C_SLAVE_THREAD_STACK_SIZE,
+			test_i3c_slave_task, (void *)slave_mq, NULL, NULL,
+			TEST_I3C_SLAVE_THREAD_PRIO, 0, K_NO_WAIT);
 
 	slave.info.static_addr = DT_PROP(DT_BUS(DT_NODELABEL(i3c1_smq)), assigned_address);
 	slave.info.assigned_dynamic_addr = slave.info.static_addr;
@@ -100,41 +133,55 @@ static void test_i3c_ci(int count)
 	ast_zassert_equal(ret, 0, "failed to enable sir");
 
 	for (i = 0; i < count; i++) {
-		/* generate random data for private transfer */
+		/*
+		 * Test part 1:
+		 * master --- private write transfer ---> slave
+		 */
 		prepare_test_data(test_data_tx, TEST_PRIV_XFER_SIZE);
 
-		/* setup the private transfer */
 		xfer.rnw = 0;
 		xfer.len = TEST_PRIV_XFER_SIZE;
 		xfer.data.out = test_data_tx;
 		ret = i3c_master_priv_xfer(&slave, &xfer, 1);
 		ast_zassert_equal(ret, 0, "failed to do private transfer");
 
-		k_sleep(K_USEC(1));
+		/*
+		 * Test part 2:
+		 * if MDB group ID is pending read notification:
+		 *    master <--- IBI notification --------- slave
+		 *    master ---- private read transfer ---> slave
+		 * else:
+		 *    master <--- IBI with data --------- slave
+		 */
 
-		ret = i3c_slave_mqueue_read(slave_mq, (uint8_t *)test_data_rx, TEST_PRIV_XFER_SIZE);
-		ast_zassert_equal(ret, TEST_PRIV_XFER_SIZE, "failed to do mqueue read: %d", ret);
-
-		ast_zassert_mem_equal(test_data_tx, test_data_rx, TEST_PRIV_XFER_SIZE,
-				      "data mismatch");
-
-		/* setup IBI data */
-		prepare_test_data(test_data_tx, TEST_IBI_PAYLOAD_SIZE);
+		/* master device waits for the IBI from the slave */
 		k_sem_init(&ibi_complete, 0, 1);
-
-		ret = i3c_slave_mqueue_write(slave_mq, test_data_tx, TEST_IBI_PAYLOAD_SIZE);
 		k_sem_take(&ibi_complete, K_FOREVER);
 
-		/* IBI test done, check result */
+		/* check result: first byte (MDB) shall match the DT property mandatory-data-byte */
 		ret = DT_PROP(DT_NODELABEL(i3c1_smq), mandatory_data_byte);
 		ast_zassert_equal(ret, test_data_rx[0], "IBI MDB mismatch: %02x %02x\n", ret,
 				  test_data_rx[0]);
-		ast_zassert_mem_equal(test_data_tx, &test_data_rx[1], TEST_IBI_PAYLOAD_SIZE,
-				      "data mismatch");
+
+		if (IS_MDB_PENDING_READ_NOTIFY(test_data_rx[0])) {
+			k_sleep(K_USEC(100));
+			/* initiate a private read transfer to read the pending data */
+			xfer.rnw = 1;
+			xfer.len = TEST_IBI_PAYLOAD_SIZE;
+			xfer.data.in = test_data_rx;
+			ret = i3c_master_priv_xfer(&slave, &xfer, 1);
+			ast_zassert_mem_equal(test_data_tx, test_data_rx, TEST_IBI_PAYLOAD_SIZE,
+					      "data mismatch");
+		} else {
+			ast_zassert_mem_equal(test_data_tx, &test_data_rx[1], TEST_IBI_PAYLOAD_SIZE,
+					      "data mismatch");
+		}
 	}
 
 	ret = i3c_master_deattach_device(master, &slave);
 	ast_zassert_equal(ret, 0, "failed to deattach device");
+
+	k_thread_abort(&test_i3c_slave_thread);
 }
 
 int test_i3c(int count, enum aspeed_test_type type)
