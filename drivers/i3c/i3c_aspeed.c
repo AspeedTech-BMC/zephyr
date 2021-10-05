@@ -1187,14 +1187,27 @@ int i3c_aspeed_slave_send_sir(const struct device *dev, uint8_t mdb, uint8_t *da
 	struct i3c_register_s *i3c_register = config->base;
 	union i3c_intr_s events;
 	uint8_t *buf = NULL;
+	bool append_pec = false;
 
 	if (i3c_register->slave_event_ctrl.fields.sir_allowed == 0) {
 		LOG_ERR("SIR is not enabled by the main master\n");
 		return -EACCES;
 	}
 
+	osEventFlagsClear(obj->event_id, ~osFlagsError);
+	events.value = 0;
+	events.fields.ibi_update = 1;
+	events.fields.resp_q_ready = 1;
+
 	i3c_register->device_ctrl.fields.slave_mdb = mdb;
+
+	/*
+	 * If no additional bytes are to be sent, the total IBI data length is 1 (MDB only).
+	 * This will hit the bug of (4n + 1) IBI data length issue on AST2600 series and AST1030A0
+	 * SOCs.  Append the PEC to make the total IBI data length be 2 for workaround.
+	 */
 	if (!data || !nbytes) {
+		append_pec = true;
 		goto wr_fifo_done;
 	}
 
@@ -1212,14 +1225,17 @@ int i3c_aspeed_slave_send_sir(const struct device *dev, uint8_t mdb, uint8_t *da
 	}
 
 wr_fifo_done:
-	events.value = 0;
-	osEventFlagsClear(obj->event_id, ~events.value);
-	events.fields.ibi_update = 1;
-	events.fields.resp_q_ready = 1;
+	if (append_pec) {
+		i3c_register->device_ctrl.fields.slave_pec_en = 1;
+	}
 
 	/* trigger the hw and wait done */
 	i3c_register->i3c_slave_intr_req.fields.sir = 1;
 	osEventFlagsWait(obj->event_id, events.value, osFlagsWaitAll, osWaitForever);
+
+	if (append_pec) {
+		i3c_register->device_ctrl.fields.slave_pec_en = 0;
+	}
 
 	if (buf) {
 		k_free(buf);
