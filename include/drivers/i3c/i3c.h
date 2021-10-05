@@ -143,7 +143,26 @@ int i3c_aspeed_master_priv_xfer(struct i3c_dev_desc *i3cdev, struct i3c_priv_xfe
 int i3c_aspeed_master_request_ibi(struct i3c_dev_desc *i3cdev, struct i3c_ibi_callbacks *cb);
 int i3c_aspeed_master_enable_ibi(struct i3c_dev_desc *i3cdev);
 int i3c_aspeed_slave_register(const struct device *dev, struct i3c_slave_setup *slave_data);
+/**
+ * @brief slave device sends SIR (IBI) with data
+ *
+ * @param dev the slave device
+ * @param mdb mandatory data byte
+ * @param data pointer to the additional IBI data
+ * @param nbytes number of bytes of the additional IBI data
+ * @return int 0 = success
+ */
 int i3c_aspeed_slave_send_sir(const struct device *dev, uint8_t mdb, uint8_t *data, int nbytes);
+
+/**
+ * @brief slave devices prepares the data for master private read transfer
+ *
+ * @param dev the slave device
+ * @param data the data to be read
+ * @param nbytes number of bytes of the data
+ * @return int 0 = success
+ */
+int i3c_aspeed_slave_prep_read_data(const struct device *dev, uint8_t *data, int nbytes);
 
 /* common API */
 int i3c_master_send_enec(const struct device *master, uint8_t addr, uint8_t evt);
@@ -161,6 +180,7 @@ int i3c_master_send_getpid(const struct device *master, uint8_t addr, uint64_t *
 #define i3c_master_enable_ibi		i3c_aspeed_master_enable_ibi
 #define i3c_slave_register		i3c_aspeed_slave_register
 #define i3c_slave_send_sir		i3c_aspeed_slave_send_sir
+#define i3c_slave_prep_read_data	i3c_aspeed_slave_prep_read_data
 
 int i3c_jesd_read(struct i3c_dev_desc *slave, uint8_t addr, uint8_t *buf, int length);
 int i3c_i2c_read(struct i3c_dev_desc *slave, uint8_t addr, uint8_t *buf, int length);

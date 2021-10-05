@@ -59,8 +59,11 @@ union i3c_device_addr_s {
 union i3c_device_cmd_queue_port_s {
 	volatile uint32_t value;
 
-#define COMMAND_PORT_XFER_CMD 0x0
-#define COMMAND_PORT_XFER_ARG 0x1
+#define COMMAND_PORT_XFER_CMD		0x0
+#define COMMAND_PORT_XFER_ARG		0x1
+#define COMMAND_PORT_SHORT_ARG		0x2
+#define COMMAND_PORT_ADDR_ASSIGN	0x3
+#define COMMAND_PORT_SLAVE_DATA_CMD	0x0
 
 #define COMMAND_PORT_SPEED_I3C_SDR	0
 #define COMMAND_PORT_SPEED_I2C_FM	0
@@ -110,6 +113,12 @@ union i3c_device_cmd_queue_port_s {
 		volatile uint32_t toc : 1;			/* bit[30] */
 		volatile uint32_t reserved2 : 1;		/* bit[31] */
 	} addr_assign_cmd;
+
+	struct {
+		volatile uint32_t cmd_attr : 3;			/* bit[2:0] */
+		volatile uint32_t reserved0 : 13;		/* bit[15:3] */
+		volatile uint32_t dl : 16;			/* bit[31:16] */
+	} slave_data_cmd;
 }; /* offset 0x0c */
 
 union i3c_device_resp_queue_port_s {
@@ -1215,6 +1224,30 @@ wr_fifo_done:
 	if (buf) {
 		k_free(buf);
 	}
+
+	return 0;
+}
+
+int i3c_aspeed_slave_prep_read_data(const struct device *dev, uint8_t *data, int nbytes)
+{
+	struct i3c_aspeed_obj *obj = DEV_DATA(dev);
+	struct i3c_aspeed_config *config = DEV_CFG(dev);
+	struct i3c_register_s *i3c_register = config->base;
+	union i3c_device_cmd_queue_port_s cmd;
+	union i3c_intr_s events;
+
+	osEventFlagsClear(obj->event_id, ~osFlagsError);
+	events.value = 0;
+	events.fields.resp_q_ready = 1;
+
+	i3c_register->queue_thld_ctrl.fields.resp_q_thld = 1 - 1;
+	i3c_aspeed_wr_tx_fifo(obj, data, nbytes);
+
+	cmd.slave_data_cmd.cmd_attr = COMMAND_PORT_SLAVE_DATA_CMD;
+	cmd.slave_data_cmd.dl = nbytes;
+	i3c_register->cmd_queue_port.value = cmd.value;
+
+	osEventFlagsWait(obj->event_id, events.value, osFlagsWaitAny, osWaitForever);
 
 	return 0;
 }
