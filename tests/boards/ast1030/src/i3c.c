@@ -165,7 +165,7 @@ static void test_i3c_ci(int count)
 
 		if (IS_MDB_PENDING_READ_NOTIFY(test_data_rx[0])) {
 			/* to ensure the slave filled the pending read data */
-			k_sleep(K_MSEC(10));
+			k_sleep(K_MSEC(100));
 			/* initiate a private read transfer to read the pending data */
 			xfer.rnw = 1;
 			xfer.len = TEST_IBI_PAYLOAD_SIZE;
