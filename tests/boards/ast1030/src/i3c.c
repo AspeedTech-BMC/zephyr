@@ -27,7 +27,7 @@ int i3c_slave_mqueue_read(const struct device *dev, uint8_t *dest, int budget);
 int i3c_slave_mqueue_write(const struct device *dev, uint8_t *src, int size);
 
 #define TEST_I3C_SLAVE_THREAD_STACK_SIZE	512
-#define TEST_I3C_SLAVE_THREAD_PRIO		(CONFIG_ZTEST_THREAD_PRIORITY + 1)
+#define TEST_I3C_SLAVE_THREAD_PRIO		CONFIG_ZTEST_THREAD_PRIORITY
 
 K_THREAD_STACK_DEFINE(test_i3c_slave_thread_stack_area, TEST_I3C_SLAVE_THREAD_STACK_SIZE);
 static struct k_thread test_i3c_slave_thread;
