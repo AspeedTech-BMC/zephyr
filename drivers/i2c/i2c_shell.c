@@ -530,14 +530,10 @@ static int cmd_mbx_en(const struct shell *shell,
 	const struct device *pfr_mbx_dev = NULL;
 	int ret = 0;
 	int dev_idx;
-	int base;
-	int length;
 	int enable;
 
 	dev_idx = strtol(argv[2], NULL, 16);
-	base = strtol(argv[3], NULL, 16);
-	length = strtol(argv[4], NULL, 16);
-	enable = strtol(argv[5], NULL, 16);
+	enable = strtol(argv[3], NULL, 16);
 
 	pfr_mbx_dev = device_get_binding(argv[1]);
 	if (!pfr_mbx_dev) {
@@ -548,7 +544,7 @@ static int cmd_mbx_en(const struct shell *shell,
 
 	if (pfr_mbx_dev != NULL) {
 		ret = ast_i2c_mbx_en(pfr_mbx_dev, (uint8_t)dev_idx,
-		(uint32_t) base, (uint16_t)length, (uint8_t)enable);
+		(uint8_t)enable);
 		if (ret) {
 			shell_error(shell, "xx I2C: PFR MBX Enable / Disable failed.");
 			return ret;
@@ -914,7 +910,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_i2c_cmds,
 					cmd_mbx_addr, 0, 6),
 				SHELL_CMD_ARG(mbx_en, &dsub_device_name,
 					"Enable pfr mbx",
-					cmd_mbx_en, 0, 5),
+					cmd_mbx_en, 0, 3),
 				SHELL_CMD_ARG(mbx_notify_addr, &dsub_device_name,
 					"Set pfr mbx notify address",
 					cmd_mbx_n_addr, 0, 3),

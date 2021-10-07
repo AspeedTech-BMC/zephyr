@@ -358,7 +358,7 @@ uint8_t addr, uint8_t enable)
 
 /* i2c mbx enable */
 int ast_i2c_mbx_en(const struct device *dev, uint8_t dev_idx,
-uint32_t base, uint16_t length, uint8_t enable)
+uint8_t enable)
 {
 	struct ast_i2c_mbx_data *data = DEV_DATA(dev);
 	const struct ast_i2c_mbx_config *cfg = DEV_CFG(dev);
@@ -373,29 +373,22 @@ uint32_t base, uint16_t length, uint8_t enable)
 	if (enable && (!(data->mail_addr_en[dev_idx])))
 		return -EINVAL;
 
-	/* check mbx base limit */
-	if (enable) {
-		if ((base < MBX_MIN_BASE) ||
-		(base + length) > MBX_MAX_BASE)
-			return -EINVAL;
-	}
-
 	/* change device base */
 	dev_base = data->i2c_dev_base[dev_idx];
 
 	/* set mbx base and length */
 	if (enable) {
-		I2C_W_R(base, dev_base + AST_I2C_RX_DMA);
-		I2C_W_R(base, dev_base + AST_I2C_TX_DMA);
+		I2C_W_R(AST_I2C_M_OFFSET, dev_base + AST_I2C_RX_DMA);
+		I2C_W_R(AST_I2C_M_OFFSET, dev_base + AST_I2C_TX_DMA);
 		I2C_W_R(0x400, dev_base + AST_I2C_MBX_LIM);
 
 		/* save and clear slave interrupt */
-		data->i2c_s_ier = sys_read32(base + AST_I2C_S_IER);
+		data->i2c_s_ier = sys_read32(dev_base + AST_I2C_S_IER);
 		I2C_W_R(0x0, dev_base + AST_I2C_S_IER);
 
-		value = AST_I2C_MBX_RX_DMA_LEN(length);
+		value = AST_I2C_MBX_RX_DMA_LEN(AST_I2C_M_LENGTH);
 		I2C_W_R(value, dev_base + AST_I2C_DMA_LEN);
-		value = AST_I2C_MBX_TX_DMA_LEN(length);
+		value = AST_I2C_MBX_TX_DMA_LEN(AST_I2C_M_LENGTH);
 		I2C_W_R(value, dev_base + AST_I2C_DMA_LEN);
 		value = (sys_read32(dev_base + AST_I2C_CTL)
 			|(AST_I2C_MBX_EN|AST_I2C_SLAVE_EN));

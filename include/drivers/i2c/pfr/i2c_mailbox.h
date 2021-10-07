@@ -40,6 +40,10 @@
 /* mail box base define */
 #define AST_I2C_M_BASE			0x3000
 
+/* dedicated mailbox base and length*/
+#define AST_I2C_M_OFFSET		0x200
+#define AST_I2C_M_LENGTH		0x100
+
 /* i2c device registers */
 #define AST_I2C_CTL				0x00
 #define AST_I2C_S_IER				0x20
@@ -144,15 +148,13 @@ uint8_t idx, uint8_t offset, uint8_t addr, uint8_t enable);
  *
  * @param dev Pointer to the device structure for the driver instance
  * @param dev_idx Index to the mailbox device index
- * @param base Buffer base to the mbx
- * @param length Length to the mbx
  * @param enable Enable flag to the mbx device
  *
  * @retval 0 If successful
  * @retval -EINVAL Invalid data pointer or offset
  */
 int ast_i2c_mbx_en(const struct device *dev, uint8_t dev_idx,
-uint32_t base, uint16_t length, uint8_t enable);
+uint8_t enable);
 
 /**
  * @brief Set i2c mailbox write protect index
