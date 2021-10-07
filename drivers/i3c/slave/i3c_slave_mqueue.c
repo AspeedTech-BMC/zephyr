@@ -106,7 +106,7 @@ int i3c_slave_mqueue_write(const struct device *dev, uint8_t *src, int size)
 
 	if (IS_MDB_PENDING_READ_NOTIFY(config->mdb)) {
 		i3c_slave_send_sir(obj->i3c_controller, config->mdb, NULL, 0);
-		return i3c_slave_prep_read_data(obj->i3c_controller, src, size);
+		return i3c_slave_prep_read_data(obj->i3c_controller, src, size, false);
 	} else {
 		return i3c_slave_send_sir(obj->i3c_controller, config->mdb, src, size);
 	}

@@ -1263,17 +1263,26 @@ wr_fifo_done:
 	return 0;
 }
 
-int i3c_aspeed_slave_prep_read_data(const struct device *dev, uint8_t *data, int nbytes)
+int i3c_aspeed_slave_wait_data_consume(const struct device *dev)
+{
+	struct i3c_aspeed_obj *obj = DEV_DATA(dev);
+	union i3c_intr_s events;
+
+	events.value = 0;
+	events.fields.resp_q_ready = 1;
+	osEventFlagsWait(obj->event_id, events.value, osFlagsWaitAny, osWaitForever);
+
+	return 0;
+}
+
+int i3c_aspeed_slave_prep_read_data(const struct device *dev, uint8_t *data, int nbytes, bool wait)
 {
 	struct i3c_aspeed_obj *obj = DEV_DATA(dev);
 	struct i3c_aspeed_config *config = DEV_CFG(dev);
 	struct i3c_register_s *i3c_register = config->base;
 	union i3c_device_cmd_queue_port_s cmd;
-	union i3c_intr_s events;
 
 	osEventFlagsClear(obj->event_id, ~osFlagsError);
-	events.value = 0;
-	events.fields.resp_q_ready = 1;
 
 	i3c_register->queue_thld_ctrl.fields.resp_q_thld = 1 - 1;
 	i3c_aspeed_wr_tx_fifo(obj, data, nbytes);
@@ -1282,7 +1291,9 @@ int i3c_aspeed_slave_prep_read_data(const struct device *dev, uint8_t *data, int
 	cmd.slave_data_cmd.dl = nbytes;
 	i3c_register->cmd_queue_port.value = cmd.value;
 
-	osEventFlagsWait(obj->event_id, events.value, osFlagsWaitAny, osWaitForever);
+	if (wait) {
+		i3c_aspeed_slave_wait_data_consume(dev);
+	}
 
 	return 0;
 }

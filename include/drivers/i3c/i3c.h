@@ -172,9 +172,18 @@ int i3c_aspeed_slave_send_sir(const struct device *dev, uint8_t mdb, uint8_t *da
  * @param dev the slave device
  * @param data the data to be read
  * @param nbytes number of bytes of the data
+ * @param wait true if you want to wait for data consumed
  * @return int 0 = success
  */
-int i3c_aspeed_slave_prep_read_data(const struct device *dev, uint8_t *data, int nbytes);
+int i3c_aspeed_slave_prep_read_data(const struct device *dev, uint8_t *data, int nbytes, bool wait);
+
+/**
+ * @brief slave device waits for the private read data be consumed
+ *
+ * @param dev the slave device
+ * @return int 0 = success
+ */
+int i3c_aspeed_slave_wait_data_consume(const struct device *dev);
 
 /* common API */
 int i3c_master_send_enec(const struct device *master, uint8_t addr, uint8_t evt);
@@ -193,6 +202,7 @@ int i3c_master_send_getpid(const struct device *master, uint8_t addr, uint64_t *
 #define i3c_slave_register		i3c_aspeed_slave_register
 #define i3c_slave_send_sir		i3c_aspeed_slave_send_sir
 #define i3c_slave_prep_read_data	i3c_aspeed_slave_prep_read_data
+#define i3c_slave_wait_data_consume	i3c_aspeed_slave_wait_data_consume
 
 int i3c_jesd_read(struct i3c_dev_desc *slave, uint8_t addr, uint8_t *buf, int length);
 int i3c_i2c_read(struct i3c_dev_desc *slave, uint8_t addr, uint8_t *buf, int length);
