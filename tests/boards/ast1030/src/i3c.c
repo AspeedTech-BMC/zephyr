@@ -36,6 +36,7 @@ static uint8_t test_data_tx[MAX_DATA_SIZE];
 static uint8_t test_data_rx[MAX_DATA_SIZE];
 static struct i3c_ibi_payload i3c_payload;
 static struct k_sem ibi_complete;
+static struct k_sem data_ready;
 static struct i3c_ibi_payload *test_ibi_write_requested(struct i3c_dev_desc *desc)
 {
 	i3c_payload.buf = test_data_rx;
@@ -86,6 +87,7 @@ static void test_i3c_slave_task(void *arg1, void *arg2, void *arg3)
 		/* Test part 2: send IBI to notify the master device to get the pending data */
 		prepare_test_data(test_data_tx, TEST_IBI_PAYLOAD_SIZE);
 		ret = i3c_slave_mqueue_write(slave_mq, test_data_tx, TEST_IBI_PAYLOAD_SIZE);
+		k_sem_give(&data_ready);
 		ast_zassert_equal(ret, 0, "failed to do slave mqueue write");
 	}
 }
@@ -102,6 +104,9 @@ static void test_i3c_ci(int count)
 
 	slave_mq = device_get_binding(DT_LABEL(DT_NODELABEL(i3c1_smq)));
 	ast_zassert_not_null(slave_mq, "failed to get slave mqueue device");
+
+	k_sem_init(&ibi_complete, 0, 1);
+	k_sem_init(&data_ready, 0, 1);
 
 	/* create slave thread to service the slave actions */
 	k_thread_create(&test_i3c_slave_thread,
@@ -155,8 +160,10 @@ static void test_i3c_ci(int count)
 		 */
 
 		/* master device waits for the IBI from the slave */
-		k_sem_init(&ibi_complete, 0, 1);
 		k_sem_take(&ibi_complete, K_FOREVER);
+
+		/* init the flag for the next loop */
+		k_sem_init(&ibi_complete, 0, 1);
 
 		/* check result: first byte (MDB) shall match the DT property mandatory-data-byte */
 		ret = DT_PROP(DT_NODELABEL(i3c1_smq), mandatory_data_byte);
@@ -165,7 +172,8 @@ static void test_i3c_ci(int count)
 
 		if (IS_MDB_PENDING_READ_NOTIFY(test_data_rx[0])) {
 			/* to ensure the slave filled the pending read data */
-			k_sleep(K_MSEC(100));
+			k_sem_take(&data_ready, K_FOREVER);
+			k_sem_init(&data_ready, 0, 1);
 			/* initiate a private read transfer to read the pending data */
 			xfer.rnw = 1;
 			xfer.len = TEST_IBI_PAYLOAD_SIZE;
