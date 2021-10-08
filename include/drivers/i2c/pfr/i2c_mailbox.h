@@ -113,6 +113,10 @@ AST_I2CS_ADDR1_ENABLE|AST_I2CS_ADDR1_MBX_TYPE(0x3))
 #define FIFO_MAX_SIZE 0x100
 #define FIFO_BASE 0x300
 
+/* i2c fifo cpu access base */
+#define FIFO0_ACCESS 0x1f00
+#define FIFO1_ACCESS 0x1f04
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -236,6 +240,20 @@ uint8_t addr, uint8_t type);
  * @retval -EINVAL Invalid data pointer or offset
  */
 int ast_i2c_mbx_fifo_priority(const struct device *dev, uint8_t priority);
+
+/**
+ * @brief Do access mbx fifo from CPU
+ *
+ * @param dev Pointer to the device structure for the driver instance
+ * @param idx Index to the fifo  (0x0~0x1)
+ * @param type Index to the access type (Read: 0x1 / Write:0x2)
+ * @param data to/from the mbx fifo
+ *
+ * @retval 0 If successful
+ * @retval -EINVAL Invalid data pointer or offset
+ */
+int ast_i2c_mbx_fifo_access(const struct device *dev, uint8_t idx,
+uint8_t type, uint8_t *data);
 
 /**
  * @}

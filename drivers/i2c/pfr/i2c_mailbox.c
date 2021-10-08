@@ -96,6 +96,42 @@ void ast_i2c_mbx_isr(const struct device *dev)
 	LOG_INF(" A mail stsfifo : %x", stsfifo);
 }
 
+int ast_i2c_mbx_fifo_access(const struct device *dev, uint8_t idx,
+uint8_t type, uint8_t *data)
+{
+	const struct ast_i2c_mbx_config *cfg = DEV_CFG(dev);
+	uint32_t addr = 0;
+
+	/* check common parameter valid */
+	if (!cfg->mail_dev_name) {
+		LOG_ERR("i2c mailbox not found");
+		return -EINVAL;
+	}
+
+	/* check access type */
+	if ((type != AST_I2C_M_R) &&
+	(type != AST_I2C_M_W))
+		return -EINVAL;
+
+	/* fill access base */
+	if (idx == 0) {
+		addr = (cfg->mail_g_base & 0xFFFF0000) + FIFO0_ACCESS;
+	} else if (idx == 1) {
+		addr = (cfg->mail_g_base & 0xFFFF0000) + FIFO1_ACCESS;
+	} else {
+		return -EINVAL;
+	}
+
+	/* do access */
+	if (type == AST_I2C_M_R) {
+		*data = sys_read32(addr) & 0xFF;
+	} else {
+		sys_write32(*data, addr);
+	}
+
+	return 0;
+}
+
 int ast_i2c_mbx_fifo_priority(const struct device *dev, uint8_t priority)
 {
 	const struct ast_i2c_mbx_config *cfg = DEV_CFG(dev);

@@ -741,6 +741,42 @@ static int cmd_mbx_f_en(const struct shell *shell,
 	return ret;
 }
 
+static int cmd_mbx_f_access(const struct shell *shell,
+			      size_t argc, char **argv)
+{
+	const struct device *pfr_mbx_dev = NULL;
+	int ret = 0;
+	int idx;
+	int type;
+	int data;
+
+	idx = strtol(argv[2], NULL, 16);
+	type = strtol(argv[3], NULL, 16);
+	data = strtol(argv[4], NULL, 16);
+
+	pfr_mbx_dev = device_get_binding(argv[1]);
+	if (!pfr_mbx_dev) {
+		shell_error(shell, "xx I2C: PFR MBX Device driver %s not found.",
+			    argv[1]);
+		return -ENODEV;
+	}
+
+	if (pfr_mbx_dev != NULL) {
+		ret = ast_i2c_mbx_fifo_access(pfr_mbx_dev, (uint8_t)idx,
+		(uint8_t)type, (uint8_t *)&data);
+
+		if (ret) {
+			shell_error(shell, "xx I2C: PFR MBX FIFO access failed.");
+			return ret;
+		}
+
+		if (type == AST_I2C_M_R)
+			shell_print(shell, "I2C: PFR MBX FIFO read back is 0x%x", data);
+	}
+
+	return ret;
+}
+
 #endif
 
 #ifdef CONFIG_I2C_SLAVE
@@ -929,6 +965,9 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_i2c_cmds,
 				SHELL_CMD_ARG(mbx_fifo_en, &dsub_device_name,
 					"Enable pfr mbx FIFO",
 					cmd_mbx_f_en, 0, 4),
+				SHELL_CMD_ARG(mbx_fifo_rw, &dsub_device_name,
+					"Access pfr mbx FIFO wt CPU",
+					cmd_mbx_f_access, 0, 4),
 #endif
 			       SHELL_SUBCMD_SET_END     /* Array terminated. */
 			       );
