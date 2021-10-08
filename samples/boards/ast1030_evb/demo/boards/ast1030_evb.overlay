@@ -383,7 +383,7 @@
 		reg = <0x9>;
 		msg-size = <256>;
 		num-of-msgs = <4>;
-		mandatory-data-byte = <0x0>;
+		mandatory-data-byte = <0xbf>;
 		label = "I3C_1_SMQ";
 		status = "okay";
 	};
