@@ -161,7 +161,7 @@ uint8_t addr, uint8_t type)
 			value |= AST_I2C_M_FIFO0_R_DIS;
 	} else if (idx == 1) {
 		value &= AST_I2C_M_FIFO1_MASK;
-		value |= (AST_I2C_M_FIFO_REMAP | addr);
+		value |= (AST_I2C_M_FIFO_REMAP | (addr << 8));
 
 		if (type & AST_I2C_M_W)
 			value |= AST_I2C_M_FIFO1_W_DIS;
@@ -183,7 +183,7 @@ uint16_t base, uint16_t length)
 {
 	const struct ast_i2c_mbx_config *cfg = DEV_CFG(dev);
 
-	uint32_t value = (base) | (length << 16);
+	uint32_t value = (base + FIFO_BASE) | (length << 16);
 	uint32_t fifo_int = 0, value1;
 	uint32_t fifo_sts = 0;
 
@@ -193,10 +193,9 @@ uint16_t base, uint16_t length)
 		return -EINVAL;
 	}
 
-	/* check fifo base limit if length not equal 0*/
+	/* check fifo length limit if length not equal 0*/
 	if (length) {
-		if ((base < MBX_MIN_BASE) ||
-		(base + length) > MBX_MAX_BASE)
+		if (base + length > FIFO_MAX_SIZE)
 			return -EINVAL;
 	}
 

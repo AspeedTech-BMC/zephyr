@@ -109,9 +109,9 @@ AST_I2CS_ADDR1_ENABLE|AST_I2CS_ADDR1_MBX_TYPE(0x3))
 #define AST_I2C_MBX_TX_DMA_LEN(x)	\
 (((x - 1) & 0xfff) | BIT(15))
 
-/* i2c mbx internal base and length limitation */
-#define MBX_MIN_BASE 0x200
-#define MBX_MAX_BASE 0x400
+/* i2c fifo internal base and length limitation */
+#define FIFO_MAX_SIZE 0x100
+#define FIFO_BASE 0x300
 
 #ifdef __cplusplus
 extern "C" {
