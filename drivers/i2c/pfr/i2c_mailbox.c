@@ -221,7 +221,6 @@ uint16_t base, uint16_t length)
 
 	uint32_t value = (base + FIFO_BASE) | (length << 16);
 	uint32_t fifo_int = 0, value1;
-	uint32_t fifo_sts = 0;
 
 	/* check common parameter valid */
 	if (!cfg->mail_dev_name) {
@@ -235,14 +234,13 @@ uint16_t base, uint16_t length)
 			return -EINVAL;
 	}
 
+	/* clear interrupt status and keep original interrupt setting */
 	value1 = sys_read32(cfg->mail_g_base + AST_I2C_M_FIFO_IRQ);
-	fifo_int &= AST_I2C_M_FIFO_INT;
-	fifo_sts &= AST_I2C_M_FIFO_STS;
+	I2C_W_R(value1, cfg->mail_g_base + AST_I2C_M_FIFO_IRQ);
+
+	fifo_int = value1 & AST_I2C_M_FIFO_INT;
 
 	if (idx == 0) {
-		value1 = (fifo_sts & AST_I2C_M_FIFO0_INT_STS);
-		I2C_W_R(value1, cfg->mail_g_base + AST_I2C_M_FIFO_IRQ);
-
 		/* length is used as enable */
 		if (length) {
 			fifo_int |= AST_I2C_M_FIFO0_INT_EN;
@@ -253,9 +251,6 @@ uint16_t base, uint16_t length)
 
 		I2C_W_R(value, cfg->mail_g_base + AST_I2C_M_FIFO_CFG0);
 	} else if (idx == 1) {
-		value1 = (fifo_sts & AST_I2C_M_FIFO1_INT_STS);
-		I2C_W_R(value1, cfg->mail_g_base + AST_I2C_M_FIFO_IRQ);
-
 		/* length is used as enable */
 		if (length) {
 			fifo_int |= AST_I2C_M_FIFO1_INT_EN;
