@@ -305,6 +305,14 @@ union i3c_slave_char_s {
 	} fields;
 }; /* offset 0x78 */
 
+union i3c_slave_max_len_s {
+	volatile uint32_t value;
+	struct {
+		volatile uint32_t mwl : 16;			/* bit[15:0] */
+		volatile uint32_t mrl : 16;			/* bit[31:16] */
+	} fields;
+}; /* offset 0x7c */
+
 union i3c_slave_intr_req_s {
 	volatile uint32_t value;
 	struct {
@@ -412,7 +420,8 @@ struct i3c_register_s {
 	union i3c_slave_pid_hi_s slave_pid_hi;			/* 0x70 */
 	union i3c_slave_pid_lo_s slave_pid_lo;			/* 0x74 */
 	union i3c_slave_char_s slave_char;			/* 0x78 */
-	uint32_t reserved3[4];					/* 0x7c ~ 0x88 */
+	union i3c_slave_max_len_s slave_max_len;		/* 0x7c */
+	uint32_t reserved3[3];					/* 0x80 ~ 0x88 */
 	union i3c_slave_intr_req_s i3c_slave_intr_req;		/* 0x8c */
 	uint32_t reserved4[8];					/* 0x90 ~ 0xac */
 	union i3c_device_ctrl_extend_s device_ctrl_ext;		/* 0xb0 */
@@ -726,6 +735,17 @@ static void i3c_aspeed_isr(const struct device *dev)
 			LOG_DBG("slave halt resume\n");
 			i3c_register->device_ctrl.fields.resume = 1;
 		}
+
+		if (i3c_register->slave_event_ctrl.fields.mrl_update) {
+			LOG_DBG("master sets MRL %d\n", i3c_register->slave_max_len.fields.mrl);
+		}
+
+		if (i3c_register->slave_event_ctrl.fields.mwl_update) {
+			LOG_DBG("master sets MWL %d\n", i3c_register->slave_max_len.fields.mwl);
+		}
+
+		/* W1C the slave events */
+		i3c_register->slave_event_ctrl.value = i3c_register->slave_event_ctrl.value;
 	}
 
 	if (status.fields.xfr_error) {
