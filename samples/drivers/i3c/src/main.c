@@ -189,13 +189,33 @@ void i3c_loopback_test(void)
 
 	i3c_master_request_ibi(&slave, &i3c_ibi_def_callbacks);
 	ret = i3c_master_enable_ibi(&slave);
-	if (ret) {
-		printk("failed to enable sir: %d\n", ret);
+	__ASSERT(ret == 0, "failed to enable sir: %d\n", ret);
+
+	for (i = 0; i < 16; i++) {
+		data[i] = 15 - i;
 	}
 
 	k_sem_init(&ibi_complete, 0, 1);
 	ret = i3c_slave_mqueue_write(slave_mq, data, 16);
 	k_sem_take(&ibi_complete, K_FOREVER);
+
+	if (IS_MDB_PENDING_READ_NOTIFY(i3c_payload.buf[0])) {
+		xfer.rnw = 1;
+		xfer.len = 16;
+		xfer.data.in = result;
+		ret = i3c_master_priv_xfer(&slave, &xfer, 1);
+
+		for (i = 0; i < 16; i++) {
+			__ASSERT(result[i] == data[i], "data mismatch: got %d, expected %d\n",
+				 result[i], data[i]);
+		}
+	} else {
+		for (i = 0; i < 16; i++) {
+			__ASSERT(i3c_payload.buf[i + 1] == data[i],
+				 "data mismatch: got %d, expected %d\n", i3c_payload.buf[i + 1],
+				 data[i]);
+		}
+	}
 
 	printk("loopback test pass\n");
 }
