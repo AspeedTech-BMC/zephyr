@@ -1687,7 +1687,8 @@ static int i2c_aspeed_init(const struct device *dev)
 		config->clk_div_mode = 1;
 	}
 
-	config->multi_master = 0;
+	/* default apply multi-master with DMA mode */
+	config->multi_master = 1;
 	config->mode = DMA_MODE;
 
 	/* buffer mode base and size */
