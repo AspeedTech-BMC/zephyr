@@ -25,6 +25,11 @@ child-binding:
       required: true
       description: i2c filter device index
 
+    clock:
+      type: int
+      required: true
+      description: i2c filter device clock
+
     label:
       type: string
       required: true

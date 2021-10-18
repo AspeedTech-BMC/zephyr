@@ -416,22 +416,27 @@
 			status = "disabled";
 			i2cfilter0: i2cfilter0 {
 				index = <0>;
+				clock = <100>;
 				label = "I2C_FILTER_0";
 			};
 			i2cfilter1: i2cfilter1 {
 				index = <1>;
+				clock = <100>;
 				label = "I2C_FILTER_1";
 			};
 			i2cfilter2: i2cfilter2 {
 				index = <2>;
+				clock = <100>;
 				label = "I2C_FILTER_2";
 			};
 			i2cfilter3: i2cfilter3 {
 				index = <3>;
+				clock = <100>;
 				label = "I2C_FILTER_3";
 			};
 			i2cfilter4: i2cfilter4 {
 				index = <4>;
+				clock = <100>;
 				label = "I2C_FILTER_4";
 			};
 		};
