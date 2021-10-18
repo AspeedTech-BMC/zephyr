@@ -300,37 +300,37 @@ static int cmd_sp_update(const struct shell *shell,
 
 struct ast_i2c_f_bitmap data_flt[] = {
 {
-{	/* block all */
+{	/* block all (index 0) */
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000
 }
 },
 {
-{	/* accept all */
+{	/* accept all (index 1) */
 	0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
 	0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF
 }
 },
 {
-{	/* block every 16 byte */
+{	/* block every 16 byte (index 2) */
 	0xFFFF0000, 0xFFFF0000, 0xFFFF0000, 0xFFFF0000,
 	0xFFFF0000, 0xFFFF0000, 0xFFFF0000, 0xFFFF0000
 }
 },
 {
-{	/* block first 16 byte */
+{	/* block first 16 byte (index 3) */
 	0xFFFF0000, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
 	0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF
 }
 },
 {
-{	/* block first 128 byte */
+{	/* block first 128 byte (index 4) */
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF
 }
 },
 {
-{	/* block last 128 byte */
+{	/* block last 128 byte (index 5) */
 	0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 }

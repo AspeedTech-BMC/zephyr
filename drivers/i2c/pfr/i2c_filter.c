@@ -43,6 +43,7 @@ struct ast_i2c_filter_child_config {
 	char		*filter_dev_name; /* i2c filter device name */
 	const struct device *parent; /* Parent device handler */
 	uint8_t	index; /* i2c filter index */
+	uint32_t	clock; /* i2c filter clock select */
 };
 
 struct ast_i2c_filter_child_data {
@@ -280,7 +281,17 @@ int ast_i2c_filter_init(const struct device *dev)
 	I2C_W_R(0, (data->filter_dev_base+AST_I2C_F_EN));
 	data->filter_en = 0;
 	I2C_W_R(0, (data->filter_dev_base+AST_I2C_F_CFG));
-	I2C_W_R(AST_I2C_F_TIMING_VAL, (data->filter_dev_base+AST_I2C_F_TIMING));
+
+	if (cfg->clock == 100) {
+		I2C_W_R(AST_I2C_F_100_TIMING_VAL,
+		(data->filter_dev_base+AST_I2C_F_TIMING));
+	} else if (cfg->clock == 400) {
+		I2C_W_R(AST_I2C_F_400_TIMING_VAL,
+		(data->filter_dev_base+AST_I2C_F_TIMING));
+	} else {
+		LOG_ERR("i2c filter bad clock setting");
+		return -EINVAL;
+	}
 
 	/* clear and enable local interrupt */
 	I2C_W_R(0x1, (data->filter_dev_base+AST_I2C_F_INT_STS));
@@ -341,6 +352,7 @@ struct filter_info {
 #define ASPEED_FILTER_CHILD_CFG(node_id) {			\
 		.filter_dev_name = DT_PROP(node_id, label),	\
 		.index = DT_PROP(node_id, index),	\
+		.clock = DT_PROP(node_id, clock),	\
 		.parent = DEVICE_DT_GET(DT_PARENT(node_id)),	\
 },
 #define ASPEED_FILTER_CHILD_DEFINE(node_id)				\
