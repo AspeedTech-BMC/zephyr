@@ -279,6 +279,7 @@ static int peci_aspeed_transfer(const struct device *dev, struct peci_msg *msg)
 			}
 			LOG_ERR("osError: %d\n", ret);
 		} else {
+			osEventFlagsClear(peci_data->evt_id, ret);
 			if (ret & BIT(PECI_INT_W_FCS_ABORT)) {
 				LOG_ERR("FCS Abort\n");
 				return -EOPNOTSUPP;
