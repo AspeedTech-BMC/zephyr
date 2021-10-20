@@ -208,6 +208,23 @@ static int peci_aspeed_enable(const struct device *dev)
 	return 0;
 }
 
+static int peci_aspeed_need_aw_fcs(enum peci_command_code cmd_code)
+{
+	switch (cmd_code) {
+	case PECI_CMD_WR_PCI_CFG0:
+	case PECI_CMD_WR_PCI_CFG1:
+	case PECI_CMD_WR_PKG_CFG0:
+	case PECI_CMD_WR_PKG_CFG1:
+	case PECI_CMD_WR_IAMSR0:
+	case PECI_CMD_WR_IAMSR1:
+	case PECI_CMD_WR_PCI_CFG_LOCAL0:
+	case PECI_CMD_WR_PCI_CFG_LOCAL1:
+		return 1;
+	default:
+		return 0;
+	}
+}
+
 static int peci_aspeed_transfer(const struct device *dev, struct peci_msg *msg)
 {
 	struct peci_aspeed_data *peci_data = DEV_DATA(dev);
@@ -232,6 +249,10 @@ static int peci_aspeed_transfer(const struct device *dev, struct peci_msg *msg)
 	peci_header.fields.enable_aw_fcs_cycle = 0;
 	peci_header.fields.write_data_length = msg->tx_buffer.len;
 	peci_header.fields.read_data_length = msg->rx_buffer.len;
+	if (peci_aspeed_need_aw_fcs(msg->cmd_code)) {
+		/* hardware will auto replace the last data with awfcs */
+		peci_header.fields.enable_aw_fcs_cycle = 1;
+	}
 	peci_register->peci_header.value = peci_header.value;
 	if (msg->tx_buffer.len) {
 		/* set write data */
