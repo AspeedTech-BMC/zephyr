@@ -235,7 +235,7 @@ static int peci_aspeed_transfer(const struct device *dev, struct peci_msg *msg)
 	write_data_register_t write_val;
 	uint32_t status;
 
-	status = peci_register->command.fields.peci_controller_state;
+	status = peci_register->command.value & ~(0x1);
 	if (status != 0) {
 		LOG_ERR("peci status = %x\n", status);
 		return -EBUSY;

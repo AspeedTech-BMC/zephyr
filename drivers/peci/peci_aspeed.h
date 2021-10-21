@@ -46,7 +46,8 @@ typedef union {
 		volatile uint32_t fire_a_peci_command : 1;      /*[0-0]*/
 		volatile uint32_t : 23;                         /*[1-23]*/
 		volatile uint32_t peci_controller_state : 4;    /*[24-27]*/
-		volatile uint32_t : 3;                          /*[28-30]*/
+		volatile uint32_t : 2;                          /*[28-29]*/
+		volatile uint32_t raw_peci_pin_monitoring: 1;	/*[30-30]*/
 		volatile uint32_t peci_pin_monitoring : 1;      /*[31-31]*/
 
 	} fields;
