@@ -57,15 +57,14 @@ struct snoop_aspeed_config {
 	uint16_t port[SNOOP_CHANNEL_NUM];
 };
 
-int snoop_aspeed_read(const struct device *dev, uint32_t ch, uint8_t *out)
+int snoop_aspeed_read(const struct device *dev, uint32_t ch, uint8_t *out, bool blocking)
 {
 	int rc;
 	struct snoop_aspeed_data *data = (struct snoop_aspeed_data *)dev->data;
 
-	rc = k_sem_take(&data->rx[ch].lock, K_NO_WAIT);
-	if (rc) {
+	rc = k_sem_take(&data->rx[ch].lock, (blocking) ? K_FOREVER : K_NO_WAIT);
+	if (rc)
 		return rc;
-	}
 
 	*out = data->rx[ch].data;
 

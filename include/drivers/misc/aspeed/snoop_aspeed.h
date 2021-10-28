@@ -8,6 +8,6 @@
 
 #define SNOOP_CHANNEL_NUM	2
 
-int snoop_aspeed_read(const struct device *dev, uint32_t ch, uint8_t *out);
+int snoop_aspeed_read(const struct device *dev, uint32_t ch, uint8_t *out, bool blocking);
 
 #endif

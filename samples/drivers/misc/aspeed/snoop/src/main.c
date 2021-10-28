@@ -23,7 +23,7 @@ void main(void)
 
 	while (1) {
 		for (i = 0; i < SNOOP_CHANNEL_NUM; ++i) {
-			rc = snoop_aspeed_read(snoop_dev, i, &snoop_data[i]);
+			rc = snoop_aspeed_read(snoop_dev, i, &snoop_data[i], true);
 			if (rc == 0)
 				printk("snoop[%d] = 0x%02x\n", i, snoop_data[i]);
 		}
