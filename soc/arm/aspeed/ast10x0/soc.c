@@ -17,6 +17,11 @@
 
 #define WDT_SOFTWARE_RESET_REG 0x24
 #define WDT_TRIGGER_KEY 0xAEEDF123
+
+/* LPC registers */
+#define LPC_HICR9	0x7e789098
+#define LPC_HICRA	0x7e78909c
+
 /* SCU registers */
 #define JTAG_PINMUX_REG 0x41c
 
@@ -44,6 +49,10 @@ void z_platform_init(void)
 	jtag_pinmux = sys_read32(base + JTAG_PINMUX_REG);
 	jtag_pinmux |= (0x1f << 25);
 	sys_write32(jtag_pinmux, base + JTAG_PINMUX_REG);
+
+	/* recover UART routing to default value */
+	sys_write32(0xa30, LPC_HICR9);
+	sys_write32(0x0, LPC_HICRA);
 
 	/* init cache */
 	cache_instr_enable();
