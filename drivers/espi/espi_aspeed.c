@@ -10,12 +10,16 @@
 #include <soc.h>
 #include <errno.h>
 #include <string.h>
+#include <sys/byteorder.h>
 #include <drivers/espi.h>
+#include <drivers/espi_aspeed.h>
 #include <logging/log.h>
 LOG_MODULE_REGISTER(espi, CONFIG_ESPI_LOG_LEVEL);
 
 /* SCU register offset */
-#define SCU_HWSTRAP2		0x510
+#define SCU_DBG_CTRL2	0x0d8
+#define SCU_DBG_CTRL2_DIS_E2A	BIT(0)
+#define SCU_HWSTRAP2	0x510
 #define SCU_HWSTRAP2_LPC	BIT(6)
 
 /* eSPI register offset */
@@ -287,12 +291,6 @@ LOG_MODULE_REGISTER(espi, CONFIG_ESPI_LOG_LEVEL);
 	 | ESPI_INT_EN_FLASH_TX_CMPLT \
 	 | ESPI_INT_EN_FLASH_RX_CMPLT)
 
-struct espi_comm_hdr {
-	uint8_t cyc;
-	uint8_t len_h : 4;
-	uint8_t tag : 4;
-	uint8_t len_l;
-};
 
 static uint32_t espi_base;
 #define ESPI_RD(reg)            sys_read32(espi_base + reg)
@@ -322,15 +320,16 @@ struct espi_aspeed_perif {
 	uintptr_t mcyc_saddr;
 	uintptr_t mcyc_taddr;
 
-	struct k_sem tx_lock;
+	struct k_sem pc_tx_lock;
+	struct k_sem np_tx_lock;
 	struct k_sem rx_lock;
+	struct k_sem rx_ready;
 };
 
 static void espi_aspeed_perif_isr(uint32_t sts, struct espi_aspeed_perif *perif)
 {
-	if (sts & ESPI_INT_STS_PERIF_PC_RX_CMPLT) {
-		k_sem_give(&perif->rx_lock);
-	}
+	if (sts & ESPI_INT_STS_PERIF_PC_RX_CMPLT)
+		k_sem_give(&perif->rx_ready);
 
 	ESPI_WR(sts & ESPI_INT_STS_PERIF_BITS, ESPI_INT_STS);
 }
@@ -341,10 +340,6 @@ static void espi_aspeed_perif_init(struct espi_aspeed_perif *perif)
 
 	ESPI_WR(perif->mcyc_saddr, ESPI_PERIF_PC_RX_SADDR);
 	ESPI_WR(perif->mcyc_taddr, ESPI_PERIF_PC_RX_TADDR);
-
-	reg = sys_read32(0x7e6e20d8);
-	reg &= ~(0x1);
-	sys_write32(reg, 0x7e6e20d8);
 
 	reg = ESPI_RD(ESPI_CTRL2);
 	reg &= ~(ESPI_CTRL2_MEMCYC_RD_DIS | ESPI_CTRL2_MEMCYC_WR_DIS);
@@ -381,9 +376,8 @@ static void espi_aspeed_vw_isr(uint32_t sts, struct espi_aspeed_vw *vw)
 {
 	uint32_t evt, evt_int;
 
-	if (sts & ESPI_INT_STS_VW_GPIOEVT) {
+	if (sts & ESPI_INT_STS_VW_GPIOEVT)
 		ESPI_WR(ESPI_INT_STS_VW_GPIOEVT, ESPI_INT_STS);
-	}
 
 	if (sts & ESPI_INT_STS_VW_SYSEVT) {
 		evt_int = ESPI_RD(ESPI_SYSEVT_INT_STS);
@@ -395,9 +389,8 @@ static void espi_aspeed_vw_isr(uint32_t sts, struct espi_aspeed_vw *vw)
 		evt = ESPI_RD(ESPI_SYSEVT1);
 		evt_int = ESPI_RD(ESPI_SYSEVT1_INT_STS);
 
-		if (evt_int & ESPI_SYSEVT1_INT_STS_SUSPEND_WARN) {
+		if (evt_int & ESPI_SYSEVT1_INT_STS_SUSPEND_WARN)
 			evt |= ESPI_SYSEVT1_SUSPEND_ACK;
-		}
 
 		ESPI_WR(evt, ESPI_SYSEVT1);
 		ESPI_WR(evt_int, ESPI_SYSEVT1_INT_STS);
@@ -440,7 +433,7 @@ struct oob_tx_dma_desc {
 	uint8_t raz1 : 1;
 	uint32_t raz2;
 	uint32_t raz3;
-} __attribute__((packed));
+} __packed;
 
 struct oob_rx_dma_desc {
 	uint32_t data_addr;
@@ -449,7 +442,7 @@ struct oob_rx_dma_desc {
 	uint16_t len : 12;
 	uint8_t raz : 7;
 	uint8_t dirty : 1;
-} __attribute__((packed));
+} __packed;
 
 static struct oob_tx_dma_desc oob_tx_desc[OOB_TX_DMA_DESC_NUM] NON_CACHED_BSS;
 static struct oob_rx_dma_desc oob_rx_desc[OOB_RX_DMA_DESC_NUM] NON_CACHED_BSS;
@@ -473,6 +466,7 @@ struct espi_aspeed_oob {
 
 	struct k_sem tx_lock;
 	struct k_sem rx_lock;
+	struct k_sem rx_ready;
 };
 
 static void espi_aspeed_oob_isr(uint32_t sts, struct espi_aspeed_oob *oob)
@@ -507,13 +501,8 @@ static void espi_aspeed_oob_isr(uint32_t sts, struct espi_aspeed_oob *oob)
 		ESPI_WR(reg, ESPI_CTRL);
 	}
 
-	if (sts & ESPI_INT_STS_OOB_TX_CMPLT) {
-		k_sem_give(&oob->tx_lock);
-	}
-
-	if (sts & ESPI_INT_STS_OOB_RX_CMPLT) {
-		k_sem_give(&oob->rx_lock);
-	}
+	if (sts & ESPI_INT_STS_OOB_RX_CMPLT)
+		k_sem_give(&oob->rx_ready);
 
 	ESPI_WR(sts & ESPI_INT_STS_OOB_BITS, ESPI_INT_STS);
 }
@@ -580,17 +569,13 @@ struct espi_aspeed_flash {
 
 	struct k_sem tx_lock;
 	struct k_sem rx_lock;
+	struct k_sem rx_ready;
 };
 
 static void espi_aspeed_flash_isr(uint32_t sts, struct espi_aspeed_flash *flash)
 {
-	if (sts & ESPI_INT_STS_FLASH_TX_CMPLT) {
-		k_sem_give(&flash->tx_lock);
-	}
-
-	if (sts & ESPI_INT_STS_FLASH_RX_CMPLT) {
-		k_sem_give(&flash->rx_lock);
-	}
+	if (sts & ESPI_INT_STS_FLASH_RX_CMPLT)
+		k_sem_give(&flash->rx_ready);
 
 	ESPI_WR(sts & ESPI_INT_STS_FLASH_BITS, ESPI_INT_STS);
 }
@@ -681,25 +666,20 @@ static void espi_aspeed_isr(const struct device *dev)
 
 	sts = ESPI_RD(ESPI_INT_STS);
 
-	if (sts & ESPI_INT_STS_HW_RST_ASSERT) {
+	if (sts & ESPI_INT_STS_HW_RST_ASSERT)
 		return espi_aspeed_reset_isr(dev);
-	}
 
-	if (sts & ESPI_INT_STS_PERIF_BITS) {
+	if (sts & ESPI_INT_STS_PERIF_BITS)
 		espi_aspeed_perif_isr(sts, &data->perif);
-	}
 
-	if (sts & ESPI_INT_STS_VW_BITS) {
+	if (sts & ESPI_INT_STS_VW_BITS)
 		espi_aspeed_vw_isr(sts, &data->vw);
-	}
 
-	if (sts & (ESPI_INT_STS_OOB_BITS | ESPI_INT_STS_HW_RST_DEASSERT)) {
+	if (sts & (ESPI_INT_STS_OOB_BITS | ESPI_INT_STS_HW_RST_DEASSERT))
 		espi_aspeed_oob_isr(sts, &data->oob);
-	}
 
-	if (sts & ESPI_INT_STS_FLASH_BITS) {
+	if (sts & ESPI_INT_STS_FLASH_BITS)
 		espi_aspeed_flash_isr(sts, &data->flash);
-	}
 
 	if (sts & ESPI_INT_STS_HW_RST_DEASSERT) {
 		sysevt = ESPI_RD(ESPI_SYSEVT) |
@@ -732,7 +712,12 @@ static int espi_aspeed_init(const struct device *dev)
 		return -ENODEV;
 	}
 
-	/* init private data */
+	/* enable E2A bridge */
+	reg = sys_read32(scu_base + SCU_DBG_CTRL2);
+	reg &= ~SCU_DBG_CTRL2_DIS_E2A;
+	sys_write32(reg, scu_base + SCU_DBG_CTRL2);
+
+	/* init perif private data */
 	perif->dma_mode = DT_INST_PROP(0, perif_dma_mode);
 	perif->pc_rx_virt = perif_pc_rx_buf;
 	perif->pc_rx_addr = TO_PHY_ADDR(perif->pc_rx_virt);
@@ -744,9 +729,12 @@ static int espi_aspeed_init(const struct device *dev)
 	perif->mcyc_size = DT_INST_PROP(0, perif_memcyc_size);
 	perif->mcyc_saddr = DT_INST_PROP(0, perif_memcyc_src_addr);
 	perif->mcyc_taddr = TO_PHY_ADDR(perif->mcyc_virt);
-	k_sem_init(&perif->tx_lock, 1, 1);
-	k_sem_init(&perif->rx_lock, 0, 1);
+	k_sem_init(&perif->pc_tx_lock, 1, 1);
+	k_sem_init(&perif->np_tx_lock, 1, 1);
+	k_sem_init(&perif->rx_lock, 1, 1);
+	k_sem_init(&perif->rx_ready, 0, 1);
 
+	/* init oob private data */
 	oob->dma_mode = DT_INST_PROP(0, oob_dma_mode);
 	oob->tx_desc = oob_tx_desc;
 	oob->tx_desc_addr = TO_PHY_ADDR(oob->tx_desc);
@@ -756,27 +744,21 @@ static int espi_aspeed_init(const struct device *dev)
 	oob->tx_addr = TO_PHY_ADDR(oob->tx_virt);
 	oob->rx_virt = oob_rx_buf;
 	oob->rx_addr = TO_PHY_ADDR(oob->rx_virt);
-	if (oob->dma_mode) {
-		k_sem_init(&oob->tx_lock, OOB_TX_DMA_DESC_NUM, OOB_TX_DMA_DESC_NUM);
-		k_sem_init(&oob->rx_lock, 0, OOB_RX_DMA_DESC_NUM);
-	} else {
-		k_sem_init(&oob->tx_lock, 1, 1);
-		k_sem_init(&oob->rx_lock, 0, 1);
-	}
+	k_sem_init(&oob->tx_lock, 1, 1);
+	k_sem_init(&oob->rx_lock, 1, 1);
+	k_sem_init(&oob->rx_ready, 0, 1);
 
+	/* init flash private data */
 	flash->dma_mode = DT_INST_PROP(0, flash_dma_mode);
-
-	if (DT_NODE_HAS_PROP(DT_DRV_INST(0), flash_safs_mode)) {
-		flash->safs_mode = DT_INST_PROP(0, flash_safs_mode);
-	} else {
-		flash->safs_mode = 0;
-	}
+	flash->safs_mode = DT_NODE_HAS_PROP(DT_DRV_INST(0), flash_safs_mode) ?
+			   DT_INST_PROP(0, flash_safs_mode) : 2;
 	flash->tx_virt = flash_tx_buf;
 	flash->tx_addr = TO_PHY_ADDR(flash->tx_virt);
 	flash->rx_virt = flash_rx_buf;
 	flash->rx_addr = TO_PHY_ADDR(flash->rx_virt);
 	k_sem_init(&flash->tx_lock, 1, 1);
-	k_sem_init(&flash->rx_lock, 0, 1);
+	k_sem_init(&flash->rx_lock, 1, 1);
+	k_sem_init(&flash->rx_ready, 0, 1);
 
 	/* init controller */
 	espi_aspeed_ctrl_init(data);
@@ -795,6 +777,513 @@ static int espi_aspeed_init(const struct device *dev)
 	irq_enable(DT_INST_IRQN(0));
 
 	return 0;
+}
+
+/*
+ * eSPI cycle type encoding
+ *
+ * Section 5.1 Cycle Types and Packet Format,
+ * Intel eSPI Interface Base Specification, Rev 1.0, Jan. 2016.
+ */
+#define ESPI_PERIF_MEMRD32		0x00
+#define ESPI_PERIF_MEMRD64		0x02
+#define ESPI_PERIF_MEMWR32		0x01
+#define ESPI_PERIF_MEMWR64		0x03
+#define ESPI_PERIF_MSG			0x10
+#define ESPI_PERIF_MSG_D		0x11
+#define ESPI_PERIF_SUC_CMPLT		0x06
+#define ESPI_PERIF_SUC_CMPLT_D_MIDDLE	0x09
+#define ESPI_PERIF_SUC_CMPLT_D_FIRST	0x0b
+#define ESPI_PERIF_SUC_CMPLT_D_LAST	0x0d
+#define ESPI_PERIF_SUC_CMPLT_D_ONLY	0x0f
+#define ESPI_PERIF_UNSUC_CMPLT		0x0c
+#define ESPI_OOB_MSG			0x21
+#define ESPI_FLASH_READ			0x00
+#define ESPI_FLASH_WRITE		0x01
+#define ESPI_FLASH_ERASE		0x02
+#define ESPI_FLASH_SUC_CMPLT		0x06
+#define ESPI_FLASH_SUC_CMPLT_D_MIDDLE	0x09
+#define ESPI_FLASH_SUC_CMPLT_D_FIRST	0x0b
+#define ESPI_FLASH_SUC_CMPLT_D_LAST	0x0d
+#define ESPI_FLASH_SUC_CMPLT_D_ONLY	0x0f
+#define ESPI_FLASH_UNSUC_CMPLT		0x0c
+
+/*
+ * eSPI packet format structure
+ *
+ * Section 5.1 Cycle Types and Packet Format,
+ * Intel eSPI Interface Base Specification, Rev 1.0, Jan. 2016.
+ */
+struct espi_comm_hdr {
+	uint8_t cyc;
+	uint8_t len_h : 4;
+	uint8_t tag : 4;
+	uint8_t len_l;
+} __packed;
+
+struct espi_perif_mem32 {
+	uint8_t cyc;
+	uint8_t len_h : 4;
+	uint8_t tag : 4;
+	uint8_t len_l;
+	uint32_t addr_be;
+	uint8_t data[];
+} __packed;
+
+struct espi_perif_mem64 {
+	uint8_t cyc;
+	uint8_t len_h : 4;
+	uint8_t tag : 4;
+	uint8_t len_l;
+	uint32_t addr_be;
+	uint8_t data[];
+} __packed;
+
+struct espi_perif_msg {
+	uint8_t cyc;
+	uint8_t len_h : 4;
+	uint8_t tag : 4;
+	uint8_t len_l;
+	uint8_t msg_code;
+	uint8_t msg_byte[4];
+	uint8_t data[];
+} __packed;
+
+struct espi_perif_cmplt {
+	uint8_t cyc;
+	uint8_t len_h : 4;
+	uint8_t tag : 4;
+	uint8_t len_l;
+	uint8_t data[];
+} __packed;
+
+struct espi_oob_msg {
+	uint8_t cyc;
+	uint8_t len_h : 4;
+	uint8_t tag : 4;
+	uint8_t len_l;
+	uint8_t data[];
+} __packed;
+
+struct espi_flash_rwe {
+	uint8_t cyc;
+	uint8_t len_h : 4;
+	uint8_t tag : 4;
+	uint8_t len_l;
+	uint32_t addr_be;
+	uint8_t data[];
+} __packed;
+
+struct espi_flash_cmplt {
+	uint8_t cyc;
+	uint8_t len_h : 4;
+	uint8_t tag : 4;
+	uint8_t len_l;
+	uint8_t data[];
+} __packed;
+
+/* eSPI ASPEED proprietart APIs for raw packet TX/RX */
+int espi_aspeed_perif_pc_get_rx(const struct device *dev, struct espi_aspeed_ioc *ioc,
+				bool blocking)
+{
+	int i, rc;
+	uint32_t reg;
+	uint32_t cyc, tag, len;
+	struct espi_comm_hdr *hdr = (struct espi_comm_hdr *)ioc->pkt;
+	struct espi_aspeed_data *data = (struct espi_aspeed_data *)dev->data;
+	struct espi_aspeed_perif *perif = &data->perif;
+
+	rc = k_sem_take(&perif->rx_lock, (blocking) ? K_FOREVER : K_NO_WAIT);
+	if (rc)
+		return rc;
+
+	rc = k_sem_take(&perif->rx_ready, (blocking) ? K_FOREVER : K_NO_WAIT);
+	if (rc)
+		goto unlock_n_out;
+
+	reg = ESPI_RD(ESPI_PERIF_PC_RX_CTRL);
+	cyc = (reg & ESPI_PERIF_PC_RX_CTRL_CYC_MASK) >> ESPI_PERIF_PC_RX_CTRL_CYC_SHIFT;
+	tag = (reg & ESPI_PERIF_PC_RX_CTRL_TAG_MASK) >> ESPI_PERIF_PC_RX_CTRL_TAG_SHIFT;
+	len = (reg & ESPI_PERIF_PC_RX_CTRL_LEN_MASK) >> ESPI_PERIF_PC_RX_CTRL_LEN_SHIFT;
+
+	switch (cyc) {
+	case ESPI_PERIF_MSG:
+		ioc->pkt_len = len + sizeof(struct espi_perif_msg);
+		break;
+	case ESPI_PERIF_MSG_D:
+		ioc->pkt_len = ((len) ? len : ESPI_PLD_LEN_MAX) +
+			sizeof(struct espi_perif_msg);
+		break;
+	case ESPI_PERIF_SUC_CMPLT_D_MIDDLE:
+	case ESPI_PERIF_SUC_CMPLT_D_FIRST:
+	case ESPI_PERIF_SUC_CMPLT_D_LAST:
+	case ESPI_PERIF_SUC_CMPLT_D_ONLY:
+		ioc->pkt_len = ((len) ? len : ESPI_PLD_LEN_MAX) +
+			sizeof(struct espi_perif_cmplt);
+		break;
+	case ESPI_PERIF_SUC_CMPLT:
+	case ESPI_PERIF_UNSUC_CMPLT:
+		ioc->pkt_len = len + sizeof(struct espi_perif_cmplt);
+		break;
+	default:
+		__ASSERT(0, "Unrecognized eSPI peripheral packet");
+
+		k_sem_give(&perif->rx_ready);
+		rc = -EFAULT;
+		goto unlock_n_out;
+	}
+
+	hdr->cyc = cyc;
+	hdr->tag = tag;
+	hdr->len_h = len >> 8;
+	hdr->len_l = len & 0xff;
+
+	if (perif->dma_mode)
+		memcpy(hdr + 1, perif->pc_rx_virt, ioc->pkt_len - sizeof(*hdr));
+	else
+		for (i = sizeof(*hdr); i < ioc->pkt_len; ++i)
+			ioc->pkt[i] = (ESPI_RD(ESPI_PERIF_PC_RX_PORT) & 0xff);
+
+	ESPI_WR(reg | ESPI_PERIF_PC_RX_CTRL_PEND_SERV, ESPI_PERIF_PC_RX_CTRL);
+
+unlock_n_out:
+	k_sem_give(&perif->rx_lock);
+
+	return rc;
+}
+
+int espi_aspeed_perif_pc_put_tx(const struct device *dev, struct espi_aspeed_ioc *ioc)
+{
+	int i, rc;
+	uint32_t reg;
+	uint32_t cyc, tag, len;
+	struct espi_comm_hdr *hdr = (struct espi_comm_hdr *)ioc->pkt;
+	struct espi_aspeed_data *data = (struct espi_aspeed_data *)dev->data;
+	struct espi_aspeed_perif *perif = &data->perif;
+
+	rc = k_sem_take(&perif->pc_tx_lock, K_NO_WAIT);
+	if (rc)
+		return rc;
+
+	reg = ESPI_RD(ESPI_PERIF_PC_TX_CTRL);
+	if (reg & ESPI_PERIF_PC_TX_CTRL_TRIGGER) {
+		rc = -EBUSY;
+		goto unlock_n_out;
+	}
+
+	if (perif->dma_mode)
+		memcpy(perif->pc_tx_virt, hdr + 1, ioc->pkt_len - sizeof(*hdr));
+	else
+		for (i = sizeof(*hdr); i < ioc->pkt_len; ++i)
+			ESPI_WR(ioc->pkt[i], ESPI_PERIF_PC_TX_PORT);
+
+	cyc = hdr->cyc;
+	tag = hdr->tag;
+	len = (hdr->len_h << 8) | (hdr->len_l & 0xff);
+
+	reg = ((cyc << ESPI_PERIF_PC_TX_CTRL_CYC_SHIFT) & ESPI_PERIF_PC_TX_CTRL_CYC_MASK)
+		| ((tag << ESPI_PERIF_PC_TX_CTRL_TAG_SHIFT) & ESPI_PERIF_PC_TX_CTRL_TAG_MASK)
+		| ((len << ESPI_PERIF_PC_TX_CTRL_LEN_SHIFT) & ESPI_PERIF_PC_TX_CTRL_LEN_MASK)
+		| ESPI_PERIF_PC_TX_CTRL_TRIGGER;
+
+	ESPI_WR(reg, ESPI_PERIF_PC_TX_CTRL);
+
+unlock_n_out:
+	k_sem_give(&perif->pc_tx_lock);
+
+	return rc;
+}
+
+int espi_aspeed_perif_np_put_tx(const struct device *dev, struct espi_aspeed_ioc *ioc)
+{
+	int i, rc;
+	uint32_t reg;
+	uint32_t cyc, tag, len;
+	struct espi_comm_hdr *hdr = (struct espi_comm_hdr *)ioc->pkt;
+	struct espi_aspeed_data *data = (struct espi_aspeed_data *)dev->data;
+	struct espi_aspeed_perif *perif = &data->perif;
+
+	rc = k_sem_take(&perif->np_tx_lock, K_NO_WAIT);
+	if (rc)
+		return rc;
+
+	reg = ESPI_RD(ESPI_PERIF_NP_TX_CTRL);
+	if (reg & ESPI_PERIF_NP_TX_CTRL_TRIGGER) {
+		rc = -EBUSY;
+		goto unlock_n_out;
+	}
+
+	if (perif->dma_mode)
+		memcpy(perif->np_tx_virt, hdr + 1, ioc->pkt_len - sizeof(*hdr));
+	else
+		for (i = sizeof(*hdr); i < ioc->pkt_len; ++i)
+			ESPI_WR(ioc->pkt[i], ESPI_PERIF_NP_TX_PORT);
+
+	cyc = hdr->cyc;
+	tag = hdr->tag;
+	len = (hdr->len_h << 8) | (hdr->len_l & 0xff);
+
+	reg = ((cyc << ESPI_PERIF_NP_TX_CTRL_CYC_SHIFT) & ESPI_PERIF_NP_TX_CTRL_CYC_MASK)
+		| ((tag << ESPI_PERIF_NP_TX_CTRL_TAG_SHIFT) & ESPI_PERIF_NP_TX_CTRL_TAG_MASK)
+		| ((len << ESPI_PERIF_NP_TX_CTRL_LEN_SHIFT) & ESPI_PERIF_NP_TX_CTRL_LEN_MASK)
+		| ESPI_PERIF_NP_TX_CTRL_TRIGGER;
+
+	ESPI_WR(reg, ESPI_PERIF_NP_TX_CTRL);
+
+unlock_n_out:
+	k_sem_give(&perif->np_tx_lock);
+
+	return rc;
+}
+
+int espi_aspeed_oob_get_rx(const struct device *dev, struct espi_aspeed_ioc *ioc, bool blocking)
+{
+	int i, rc;
+	uint32_t reg;
+	uint32_t cyc, tag, len;
+	uint32_t wptr, sptr;
+	struct oob_rx_dma_desc *d;
+	struct espi_comm_hdr *hdr = (struct espi_comm_hdr *)ioc->pkt;
+	struct espi_aspeed_data *data = (struct espi_aspeed_data *)dev->data;
+	struct espi_aspeed_oob *oob = &data->oob;
+
+	rc = k_sem_take(&oob->rx_lock, (blocking) ? K_FOREVER : K_NO_WAIT);
+	if (rc)
+		return rc;
+
+	rc = k_sem_take(&oob->rx_ready, (blocking) ? K_FOREVER : K_NO_WAIT);
+	if (rc)
+		goto unlock_n_out;
+
+	if (oob->dma_mode) {
+		reg = ESPI_RD(ESPI_OOB_RX_DMA_WS_PTR);
+		wptr = (reg & ESPI_OOB_RX_DMA_WS_PTR_WP_MASK) >> ESPI_OOB_RX_DMA_WS_PTR_WP_SHIFT;
+		sptr = (reg & ESPI_OOB_RX_DMA_WS_PTR_SP_MASK) >> ESPI_OOB_RX_DMA_WS_PTR_SP_SHIFT;
+
+		d = &oob->rx_desc[sptr];
+
+		ioc->pkt_len = (d->len) ? d->len : ESPI_PLD_LEN_MAX;
+		ioc->pkt_len += sizeof(struct espi_comm_hdr);
+
+		hdr->cyc = d->cyc;
+		hdr->tag = d->tag;
+		hdr->len_h = d->len >> 8;
+		hdr->len_l = d->len & 0xff;
+		memcpy(hdr + 1, oob->rx_virt + (ESPI_PLD_LEN_MAX * sptr), ioc->pkt_len - sizeof(*hdr));
+
+		d->dirty = 0;
+
+		sptr = (sptr + 1) % OOB_RX_DMA_DESC_NUM;
+		wptr = (wptr + 1) % OOB_RX_DMA_DESC_NUM;
+
+		reg = ((wptr << ESPI_OOB_RX_DMA_WS_PTR_WP_SHIFT) & ESPI_OOB_RX_DMA_WS_PTR_WP_MASK)
+			| ((sptr << ESPI_OOB_RX_DMA_WS_PTR_SP_SHIFT) & ESPI_OOB_RX_DMA_WS_PTR_SP_MASK)
+			| ESPI_OOB_RX_DMA_WS_PTR_RECV_EN;
+		ESPI_WR(reg, ESPI_OOB_RX_DMA_WS_PTR);
+
+		if (oob->rx_desc[sptr].dirty)
+			k_sem_give(&oob->rx_ready);
+
+	} else {
+		reg = ESPI_RD(ESPI_OOB_RX_CTRL);
+		cyc = (reg & ESPI_OOB_RX_CTRL_CYC_MASK) >> ESPI_OOB_RX_CTRL_CYC_SHIFT;
+		tag = (reg & ESPI_OOB_RX_CTRL_TAG_MASK) >> ESPI_OOB_RX_CTRL_TAG_SHIFT;
+		len = (reg & ESPI_OOB_RX_CTRL_LEN_MASK) >> ESPI_OOB_RX_CTRL_LEN_SHIFT;
+
+		ioc->pkt_len = ((len) ? len : ESPI_PLD_LEN_MAX) + sizeof(struct espi_comm_hdr);
+
+		hdr->cyc = cyc;
+		hdr->tag = tag;
+		hdr->len_h = len >> 8;
+		hdr->len_l = len & 0xff;
+
+		for (i = sizeof(*hdr); i < ioc->pkt_len; ++i)
+			ioc->pkt[i] = ESPI_RD(ESPI_OOB_RX_PORT) & 0xff;
+
+		ESPI_WR(reg | ESPI_OOB_RX_CTRL_PEND_SERV, ESPI_OOB_RX_CTRL);
+	}
+
+unlock_n_out:
+	k_sem_give(&oob->rx_lock);
+
+	return rc;
+}
+
+int espi_aspeed_oob_put_tx(const struct device *dev, struct espi_aspeed_ioc *ioc)
+{
+	int i, rc;
+	uint32_t reg;
+	uint32_t cyc, tag, len;
+	uint32_t rptr, wptr;
+	struct oob_tx_dma_desc *d;
+	struct espi_comm_hdr *hdr = (struct espi_comm_hdr *)ioc->pkt;
+	struct espi_aspeed_data *data = (struct espi_aspeed_data *)dev->data;
+	struct espi_aspeed_oob *oob = &data->oob;
+
+	rc = k_sem_take(&oob->tx_lock, K_NO_WAIT);
+	if (rc)
+		return rc;
+
+	if (oob->dma_mode) {
+		ESPI_WR(ESPI_OOB_TX_DMA_RD_PTR_UPDATE, ESPI_OOB_TX_DMA_RD_PTR);
+
+		while (1) {
+			rptr = ESPI_RD(ESPI_OOB_TX_DMA_RD_PTR);
+			if (!(rptr & ESPI_OOB_TX_DMA_RD_PTR_UPDATE))
+				break;
+		}
+		wptr = ESPI_RD(ESPI_OOB_TX_DMA_WR_PTR);
+
+		if (((wptr + 1) % OOB_TX_DMA_DESC_NUM) == rptr) {
+			rc = -EBUSY;
+			goto unlock_n_out;
+		}
+
+		d = &oob->tx_desc[wptr];
+		d->cyc = hdr->cyc;
+		d->tag = hdr->tag;
+		d->len = (hdr->len_h << 8) | (hdr->len_l & 0xff);
+		d->msg_type = 0x4;
+
+		memcpy(oob->tx_virt + (ESPI_PLD_LEN_MAX * wptr), hdr + 1, ioc->pkt_len - sizeof(*hdr));
+
+		wptr = (wptr + 1) % OOB_TX_DMA_DESC_NUM;
+		wptr |= ESPI_OOB_TX_DMA_WR_PTR_SEND_EN;
+		ESPI_WR(wptr, ESPI_OOB_TX_DMA_WR_PTR);
+	} else {
+		reg = ESPI_RD(ESPI_OOB_TX_CTRL);
+		if (reg & ESPI_OOB_TX_CTRL_TRIGGER) {
+			rc = -EBUSY;
+			goto unlock_n_out;
+		}
+
+		for (i = sizeof(*hdr); i < ioc->pkt_len; ++i)
+			ESPI_WR(ioc->pkt[i], ESPI_OOB_TX_PORT);
+
+		cyc = hdr->cyc;
+		tag = hdr->tag;
+		len = (hdr->len_h << 8) | (hdr->len_l & 0xff);
+
+		reg = ((cyc << ESPI_OOB_TX_CTRL_CYC_SHIFT) & ESPI_OOB_TX_CTRL_CYC_MASK)
+			| ((tag << ESPI_OOB_TX_CTRL_TAG_SHIFT) & ESPI_OOB_TX_CTRL_TAG_MASK)
+			| ((len << ESPI_OOB_TX_CTRL_LEN_SHIFT) & ESPI_OOB_TX_CTRL_LEN_MASK)
+			| ESPI_OOB_TX_CTRL_TRIGGER;
+
+		ESPI_WR(reg, ESPI_OOB_TX_CTRL);
+	}
+
+unlock_n_out:
+	k_sem_give(&oob->tx_lock);
+
+	return rc;
+
+}
+
+int espi_aspeed_flash_get_rx(const struct device *dev, struct espi_aspeed_ioc *ioc, bool blocking)
+{
+	int i, rc;
+	uint32_t reg;
+	uint32_t cyc, tag, len;
+	struct espi_comm_hdr *hdr = (struct espi_comm_hdr *)ioc->pkt;
+	struct espi_aspeed_data *data = (struct espi_aspeed_data *)dev->data;
+	struct espi_aspeed_flash *flash = &data->flash;
+
+	rc = k_sem_take(&flash->rx_lock, (blocking) ? K_FOREVER : K_NO_WAIT);
+	if (rc)
+		return rc;
+
+	rc = k_sem_take(&flash->rx_ready, (blocking) ? K_FOREVER : K_NO_WAIT);
+	if (rc)
+		goto unlock_n_out;
+
+	reg = ESPI_RD(ESPI_FLASH_RX_CTRL);
+	cyc = (reg & ESPI_FLASH_RX_CTRL_CYC_MASK) >> ESPI_FLASH_RX_CTRL_CYC_SHIFT;
+	tag = (reg & ESPI_FLASH_RX_CTRL_TAG_MASK) >> ESPI_FLASH_RX_CTRL_TAG_SHIFT;
+	len = (reg & ESPI_FLASH_RX_CTRL_LEN_MASK) >> ESPI_FLASH_RX_CTRL_LEN_SHIFT;
+
+	switch (cyc) {
+	case ESPI_FLASH_READ:
+	case ESPI_FLASH_WRITE:
+	case ESPI_FLASH_ERASE:
+		ioc->pkt_len = ((len) ? len : ESPI_PLD_LEN_MAX) + sizeof(struct espi_flash_rwe);
+		break;
+	case ESPI_FLASH_SUC_CMPLT_D_MIDDLE:
+	case ESPI_FLASH_SUC_CMPLT_D_FIRST:
+	case ESPI_FLASH_SUC_CMPLT_D_LAST:
+	case ESPI_FLASH_SUC_CMPLT_D_ONLY:
+		ioc->pkt_len = ((len) ? len : ESPI_PLD_LEN_MAX) + sizeof(struct espi_flash_cmplt);
+		break;
+	case ESPI_FLASH_SUC_CMPLT:
+	case ESPI_FLASH_UNSUC_CMPLT:
+		ioc->pkt_len = len + sizeof(struct espi_flash_cmplt);
+		break;
+	default:
+		__ASSERT(0, "Unrecognized eSPI flash packet");
+
+		k_sem_give(&flash->rx_ready);
+		rc = -EFAULT;
+		goto unlock_n_out;
+	}
+
+	hdr->cyc = cyc;
+	hdr->tag = tag;
+	hdr->len_h = len >> 8;
+	hdr->len_l = len & 0xff;
+
+	if (flash->dma_mode)
+		memcpy(hdr + 1, flash->rx_virt, ioc->pkt_len - sizeof(*hdr));
+	else
+		for (i = sizeof(*hdr); i < ioc->pkt_len; ++i)
+			ioc->pkt[i] = ESPI_RD(ESPI_FLASH_RX_PORT) & 0xff;
+
+	ESPI_WR(reg | ESPI_FLASH_RX_CTRL_PEND_SERV, ESPI_FLASH_RX_CTRL);
+
+unlock_n_out:
+	k_sem_give(&flash->rx_lock);
+
+	return rc;
+}
+
+int espi_aspeed_flash_put_tx(const struct device *dev, struct espi_aspeed_ioc *ioc)
+{
+	int i, rc;
+	uint32_t reg;
+	uint32_t cyc, tag, len;
+	struct espi_comm_hdr *hdr = (struct espi_comm_hdr *)ioc->pkt;
+	struct espi_aspeed_data *data = (struct espi_aspeed_data *)dev->data;
+	struct espi_aspeed_flash *flash = &data->flash;
+
+	rc = k_sem_take(&flash->tx_lock, K_NO_WAIT);
+	if (rc)
+		return rc;
+
+	reg = ESPI_RD(ESPI_FLASH_TX_CTRL);
+	if (reg & ESPI_FLASH_TX_CTRL_TRIGGER) {
+		rc = -EBUSY;
+		goto unlock_n_out;
+	}
+
+	if (flash->dma_mode)
+		memcpy(flash->tx_virt, hdr + 1, ioc->pkt_len - sizeof(*hdr));
+	else
+		for (i = sizeof(*hdr); i < ioc->pkt_len; ++i)
+			ESPI_WR(ioc->pkt[i], ESPI_FLASH_TX_PORT);
+
+	cyc = hdr->cyc;
+	tag = hdr->tag;
+	len = (hdr->len_h << 8) | (hdr->len_l & 0xff);
+
+	reg = ((cyc << ESPI_FLASH_TX_CTRL_CYC_SHIFT) & ESPI_FLASH_TX_CTRL_CYC_MASK)
+		| ((tag << ESPI_FLASH_TX_CTRL_TAG_SHIFT) & ESPI_FLASH_TX_CTRL_TAG_MASK)
+		| ((len << ESPI_FLASH_TX_CTRL_LEN_SHIFT) & ESPI_FLASH_TX_CTRL_LEN_MASK)
+		| ESPI_FLASH_TX_CTRL_TRIGGER;
+
+	ESPI_WR(reg, ESPI_FLASH_TX_CTRL);
+
+unlock_n_out:
+	k_sem_give(&flash->tx_lock);
+
+	return rc;
 }
 
 /* eSPI standard/specific APIs */
@@ -818,236 +1307,81 @@ static bool espi_aspeed_channel_ready(const struct device *dev, enum espi_channe
 
 static int espi_aspeed_send_oob(const struct device *dev, struct espi_oob_packet *pckt)
 {
-	int i, rc;
-	uint32_t reg;
-	uint32_t cyc, tag, len;
-	uint32_t rptr, wptr;
-	struct oob_tx_dma_desc *d;
-	struct espi_aspeed_data *data = (struct espi_aspeed_data *)dev->data;
-	struct espi_aspeed_oob *oob = &data->oob;
+	struct espi_oob_msg *oob_msg;
+	struct espi_aspeed_ioc ioc;
+	uint8_t pkt[sizeof(*oob_msg) + ESPI_PLD_LEN_MAX];
 
-	rc = k_sem_take(&oob->tx_lock, K_NO_WAIT);
-	if (rc) {
-		return rc;
-	}
+	ioc.pkt = pkt;
+	ioc.pkt_len = sizeof(*oob_msg) + pckt->len;
 
-	if (oob->dma_mode) {
-		/* kick HW to reflect the up-to-date read/write pointer */
-		ESPI_WR(ESPI_OOB_TX_DMA_RD_PTR_UPDATE, ESPI_OOB_TX_DMA_RD_PTR);
+	oob_msg = (struct espi_oob_msg *)pkt;
+	oob_msg->cyc = OOB_MSG;
+	oob_msg->tag = OOB_TAG;
+	oob_msg->len_h = pckt->len >> 8;
+	oob_msg->len_l = pckt->len & 0xff;
 
-		rptr = ESPI_RD(ESPI_OOB_TX_DMA_RD_PTR);
-		wptr = ESPI_RD(ESPI_OOB_TX_DMA_WR_PTR);
+	memcpy(oob_msg + 1, pckt->buf, pckt->len);
 
-		if (((wptr + 1) % OOB_TX_DMA_DESC_NUM) == rptr) {
-			return -EFAULT;
-		}
-
-		d = &oob->tx_desc[wptr];
-		d->cyc = OOB_MSG;
-		d->tag = OOB_TAG;
-		d->len = pckt->len;
-		d->msg_type = 0x4; /* ASPEED Customized OOB TX DMA descriptor */
-
-		memcpy(oob->tx_virt + (ESPI_PLD_LEN_MAX * wptr), pckt->buf, pckt->len);
-
-		wptr = (wptr + 1) % OOB_TX_DMA_DESC_NUM;
-		wptr |= ESPI_OOB_TX_DMA_WR_PTR_SEND_EN;
-		ESPI_WR(wptr, ESPI_OOB_TX_DMA_WR_PTR);
-	} else {
-		reg = ESPI_RD(ESPI_OOB_TX_CTRL);
-		if (reg & ESPI_OOB_TX_CTRL_TRIGGER) {
-			return -EFAULT;
-		}
-
-		for (i = 0; i < pckt->len; ++i)
-			ESPI_WR(pckt->buf[i], ESPI_OOB_TX_PORT);
-
-		cyc = OOB_MSG;
-		tag = OOB_TAG;
-		len = pckt->len;
-
-		reg = ((cyc << ESPI_OOB_TX_CTRL_CYC_SHIFT) & ESPI_OOB_TX_CTRL_CYC_MASK) |
-		      ((tag << ESPI_OOB_TX_CTRL_TAG_SHIFT) & ESPI_OOB_TX_CTRL_TAG_MASK) |
-		      ((len << ESPI_OOB_TX_CTRL_LEN_SHIFT) & ESPI_OOB_TX_CTRL_LEN_MASK) |
-		      ESPI_OOB_TX_CTRL_TRIGGER;
-
-		ESPI_WR(reg, ESPI_OOB_TX_CTRL);
-	}
-
-	return 0;
+	return espi_aspeed_oob_put_tx(dev, &ioc);
 }
 
 static int espi_aspeed_receive_oob(const struct device *dev, struct espi_oob_packet *pckt)
 {
-	int i, rc;
-	uint32_t reg, len;
-	uint32_t wptr, sptr;
-	struct espi_aspeed_data *data = (struct espi_aspeed_data *)dev->data;
-	struct espi_aspeed_oob *oob = &data->oob;
-	struct oob_rx_dma_desc *d;
+	int rc;
+	struct espi_oob_msg *oob_msg;
+	struct espi_aspeed_ioc ioc;
+	uint8_t pkt[sizeof(*oob_msg) + ESPI_PLD_LEN_MAX];
 
-	rc = k_sem_take(&oob->rx_lock, K_NO_WAIT);
-	if (rc) {
+	ioc.pkt = pkt;
+	ioc.pkt_len = sizeof(pkt);
+
+	rc = espi_aspeed_oob_get_rx(dev, &ioc, false);
+	if (rc)
 		return rc;
-	}
 
-	if (oob->dma_mode) {
-		reg = ESPI_RD(ESPI_OOB_RX_DMA_WS_PTR);
-		wptr = (reg & ESPI_OOB_RX_DMA_WS_PTR_WP_MASK) >> ESPI_OOB_RX_DMA_WS_PTR_WP_SHIFT;
-		sptr = (reg & ESPI_OOB_RX_DMA_WS_PTR_SP_MASK) >> ESPI_OOB_RX_DMA_WS_PTR_SP_SHIFT;
+	oob_msg = (struct espi_oob_msg *)ioc.pkt;
 
-		d = &oob->rx_desc[sptr];
-		if (!d->dirty) {
-			return -EFAULT;
-		}
-
-		pckt->len = (d->len) ? d->len : ESPI_PLD_LEN_MAX;
-		memcpy(pckt->buf, oob->rx_virt + (ESPI_PLD_LEN_MAX * sptr), pckt->len);
-
-		d->dirty = 0;
-		sptr = (sptr + 1) % OOB_RX_DMA_DESC_NUM;
-		wptr = (wptr + 1) % OOB_RX_DMA_DESC_NUM;
-
-		reg = ((wptr << ESPI_OOB_RX_DMA_WS_PTR_WP_SHIFT) & ESPI_OOB_RX_DMA_WS_PTR_WP_MASK) |
-		      ((sptr << ESPI_OOB_RX_DMA_WS_PTR_SP_SHIFT) & ESPI_OOB_RX_DMA_WS_PTR_SP_MASK) |
-		      ESPI_OOB_RX_DMA_WS_PTR_RECV_EN;
-		ESPI_WR(reg, ESPI_OOB_RX_DMA_WS_PTR);
-	} else {
-		reg = ESPI_RD(ESPI_OOB_RX_CTRL);
-		len = (reg & ESPI_OOB_RX_CTRL_LEN_MASK) >> ESPI_OOB_RX_CTRL_LEN_SHIFT;
-
-		pckt->len = (len) ? len : ESPI_PLD_LEN_MAX;
-		for (i = 0; i < pckt->len; ++i)
-			pckt->buf[i] = (uint8_t)(ESPI_RD(ESPI_OOB_TX_PORT) & 0xff);
-
-		ESPI_WR(ESPI_OOB_RX_CTRL_PEND_SERV, ESPI_OOB_RX_CTRL);
-	}
+	pckt->len = (oob_msg->len_h << 8) | (oob_msg->len_l & 0xff);
+	memcpy(pckt->buf, oob_msg + 1, pckt->len);
 
 	return 0;
+}
+
+static int espi_aspeed_flash_rwe(const struct device *dev, struct espi_flash_packet *pckt,
+				 uint32_t flash_op)
+{
+	struct espi_flash_rwe *flash_rwe;
+	struct espi_aspeed_ioc ioc;
+	uint8_t pkt[sizeof(*flash_rwe) + ESPI_PLD_LEN_MAX];
+
+	ioc.pkt = pkt;
+	ioc.pkt_len = sizeof(*flash_rwe) + pckt->len;
+
+	flash_rwe = (struct espi_flash_rwe *)pkt;
+	flash_rwe->cyc = flash_op;
+	flash_rwe->tag = FLASH_TAG;
+	flash_rwe->len_h = pckt->len >> 8;
+	flash_rwe->len_l = pckt->len & 0xff;
+	flash_rwe->addr_be = __bswap_32(pckt->flash_addr);
+
+	memcpy(flash_rwe + 1, pckt->buf, pckt->len);
+
+	return espi_aspeed_flash_put_tx(dev, &ioc);
 }
 
 static int espi_aspeed_flash_read(const struct device *dev, struct espi_flash_packet *pckt)
 {
-	int i, rc;
-	uint32_t reg;
-	uint32_t cyc, tag, len;
-	struct espi_aspeed_data *data = (struct espi_aspeed_data *)dev->data;
-	struct espi_aspeed_flash *flash = &data->flash;
-
-	rc = k_sem_take(&flash->tx_lock, K_NO_WAIT);
-	if (rc) {
-		return rc;
-	}
-
-	if (flash->dma_mode) {
-		flash->tx_virt[0] = (pckt->flash_addr >> 24) & 0xff;
-		flash->tx_virt[1] = (pckt->flash_addr >> 16) & 0xff;
-		flash->tx_virt[2] = (pckt->flash_addr >> 8) & 0xff;
-		flash->tx_virt[3] = (pckt->flash_addr >> 0) & 0xff;
-		memcpy(flash->tx_virt + sizeof(pckt->flash_addr), pckt->buf, pckt->len);
-	} else   {
-		ESPI_WR((pckt->flash_addr >> 24) & 0xff, ESPI_FLASH_TX_PORT);
-		ESPI_WR((pckt->flash_addr >> 16) & 0xff, ESPI_FLASH_TX_PORT);
-		ESPI_WR((pckt->flash_addr >> 8) & 0xff, ESPI_FLASH_TX_PORT);
-		ESPI_WR((pckt->flash_addr >> 0) & 0xff, ESPI_FLASH_TX_PORT);
-		for (i = 0; i < pckt->len; ++i)
-			ESPI_WR(pckt->buf[i], ESPI_FLASH_TX_PORT);
-	}
-
-	cyc = FLASH_READ;
-	tag = FLASH_TAG;
-	len = sizeof(pckt->flash_addr) + pckt->len;
-
-	reg = ((cyc << ESPI_FLASH_TX_CTRL_CYC_SHIFT) & ESPI_FLASH_TX_CTRL_CYC_MASK) |
-	      ((tag << ESPI_FLASH_TX_CTRL_TAG_SHIFT) & ESPI_FLASH_TX_CTRL_TAG_MASK) |
-	      ((len << ESPI_FLASH_TX_CTRL_LEN_SHIFT) & ESPI_FLASH_TX_CTRL_LEN_MASK) |
-	      ESPI_FLASH_TX_CTRL_TRIGGER;
-	ESPI_WR(reg, ESPI_FLASH_TX_CTRL);
-
-	return 0;
+	return espi_aspeed_flash_rwe(dev, pckt, FLASH_READ);
 }
 
 static int espi_aspeed_flash_write(const struct device *dev, struct espi_flash_packet *pckt)
 {
-	int i, rc;
-	uint32_t reg;
-	uint32_t cyc, tag, len;
-	struct espi_aspeed_data *data = (struct espi_aspeed_data *)dev->data;
-	struct espi_aspeed_flash *flash = &data->flash;
-
-	rc = k_sem_take(&flash->tx_lock, K_NO_WAIT);
-	if (rc) {
-		return rc;
-	}
-
-	if (flash->dma_mode) {
-		flash->tx_virt[0] = (pckt->flash_addr >> 24) & 0xff;
-		flash->tx_virt[1] = (pckt->flash_addr >> 16) & 0xff;
-		flash->tx_virt[2] = (pckt->flash_addr >> 8) & 0xff;
-		flash->tx_virt[3] = (pckt->flash_addr >> 0) & 0xff;
-		memcpy(flash->tx_virt + sizeof(pckt->flash_addr), pckt->buf, pckt->len);
-	} else   {
-		ESPI_WR((pckt->flash_addr >> 24) & 0xff, ESPI_FLASH_TX_PORT);
-		ESPI_WR((pckt->flash_addr >> 16) & 0xff, ESPI_FLASH_TX_PORT);
-		ESPI_WR((pckt->flash_addr >> 8) & 0xff, ESPI_FLASH_TX_PORT);
-		ESPI_WR((pckt->flash_addr >> 0) & 0xff, ESPI_FLASH_TX_PORT);
-		for (i = 0; i < pckt->len; ++i)
-			ESPI_WR(pckt->buf[i], ESPI_FLASH_TX_PORT);
-	}
-
-	cyc = FLASH_WRITE;
-	tag = FLASH_TAG;
-	len = sizeof(pckt->flash_addr) + pckt->len;
-
-
-	reg = ((cyc << ESPI_FLASH_TX_CTRL_CYC_SHIFT) & ESPI_FLASH_TX_CTRL_CYC_MASK) |
-	      ((tag << ESPI_FLASH_TX_CTRL_TAG_SHIFT) & ESPI_FLASH_TX_CTRL_TAG_MASK) |
-	      ((len << ESPI_FLASH_TX_CTRL_LEN_SHIFT) & ESPI_FLASH_TX_CTRL_LEN_MASK) |
-	      ESPI_FLASH_TX_CTRL_TRIGGER;
-	ESPI_WR(reg, ESPI_FLASH_TX_CTRL);
-
-	return 0;
+	return espi_aspeed_flash_rwe(dev, pckt, FLASH_WRITE);
 }
 
 static int espi_aspeed_flash_erase(const struct device *dev, struct espi_flash_packet *pckt)
 {
-	int i, rc;
-	uint32_t reg;
-	uint32_t cyc, tag, len;
-	struct espi_aspeed_data *data = (struct espi_aspeed_data *)dev->data;
-	struct espi_aspeed_flash *flash = &data->flash;
-
-	rc = k_sem_take(&flash->tx_lock, K_NO_WAIT);
-	if (rc) {
-		return rc;
-	}
-
-	if (flash->dma_mode) {
-		flash->tx_virt[0] = (pckt->flash_addr >> 24) & 0xff;
-		flash->tx_virt[1] = (pckt->flash_addr >> 16) & 0xff;
-		flash->tx_virt[2] = (pckt->flash_addr >> 8) & 0xff;
-		flash->tx_virt[3] = (pckt->flash_addr >> 0) & 0xff;
-		memcpy(flash->tx_virt + sizeof(pckt->flash_addr), pckt->buf, pckt->len);
-	} else   {
-		ESPI_WR((pckt->flash_addr >> 24) & 0xff, ESPI_FLASH_TX_PORT);
-		ESPI_WR((pckt->flash_addr >> 16) & 0xff, ESPI_FLASH_TX_PORT);
-		ESPI_WR((pckt->flash_addr >> 8) & 0xff, ESPI_FLASH_TX_PORT);
-		ESPI_WR((pckt->flash_addr >> 0) & 0xff, ESPI_FLASH_TX_PORT);
-		for (i = 0; i < pckt->len; ++i)
-			ESPI_WR(pckt->buf[i], ESPI_FLASH_TX_PORT);
-	}
-
-	cyc = FLASH_ERASE;
-	tag = FLASH_TAG;
-	len = sizeof(pckt->flash_addr) + pckt->len;
-
-	reg = ((cyc << ESPI_FLASH_TX_CTRL_CYC_SHIFT) & ESPI_FLASH_TX_CTRL_CYC_MASK) |
-	      ((tag << ESPI_FLASH_TX_CTRL_TAG_SHIFT) & ESPI_FLASH_TX_CTRL_TAG_MASK) |
-	      ((len << ESPI_FLASH_TX_CTRL_LEN_SHIFT) & ESPI_FLASH_TX_CTRL_LEN_MASK) |
-	      ESPI_FLASH_TX_CTRL_TRIGGER;
-	ESPI_WR(reg, ESPI_FLASH_TX_CTRL);
-
-	return 0;
+	return espi_aspeed_flash_rwe(dev, pckt, FLASH_ERASE);
 }
 
 static const struct espi_driver_api espi_aspeed_driver_api = {
