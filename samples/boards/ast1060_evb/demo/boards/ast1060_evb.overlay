@@ -1,174 +1,3 @@
-&pwm {
-	status = "okay";
-	pinctrl-0 = <&pinctrl_pwm0_default &pinctrl_pwm1_default
-			&pinctrl_pwm2_default &pinctrl_pwm3_default
-			&pinctrl_pwm4_default &pinctrl_pwm5_default
-			&pinctrl_pwm6_default &pinctrl_pwm7_default
-			&pinctrl_pwm8_default &pinctrl_pwm9_default
-			&pinctrl_pwm10_default &pinctrl_pwm11_default
-			&pinctrl_pwm12_default &pinctrl_pwm13_default
-			&pinctrl_pwm14_default &pinctrl_pwm15_default>;
-
-};
-
-&adc0 {
-	status = "okay";
-	pinctrl-0 = <&pinctrl_adc0_default &pinctrl_adc1_default
-		&pinctrl_adc2_default &pinctrl_adc3_default
-		&pinctrl_adc4_default &pinctrl_adc5_default
-		&pinctrl_adc6_default &pinctrl_adc7_default>;
-};
-
-&adc1 {
-	status = "okay";
-	pinctrl-0 = <&pinctrl_adc8_default &pinctrl_adc9_default
-		&pinctrl_adc10_default &pinctrl_adc11_default
-		&pinctrl_adc12_default &pinctrl_adc13_default
-		&pinctrl_adc14_default &pinctrl_adc15_default>;
-};
-
-&jtag1{
-	status = "okay";
-};
-
-&tach {
-	status = "okay";
-	pinctrl-0 = <&pinctrl_tach0_default &pinctrl_tach1_default
-			&pinctrl_tach2_default &pinctrl_tach3_default
-			&pinctrl_tach4_default &pinctrl_tach5_default
-			&pinctrl_tach6_default &pinctrl_tach7_default
-			&pinctrl_tach8_default &pinctrl_tach9_default
-			&pinctrl_tach10_default &pinctrl_tach11_default
-			&pinctrl_tach12_default &pinctrl_tach13_default
-			&pinctrl_tach14_default &pinctrl_tach15_default>;
-	fan@0 {
-		reg = <0>;
-		pulse-pr = <2>;
-		min-rpm = <1000>;
-		tach-div = <5>;
-		label = "FAN0";
-	};
-
-	fan@1 {
-		reg = <1>;
-		pulse-pr = <2>;
-		min-rpm = <1000>;
-		tach-div = <5>;
-		label = "FAN1";
-	};
-
-	fan@2 {
-		reg = <2>;
-		pulse-pr = <2>;
-		min-rpm = <1000>;
-		tach-div = <5>;
-		label = "FAN2";
-	};
-
-	fan@3 {
-		reg = <3>;
-		pulse-pr = <2>;
-		min-rpm = <1000>;
-		tach-div = <5>;
-		label = "FAN3";
-	};
-
-	fan@4 {
-		reg = <4>;
-		pulse-pr = <2>;
-		min-rpm = <1000>;
-		tach-div = <5>;
-		label = "FAN4";
-	};
-
-	fan@5 {
-		reg = <5>;
-		pulse-pr = <2>;
-		min-rpm = <1000>;
-		tach-div = <5>;
-		label = "FAN5";
-	};
-
-	fan@6 {
-		reg = <6>;
-		pulse-pr = <2>;
-		min-rpm = <1000>;
-		tach-div = <5>;
-		label = "FAN6";
-	};
-
-	fan@7 {
-		reg = <7>;
-		pulse-pr = <2>;
-		min-rpm = <1000>;
-		tach-div = <5>;
-		label = "FAN7";
-	};
-
-	fan@8 {
-		reg = <8>;
-		pulse-pr = <2>;
-		min-rpm = <1000>;
-		tach-div = <5>;
-		label = "FAN8";
-	};
-
-	fan@9 {
-		reg = <9>;
-		pulse-pr = <2>;
-		min-rpm = <1000>;
-		tach-div = <5>;
-		label = "FAN9";
-	};
-
-	fan@a {
-		reg = <0xa>;
-		pulse-pr = <2>;
-		min-rpm = <1000>;
-		tach-div = <5>;
-		label = "FAN10";
-	};
-
-	fan@b {
-		reg = <0xb>;
-		pulse-pr = <2>;
-		min-rpm = <1000>;
-		tach-div = <5>;
-		label = "FAN11";
-	};
-
-	fan@c {
-		reg = <0xc>;
-		pulse-pr = <2>;
-		min-rpm = <1000>;
-		tach-div = <5>;
-		label = "FAN12";
-	};
-
-	fan@d {
-		reg = <0xd>;
-		pulse-pr = <2>;
-		min-rpm = <1000>;
-		tach-div = <5>;
-		label = "FAN13";
-	};
-
-	fan@e {
-		reg = <0xe>;
-		pulse-pr = <2>;
-		min-rpm = <1000>;
-		tach-div = <5>;
-		label = "FAN14";
-	};
-
-	fan@f {
-		reg = <0xf>;
-		pulse-pr = <2>;
-		min-rpm = <1000>;
-		tach-div = <5>;
-		label = "FAN15";
-	};
-};
 
 &i2c0 {
 	status = "okay";
@@ -344,19 +173,42 @@
 
 };
 
-&espi {
+&spim1 {
+	valid-cmds = [03 13 0b 0c 6b 6c 01 05 06 04 20 21 9f 5a b7 e9 34 d8 dc];
+	read-forbidden-regions = <0x00000000 0x10000>;
+	write-forbidden-regions = <0x00000000 0x10000>;
+	log-ram-info = <0xBF000 0x400>;
+	label = "spi_m1";
+	pinctrl-0 = <&pinctrl_spim1_default>;
 	status = "okay";
-
-	perif,dma-mode;
-	perif,memcyc-src-addr = <0x98000000>;
-	perif,memcyc-size = <0x10000>;
-
-	oob,dma-mode;
-
-	flash,dma-mode;
-	flash,safs-mode = <0x1>;
 };
 
-&udc {
+&spim2 {
+	valid-cmds = [03 13 0b 0c 6b 6c 01 05 06 04 20 21 9f 5a b7 e9 34 d8 dc];
+	read-forbidden-regions = <0x00000000 0x10000>;
+	write-forbidden-regions = <0x00000000 0x10000>;
+	log-ram-info = <0xBF400 0x400>;
+	label = "spi_m2";
+	pinctrl-0 = <&pinctrl_spim2_default>;
+	status = "okay";
+};
+
+&spim3 {
+	valid-cmds = [03 13 0b 0c 6b 6c 01 05 06 04 20 21 9f 5a b7 e9 34 d8 dc];
+	read-forbidden-regions = <0x00000000 0x10000>;
+	write-forbidden-regions = <0x00000000 0x10000>;
+	log-ram-info = <0xBF800 0x400>;
+	label = "spi_m3";
+	pinctrl-0 = <&pinctrl_spim3_default>;
+	status = "okay";
+};
+
+&spim4 {
+	valid-cmds = [03 13 0b 0c 6b 6c 01 05 06 04 20 21 9f 5a b7 e9 34 d8 dc];
+	read-forbidden-regions = <0x00000000 0x10000>;
+	write-forbidden-regions = <0x00000000 0x10000>;
+	log-ram-info = <0xBFC00 0x400>;
+	label = "spi_m4";
+	pinctrl-0 = <&pinctrl_spim4_default>;
 	status = "okay";
 };

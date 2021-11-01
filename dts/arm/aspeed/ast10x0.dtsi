@@ -863,6 +863,42 @@
 			};
 		};
 
+		spim1: spi_monitor@7e791000 {
+			compatible = "aspeed,spi-monitor-controller";
+			reg = <0x7e791000 0x1000>;
+			interrupts = <INTR_SPIM1 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			aspeed,scu = <&syscon>;
+			spi-monitor-num = <1>;
+			status = "disabled";
+		};
+
+		spim2: spi_monitor@7e792000 {
+			compatible = "aspeed,spi-monitor-controller";
+			reg = <0x7e792000 0x1000>;
+			interrupts = <INTR_SPIM2 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			aspeed,scu = <&syscon>;
+			spi-monitor-num = <2>;
+			status = "disabled";
+		};
+
+		spim3: spi_monitor@7e793000 {
+			compatible = "aspeed,spi-monitor-controller";
+			reg = <0x7e793000 0x1000>;
+			interrupts = <INTR_SPIM3 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			aspeed,scu = <&syscon>;
+			spi-monitor-num = <3>;
+			status = "disabled";
+		};
+
+		spim4: spi_monitor@7e794000 {
+			compatible = "aspeed,spi-monitor-controller";
+			reg = <0x7e794000 0x1000>;
+			interrupts = <INTR_SPIM4 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			aspeed,scu = <&syscon>;
+			spi-monitor-num = <4>;
+			status = "disabled";
+		};
+
 		i3c: bus@7e7a0000 {
 			compatible = "simple-bus";
 			#address-cells = <1>;

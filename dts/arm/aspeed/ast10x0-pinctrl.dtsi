@@ -95,4 +95,8 @@
 	pinctrl_spi2_default: spi2_default {};
 	pinctrl_spi2_cs1: spi2_cs1 {};
 	pinctrl_spi2_quad: spi2_quad {};
+	pinctrl_spim1_default: spim1_default{};
+	pinctrl_spim2_default: spim2_default{};
+	pinctrl_spim3_default: spim3_default{};
+	pinctrl_spim4_default: spim4_default{};
 };

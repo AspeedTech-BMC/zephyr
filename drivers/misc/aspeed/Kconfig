@@ -19,3 +19,9 @@ config MAILBOX_ASPEED
 	  This option enables the mailbox driver for ASPEED
 	  SoCs.
 	  Say y if you wish to use LPC mailbox on ASPEED MCU.
+
+config PFR_FLOW_CTRL_AST1060
+	bool "Enable ASPEED PFR Control Flow"
+	help
+	  This option enables the PFR related flow control,
+	  including host reset and flash reset.

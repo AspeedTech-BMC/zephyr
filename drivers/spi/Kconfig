@@ -77,4 +77,6 @@ source "drivers/spi/Kconfig.psoc6"
 
 source "drivers/spi/Kconfig.aspeed"
 
+source "drivers/spi/Kconfig.spi_monitor_aspeed"
+
 endif # SPI

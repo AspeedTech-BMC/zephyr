@@ -38,6 +38,11 @@
 #define INTR_UART12			63
 #define INTR_UART13			64
 
+#define INTR_SPIM1			87
+#define INTR_SPIM2			88
+#define INTR_SPIM3			89
+#define INTR_SPIM4			90
+
 #define INTR_I2C0			110
 #define INTR_I2C1			111
 #define INTR_I2C2			112

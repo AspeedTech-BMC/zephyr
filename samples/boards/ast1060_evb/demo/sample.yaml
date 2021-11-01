@@ -1,5 +1,5 @@
 sample:
   name: Aspeed full function demo sample
 tests:
-  sample.board.ast1030_evb:
-    platform_allow: ast1030_evb
+  sample.board.ast1060_evb:
+    platform_allow: ast1060_evb
