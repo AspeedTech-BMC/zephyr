@@ -7,10 +7,14 @@
 #include <init.h>
 #include <kernel.h>
 #include <stdint.h>
+#include <string.h>
 #include <linker/linker-defs.h>
 #include <cache.h>
 
-/*WDT0 registers*/
+extern char __bss_nc_start__[];
+extern char __bss_nc_end__[];
+
+/* WDT0 registers */
 #define WDT0_BASE 0x7e785000
 
 #define WDT_SOFTWARE_RESET_MASK_REG 0x28
@@ -56,6 +60,10 @@ void z_platform_init(void)
 
 	/* init cache */
 	cache_instr_enable();
+
+	if (CONFIG_SRAM_NC_SIZE > 0) {
+		(void)memset(__bss_nc_start__, 0, __bss_nc_end__ - __bss_nc_start__);
+	}
 }
 
 void sys_arch_reboot(int type)
