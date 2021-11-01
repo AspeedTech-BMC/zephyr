@@ -13,8 +13,8 @@ config SRAM_NC_SIZE
 	int "noncached SRAM Size in kB"
 	default $(dt_node_reg_size_int,$(DT_NODE_SRAM),1,K)
 	help
-	  The non-cached SRAM size in kB. The default value comes from
-	  /chosen/zephyr,sram_nc in devicetree. The user should generally avoid
+	  The non-cached SRAM size in kB. The default value comes from reg[1]
+	  of /chosen/zephyr,sram in devicetree. The user should generally avoid
 	  changing it via menuconfig or in configuration files.
 
 config SRAM_NC_BASE_ADDRESS
@@ -22,7 +22,7 @@ config SRAM_NC_BASE_ADDRESS
 	default $(dt_node_reg_addr_hex,$(DT_NODE_SRAM),1)
 	help
 	  The non-cached SRAM base address. The default value comes from from
-	  /chosen/zephyr,sram_nc in devicetree. The user should generally avoid
-	  changing it via menuconfig or in configuration files.
+	  reg[1] of /chosen/zephyr,sram in devicetree. The user should
+	  generally avoid changing it via menuconfig or in configuration files.
 
 endif # SOC_AST1030
