@@ -1,3 +1,18 @@
+&i2cfilter {
+	status = "okay";
+};
+
+&i2cmbx {
+	status = "okay";
+};
+
+&i2csp0 {
+	status = "okay";
+};
+
+&i2csp1 {
+	status = "okay";
+};
 
 &i2c0 {
 	status = "okay";
