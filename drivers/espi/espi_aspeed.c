@@ -712,6 +712,10 @@ static int espi_aspeed_init(const struct device *dev)
 		return -ENODEV;
 	}
 
+	reg = ESPI_RD(ESPI_CTRL2);
+	reg &= ~(BIT(30));
+	ESPI_WR(reg, ESPI_CTRL2);
+
 	/* enable E2A bridge */
 	reg = sys_read32(scu_base + SCU_DBG_CTRL2);
 	reg &= ~SCU_DBG_CTRL2_DIS_E2A;
