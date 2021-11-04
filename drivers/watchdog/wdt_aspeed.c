@@ -33,9 +33,9 @@ LOG_MODULE_REGISTER(wdt_ast, CONFIG_WDT_LOG_LEVEL);
 
 
 #define WDT_RESTART_MAGIC		0x4755
-#define WDT_CTRL_RST_MASK		(BIT(5) | BIT(6))
+#define WDT_CTRL_RST_MASK		GENMASK(6, 5)
 #define WDT_CTRL_FULL_CHIP_RST	(BIT(5))
-#define WDT_CTRL_ENABLE			(BIT(0) | BIT(1))
+#define WDT_CTRL_ENABLE			GENMASK(1, 0)
 
 struct aspeed_wdt_config {
 	mm_reg_t ctrl_base;
