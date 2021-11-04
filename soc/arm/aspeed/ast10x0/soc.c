@@ -9,18 +9,11 @@
 #include <stdint.h>
 #include <string.h>
 #include <linker/linker-defs.h>
+#include <device.h>
 #include <cache.h>
 
 extern char __bss_nc_start__[];
 extern char __bss_nc_end__[];
-
-/* WDT0 registers */
-#define WDT0_BASE 0x7e785000
-
-#define WDT_SOFTWARE_RESET_MASK_REG 0x28
-
-#define WDT_SOFTWARE_RESET_REG 0x24
-#define WDT_TRIGGER_KEY 0xAEEDF123
 
 /* LPC registers */
 #define LPC_HICR9	0x7e789098
@@ -66,9 +59,18 @@ void z_platform_init(void)
 	}
 }
 
+void aspeed_wdt_reboot_device(const struct device *dev, int type);
+
 void sys_arch_reboot(int type)
 {
-	sys_write32(0x3fffff1, WDT0_BASE + WDT_SOFTWARE_RESET_MASK_REG);
-	sys_write32(WDT_TRIGGER_KEY, WDT0_BASE + WDT_SOFTWARE_RESET_REG);
-	ARG_UNUSED(type);
+	const struct device *dev;
+	const char *name = "wdt1";
+
+	dev = device_get_binding(name);
+	if (!dev) {
+		printk("No device named %s.\n", name);
+		return;
+	}
+
+	aspeed_wdt_reboot_device(dev, type);
 }

@@ -56,4 +56,6 @@ source "drivers/watchdog/Kconfig.npcx"
 
 source "drivers/watchdog/Kconfig.cc32xx"
 
+source "drivers/watchdog/Kconfig.aspeed"
+
 endif
