@@ -193,7 +193,6 @@
 	read-forbidden-regions = <0x00000000 0x10000>;
 	write-forbidden-regions = <0x00000000 0x10000>;
 	log-ram-info = <0xBF000 0x400>;
-	label = "spi_m1";
 	pinctrl-0 = <&pinctrl_spim1_default>;
 	status = "okay";
 };
@@ -203,7 +202,6 @@
 	read-forbidden-regions = <0x00000000 0x10000>;
 	write-forbidden-regions = <0x00000000 0x10000>;
 	log-ram-info = <0xBF400 0x400>;
-	label = "spi_m2";
 	pinctrl-0 = <&pinctrl_spim2_default>;
 	status = "okay";
 };
@@ -213,7 +211,6 @@
 	read-forbidden-regions = <0x00000000 0x10000>;
 	write-forbidden-regions = <0x00000000 0x10000>;
 	log-ram-info = <0xBF800 0x400>;
-	label = "spi_m3";
 	pinctrl-0 = <&pinctrl_spim3_default>;
 	status = "okay";
 };
@@ -223,7 +220,6 @@
 	read-forbidden-regions = <0x00000000 0x10000>;
 	write-forbidden-regions = <0x00000000 0x10000>;
 	log-ram-info = <0xBFC00 0x400>;
-	label = "spi_m4";
 	pinctrl-0 = <&pinctrl_spim4_default>;
 	status = "okay";
 };
