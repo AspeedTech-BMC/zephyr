@@ -61,6 +61,11 @@ struct valid_cmd_info {
 	uint32_t valid_table_val;
 };
 
+enum passthrough_mode {
+	SPIM_SINGLE_PASSTHROUGH,
+	SPIM_MULTI_PASSTHROUGH,
+};
+
 #define VALID_LIST_VALUE(G, W, R, M, DAT_MODE, DUMMY, PROG_SZ, ADDR_LEN, ADDR_MODE, CMD) \
 	(G << 29 | W << 28 | R << 27 | M << 26 | DAT_MODE << 24 | DUMMY << 16 | PROG_SZ << 13 | \
 	ADDR_LEN << 10 | ADDR_MODE << 8 | CMD)
@@ -165,6 +170,7 @@ struct aspeed_spim_config {
 	uint32_t log_ram_addr;
 	uint32_t log_max_len;
 	uint32_t ctrl_num;
+	bool multi_passthrough;
 };
 
 void spim_dump_valid_cmd_table(const struct device *dev)
@@ -191,7 +197,8 @@ uint32_t spim_get_valid_cmd_val(uint8_t cmd)
 	return 0;
 }
 
-void spim_config_passthrough_mode(const struct device *dev, bool passthrough_en)
+void spim_config_passthrough_mode(const struct device *dev,
+	uint32_t passthrough_mode, bool passthrough_en)
 {
 	const struct aspeed_spim_config *config = dev->config;
 	uint32_t scu_reg_val;
@@ -204,7 +211,10 @@ void spim_config_passthrough_mode(const struct device *dev, bool passthrough_en)
 	if (passthrough_en) {
 		scu_reg_val |= (BIT(config->ctrl_num - 1) << 4);
 		ctrl_reg_val &= ~0x00000003;
-		ctrl_reg_val |= 0x00000002;
+		if (passthrough_mode == SPIM_MULTI_PASSTHROUGH)
+			ctrl_reg_val |= BIT(1);
+		else
+			ctrl_reg_val |= BIT(0);
 	} else {
 		scu_reg_val &= ~(BIT(config->ctrl_num - 1) << 4);
 	}
@@ -301,9 +311,13 @@ void spim_ctrl_monitor_config(const struct device *dev, bool enable)
 
 static int aspeed_spi_monitor_init(const struct device *dev)
 {
+	const struct aspeed_spim_config *config = dev->config;
 	struct aspeed_spim_data *data = dev->data;
 
-	spim_config_passthrough_mode(dev, true);
+	if (config->multi_passthrough)
+		spim_config_passthrough_mode(dev, SPIM_MULTI_PASSTHROUGH, true);
+	else
+		spim_config_passthrough_mode(dev, SPIM_SINGLE_PASSTHROUGH, true);
 
 	spim_fill_valid_table(dev, data->valid_cmd_list, data->valid_cmd_num, 0);
 
@@ -330,6 +344,7 @@ static int aspeed_spi_monitor_init(const struct device *dev)
 		.log_ram_addr = DT_INST_PROP_BY_IDX(n, log_ram_info, 0), \
 		.log_max_len = DT_INST_PROP_BY_IDX(n, log_ram_info, 1),	\
 		.ctrl_num = DT_INST_PROP(n, spi_monitor_num),	\
+		.multi_passthrough = DT_PROP(DT_DRV_INST(n), multi_passthrough),	\
 	};								\
 									\
 	static struct aspeed_spim_data aspeed_spim_data_##n = {	\

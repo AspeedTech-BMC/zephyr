@@ -65,3 +65,10 @@ properties:
     type: int
     required: true
     description: Record the number of SPI monitor controller.
+
+  multi-passthrough:
+    type: boolean
+    required: false
+    description: |
+      Enable multiple passthrough, otherwise, single
+      passthrough mode is used by default.
