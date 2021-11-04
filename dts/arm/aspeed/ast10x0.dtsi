@@ -761,17 +761,18 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			spi-ctrl-caps-mask = <0x000e0c0c>;
-			status = "okay";
+			status = "disabled";
 
 			fmc_cs0: flash@0 {
 				compatible = "jedec,spi-nor";
 				reg = <0>;
-				spi-max-buswidth = <4>;
-				spi-max-frequency = <50000000>;
+				spi-max-buswidth = <1>;
+				spi-max-frequency = <25000000>;
 				broken-sfdp;
 				size = <DT_SIZE_M(8)>;
 				label = "fmc_cs0";
 				write-block-size = <4096>;
+				status = "disabled";
 
 				partitions {
 					compatible = "fixed-partitions";
@@ -791,9 +792,10 @@
 			fmc_cs1: flash@1 {
 				compatible = "jedec,spi-nor";
 				reg = <1>;
-				spi-max-buswidth = <4>;
-				spi-max-frequency = <50000000>;
+				spi-max-buswidth = <1>;
+				spi-max-frequency = <25000000>;
 				label = "fmc_cs1";
+				status = "disabled";
 			};
 		};
 
@@ -810,22 +812,24 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			spi-ctrl-caps-mask = <0x000e0c0c>;
-			status = "okay";
+			status = "disabled";
 
 			spi1_cs0: flash@0 {
 				compatible = "jedec,spi-nor";
 				reg = <0>;
-				spi-max-buswidth = <4>;
-				spi-max-frequency = <50000000>;
+				spi-max-buswidth = <1>;
+				spi-max-frequency = <25000000>;
 				label = "spi1_cs0";
+				status = "disabled";
 			};
 
 			spi1_cs1: lash@1 {
 				compatible = "jedec,spi-nor";
 				reg = <1>;
-				spi-max-buswidth = <4>;
-				spi-max-frequency = <50000000>;
+				spi-max-buswidth = <1>;
+				spi-max-frequency = <25000000>;
 				label = "spi1_cs1";
+				status = "disabled";
 			};
 		};
 
@@ -844,22 +848,24 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			spi-ctrl-caps-mask = <0x000e0c0c>;
-			status = "okay";
+			status = "disabled";
 
 			spi2_cs0: flash@0 {
 				compatible = "jedec,spi-nor";
 				reg = <0>;
-				spi-max-buswidth = <4>;
-				spi-max-frequency = <50000000>;
+				spi-max-buswidth = <1>;
+				spi-max-frequency = <25000000>;
 				label = "spi2_cs0";
+				status = "disabled";
 			};
 
 			spi2_cs1: flash@1 {
 				compatible = "jedec,spi-nor";
 				reg = <1>;
-				spi-max-buswidth = <4>;
-				spi-max-frequency = <50000000>;
+				spi-max-buswidth = <1>;
+				spi-max-frequency = <25000000>;
 				label = "spi2_cs1";
+				status = "disabled";
 			};
 		};
 
