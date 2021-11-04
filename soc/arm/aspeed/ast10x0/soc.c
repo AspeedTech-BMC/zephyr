@@ -60,6 +60,7 @@ void z_platform_init(void)
 	}
 }
 
+#if defined(CONFIG_WDT_ASPEED)
 void aspeed_wdt_reboot_device(const struct device *dev, int type);
 
 void sys_arch_reboot(int type)
@@ -75,6 +76,7 @@ void sys_arch_reboot(int type)
 
 	aspeed_wdt_reboot_device(dev, type);
 }
+#endif
 
 /* ASPEED System reset contrl/status register */
 #define SYS_WDT4_SW_RESET	BIT(31)
