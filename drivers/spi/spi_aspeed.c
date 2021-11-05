@@ -117,6 +117,8 @@ struct aspeed_spi_config {
 	enum aspeed_ctrl_type ctrl_type;
 	const struct device *clock_dev;
 	const clock_control_subsys_t clk_id;
+	uint32_t internal_mux_reg;
+	uint32_t internal_mux_mask;
 };
 
 uint32_t ast2600_segment_addr_start(uint32_t reg_val)
@@ -336,7 +338,17 @@ static void aspeed_spi_nor_transceive_user(const struct device *dev,
 	struct aspeed_spi_data *data = dev->data;
 	struct spi_context *ctx = &data->ctx;
 	uint32_t cs = ctx->config->slave;
+	uint32_t mux_val_ori = 0, mux_val;
 	uint8_t dummy[12] = {0};
+
+	/* change internal MUX */
+	if (config->internal_mux_reg != 0) {
+		cs = 0;
+		mux_val_ori = sys_read32(config->internal_mux_reg);
+		mux_val = mux_val_ori & (~config->internal_mux_mask);
+		mux_val |= ctx->config->slave + 1;
+		sys_write32(mux_val, config->internal_mux_reg);
+	}
 
 	sys_write32(data->cmd_mode[cs].user | ASPEED_SPI_USER_INACTIVE,
 		config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
@@ -387,6 +399,9 @@ static void aspeed_spi_nor_transceive_user(const struct device *dev,
 
 	sys_write32(data->cmd_mode[cs].normal_read,
 		config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
+
+	if (config->internal_mux_reg != 0)
+		sys_write32(mux_val_ori, config->internal_mux_reg);
 
 	spi_context_complete(ctx, 0);
 }
@@ -963,6 +978,8 @@ static const struct spi_driver_api aspeed_spi_driver_api = {
 		.ctrl_type = DT_ENUM_IDX(DT_INST(n, DT_DRV_COMPAT), ctrl_type),	\
 		.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(n)),	\
 		.clk_id = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(n, clk_id),	\
+		.internal_mux_reg =	DT_INST_PROP_OR(n, internal_mux_reg, 0),	\
+		.internal_mux_mask = DT_INST_PROP_OR(n, internal_mux_mask, 0),	\
 	};								\
 									\
 	static struct aspeed_spi_data aspeed_spi_data_##n = {	\

@@ -360,7 +360,7 @@ static int aspeed_spi_monitor_init(const struct device *dev)
 			    NULL,					\
 			    &aspeed_spim_data_##n,			\
 			    &aspeed_spim_config_##n, POST_KERNEL,	\
-			    80,		\
+			    70,		\
 			    NULL);			\
 
 DT_INST_FOREACH_STATUS_OKAY(ASPEED_SPI_MONITOR_INIT)

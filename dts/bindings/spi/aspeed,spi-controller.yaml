@@ -67,3 +67,15 @@ properties:
       bit 17: disable 1-4-4
       bit 18: disable 4-4-4
 
+  internal-mux-reg:
+    type: int
+    required: false
+    description: |
+      Select the SPI master by the internal MUX.
+
+  internal-mux-mask:
+    type: int
+    required: false
+    description: |
+      The bits mask in the internal MUX.
+
