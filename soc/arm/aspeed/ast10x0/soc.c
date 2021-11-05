@@ -143,8 +143,8 @@ void aspeed_print_abr_wdt_mode(void)
 			(sys_read32(HW_STRAP1_SCU500) & BIT(3)) ? 1 : 0);
 
 		if (sys_read32(HW_STRAP2_SCU510) & GENMASK(15, 13)) {
-			printk(", bspi_sz info: 0x%03x",
-				(sys_read32(HW_STRAP2_SCU510) >> 13) & 0x7);
+			printk(", bspi sz: %ldMB",
+				BIT((sys_read32(HW_STRAP2_SCU510) >> 13) & 0x7) / 2);
 		}
 		printk("\n");
 	}
