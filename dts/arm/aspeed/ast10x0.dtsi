@@ -823,7 +823,7 @@
 				status = "disabled";
 			};
 
-			spi1_cs1: lash@1 {
+			spi1_cs1: flash@1 {
 				compatible = "jedec,spi-nor";
 				reg = <1>;
 				spi-max-buswidth = <1>;
