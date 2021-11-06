@@ -977,13 +977,16 @@ static int spi_nor_set_address_mode(const struct device *dev,
 	return ret;
 }
 
-static int spi_nor_force_4byte_mode(const struct device *dev)
+int spi_nor_config_4byte_mode(const struct device *dev, bool en4b)
 {
 	int ret = 0;
 	struct spi_nor_data *data = dev->data;
 	struct spi_nor_op_info op_info =
 			SPI_NOR_OP_INFO(JESD216_MODE_111, SPI_NOR_CMD_4BA,
 				0, 0, 0, NULL, 0, SPI_NOR_DATA_DIRECT_OUT);
+
+	if (!en4b)
+		op_info.opcode = SPI_NOR_CMD_EXIT_4BA;
 
 	acquire_device(dev);
 
@@ -1408,7 +1411,7 @@ static int spi_nor_configure(const struct device *dev)
 	data->flash_nor_parameter.flash_size = dev_flash_size(dev);
 
 	if (data->flash_size > 0x1000000 && !data->flag_access_32bit) {
-		rc = spi_nor_force_4byte_mode(dev);
+		rc = spi_nor_config_4byte_mode(dev, true);
 		if (rc != 0)
 			return -ENODEV;
 	}

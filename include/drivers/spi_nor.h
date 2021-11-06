@@ -7,6 +7,7 @@
 #ifndef __SPI_NOR_H__
 #define __SPI_NOR_H__
 
+#include <device.h>
 #include <sys/util.h>
 #include <sys/types.h>
 #include <drivers/jesd216.h>
@@ -137,5 +138,7 @@ struct spi_nor_op_info {
 	size_t data_len;
 	uint32_t data_direct;
 };
+
+int spi_nor_config_4byte_mode(const struct device *dev, bool en4b);
 
 #endif /*__SPI_NOR_H__*/
