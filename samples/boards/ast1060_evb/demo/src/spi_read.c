@@ -5,9 +5,9 @@
  */
 
 #include <drivers/flash.h>
+#include <drivers/spi_nor.h>
 #include <kernel.h>
 #include <sys/util.h>
-
 #include <stdlib.h>
 #include <string.h>
 #include <zephyr.h>
@@ -248,7 +248,14 @@ int test_spi_host_read(void)
 		printk("[%s]read result:\n", flash_devices[i]);
 		spim_dump_buf(op_buf, 4);
 		spim_dump_buf(op_buf + SPIM_TEST_SIZE - 4, 4);
+
+		/* force all flashes exit 4B mode */
+		ret = spi_nor_config_4byte_mode(flash_dev, false);
+		if (ret)
+			goto end;
 	}
+
+	k_busy_wait(20000); /* 20ms */
 
 end:
 	return ret;
