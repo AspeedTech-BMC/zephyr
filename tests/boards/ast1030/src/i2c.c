@@ -30,9 +30,9 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #define IPMBDRV "IPMB_SLAVE_"
 #define EEPROMDRV "EEPROM_SLAVE_"
 
-uint8_t i2c_speed[] = {I2C_SPEED_STANDARD,
-					I2C_SPEED_FAST,
-					I2C_SPEED_FAST};
+uint8_t i2c_speed[] = {I2C_SPEED_FAST_PLUS,
+					I2C_SPEED_FAST_PLUS,
+					I2C_SPEED_FAST_PLUS};
 
 void test_i2c_slave_EEPROM(void)
 {
