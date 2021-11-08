@@ -868,6 +868,107 @@ static int cmd_mbx_f_access(const struct shell *shell,
 
 #endif
 
+#ifdef CONFIG_I2C_PFR
+uint8_t EEPROM_COUNT = 8;
+uint8_t EEPROM_PASS_TBL[] = {0, 0, 0, 1, 1, 4, 4, 5};
+
+static int cmd_i2c_pfr_demo(const struct shell *shell,
+			      size_t argc, char **argv)
+{
+	const struct device *pfr_flt_dev = NULL;
+	const struct device *pfr_mbx_dev = NULL;
+	int ret = 0, i = 0;
+
+	/* demo default setting for ast2600 + ast1060 */
+	/* set the multi-function pins for i2c flt 0~3 */
+	sys_write32(0x3e0ff000, 0x7e6e241c);
+	sys_write32(0xc1f00000, 0x7e6e269c);
+	sys_write32(0xf0000000, 0x7e6e2698);
+	sys_write32(0x00060c00, 0x7e6e2430);
+	sys_write32(0x0000001f, 0x7e6e26b0);
+	sys_write32(0xf3ffff00, 0x7e6e2414);
+	sys_write32(0x3c000000, 0x7e6e2694);
+
+	/* initial flt */
+	pfr_flt_dev = device_get_binding("I2C_FILTER_0");
+	if (!pfr_flt_dev) {
+		shell_error(shell, "xx I2C: PFR FLT Device driver %s not found.",
+			    argv[1]);
+		return -ENODEV;
+	}
+
+	if (pfr_flt_dev != NULL) {
+		ret = ast_i2c_filter_init(pfr_flt_dev);
+		if (ret) {
+			shell_error(shell, "xx I2C: PFR FLT Initial failed.");
+			return ret;
+		}
+
+		ret = ast_i2c_filter_en(pfr_flt_dev, 1, 1, 0, 0);
+		if (ret) {
+			shell_error(shell, "xx I2C: PFR FLT Enable / Disable failed.");
+			return ret;
+		}
+
+		ret = ast_i2c_filter_default(pfr_flt_dev, 0);
+		if (ret) {
+			shell_error(shell, "xx I2C: PFR FLT Set Default failed.");
+			return ret;
+		}
+
+		for (i = 0x0; i < EEPROM_COUNT; i++) {
+			ret = ast_i2c_filter_update(pfr_flt_dev, (uint8_t)(i),
+			(uint8_t) (0x50 + i), &data_flt[EEPROM_PASS_TBL[i]]);
+			if (ret) {
+				shell_error(shell, "xx I2C: PFR FLT Update failed.");
+				return ret;
+			}
+		}
+	}
+
+	pfr_mbx_dev = device_get_binding("I2C_MBX");
+	if (!pfr_mbx_dev) {
+		shell_error(shell, "xx I2C: PFR MBX Device driver %s not found.",
+			    argv[1]);
+		return -ENODEV;
+	}
+
+	if (pfr_mbx_dev != NULL) {
+		ret = ast_i2c_mbx_init(pfr_mbx_dev);
+		if (ret) {
+			shell_error(shell, "xx I2C: PFR MBX Initial failed.");
+			return ret;
+		}
+
+		ret = ast_i2c_mbx_addr(pfr_mbx_dev, 0x0, 0x0, 0x1, 0x29, 0x1);
+		if (ret) {
+			shell_error(shell, "xx I2C: PFR MBX Set address failed.");
+			return ret;
+		}
+
+		ret = ast_i2c_mbx_en(pfr_mbx_dev, 0x0, 0x1);
+		if (ret) {
+			shell_error(shell, "xx I2C: PFR MBX Enable / Disable failed.");
+			return ret;
+		}
+
+		ret = ast_i2c_mbx_addr(pfr_mbx_dev, 0x1, 0x0, 0x1, 0x39, 0x1);
+		if (ret) {
+			shell_error(shell, "xx I2C: PFR MBX Set address failed.");
+			return ret;
+		}
+
+		ret = ast_i2c_mbx_en(pfr_mbx_dev, 0x1, 0x1);
+		if (ret) {
+			shell_error(shell, "xx I2C: PFR MBX Enable / Disable failed.");
+			return ret;
+		}
+	}
+
+	return ret;
+}
+#endif
+
 #ifdef CONFIG_I2C_SLAVE
 #ifdef CONFIG_I2C_EEPROM_SLAVE
 #define EEPROM_SLAVE	0
@@ -1008,6 +1109,11 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_i2c_cmds,
 					     "Read ipmb buffer from slave",
 					      cmd_i2c_ipmb_read, 0, 1),
 #endif
+#endif
+#ifdef CONFIG_I2C_PFR
+				SHELL_CMD_ARG(pfr_demo, &dsub_device_name,
+					  "pfr demo default",
+					   cmd_i2c_pfr_demo, 0, 0),
 #endif
 #ifdef CONFIG_I2C_PFR_SNOOP
 				SHELL_CMD_ARG(sp_en, &dsub_device_name,
