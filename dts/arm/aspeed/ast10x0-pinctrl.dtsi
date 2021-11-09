@@ -99,4 +99,5 @@
 	pinctrl_spim2_default: spim2_default{};
 	pinctrl_spim3_default: spim3_default{};
 	pinctrl_spim4_default: spim4_default{};
+	pinctrl_smbflt_default: smbflt_default{};
 };
