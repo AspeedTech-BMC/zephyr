@@ -5,6 +5,6 @@
 
 config I2C_IPMB_SLAVE
 	bool "I2C Slave IPMB driver"
-	default y
+	default n
 	help
 	  Enable virtual I2C Slave IPMB driver

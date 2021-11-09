@@ -3,18 +3,6 @@
 	status = "okay";
 };
 
-&i2cmbx {
-	status = "okay";
-};
-
-&i2csp0 {
-	status = "okay";
-};
-
-&i2csp1 {
-	status = "okay";
-};
-
 &i2c0 {
 	status = "okay";
 	pinctrl-0 = <&pinctrl_i2c0_default>;

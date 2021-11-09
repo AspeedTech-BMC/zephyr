@@ -876,9 +876,9 @@ static int cmd_i2c_pfr_demo(const struct shell *shell,
 			      size_t argc, char **argv)
 {
 	const struct device *pfr_flt_dev = NULL;
-	const struct device *pfr_mbx_dev = NULL;
 	int ret = 0, i = 0;
 
+#ifdef CONFIG_I2C_PFR_FILTER
 	/* initial flt */
 	pfr_flt_dev = device_get_binding("I2C_FILTER_0");
 	if (!pfr_flt_dev) {
@@ -915,7 +915,10 @@ static int cmd_i2c_pfr_demo(const struct shell *shell,
 			}
 		}
 	}
+#endif
 
+#ifdef CONFIG_I2C_PFR_MAILBOX
+	const struct device *pfr_mbx_dev = NULL;
 	pfr_mbx_dev = device_get_binding("I2C_MBX");
 	if (!pfr_mbx_dev) {
 		shell_error(shell, "xx I2C: PFR MBX Device driver %s not found.",
@@ -954,6 +957,7 @@ static int cmd_i2c_pfr_demo(const struct shell *shell,
 			return ret;
 		}
 	}
+#endif
 
 	return ret;
 }
