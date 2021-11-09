@@ -44,6 +44,16 @@
 	spi-max-frequency = <50000000>;
 };
 
+
+/* Use AST1060 SPI1 as the internal SPI master to
+ * to access the SPI flashes connected to SPI monitors
+ * Here,
+ * "SPI1_CS0" used to access flash connected to SPI_Monitor_1,
+ * "SPI1_CS1" is used to access flash connected to SPI_Monitor_2,
+ * "SPI1_CS2" is used to access flash connected to SPI_Monitor_3,
+ * "SPI1_CS3" is used to access flash connected to SPI_Monitor_4.
+ */
+
 &spi1_cs0 {
 	spi-max-buswidth = <4>;
 	spi-max-frequency = <50000000>;
