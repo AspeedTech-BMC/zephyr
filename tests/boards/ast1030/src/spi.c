@@ -197,12 +197,10 @@ int test_spi(int count, enum aspeed_test_type type)
 	static bool test_repeat = true;
 	uint32_t i;
 	uint32_t exec_cnt = 0;
-	uint32_t id = 0;
-	uint8_t golden_id[4] = {0xef, 0x40, 0x14, 0x00}; /* w25q80dv */
 
 	LOG_INF("%s, count: %d, type: %d", __func__, count, type);
 
-	if (type == AST_TEST_SLT)
+	if (type != AST_TEST_CI)
 		return AST_TEST_PASS;
 
 	if (type == AST_TEST_CI) {
@@ -239,43 +237,6 @@ int test_spi(int count, enum aspeed_test_type type)
 			count--;
 			exec_cnt++;
 		}
-	} else if (type == AST_TEST_FT) {
-		LOG_INF("[FT]flash update test");
-		for (i = 0; i < UPDATE_TEST_PATTERN_SIZE; i++) {
-			test_arr[i] = 'a' + (i % 26);
-		}
-
-		/* Don't update FMC CS0 which includes customer's image */
-		for (i = 1; i < 6; i++) {
-			flash_dev = device_get_binding(flash_device[i]);
-			if (!flash_dev) {
-				LOG_ERR("No device named %s.", flash_device[i]);
-				return -ENOEXEC;
-			}
-			ret = do_update(flash_dev, 0x0, test_arr, UPDATE_TEST_PATTERN_SIZE);
-			if (ret != 0) {
-				LOG_ERR("[%s]RW test fail", flash_device[i]);
-				goto end;
-			}
-		}
-
-		LOG_INF("[CS0] Read ID test");
-		flash_dev = device_get_binding(flash_device[0]);
-		if (!flash_dev) {
-			LOG_ERR("No device named %s.", flash_device[i]);
-			return -ENOEXEC;
-		}
-		ret = flash_read_jedec_id(flash_dev, (uint8_t *)&id);
-		if (ret)
-			goto end;
-
-		if (memcmp(&id, golden_id, 3) != 0) {
-			LOG_ERR("[CS0]fail to read id 0x%x\n", id);
-			ret = -EINVAL;
-			goto end;
-		}
-
-		LOG_INF("[FT]RW test pass");
 	}
 
 end:
