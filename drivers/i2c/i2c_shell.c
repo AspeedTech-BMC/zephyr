@@ -879,16 +879,6 @@ static int cmd_i2c_pfr_demo(const struct shell *shell,
 	const struct device *pfr_mbx_dev = NULL;
 	int ret = 0, i = 0;
 
-	/* demo default setting for ast2600 + ast1060 */
-	/* set the multi-function pins for i2c flt 0~3 */
-	sys_write32(0x3e0ff000, 0x7e6e241c);
-	sys_write32(0xc1f00000, 0x7e6e269c);
-	sys_write32(0xf0000000, 0x7e6e2698);
-	sys_write32(0x00060c00, 0x7e6e2430);
-	sys_write32(0x0000001f, 0x7e6e26b0);
-	sys_write32(0xf3ffff00, 0x7e6e2414);
-	sys_write32(0x3c000000, 0x7e6e2694);
-
 	/* initial flt */
 	pfr_flt_dev = device_get_binding("I2C_FILTER_0");
 	if (!pfr_flt_dev) {
