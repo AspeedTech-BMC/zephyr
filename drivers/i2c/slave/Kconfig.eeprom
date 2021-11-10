@@ -5,6 +5,6 @@
 
 config I2C_EEPROM_SLAVE
 	bool "I2C Slave EEPROM driver"
-	default y
+	default n
 	help
 	  Enable virtual I2C Slave EEPROM driver
