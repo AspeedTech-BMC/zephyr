@@ -12,7 +12,7 @@
 #include <string.h>
 #include <zephyr.h>
 
-#define LOG_MODULE_NAME spih_read_demo
+#define LOG_MODULE_NAME spim_read_demo
 
 #include <logging/log.h>
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
