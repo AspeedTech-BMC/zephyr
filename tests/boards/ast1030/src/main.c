@@ -25,8 +25,9 @@ extern void test_uart(void);
 extern void test_spi(void);
 extern void test_espi(void);
 extern void test_peci(void);
-extern void aspeed_ft_pre_init(void);
-extern void aspeed_ft_post_init(struct aspeed_tests *testcase, int count);
+extern void test_crypto(void);
+extern int aspeed_ft_pre_init(void);
+extern int aspeed_ft_post_init(struct aspeed_tests *testcase, int count);
 
 #define run_test_suite(suite, type) \
 	aspeed_run_test_suite(#suite, _##suite, type)
@@ -241,7 +242,8 @@ static void aspeed_test_platform(void)
 			 ztest_unit_test(test_uart),
 			 ztest_unit_test(test_spi),
 			 ztest_unit_test(test_espi),
-			 ztest_unit_test(test_peci)
+			 ztest_unit_test(test_peci),
+			 ztest_unit_test(test_crypto)
 			 );
 
 #ifdef CONFIG_BOARD_AST1030_EVB
