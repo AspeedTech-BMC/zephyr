@@ -8,11 +8,11 @@
 
 /* ipmb define*/
 #define IPMB_REQUEST_LEN	0x7
-#define IPMB_TOTAL_LEN		0xF0
+#define IPMB_TOTAL_LEN		0x100
 
 #define GET_ADDR(addr)	((addr << 1) & 0xff)
 
-#define IPMB_MSG_DATA_LEN (IPMB_TOTAL_LEN - 1)
+#define IPMB_MSG_DATA_LEN (IPMB_TOTAL_LEN - IPMB_REQUEST_LEN - 1)
 
 struct ipmb_msg {
 	uint8_t rsSA;

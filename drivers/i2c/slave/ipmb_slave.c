@@ -29,7 +29,8 @@ struct i2c_ipmb_slave_data {
 	struct ipmb_msg_package *current;
 	uint32_t buffer_idx;
 	uint32_t max_msg_count;
-	uint32_t cur_msg_count;
+	uint32_t cur_read_count;
+	uint32_t cur_write_count;
 };
 
 struct i2c_ipmb_slave_config {
@@ -50,16 +51,26 @@ static int ipmb_slave_write_requested(struct i2c_slave_config *config)
 	struct i2c_ipmb_slave_data *data = CONTAINER_OF(config,
 							struct i2c_ipmb_slave_data,
 							config);
+	uint32_t cur_write_next = 0;
 
-	/* check the max msg length */
-	if (data->cur_msg_count < data->max_msg_count) {
+	/* bondary condition */
+	if (data->cur_write_count == data->max_msg_count) {
+		cur_write_next = 0;
+	} else {
+		cur_write_next = data->cur_write_count + 1;
+	}
+
+	/* check buffer full or not (next != R ) */
+	if (cur_write_next != data->cur_read_count) {
+		/* assign free buffer */
 		data->current =
-		&(data->buffer[data->cur_msg_count]);
+		&(data->buffer[data->cur_write_count]);
 		LOG_DBG("ipmb: slave write data->buffer %x",
 		(uint32_t)(data->current));
+		data->cur_write_count = cur_write_next;
 	} else {
 		data->current = NULL;
-		LOG_ERR("ipmb: buffer full");
+		LOG_DBG("ipmb: buffer full");
 		return 1;
 	}
 
@@ -111,8 +122,6 @@ static int ipmb_slave_stop(struct i2c_slave_config *config)
 
 	if (data->current) {
 		data->current->msg_length = data->buffer_idx;
-		data->cur_msg_count++;
-		data->current = NULL;
 		LOG_DBG("ipmb: stop");
 	}
 
@@ -123,17 +132,33 @@ int ipmb_slave_read(const struct device *dev, struct ipmb_msg **ipmb_data, uint8
 {
 	struct i2c_ipmb_slave_data *data = DEV_DATA(dev);
 	struct ipmb_msg_package *local_buf = NULL;
+	uint32_t cur_read_next = 0;
+	uint32_t cur_write_next = 0;
 
-	if (data->cur_msg_count != 0x0) {
+	/* bondary condition */
+	if (data->cur_read_count == data->max_msg_count) {
+		cur_read_next = 0;
+	} else {
+		cur_read_next = data->cur_read_count + 1;
+	}
+
+	if (data->cur_write_count == data->max_msg_count) {
+		cur_write_next = 0;
+	} else {
+		cur_write_next = data->cur_write_count + 1;
+	}
+
+	/* check buffer full or not (next R != next W) */
+	if (cur_read_next != cur_write_next) {
 		local_buf =
-		&(data->buffer[(data->cur_msg_count - 1)]);
+		&(data->buffer[data->cur_read_count]);
 
 		LOG_DBG("ipmb: slave read %x", (uint32_t)local_buf);
 
 		*ipmb_data = &(local_buf->msg);
 		*length = local_buf->msg_length;
-		data->cur_msg_count--;
 
+		data->cur_read_count = cur_read_next;
 		return 0;
 	} else {
 		LOG_DBG("ipmb slave read: buffer empty!");
@@ -146,6 +171,10 @@ int ipmb_slave_read(const struct device *dev, struct ipmb_msg **ipmb_data, uint8
 static int ipmb_slave_register(const struct device *dev)
 {
 	struct i2c_ipmb_slave_data *data = dev->data;
+
+	/* initial r/w pointer */
+	data->cur_read_count = 0;
+	data->cur_write_count = 0;
 
 	return i2c_slave_register(data->i2c_controller, &data->config);
 }
@@ -201,8 +230,6 @@ static int i2c_ipmb_slave_init(const struct device *dev)
 		LOG_ERR("i2c could not alloc enougth messgae queue");
 		return -EINVAL;
 	}
-
-	data->cur_msg_count = 0;
 
 	return 0;
 }
