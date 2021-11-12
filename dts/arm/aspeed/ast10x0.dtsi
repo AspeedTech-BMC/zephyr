@@ -773,20 +773,6 @@
 				label = "fmc_cs0";
 				write-block-size = <4096>;
 				status = "disabled";
-
-				partitions {
-					compatible = "fixed-partitions";
-					#address-cells = <1>;
-					#size-cells = <1>;
-					boot_partition: partition@0 {
-						label = "image-0";
-						reg = <0x0 0x100000>;
-					};
-					dfu_partition: partition@1 {
-						label = "image-1";
-						reg = <0x0 0x100000>;
-					};
-				};
 			};
 
 			fmc_cs1: flash@1 {
