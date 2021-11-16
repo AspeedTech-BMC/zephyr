@@ -61,10 +61,10 @@ properties:
 
       <ram_start_address length>;
 
-  spi-monitor-num:
+  spi-monitor-idx:
     type: int
     required: true
-    description: Record the number of SPI monitor controller.
+    description: Record the index(number) of SPI monitor controller.
 
   multi-passthrough:
     type: boolean

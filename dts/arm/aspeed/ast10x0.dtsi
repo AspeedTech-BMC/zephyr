@@ -860,7 +860,7 @@
 			reg = <0x7e791000 0x1000>;
 			interrupts = <INTR_SPIM1 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			aspeed,scu = <&syscon>;
-			spi-monitor-num = <1>;
+			spi-monitor-idx = <1>;
 			label = "spi_m1";
 			status = "disabled";
 		};
@@ -870,7 +870,7 @@
 			reg = <0x7e792000 0x1000>;
 			interrupts = <INTR_SPIM2 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			aspeed,scu = <&syscon>;
-			spi-monitor-num = <2>;
+			spi-monitor-idx = <2>;
 			label = "spi_m2";
 			status = "disabled";
 		};
@@ -880,7 +880,7 @@
 			reg = <0x7e793000 0x1000>;
 			interrupts = <INTR_SPIM3 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			aspeed,scu = <&syscon>;
-			spi-monitor-num = <3>;
+			spi-monitor-idx = <3>;
 			label = "spi_m3";
 			status = "disabled";
 		};
@@ -890,7 +890,7 @@
 			reg = <0x7e794000 0x1000>;
 			interrupts = <INTR_SPIM4 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			aspeed,scu = <&syscon>;
-			spi-monitor-num = <4>;
+			spi-monitor-idx = <4>;
 			label = "spi_m4";
 			status = "disabled";
 		};

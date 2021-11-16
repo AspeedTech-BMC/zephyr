@@ -169,7 +169,7 @@ struct aspeed_spim_config {
 	uint32_t irq_priority;
 	uint32_t log_ram_addr;
 	uint32_t log_max_len;
-	uint32_t ctrl_num;
+	uint32_t ctrl_idx;
 	bool multi_passthrough;
 };
 
@@ -209,14 +209,14 @@ void spim_config_passthrough_mode(const struct device *dev,
 
 	ctrl_reg_val &= ~0x00000003;
 	if (passthrough_en) {
-		scu_reg_val |= (BIT(config->ctrl_num - 1) << 4);
+		scu_reg_val |= (BIT(config->ctrl_idx - 1) << 4);
 		ctrl_reg_val &= ~0x00000003;
 		if (passthrough_mode == SPIM_MULTI_PASSTHROUGH)
 			ctrl_reg_val |= BIT(1);
 		else
 			ctrl_reg_val |= BIT(0);
 	} else {
-		scu_reg_val &= ~(BIT(config->ctrl_num - 1) << 4);
+		scu_reg_val &= ~(BIT(config->ctrl_idx - 1) << 4);
 	}
 
 	sys_write32(scu_reg_val, config->scu_base + SPIM_MODE_SCU_CTRL);
@@ -287,9 +287,9 @@ void spim_scu_monitor_config(const struct device *dev, bool enable)
 
 	reg_val = sys_read32(config->scu_base + SPIM_MODE_SCU_CTRL);
 	if (enable)
-		reg_val |= ((BIT(config->ctrl_num - 1)) << 8);
+		reg_val |= ((BIT(config->ctrl_idx - 1)) << 8);
 	else
-		reg_val &= ~((BIT(config->ctrl_num - 1)) << 8);
+		reg_val &= ~((BIT(config->ctrl_idx - 1)) << 8);
 
 	sys_write32(reg_val, config->scu_base + SPIM_MODE_SCU_CTRL);
 }
@@ -343,7 +343,7 @@ static int aspeed_spi_monitor_init(const struct device *dev)
 		.irq_priority = DT_INST_IRQ(n, priority),	\
 		.log_ram_addr = DT_INST_PROP_BY_IDX(n, log_ram_info, 0), \
 		.log_max_len = DT_INST_PROP_BY_IDX(n, log_ram_info, 1),	\
-		.ctrl_num = DT_INST_PROP(n, spi_monitor_num),	\
+		.ctrl_idx = DT_INST_PROP(n, spi_monitor_idx),	\
 		.multi_passthrough = DT_PROP(DT_DRV_INST(n), multi_passthrough),	\
 	};								\
 									\
