@@ -173,25 +173,25 @@ struct aspeed_spim_config {
 	bool multi_passthrough;
 };
 
-struct aspeed_spim_parent_config {
+struct aspeed_spim_common_config {
 	mm_reg_t scu_base;
 };
 
-struct aspeed_spim_parent_data {
+struct aspeed_spim_common_data {
 	struct k_sem sem;
 };
 
-static void acquire_device(const struct device *parent)
+static void acquire_device(const struct device *dev)
 {
-	struct aspeed_spim_parent_data *const data = parent->data;
+	struct aspeed_spim_common_data *const data = dev->data;
 
 	if (IS_ENABLED(CONFIG_MULTITHREADING))
 		k_sem_take(&data->sem, K_FOREVER);
 }
 
-static void release_device(const struct device *parent)
+static void release_device(const struct device *dev)
 {
-	struct aspeed_spim_parent_data *const data = parent->data;
+	struct aspeed_spim_common_data *const data = dev->data;
 
 	if (IS_ENABLED(CONFIG_MULTITHREADING))
 		k_sem_give(&data->sem);
@@ -199,38 +199,34 @@ static void release_device(const struct device *parent)
 
 void spim_scu_ctrl_set(const struct device *dev, uint32_t mask, uint32_t val)
 {
-	const struct aspeed_spim_config *config = dev->config;
-	const struct device *parent = config->parent;
-	const struct aspeed_spim_parent_config *parent_config = parent->config;
-	mm_reg_t spim_scu_ctrl = parent_config->scu_base + SPIM_MODE_SCU_CTRL;
+	const struct aspeed_spim_common_config *config = dev->config;
+	mm_reg_t spim_scu_ctrl = config->scu_base + SPIM_MODE_SCU_CTRL;
 	uint32_t reg_val;
 
 	/* Avoid SCU0F0 being accessed by more than a thread */
-	acquire_device(parent);
+	acquire_device(dev);
 
 	reg_val = sys_read32(spim_scu_ctrl);
 	reg_val &= ~(mask);
 	reg_val |= val;
 	sys_write32(reg_val, spim_scu_ctrl);
 
-	release_device(parent);
+	release_device(dev);
 }
 
 void spim_scu_ctrl_clear(const struct device *dev, uint32_t clear_bits)
 {
-	const struct aspeed_spim_config *config = dev->config;
-	const struct device *parent = config->parent;
-	const struct aspeed_spim_parent_config *parent_config = parent->config;
-	mm_reg_t spim_scu_ctrl = parent_config->scu_base + SPIM_MODE_SCU_CTRL;
+	const struct aspeed_spim_common_config *config = dev->config;
+	mm_reg_t spim_scu_ctrl = config->scu_base + SPIM_MODE_SCU_CTRL;
 	uint32_t reg_val;
 
-	acquire_device(parent);
+	acquire_device(dev);
 
 	reg_val = sys_read32(spim_scu_ctrl);
 	reg_val &= ~(clear_bits);
 	sys_write32(reg_val, spim_scu_ctrl);
 
-	release_device(parent);
+	release_device(dev);
 }
 
 void spim_dump_valid_cmd_table(const struct device *dev)
@@ -267,7 +263,7 @@ void spim_config_passthrough_mode(const struct device *dev,
 
 	ctrl_reg_val &= ~0x00000003;
 	if (passthrough_en) {
-		spim_scu_ctrl_set(dev, BIT(config->ctrl_idx - 1) << 4,
+		spim_scu_ctrl_set(config->parent, BIT(config->ctrl_idx - 1) << 4,
 			BIT(config->ctrl_idx - 1) << 4);
 		ctrl_reg_val &= ~0x00000003;
 		if (passthrough_mode == SPIM_MULTI_PASSTHROUGH)
@@ -275,7 +271,7 @@ void spim_config_passthrough_mode(const struct device *dev,
 		else
 			ctrl_reg_val |= BIT(0);
 	} else {
-		spim_scu_ctrl_clear(dev, BIT(config->ctrl_idx - 1) << 4);
+		spim_scu_ctrl_clear(config->parent, BIT(config->ctrl_idx - 1) << 4);
 	}
 
 	sys_write32(ctrl_reg_val, config->ctrl_base);
@@ -343,10 +339,10 @@ void spim_scu_monitor_config(const struct device *dev, bool enable)
 	const struct aspeed_spim_config *config = dev->config;
 
 	if (enable) {
-		spim_scu_ctrl_set(dev, BIT(config->ctrl_idx - 1) << 8,
+		spim_scu_ctrl_set(config->parent, BIT(config->ctrl_idx - 1) << 8,
 			BIT(config->ctrl_idx - 1) << 8);
 	} else {
-		spim_scu_ctrl_clear(dev, BIT(config->ctrl_idx - 1) << 8);
+		spim_scu_ctrl_clear(config->parent, BIT(config->ctrl_idx - 1) << 8);
 	}
 }
 
@@ -387,9 +383,9 @@ static int aspeed_spi_monitor_init(const struct device *dev)
 	return 0;
 }
 
-static int aspeed_spi_monitor_parent_init(const struct device *parent)
+static int aspeed_spi_monitor_common_init(const struct device *dev)
 {
-	struct aspeed_spim_parent_data *const data = parent->data;
+	struct aspeed_spim_common_data *const data = dev->data;
 
 	if (IS_ENABLED(CONFIG_MULTITHREADING))
 		k_sem_init(&data->sem, 1, 1);
@@ -427,17 +423,17 @@ static int aspeed_spi_monitor_parent_init(const struct device *parent)
 					&aspeed_spim_config[node_id],	\
 					POST_KERNEL, 71, NULL);
 
-/* parent node define */
-#define ASPEED_SPI_MONITOR_PARENT_INIT(n)	\
-	static struct aspeed_spim_parent_config aspeed_spim_parent_config_##n = { \
+/* common node define */
+#define ASPEED_SPI_MONITOR_COMMON_INIT(n)	\
+	static struct aspeed_spim_common_config aspeed_spim_common_config_##n = { \
 		.scu_base = DT_REG_ADDR_BY_IDX(DT_INST_PHANDLE_BY_IDX(n, aspeed_scu, 0), 0), \
 	};								\
-	static struct aspeed_spim_parent_data aspeed_spim_parent_data_##n;	\
+	static struct aspeed_spim_common_data aspeed_spim_common_data_##n;	\
 		\
-	DEVICE_DT_INST_DEFINE(n, &aspeed_spi_monitor_parent_init,			\
+	DEVICE_DT_INST_DEFINE(n, &aspeed_spi_monitor_common_init,			\
 			    NULL,					\
-			    &aspeed_spim_parent_data_##n,			\
-			    &aspeed_spim_parent_config_##n, POST_KERNEL,	\
+			    &aspeed_spim_common_data_##n,			\
+			    &aspeed_spim_common_config_##n, POST_KERNEL,	\
 			    70,		\
 			    NULL);		\
 	/* handle child node */	\
@@ -450,4 +446,4 @@ static int aspeed_spi_monitor_parent_init(const struct device *parent)
 	DT_FOREACH_CHILD(DT_DRV_INST(n), ASPEED_SPIM_DT_DEFINE)
 
 
-DT_INST_FOREACH_STATUS_OKAY(ASPEED_SPI_MONITOR_PARENT_INIT)
+DT_INST_FOREACH_STATUS_OKAY(ASPEED_SPI_MONITOR_COMMON_INIT)
