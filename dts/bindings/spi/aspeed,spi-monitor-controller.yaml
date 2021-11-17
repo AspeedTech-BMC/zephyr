@@ -1,7 +1,7 @@
 # Copyright (c) 2021 Chin-Ting Kuo <chin-ting_kuo@aspeedtech.com>
 # SPDX-License-Identifier: Apache-2.0
 
-description: ASPEED SPI Monitor controller node
+description: ASPEED SPI Monitor common controller node
 
 compatible: "aspeed,spi-monitor-controller"
 
@@ -16,59 +16,76 @@ properties:
     required: true
     description: phandle to SCU device tree node
 
-  valid-cmds:
-    type: uint8-array
-    required: true
-    description: |
-      Assign the commands which should be filled
-      in valid list table.
+child-binding:
+  include: [aspeed-pinctrl.yaml]
+  description: SPI monitor physical controller node
+  properties:
+    reg:
+      type: int
+      required: true
+      description: Record the index(number) of SPI monitor controller.
 
-      [cmd1 cmd2 ... cmdN];
+    interrupts:
+      type: array
+      required: false
+      description: interrupts for device
 
-  write-forbidden-regions:
-    type: array
-    required: false
-    description: |
-      Assign the start address and the length of regions
-      which cannot be written.
-      The regions cannot be overlapped.
+    label:
+      type: string
+      required: false
+      description: Human readable string describing the device (used as device_get_binding() argument)
 
-      <start_address_1 length_1
-      start_address_2 length_2
-      ...
-      start_address_N length_N>;
+    valid-cmds:
+      type: uint8-array
+      required: true
+      description: |
+        Assign the commands which should be filled
+        in valid list table.
 
-  read-forbidden-regions:
-    type: array
-    required: false
-    description: |
-      Assign the start address and the length of regions
-      which cannot be read.
-      The regions cannot be overlapped.
+        [cmd1 cmd2 ... cmdN];
 
-      <start_address_1 length_1
-      start_address_2 length_2
-      ...
-      start_address_N length_N>;
+    write-forbidden-regions:
+      type: array
+      required: false
+      description: |
+        Assign the start address and the length of regions
+        which cannot be written.
+        The regions cannot be overlapped.
 
-  log-ram-info:
-    type: array
-    required: true
-    description: |
-      The ram start address and the length
-      for recording log if there is an invalid
-      SPI flash access and the related interrupt occurs.
+        <start_address_1 length_1
+        start_address_2 length_2
+        ...
+        start_address_N length_N>;
 
-      <ram_start_address length>;
+    read-forbidden-regions:
+      type: array
+      required: false
+      description: |
+        Assign the start address and the length of regions
+        which cannot be read.
+        The regions cannot be overlapped.
 
-  spi-monitor-idx:
-    type: int
-    required: true
-    description: Record the index(number) of SPI monitor controller.
+        <start_address_1 length_1
+        start_address_2 length_2
+        ...
+        start_address_N length_N>;
 
-  multi-passthrough:
-    type: boolean
-    required: false
-    description: |
-      Enable multiple passthrough, otherwise, single
-      passthrough mode is used by default.
+    log-ram-info:
+      type: array
+      required: true
+      description: |
+        The ram start address and the length
+        for recording log if there is an invalid
+        SPI flash access and the related interrupt occurs.
+
+        <ram_start_address length>;
+
+    multi-passthrough:
+      type: boolean
+      required: false
+      description: |
+        Enable multiple passthrough, otherwise, single
+        passthrough mode is used by default.
+
+    pinctrl-0:
+      required: true

@@ -1152,14 +1152,15 @@ static int spi_nor_process_sfdp(
 
 	rc = read_sfdp(dev, 0, u.raw, sizeof(u.raw));
 	if (rc != 0) {
-		LOG_ERR("SFDP read failed: %d", rc);
+		LOG_ERR("[%d]SFDP read failed: %d", __LINE__, rc);
 		return rc;
 	}
 
 	uint32_t magic = jesd216_sfdp_magic(hp);
 
 	if (magic != JESD216_SFDP_MAGIC) {
-		LOG_ERR("SFDP magic %08x invalid", magic);
+		LOG_ERR("[%d][%s]SFDP magic %08x invalid",
+			__LINE__, dev->name, magic);
 		return -EINVAL;
 	}
 
@@ -1393,7 +1394,7 @@ static int spi_nor_configure(const struct device *dev)
 	if (!cfg->broken_sfdp) {
 		rc = spi_nor_process_sfdp(dev);
 		if (rc != 0) {
-			LOG_ERR("SFDP read failed: %d", rc);
+			LOG_ERR("[%d]SFDP read failed: %d", __LINE__, rc);
 			return -ENODEV;
 		}
 	}

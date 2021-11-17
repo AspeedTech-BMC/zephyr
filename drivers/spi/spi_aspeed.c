@@ -991,7 +991,7 @@ static const struct spi_driver_api aspeed_spi_driver_api = {
 			    NULL,					\
 			    &aspeed_spi_data_##n,			\
 			    &aspeed_spi_config_##n, POST_KERNEL,	\
-			    79,		\
+			    75,		\
 			    &aspeed_spi_driver_api);			\
 
 DT_INST_FOREACH_STATUS_OKAY(ASPEED_SPI_INIT)

@@ -855,44 +855,42 @@
 			};
 		};
 
-		spim1: spi_monitor@7e791000 {
+		spim0: spi_monitor_common@7e791000 {
 			compatible = "aspeed,spi-monitor-controller";
-			reg = <0x7e791000 0x1000>;
-			interrupts = <INTR_SPIM1 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			reg = <0x7e791000 0x4000>;
 			aspeed,scu = <&syscon>;
-			spi-monitor-idx = <1>;
-			label = "spi_m1";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			label = "spi_m0";
 			status = "disabled";
-		};
 
-		spim2: spi_monitor@7e792000 {
-			compatible = "aspeed,spi-monitor-controller";
-			reg = <0x7e792000 0x1000>;
-			interrupts = <INTR_SPIM2 AST10X0_IRQ_DEFAULT_PRIORITY>;
-			aspeed,scu = <&syscon>;
-			spi-monitor-idx = <2>;
-			label = "spi_m2";
-			status = "disabled";
-		};
+			spim1: spi_monitor@1 {
+				interrupts = <INTR_SPIM1 AST10X0_IRQ_DEFAULT_PRIORITY>;
+				reg = <1>;
+				label = "spi_m1";
+				status = "disabled";
+			};
 
-		spim3: spi_monitor@7e793000 {
-			compatible = "aspeed,spi-monitor-controller";
-			reg = <0x7e793000 0x1000>;
-			interrupts = <INTR_SPIM3 AST10X0_IRQ_DEFAULT_PRIORITY>;
-			aspeed,scu = <&syscon>;
-			spi-monitor-idx = <3>;
-			label = "spi_m3";
-			status = "disabled";
-		};
+			spim2: spi_monitor@2 {
+				interrupts = <INTR_SPIM2 AST10X0_IRQ_DEFAULT_PRIORITY>;
+				reg = <2>;
+				label = "spi_m2";
+				status = "disabled";
+			};
 
-		spim4: spi_monitor@7e794000 {
-			compatible = "aspeed,spi-monitor-controller";
-			reg = <0x7e794000 0x1000>;
-			interrupts = <INTR_SPIM4 AST10X0_IRQ_DEFAULT_PRIORITY>;
-			aspeed,scu = <&syscon>;
-			spi-monitor-idx = <4>;
-			label = "spi_m4";
-			status = "disabled";
+			spim3: spi_monitor@3 {
+				interrupts = <INTR_SPIM3 AST10X0_IRQ_DEFAULT_PRIORITY>;
+				reg = <3>;
+				label = "spi_m3";
+				status = "disabled";
+			};
+
+			spim4: spi_monitor@4 {
+				interrupts = <INTR_SPIM4 AST10X0_IRQ_DEFAULT_PRIORITY>;
+				reg = <4>;
+				label = "spi_m4";
+				status = "disabled";
+			};
 		};
 
 		wdt1: wdt@7e785000 {

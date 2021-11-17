@@ -193,6 +193,10 @@
 	status = "okay";
 };
 
+&spim0 {
+	status = "okay";
+};
+
 &spim1 {
 	valid-cmds = [03 13 0b 0c 6b 6c 01 05 35 06 04 20 21 9f 5a b7 e9 32 34 d8 dc 02 12];
 	read-forbidden-regions = <0x00000000 0x10000>;
