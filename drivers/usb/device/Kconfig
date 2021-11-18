@@ -8,6 +8,11 @@ if USB
 config USB_DEVICE_DRIVER
 	bool
 
+config USB_DC_HAS_HS_SUPPORT
+	bool "USB device controller supports high speed"
+	help
+	  USB device controller supports high speed.
+
 config USB_DW
 	bool "Designware USB Device Controller Driver"
 	select USB_DEVICE_DRIVER
