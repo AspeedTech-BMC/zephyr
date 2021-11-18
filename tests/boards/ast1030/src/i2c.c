@@ -22,6 +22,7 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #define DATA_COUNT 0x20
 #define EEPROM_ADDR 0x40
 #define IPMB_ADDR 0x50
+#define MAX_RE_TRY 100
 #else
 #error No known devicetree compatible match for I2C test
 #endif
@@ -69,7 +70,7 @@ void test_i2c_slave_EEPROM(void)
 		i2c_clock = i2c_speed[i%3];
 		dev_config_raw = I2C_MODE_MASTER |
 		I2C_SPEED_SET(i2c_clock);
-		printk("I2C SPEED : %d\n", i2c_clock);
+		/* printk("I2C SPEED : %d\n", i2c_clock); */
 		i2c_configure(master_dev, dev_config_raw);
 
 		/* obtain i2c slave device */
@@ -81,23 +82,42 @@ void test_i2c_slave_EEPROM(void)
 		ast_zassert_false(i2c_slave_driver_register(slave_dev),
 		"I2C: %s Slave register is got failed", name_s);
 
-		printk("I2C Data Add : %d\n", data_add);
+		/* printk("I2C Data Add : %d\n", data_add); */
 
 		for (j = 0; j < DATA_COUNT; j++) {
 			data_s[j] = data_add + j;
 			data_r[j] = 0;
 		}
 
-		/* burst transfer data */
-		result = i2c_burst_write(master_dev, dev_addr, 0, data_s, DATA_COUNT);
+		/* re-try loop*/
+		for (j = 0; j < MAX_RE_TRY ; j++) {
+			/* burst transfer data */
+			result = i2c_burst_write(master_dev, dev_addr, 0, data_s, DATA_COUNT);
+			if (!result)
+				break;
+		}
 		ast_zassert_false(result,
 		"I2C: %s EEPROM write is got failed %d", name_m, result);
 
-		/* burst receive data */
-		result = i2c_burst_read(master_dev, dev_addr, 0, data_r, DATA_COUNT);
+		/* print retry count if our transfer is timeout*/
+		if (j > 1)
+			printk("I2C EE Re-W : %d\n", j);
+
+		/* re-try loop*/
+		for (j = 0; j < MAX_RE_TRY ; j++) {
+			/* burst receive data */
+			result = i2c_burst_read(master_dev, dev_addr, 0, data_r, DATA_COUNT);
+			if (!result)
+				break;
+		}
 		ast_zassert_false(result,
 		"I2C: %s EEPROM read is got failed %d", name_m, result);
 
+		/* print retry count if our transfer is timeout*/
+		if (j > 1)
+			printk("I2C EE Re-R : %d\n", j);
+
+		/* check data */
 		for (j = 0; j < DATA_COUNT; j++) {
 			ast_zassert_equal(data_s[j], data_r[j],
 			"I2C: %s EEPROM R/W is got failed at %d, s: %d-r: %d",
