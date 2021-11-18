@@ -17,6 +17,7 @@ LOG_MODULE_REGISTER(spi_aspeed, CONFIG_SPI_LOG_LEVEL);
 #include "spi_context.h"
 #include <sys/sys_io.h>
 #include <sys/__assert.h>
+#include <drivers/misc/aspeed/pfr_aspeed.h>
 
 #define SPI00_CE_TYPE_SETTING       (0x0000)
 #define SPI04_CE_CTRL               (0x0004)
@@ -109,6 +110,12 @@ struct aspeed_spi_data {
 	uint32_t hclk;
 };
 
+struct aspeed_spim_internal_mux_ctrl {
+	uint32_t master_idx;
+	uint32_t spim_output_base;
+	const struct device *spi_monitor_common_ctrl;
+};
+
 struct aspeed_spi_config {
 	mm_reg_t ctrl_base;
 	mm_reg_t spi_mmap_base;
@@ -117,8 +124,7 @@ struct aspeed_spi_config {
 	enum aspeed_ctrl_type ctrl_type;
 	const struct device *clock_dev;
 	const clock_control_subsys_t clk_id;
-	uint32_t internal_mux_reg;
-	uint32_t internal_mux_mask;
+	struct aspeed_spim_internal_mux_ctrl mux_ctrl;
 };
 
 uint32_t ast2600_segment_addr_start(uint32_t reg_val)
@@ -338,17 +344,18 @@ static void aspeed_spi_nor_transceive_user(const struct device *dev,
 	struct aspeed_spi_data *data = dev->data;
 	struct spi_context *ctx = &data->ctx;
 	uint32_t cs = ctx->config->slave;
-	uint32_t mux_val_ori = 0, mux_val;
 	uint8_t dummy[12] = {0};
 
+#ifdef CONFIG_SPI_MONITOR_ASPEED
 	/* change internal MUX */
-	if (config->internal_mux_reg != 0) {
+	if (config->mux_ctrl.master_idx != 0) {
 		cs = 0;
-		mux_val_ori = sys_read32(config->internal_mux_reg);
-		mux_val = mux_val_ori & (~config->internal_mux_mask);
-		mux_val |= ctx->config->slave + 1;
-		sys_write32(mux_val, config->internal_mux_reg);
+		spim_scu_ctrl_set(config->mux_ctrl.spi_monitor_common_ctrl,
+				BIT(3), (config->mux_ctrl.master_idx - 1) << 3);
+		spim_scu_ctrl_set(config->mux_ctrl.spi_monitor_common_ctrl,
+				0x7, config->mux_ctrl.spim_output_base + ctx->config->slave);
 	}
+#endif
 
 	sys_write32(data->cmd_mode[cs].user | ASPEED_SPI_USER_INACTIVE,
 		config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
@@ -400,8 +407,10 @@ static void aspeed_spi_nor_transceive_user(const struct device *dev,
 	sys_write32(data->cmd_mode[cs].normal_read,
 		config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
 
-	if (config->internal_mux_reg != 0)
-		sys_write32(mux_val_ori, config->internal_mux_reg);
+#ifdef CONFIG_SPI_MONITOR_ASPEED
+	if (config->mux_ctrl.master_idx != 0)
+		spim_scu_ctrl_clear(config->mux_ctrl.spi_monitor_common_ctrl, 0xf);
+#endif
 
 	spi_context_complete(ctx, 0);
 }
@@ -954,6 +963,15 @@ static int aspeed_spi_init(const struct device *dev)
 
 	spi_context_unlock_unconditionally(&data->ctx);
 
+
+	if (config->mux_ctrl.master_idx != 0 &&
+		(config->mux_ctrl.spim_output_base == 0 ||
+		 config->mux_ctrl.spi_monitor_common_ctrl == NULL)) {
+		LOG_ERR("[%s]Invaild dts setting for SPI internal mux master",
+				dev->name);
+		return -EINVAL;
+	}
+
 	return 0;
 }
 
@@ -978,8 +996,13 @@ static const struct spi_driver_api aspeed_spi_driver_api = {
 		.ctrl_type = DT_ENUM_IDX(DT_INST(n, DT_DRV_COMPAT), ctrl_type),	\
 		.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(n)),	\
 		.clk_id = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(n, clk_id),	\
-		.internal_mux_reg =	DT_INST_PROP_OR(n, internal_mux_reg, 0),	\
-		.internal_mux_mask = DT_INST_PROP_OR(n, internal_mux_mask, 0),	\
+		.mux_ctrl.master_idx = DT_INST_PROP_OR(n, internal_mux_master, 0),	\
+		.mux_ctrl.spim_output_base = DT_INST_PROP_OR(n, spi_monitor_output_base, 0),	\
+		.mux_ctrl.spi_monitor_common_ctrl =	\
+			COND_CODE_1(DT_NODE_HAS_PROP(DT_INST(n, DT_DRV_COMPAT),	\
+				spi_monitor_common_ctrl),	\
+			    DEVICE_DT_GET(DT_INST_PHANDLE_BY_IDX(n, spi_monitor_common_ctrl, 0)),	\
+				NULL),	\
 	};								\
 									\
 	static struct aspeed_spi_data aspeed_spi_data_##n = {	\

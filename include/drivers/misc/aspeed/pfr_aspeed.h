@@ -12,5 +12,7 @@
 
 void  pfr_bmc_rst_enable_ctrl(bool enable);
 void pfr_bmc_rst_flash(uint32_t flash_idx);
+void spim_scu_ctrl_set(const struct device *dev, uint32_t mask, uint32_t val);
+void spim_scu_ctrl_clear(const struct device *dev, uint32_t clear_bits);
 
 #endif

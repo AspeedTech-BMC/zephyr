@@ -67,15 +67,23 @@ properties:
       bit 17: disable 1-4-4
       bit 18: disable 4-4-4
 
-  internal-mux-reg:
+  internal-mux-master:
     type: int
     required: false
     description: |
       Select the SPI master by the internal MUX.
 
-  internal-mux-mask:
+  spi-monitor-output-base:
     type: int
     required: false
     description: |
-      The bits mask in the internal MUX.
+      The base CS offset of the first flash under
+      current controller.
+
+  spi-monitor-common-ctrl:
+    type: phandle
+    required: false
+    description: |
+      phandle to SPI monitor common device node which
+      includes general control register.
 

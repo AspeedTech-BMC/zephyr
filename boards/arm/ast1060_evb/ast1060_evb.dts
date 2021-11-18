@@ -69,8 +69,10 @@
 };
 
 &spi1 {
-	internal-mux-reg = <0x7e6e20f0>;
-	internal-mux-mask = <0xf>;
+	internal-mux-master = <1>;
+	spi-monitor-output-base = <1>;
+	spi-monitor-common-ctrl = <&spim0>;
+
 	num-cs = <1>;
 	status = "okay";
 
@@ -91,5 +93,6 @@
 		label = "spi1_cs3";
 		status = "okay";
 	};
+
 };
 

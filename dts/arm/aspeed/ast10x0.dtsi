@@ -861,7 +861,7 @@
 			aspeed,scu = <&syscon>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			label = "spi_m0";
+			label = "spi_m_common";
 			status = "disabled";
 
 			spim1: spi_monitor@1 {
