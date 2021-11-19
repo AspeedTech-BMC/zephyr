@@ -6,6 +6,7 @@
 #define DT_DRV_COMPAT aspeed_ipmb
 
 #include <sys/util.h>
+#include <sys/slist.h>
 #include <kernel.h>
 #include <errno.h>
 #include <drivers/i2c.h>
@@ -18,6 +19,7 @@
 LOG_MODULE_REGISTER(i2c_slave_ipmb);
 
 struct ipmb_msg_package {
+	sys_snode_t list;
 	uint8_t msg_length;
 	struct ipmb_msg msg;
 };
@@ -25,12 +27,13 @@ struct ipmb_msg_package {
 struct i2c_ipmb_slave_data {
 	const struct device *i2c_controller;
 	struct i2c_slave_config config;
-	struct ipmb_msg_package *buffer;
-	struct ipmb_msg_package *current;
-	uint32_t buffer_idx;
-	uint32_t max_msg_count;
-	uint32_t cur_read_count;
-	uint32_t cur_write_count;
+	struct ipmb_msg_package *buffer; /* total buffer */
+	struct ipmb_msg_package *current; /* current buffer */
+	sys_slist_t list_head; /* link list */
+	uint32_t buffer_idx; /* total buffer index */
+	uint32_t msg_index; /* data message index */
+	uint32_t max_msg_count; /* max message count */
+	uint32_t cur_msg_count; /* current message count */
 };
 
 struct i2c_ipmb_slave_config {
@@ -51,26 +54,27 @@ static int ipmb_slave_write_requested(struct i2c_slave_config *config)
 	struct i2c_ipmb_slave_data *data = CONTAINER_OF(config,
 							struct i2c_ipmb_slave_data,
 							config);
-	uint32_t cur_write_next = 0;
 
-	/* bondary condition */
-	if (data->cur_write_count == data->max_msg_count) {
-		cur_write_next = 0;
-	} else {
-		cur_write_next = data->cur_write_count + 1;
-	}
+	/* check the max msg length */
+	if (data->cur_msg_count < data->max_msg_count) {
 
-	/* check buffer full or not (next != R ) */
-	if (cur_write_next != data->cur_read_count) {
-		/* assign free buffer */
-		data->current =
-		&(data->buffer[data->cur_write_count]);
-		LOG_DBG("ipmb: slave write data->buffer %x",
-		(uint32_t)(data->current));
-		data->cur_write_count = cur_write_next;
+		LOG_DBG("ipmb: cur_msg_index %x", (uint32_t)(data->msg_index));
+
+		data->current = &(data->buffer[data->msg_index]);
+		sys_slist_append(&(data->list_head), &(data->current->list));
+		data->cur_msg_count++;
+
+		/* bondary condition */
+		if (data->msg_index == (data->max_msg_count - 1)) {
+			data->msg_index = 0;
+		} else {
+			data->msg_index++;
+		}
+
+		LOG_DBG("ipmb: slave write data->current %x", (uint32_t)(data->current));
 	} else {
-		data->current = NULL;
 		LOG_DBG("ipmb: buffer full");
+		data->current = NULL;
 		return 1;
 	}
 
@@ -125,56 +129,47 @@ static int ipmb_slave_stop(struct i2c_slave_config *config)
 		LOG_DBG("ipmb: stop");
 	}
 
+	data->current = NULL;
+
 	return 0;
 }
 
 int ipmb_slave_read(const struct device *dev, struct ipmb_msg **ipmb_data, uint8_t *length)
 {
 	struct i2c_ipmb_slave_data *data = DEV_DATA(dev);
-	struct ipmb_msg_package *local_buf = NULL;
-	uint32_t cur_read_next = 0;
-	uint32_t cur_write_next = 0;
+	sys_snode_t *list_node = NULL;
+	struct ipmb_msg_package *pack = NULL;
 
-	/* bondary condition */
-	if (data->cur_read_count == data->max_msg_count) {
-		cur_read_next = 0;
-	} else {
-		cur_read_next = data->cur_read_count + 1;
-	}
+	list_node = sys_slist_peek_head(&(data->list_head));
 
-	if (data->cur_write_count == data->max_msg_count) {
-		cur_write_next = 0;
-	} else {
-		cur_write_next = data->cur_write_count + 1;
-	}
+	LOG_DBG("ipmb: slave read %x", (uint32_t)list_node);
 
-	/* check buffer full or not (next R != next W) */
-	if (cur_read_next != cur_write_next) {
-		local_buf =
-		&(data->buffer[data->cur_read_count]);
+	if (list_node != NULL) {
+		pack = (struct ipmb_msg_package *)(list_node);
+		*ipmb_data = &(pack->msg);
+		*length = pack->msg_length;
 
-		LOG_DBG("ipmb: slave read %x", (uint32_t)local_buf);
+		/* remove this item from list */
+		sys_slist_find_and_remove(&(data->list_head), list_node);
+		data->cur_msg_count--;
+		LOG_DBG("ipmb: slave remove successful.");
 
-		*ipmb_data = &(local_buf->msg);
-		*length = local_buf->msg_length;
-
-		data->cur_read_count = cur_read_next;
 		return 0;
 	} else {
 		LOG_DBG("ipmb slave read: buffer empty!");
 		return 1;
 	}
-
 	return 0;
+
 }
 
 static int ipmb_slave_register(const struct device *dev)
 {
 	struct i2c_ipmb_slave_data *data = dev->data;
 
-	/* initial r/w pointer */
-	data->cur_read_count = 0;
-	data->cur_write_count = 0;
+	/* initial msg index */
+	data->msg_index = 0;
+	data->cur_msg_count = 0;
 
 	return i2c_slave_register(data->i2c_controller, &data->config);
 }
@@ -182,6 +177,19 @@ static int ipmb_slave_register(const struct device *dev)
 static int ipmb_slave_unregister(const struct device *dev)
 {
 	struct i2c_ipmb_slave_data *data = dev->data;
+	sys_snode_t *list_node = NULL;
+
+	/* free link list */
+	do {
+		list_node = sys_slist_peek_head(&(data->list_head));
+
+		if (list_node != NULL) {
+			LOG_DBG("ipmb: slave drop %x", (uint32_t)list_node);
+			/* remove this item from list */
+			sys_slist_find_and_remove(&(data->list_head), list_node);
+		}
+
+	} while (list_node != NULL);
 
 	return i2c_slave_unregister(data->i2c_controller, &data->config);
 }
@@ -230,6 +238,9 @@ static int i2c_ipmb_slave_init(const struct device *dev)
 		LOG_ERR("i2c could not alloc enougth messgae queue");
 		return -EINVAL;
 	}
+
+	/* initial single list structure*/
+	sys_slist_init(&(data->list_head));
 
 	return 0;
 }
