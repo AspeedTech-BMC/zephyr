@@ -1254,6 +1254,7 @@ int aspeed_i2c_slave_irq(const struct device *dev)
 
 	if (AST_I2CS_PKT_DONE & sts) {
 		sts &= ~(AST_I2CS_PKT_DONE | AST_I2CS_PKT_ERROR);
+		sys_write32(AST_I2CS_PKT_DONE, i2c_base + AST_I2CS_ISR);
 		switch (sts) {
 		case AST_I2CS_SLAVE_MATCH | AST_I2CS_STOP:
 			LOG_DBG("S : Sw | P\n");
@@ -1570,7 +1571,6 @@ int aspeed_i2c_slave_irq(const struct device *dev)
 			break;
 
 		}
-		sys_write32(AST_I2CS_PKT_DONE, i2c_base + AST_I2CS_ISR);
 		ret = 1;
 	} else {
 		LOG_DBG("byte mode\n");
