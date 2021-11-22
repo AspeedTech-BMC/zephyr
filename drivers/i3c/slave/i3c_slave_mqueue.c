@@ -122,7 +122,8 @@ static void i3c_slave_mqueue_init(const struct device *dev)
 
 	LOG_DBG("msg size %d, n %d\n", config->msg_size, config->num_of_msgs);
 	LOG_DBG("bus name : %s\n", config->controller_name);
-	__ASSERT(!(config->num_of_msgs & 0x1), "number of msgs must be power of 2\n");
+	__ASSERT((config->num_of_msgs & (config->num_of_msgs - 1)) == 0,
+		 "number of msgs must be power of 2\n");
 
 	obj->i3c_controller = device_get_binding(config->controller_name);
 
