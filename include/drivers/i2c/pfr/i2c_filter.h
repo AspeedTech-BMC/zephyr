@@ -69,7 +69,6 @@ void ast_i2c_filter_isr(const struct device *dev);
  *
  * @param dev Pointer to the device structure for the driver instance.
  * @param pass Value to the default white list behavior.
- * @param table Pointer to the filter bitmap table.
  * @retval 0 If successful.
  * @retval -EINVAL Invalid data pointer or offset
  */
@@ -108,7 +107,7 @@ uint8_t clr_idx, uint8_t clr_tbl);
  * @param dev Pointer to the device structure for the driver instance.
  *
  * @retval 0 If successful.
- * @retval -EINVAL Invalid data pointer or offset
+ * @retval -EINVAL Invalid device pointer
  */
 int ast_i2c_filter_init(const struct device *dev);
 /**
