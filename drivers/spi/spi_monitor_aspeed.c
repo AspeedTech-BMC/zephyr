@@ -154,6 +154,7 @@ struct valid_cmd_info valid_cmds[] = {
 #define FLAG_VALID_LIST_VALID_ONCE		0x00000002
 
 struct aspeed_spim_data {
+	struct k_sem sem;
 	uint8_t valid_cmd_list[32];
 	uint32_t valid_cmd_num;
 	uint32_t read_forbidden_regions[32];
@@ -178,12 +179,12 @@ struct aspeed_spim_common_config {
 };
 
 struct aspeed_spim_common_data {
-	struct k_sem sem;
+	struct k_spinlock lock;
 };
 
 static void acquire_device(const struct device *dev)
 {
-	struct aspeed_spim_common_data *const data = dev->data;
+	struct aspeed_spim_data *const data = dev->data;
 
 	if (IS_ENABLED(CONFIG_MULTITHREADING))
 		k_sem_take(&data->sem, K_FOREVER);
@@ -191,7 +192,7 @@ static void acquire_device(const struct device *dev)
 
 static void release_device(const struct device *dev)
 {
-	struct aspeed_spim_common_data *const data = dev->data;
+	struct aspeed_spim_data *const data = dev->data;
 
 	if (IS_ENABLED(CONFIG_MULTITHREADING))
 		k_sem_give(&data->sem);
@@ -200,33 +201,33 @@ static void release_device(const struct device *dev)
 void spim_scu_ctrl_set(const struct device *dev, uint32_t mask, uint32_t val)
 {
 	const struct aspeed_spim_common_config *config = dev->config;
+	struct aspeed_spim_common_data *const data = dev->data;
 	mm_reg_t spim_scu_ctrl = config->scu_base + SPIM_MODE_SCU_CTRL;
 	uint32_t reg_val;
-
 	/* Avoid SCU0F0 being accessed by more than a thread */
-	acquire_device(dev);
+	k_spinlock_key_t key = k_spin_lock(&data->lock);
 
 	reg_val = sys_read32(spim_scu_ctrl);
 	reg_val &= ~(mask);
 	reg_val |= val;
 	sys_write32(reg_val, spim_scu_ctrl);
 
-	release_device(dev);
+	k_spin_unlock(&data->lock, key);
 }
 
 void spim_scu_ctrl_clear(const struct device *dev, uint32_t clear_bits)
 {
 	const struct aspeed_spim_common_config *config = dev->config;
+	struct aspeed_spim_common_data *const data = dev->data;
 	mm_reg_t spim_scu_ctrl = config->scu_base + SPIM_MODE_SCU_CTRL;
 	uint32_t reg_val;
-
-	acquire_device(dev);
+	k_spinlock_key_t key = k_spin_lock(&data->lock);
 
 	reg_val = sys_read32(spim_scu_ctrl);
 	reg_val &= ~(clear_bits);
 	sys_write32(reg_val, spim_scu_ctrl);
 
-	release_device(dev);
+	k_spin_unlock(&data->lock, key);
 }
 
 void spim_dump_valid_cmd_table(const struct device *dev)
@@ -253,31 +254,46 @@ uint32_t spim_get_valid_cmd_val(uint8_t cmd)
 	return 0;
 }
 
-void spim_config_passthrough_mode(const struct device *dev,
+void spim_scu_passthrough_mode(const struct device *dev,
+	uint32_t passthrough_mode, bool passthrough_en)
+{
+	const struct aspeed_spim_config *config = dev->config;
+
+	if (passthrough_en) {
+		spim_scu_ctrl_set(config->parent, BIT(config->ctrl_idx - 1) << 4,
+			BIT(config->ctrl_idx - 1) << 4);
+	} else {
+		spim_scu_ctrl_clear(config->parent, BIT(config->ctrl_idx - 1) << 4);
+	}
+
+	ARG_UNUSED(passthrough_mode);
+}
+
+void spim_ctrl_passthrough_mode(const struct device *dev,
 	uint32_t passthrough_mode, bool passthrough_en)
 {
 	const struct aspeed_spim_config *config = dev->config;
 	uint32_t ctrl_reg_val;
 
+	acquire_device(dev);
+
 	ctrl_reg_val = sys_read32(config->ctrl_base);
 
 	ctrl_reg_val &= ~0x00000003;
 	if (passthrough_en) {
-		spim_scu_ctrl_set(config->parent, BIT(config->ctrl_idx - 1) << 4,
-			BIT(config->ctrl_idx - 1) << 4);
-		ctrl_reg_val &= ~0x00000003;
 		if (passthrough_mode == SPIM_MULTI_PASSTHROUGH)
 			ctrl_reg_val |= BIT(1);
 		else
 			ctrl_reg_val |= BIT(0);
-	} else {
-		spim_scu_ctrl_clear(config->parent, BIT(config->ctrl_idx - 1) << 4);
 	}
 
 	sys_write32(ctrl_reg_val, config->ctrl_base);
+
+	release_device(dev);
 }
 
-void spim_fill_valid_table(const struct device *dev,
+
+void spim_valid_table_init(const struct device *dev,
 	const uint8_t cmd_list[], uint32_t cmd_num, uint32_t flag)
 {
 	const struct aspeed_spim_config *config = dev->config;
@@ -285,6 +301,8 @@ void spim_fill_valid_table(const struct device *dev,
 	uint32_t i;
 	uint32_t reg_val;
 	uint32_t idx = 3;
+
+	acquire_device(dev);
 
 	for (i = 0; i < cmd_num; i++) {
 		reg_val = spim_get_valid_cmd_val(cmd_list[i]);
@@ -311,6 +329,8 @@ void spim_fill_valid_table(const struct device *dev,
 
 		sys_write32(reg_val, config->ctrl_base + SPIM_VALID_LIST_BASE + idx * 4);
 	}
+
+	release_device(dev);
 }
 
 void spim_rw_perm_init(const struct device *dev)
@@ -351,6 +371,8 @@ void spim_ctrl_monitor_config(const struct device *dev, bool enable)
 	const struct aspeed_spim_config *config = dev->config;
 	uint32_t reg_val;
 
+	acquire_device(dev);
+
 	reg_val = sys_read32(config->ctrl_base);
 	if (enable)
 		reg_val |= BIT(2);
@@ -358,20 +380,32 @@ void spim_ctrl_monitor_config(const struct device *dev, bool enable)
 		reg_val &= ~(BIT(2));
 
 	sys_write32(reg_val, config->ctrl_base);
+
+	release_device(dev);
 }
 
+void spim_monitor_enable(const struct device *dev, bool enable)
+{
+	spim_ctrl_monitor_config(dev, enable);
+}
 
 static int aspeed_spi_monitor_init(const struct device *dev)
 {
 	const struct aspeed_spim_config *config = dev->config;
 	struct aspeed_spim_data *const data = dev->data;
 
-	if (config->multi_passthrough)
-		spim_config_passthrough_mode(dev, SPIM_MULTI_PASSTHROUGH, true);
-	else
-		spim_config_passthrough_mode(dev, SPIM_SINGLE_PASSTHROUGH, true);
+	if (IS_ENABLED(CONFIG_MULTITHREADING))
+		k_sem_init(&data->sem, 1, 1);
 
-	spim_fill_valid_table(dev, data->valid_cmd_list, data->valid_cmd_num, 0);
+	/* always enable internal passthrough configuration */
+	spim_scu_passthrough_mode(dev, 0, true);
+
+	if (config->multi_passthrough)
+		spim_ctrl_passthrough_mode(dev, SPIM_MULTI_PASSTHROUGH, true);
+	else
+		spim_ctrl_passthrough_mode(dev, SPIM_SINGLE_PASSTHROUGH, true);
+
+	spim_valid_table_init(dev, data->valid_cmd_list, data->valid_cmd_num, 0);
 
 	/* spim_dump_valid_cmd_table(dev); */
 	spim_rw_perm_init(dev);
@@ -385,11 +419,7 @@ static int aspeed_spi_monitor_init(const struct device *dev)
 
 static int aspeed_spi_monitor_common_init(const struct device *dev)
 {
-	struct aspeed_spim_common_data *const data = dev->data;
-
-	if (IS_ENABLED(CONFIG_MULTITHREADING))
-		k_sem_init(&data->sem, 1, 1);
-
+	/* nothing to do currently */
 	return 0;
 }
 
