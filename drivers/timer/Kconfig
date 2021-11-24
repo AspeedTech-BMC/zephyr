@@ -398,3 +398,16 @@ config MCUX_OS_TIMER
 	  event timer and provides the standard "system clock driver" interfaces.
 
 endmenu
+
+config TIMER_ASPEED
+	bool "Aspeed general purpose timer"
+	help
+	  Say "y" to enable the driver of the Aspeed general purpose timer.
+
+if TIMER_ASPEED
+config TIMER_ASPEED_SHELL
+	bool "Shell commands for Aspeed timer"
+	default y
+	help
+	  Say "y" to enanle the shell commands for the Aspeed general purpose timer
+endif
