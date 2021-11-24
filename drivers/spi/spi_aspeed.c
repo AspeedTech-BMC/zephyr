@@ -70,7 +70,7 @@ LOG_MODULE_REGISTER(spi_aspeed, CONFIG_SPI_LOG_LEVEL);
 
 #define SPI_CTRL_FREQ_MASK          0x0F000F00
 
-#define ASPEED_MAX_CS               3
+#define ASPEED_MAX_CS               5
 
 #define ASPEED_SPI_NORMAL_READ      0x1
 #define ASPEED_SPI_NORMAL_WRITE     0x2
@@ -580,6 +580,9 @@ void aspeed_spi_timing_calibration(const struct device *dev)
 		goto no_calib;
 	}
 
+	if (config->mux_ctrl.master_idx != 0 && cs != 0)
+		goto no_calib;
+
 	LOG_DBG("Calculate timing compensation:");
 	/*
 	 * use the related low frequency to get check calibration data
@@ -785,9 +788,12 @@ static int aspeed_spi_nor_read_init(const struct device *dev,
 		__func__, op_info.mode, op_info.opcode, op_info.dummy_cycle,
 		ctx->config->frequency);
 
-	ret = aspeed_spi_decode_range_reinit(dev, op_info.data_len);
-	if (ret != 0)
-		goto end;
+	/* If internal MUX is used, don't reinit decoded address. */
+	if (config->mux_ctrl.master_idx == 0) {
+		ret = aspeed_spi_decode_range_reinit(dev, op_info.data_len);
+		if (ret != 0)
+			goto end;
+	}
 
 	data->cmd_mode[ctx->config->slave].normal_read =
 		ASPEED_SPI_CTRL_VAL(aspeed_spi_io_mode(op_info.mode),
@@ -908,8 +914,16 @@ void aspeed_decode_range_pre_init(
 	uint32_t cs;
 	uint32_t unit_sz = ASPEED_SPI_SZ_2M; /* init 2M for each cs */
 	uint32_t start_addr, end_addr, pre_end_addr = 0;
+	uint32_t max_cs = config->max_cs;
 
-	for (cs = 0; cs < config->max_cs; cs++) {
+
+	/* For PFR device, SPI controller always accesses flash by CS0. */
+	if (config->mux_ctrl.master_idx != 0) {
+		max_cs = 1;
+		unit_sz = ASPEED_SPI_SZ_256M;
+	}
+
+	for (cs = 0; cs < max_cs; cs++) {
 		if (cs == 0)
 			start_addr = config->spi_mmap_base;
 		else

@@ -73,7 +73,7 @@
 	spi-monitor-output-base = <1>;
 	spi-monitor-common-ctrl = <&spim0>;
 
-	num-cs = <1>;
+	num-cs = <4>;
 	status = "okay";
 
 	spi1_cs2: flash@2 {
