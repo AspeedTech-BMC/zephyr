@@ -254,6 +254,83 @@
 			status = "disabled";
 		};
 
+		timers: timers@7e782000 {
+			compatible = "aspeed,timers";
+			reg = <0x7e782000 0x100>;
+
+			timer0: timer0 {
+				compatible = "aspeed,timer";
+				interrupts = <16 AST10X0_IRQ_DEFAULT_PRIORITY>;
+				clocks = <&sysclk ASPEED_CLK_PCLK>;
+				label = "TIMER0";
+				index = <0>;
+				status = "disabled";
+			};
+
+			timer1: timer1 {
+				compatible = "aspeed,timer";
+				interrupts = <17 AST10X0_IRQ_DEFAULT_PRIORITY>;
+				clocks = <&sysclk ASPEED_CLK_PCLK>;
+				label = "TIMER1";
+				index = <1>;
+				status = "disabled";
+			};
+
+			timer2: timer2 {
+				compatible = "aspeed,timer";
+				interrupts = <18 AST10X0_IRQ_DEFAULT_PRIORITY>;
+				clocks = <&sysclk ASPEED_CLK_PCLK>;
+				label = "TIMER2";
+				index = <2>;
+				status = "disabled";
+			};
+
+			timer3: timer3 {
+				compatible = "aspeed,timer";
+				interrupts = <19 AST10X0_IRQ_DEFAULT_PRIORITY>;
+				clocks = <&sysclk ASPEED_CLK_PCLK>;
+				label = "TIMER3";
+				index = <3>;
+				status = "disabled";
+			};
+
+			timer4: timer4 {
+				compatible = "aspeed,timer";
+				interrupts = <20 AST10X0_IRQ_DEFAULT_PRIORITY>;
+				clocks = <&sysclk ASPEED_CLK_PCLK>;
+				label = "TIMER4";
+				index = <4>;
+				status = "disabled";
+			};
+
+			timer5: timer5 {
+				compatible = "aspeed,timer";
+				interrupts = <21 AST10X0_IRQ_DEFAULT_PRIORITY>;
+				clocks = <&sysclk ASPEED_CLK_PCLK>;
+				label = "TIMER5";
+				index = <5>;
+				status = "disabled";
+			};
+
+			timer6: timer6 {
+				compatible = "aspeed,timer";
+				interrupts = <22 AST10X0_IRQ_DEFAULT_PRIORITY>;
+				clocks = <&sysclk ASPEED_CLK_PCLK>;
+				label = "TIMER6";
+				index = <6>;
+				status = "disabled";
+			};
+
+			timer7: timer7 {
+				compatible = "aspeed,timer";
+				interrupts = <23 AST10X0_IRQ_DEFAULT_PRIORITY>;
+				clocks = <&sysclk ASPEED_CLK_PCLK>;
+				label = "TIMER7";
+				index = <7>;
+				status = "disabled";
+			};
+		};
+
 		uart1: serial@7e783000 {
 			compatible = "aspeed,uart";
 			reg = <0x7e783000 0x1000>;

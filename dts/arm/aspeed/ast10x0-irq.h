@@ -19,6 +19,15 @@
 #define INTR_GPIO			11
 #define INTR_SCU			12
 
+#define INTR_TIMER0			16
+#define INTR_TIMER1			17
+#define INTR_TIMER2			18
+#define INTR_TIMER3			19
+#define INTR_TIMER4			20
+#define INTR_TIMER5			21
+#define INTR_TIMER6			22
+#define INTR_TIMER7			23
+
 #define INTR_WDT			24
 
 #define INTR_ESPI			42
