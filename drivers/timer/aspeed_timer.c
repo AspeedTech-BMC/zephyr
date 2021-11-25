@@ -81,8 +81,8 @@ int timer_aspeed_start(const struct device *dev, struct aspeed_timer_user_config
 	/* configure timer, not support 1st & 2nd matching value for now */
 	reload = user_config->millisec * obj->tick_per_microsec * 1000;
 	sys_write32(reload, obj->cr_base + TIMER_RELOAD_VALUE);
-	sys_write32(0, obj->cr_base + TIMER_1ST_MATCHING);
-	sys_write32(0, obj->cr_base + TIMER_2ND_MATCHING);
+	sys_write32(0xffffffff, obj->cr_base + TIMER_1ST_MATCHING);
+	sys_write32(0xffffffff, obj->cr_base + TIMER_2ND_MATCHING);
 	LOG_DBG("reload: %d ms, %d tick\n", user_config->millisec, reload);
 
 	obj->callback = user_config->callback;
