@@ -87,7 +87,7 @@ int timer_aspeed_start(const struct device *dev, struct aspeed_timer_user_config
 
 	obj->callback = user_config->callback;
 	obj->user_data = user_config->user_data;
-	obj->auto_reload = user_config->auto_reload;
+	obj->auto_reload = (user_config->timer_type == ASPEED_TIMER_TYPE_ONE_SHOT) ? 0 : 1;
 
 	/* enable timer */
 	reg = TIMER_GR_CTRL_EN(obj->index) | TIMER_GR_CTRL_OVFL_INT(obj->index);

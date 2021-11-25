@@ -5,13 +5,17 @@
  */
 #ifndef ZEPHYR_INCLUDE_DRIVERS_TIMER_ASPEED_TIMER_H
 #define ZEPHYR_INCLUDE_DRIVERS_TIMER_ASPEED_TIMER_H
+
+#define ASPEED_TIMER_TYPE_ONE_SHOT	0	/* one-shot timer */
+#define ASPEED_TIMER_TYPE_PERIODIC	1	/* periodic timer */
+
 /**
  * @brief structure for timer configuration
  *
  * @param millisec millisecond to be waiting for
- * @param callback callback function when timeout occurs
+ * @param callback callback function when timer expired
  * @param user_data context of the callback function
- * @param auto_reload set false to enable one-shot timer.  Or the timer will reload automatically
+ * @param timer_type ASPEED_TIMER_TYPE_ONE_SHOT or ASPEED_TIMER_TYPE_PERIODIC
  *
  * This structure shall be filled by the timer user before calling @ref timer_aspeed_start
  */
@@ -19,7 +23,7 @@ struct aspeed_timer_user_config {
 	uint32_t millisec;
 	void (*callback)(void *user_data);
 	void *user_data;
-	bool auto_reload;
+	int timer_type;
 };
 /**
  * @brief start the timer

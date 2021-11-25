@@ -7,7 +7,7 @@
 
 #define TIMER_DEVICE_PREFIX		"TIMER"
 
-static const char start_helper[] = "timer start <dev> -t <time> -r <auto-reload>";
+static const char start_helper[] = "timer start <dev> -p <period> -t <type>";
 static const char stop_helper[] = "timer stop <dev>";
 static const char query_helper[] = "timer query <dev>";
 
@@ -42,20 +42,20 @@ static int cmd_start(const struct shell *shell, size_t argc, char **argv)
 		return -ENODEV;
 	}
 
-	while ((c = shell_getopt(shell, argc - 1, &argv[1], "ht:r:")) != -1) {
+	while ((c = shell_getopt(shell, argc - 1, &argv[1], "hp:t:")) != -1) {
 		state = shell_getopt_state_get(shell);
 		switch (c) {
-		case 't':
+		case 'p':
 			conf.millisec = strtoul(state->optarg, NULL, 0);
 			break;
-		case 'r':
-			conf.auto_reload = strtoul(state->optarg, NULL, 0);
+		case 't':
+			conf.timer_type = strtoul(state->optarg, NULL, 0);
 			break;
 		case 'h':
 			shell_help(shell);
 			return SHELL_CMD_HELP_PRINTED;
 		case '?':
-			if ((state->optopt == 't') || (state->optopt == 'r')) {
+			if ((state->optopt == 'p') || (state->optopt == 't')) {
 				shell_print(shell, "Option -%c requires an argument.",
 					    state->optopt);
 			} else if (isprint(state->optopt)) {
@@ -73,8 +73,8 @@ static int cmd_start(const struct shell *shell, size_t argc, char **argv)
 	conf.callback = timer_shell_callback;
 	conf.user_data = (void *)dev;
 
-	shell_print(shell, "set target time %d to %s, auto-load %d\n", conf.millisec, dev->name,
-		    conf.auto_reload);
+	shell_print(shell, "%s: period %d ms, type %d\n", dev->name, conf.millisec,
+		    conf.timer_type);
 	ret = timer_aspeed_start(dev, &conf);
 
 	return ret;
