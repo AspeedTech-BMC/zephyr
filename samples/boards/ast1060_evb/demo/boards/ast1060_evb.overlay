@@ -199,8 +199,6 @@
 
 &spim1 {
 	valid-cmds = [03 13 0b 0c 6b 6c 01 05 35 06 04 20 21 9f 5a b7 e9 32 34 d8 dc 02 12];
-	read-forbidden-regions = <0x00000000 0x10000>;
-	write-forbidden-regions = <0x00000000 0x10000>;
 	log-ram-info = <0xBF000 0x400>;
 	pinctrl-0 = <&pinctrl_spim1_default>;
 	status = "okay";
@@ -208,8 +206,6 @@
 
 &spim2 {
 	valid-cmds = [03 13 0b 0c 6b 6c 01 05 35 06 04 20 21 9f 5a b7 e9 32 34 d8 dc 02 12];
-	read-forbidden-regions = <0x00000000 0x10000>;
-	write-forbidden-regions = <0x00000000 0x10000>;
 	log-ram-info = <0xBF400 0x400>;
 	pinctrl-0 = <&pinctrl_spim2_default>;
 	status = "okay";
@@ -217,8 +213,6 @@
 
 &spim3 {
 	valid-cmds = [03 13 0b 0c 6b 6c 01 05 35 06 04 20 21 9f 5a b7 e9 32 34 d8 dc 02 12];
-	read-forbidden-regions = <0x00000000 0x10000>;
-	write-forbidden-regions = <0x00000000 0x10000>;
 	log-ram-info = <0xBF800 0x400>;
 	pinctrl-0 = <&pinctrl_spim3_default>;
 	status = "okay";
@@ -226,9 +220,20 @@
 
 &spim4 {
 	valid-cmds = [03 13 0b 0c 6b 6c 01 05 35 06 04 20 21 9f 5a b7 e9 32 34 d8 dc 02 12];
-	read-forbidden-regions = <0x00000000 0x10000>;
-	write-forbidden-regions = <0x00000000 0x10000>;
 	log-ram-info = <0xBFC00 0x400>;
+	/* for demo purpose */
+	read-forbidden-regions = <
+		0x00000000 0x10000
+		0x00274000 0x4000
+		0x01E00000 0x80000
+	>;
+
+	write-forbidden-regions = <
+		0x00000000 0x10000
+		0x013FC000 0x28000
+		0x0FFF8000 0x8000
+	>;
+
 	pinctrl-0 = <&pinctrl_spim4_default>;
 	status = "okay";
 };

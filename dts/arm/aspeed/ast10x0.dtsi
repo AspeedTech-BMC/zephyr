@@ -945,6 +945,9 @@
 				interrupts = <INTR_SPIM1 AST10X0_IRQ_DEFAULT_PRIORITY>;
 				reg = <1>;
 				label = "spi_m1";
+				valid-cmds = [];
+				read-forbidden-regions = <>;
+				write-forbidden-regions = <>;
 				status = "disabled";
 			};
 
@@ -952,6 +955,9 @@
 				interrupts = <INTR_SPIM2 AST10X0_IRQ_DEFAULT_PRIORITY>;
 				reg = <2>;
 				label = "spi_m2";
+				valid-cmds = [];
+				read-forbidden-regions = <>;
+				write-forbidden-regions = <>;
 				status = "disabled";
 			};
 
@@ -959,6 +965,9 @@
 				interrupts = <INTR_SPIM3 AST10X0_IRQ_DEFAULT_PRIORITY>;
 				reg = <3>;
 				label = "spi_m3";
+				valid-cmds = [];
+				read-forbidden-regions = <>;
+				write-forbidden-regions = <>;
 				status = "disabled";
 			};
 
@@ -966,6 +975,9 @@
 				interrupts = <INTR_SPIM4 AST10X0_IRQ_DEFAULT_PRIORITY>;
 				reg = <4>;
 				label = "spi_m4";
+				valid-cmds = [];
+				read-forbidden-regions = <>;
+				write-forbidden-regions = <>;
 				status = "disabled";
 			};
 		};

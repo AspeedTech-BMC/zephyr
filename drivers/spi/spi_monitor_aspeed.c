@@ -919,26 +919,49 @@ void spim_lock_common(const struct device *dev)
 
 void spim_rw_perm_init(const struct device *dev)
 {
-	const struct aspeed_spim_config *config = dev->config;
+	struct aspeed_spim_data *const data = dev->data;
+	int ret;
 	uint32_t i;
 
-	acquire_device(dev);
+	spim_address_privilege_config(dev, FLAG_ADDR_PRIV_READ_SELECT,
+		FLAG_ADDR_PRIV_ENABLE, 0x0, MB(256));
 
-	/* select read privilege */
-	spim_addr_priv_access_enable(dev, FLAG_ADDR_PRIV_READ_SELECT);
-	for (i = 0; i < SPIM_ADDR_PRIV_REG_NUN; i++) {
-		sys_write32(0xffffffff,
-			config->ctrl_base + SPIM_ADDR_PRIV_TABLE_BASE + i * 4);
+	spim_address_privilege_config(dev, FLAG_ADDR_PRIV_WRITE_SELECT,
+		FLAG_ADDR_PRIV_ENABLE, 0x0, MB(256));
+
+	if (data->read_forbidden_region_num % 2 != 0)
+		LOG_ERR("wrong read-forbidden-regions setting in .dts.");
+
+	if (data->write_forbidden_region_num % 2 != 0)
+		LOG_ERR("wrong write-forbidden-regions setting in .dts.");
+
+	for (i = 0; i < data->read_forbidden_region_num; i += 2) {
+		LOG_DBG("[%s]addr: 0x%08x, len: 0x%08x", dev->name,
+				data->read_forbidden_regions[i],
+				data->read_forbidden_regions[i + 1]);
+
+		ret = spim_address_privilege_config(dev,
+			FLAG_ADDR_PRIV_READ_SELECT,
+			FLAG_ADDR_PRIV_DISABLE,
+			data->read_forbidden_regions[i],
+			data->read_forbidden_regions[i + 1]);
+		if (ret != 0)
+			LOG_ERR("fail to configure read address privilege table!");
 	}
 
-	/* select write privilege */
-	spim_addr_priv_access_enable(dev, FLAG_ADDR_PRIV_WRITE_SELECT);
-	for (i = 0; i < SPIM_ADDR_PRIV_REG_NUN; i++) {
-		sys_write32(0xffffffff,
-			config->ctrl_base + SPIM_ADDR_PRIV_TABLE_BASE + i * 4);
-	}
+	for (i = 0; i < data->write_forbidden_region_num; i += 2) {
+		LOG_DBG("[%s]addr: 0x%08x, len: 0x%08x", dev->name,
+				data->write_forbidden_regions[i],
+				data->write_forbidden_regions[i + 1]);
 
-	release_device(dev);
+		ret = spim_address_privilege_config(dev,
+			FLAG_ADDR_PRIV_WRITE_SELECT,
+			FLAG_ADDR_PRIV_DISABLE,
+			data->write_forbidden_regions[i],
+			data->write_forbidden_regions[i + 1]);
+		if (ret != 0)
+			LOG_ERR("fail to configure write address privilege table!");
+	}
 }
 
 void spim_scu_monitor_config(const struct device *dev, bool enable)
@@ -1054,12 +1077,12 @@ static int aspeed_spi_monitor_common_init(const struct device *dev)
 			    NULL);		\
 	/* handle child node */	\
 	static const struct aspeed_spim_config aspeed_spim_config[] = {	\
-		DT_FOREACH_CHILD(DT_DRV_INST(n), ASPEED_SPIM_DEV_CFG)};		\
+		DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n), ASPEED_SPIM_DEV_CFG)};		\
 	static struct aspeed_spim_data aspeed_spim_data[] = {			\
-		DT_FOREACH_CHILD(DT_DRV_INST(n), ASPEED_SPIM_DEV_DATA)};	\
+		DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n), ASPEED_SPIM_DEV_DATA)};	\
 		\
-	enum {DT_FOREACH_CHILD(DT_DRV_INST(n), SPIM_ENUM)};	\
-	DT_FOREACH_CHILD(DT_DRV_INST(n), ASPEED_SPIM_DT_DEFINE)
+	enum {DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n), SPIM_ENUM)};	\
+	DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n), ASPEED_SPIM_DT_DEFINE)
 
 
 DT_INST_FOREACH_STATUS_OKAY(ASPEED_SPI_MONITOR_COMMON_INIT)
