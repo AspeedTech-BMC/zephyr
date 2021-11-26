@@ -16,6 +16,7 @@ LOG_MODULE_REGISTER(spim_aspeed, CONFIG_SPI_LOG_LEVEL);
 #include "spi_context.h"
 #include <sys/sys_io.h>
 #include <sys/__assert.h>
+#include <sys/util.h>
 #include <drivers/misc/aspeed/pfr_aspeed.h>
 
 
@@ -89,8 +90,8 @@ struct cmd_table_info cmds_array[] = {
 #define SPIM_LOG_SZ				(0x0014)
 #define SPIM_LOG_PTR			(0x0018)
 #define SPIM_LOCK_REG			(0x007C)
-#define SPIM_VALID_LIST_BASE	(0x0080)
-#define SPIM_VALID_ADDR_FTR		(0x0100)
+#define SPIM_VALID_CMD_BASE		(0x0080)
+#define SPIM_ADDR_PRIV_TABLE_BASE	(0x0100)
 
 /* valid command table */
 #define SPIM_CMD_TABLE_NUM				32
@@ -113,7 +114,7 @@ struct cmd_table_info cmds_array[] = {
 #define SPIM_PRIV_WRITE_SELECT	0x57000000
 #define SPIM_PRIV_READ_SELECT	0x52000000
 #define SPIM_ADDR_PRIV_REG_NUN	512
-#define SPIM_ADDR_PRIV_BIT_NUN	(512 * 32)
+#define SPIM_ADDR_PRIV_BIT_NUN	(SPIM_ADDR_PRIV_REG_NUN * 32)
 
 /* PFR related control */
 #define SPIM_MODE_SCU_CTRL		(0x00f0)
@@ -145,6 +146,13 @@ struct aspeed_spim_common_config {
 
 struct aspeed_spim_common_data {
 	struct k_spinlock lock;
+};
+
+struct priv_reg_info {
+	uint32_t start_reg_off;
+	uint32_t start_bit_off;
+	uint32_t end_reg_off;
+	uint32_t end_bit_off;
 };
 
 static void acquire_device(const struct device *dev)
@@ -248,7 +256,7 @@ void spim_dump_valid_command_table(const struct device *dev)
 	acquire_device(dev);
 
 	for (i = 0; i < SPIM_CMD_TABLE_NUM; i++) {
-		reg_val = sys_read32(config->ctrl_base + SPIM_VALID_LIST_BASE + i * 4);
+		reg_val = sys_read32(config->ctrl_base + SPIM_VALID_CMD_BASE + i * 4);
 		if (reg_val == 0)
 			continue;
 		printk("[%s]idx %02d: 0x%08x\n", dev->name, i, reg_val);
@@ -256,7 +264,7 @@ void spim_dump_valid_command_table(const struct device *dev)
 
 	printk("\ncmd info:\n");
 	for (i = 0; i < SPIM_CMD_TABLE_NUM; i++) {
-		reg_val = sys_read32(config->ctrl_base + SPIM_VALID_LIST_BASE + i * 4);
+		reg_val = sys_read32(config->ctrl_base + SPIM_VALID_CMD_BASE + i * 4);
 		if (reg_val == 0)
 			continue;
 
@@ -336,7 +344,7 @@ void spim_valid_cmd_table_init(const struct device *dev,
 	const uint8_t cmd_list[], uint32_t cmd_num, uint32_t flag)
 {
 	const struct aspeed_spim_config *config = dev->config;
-	mm_reg_t table_base = config->ctrl_base + SPIM_VALID_LIST_BASE;
+	mm_reg_t table_base = config->ctrl_base + SPIM_VALID_CMD_BASE;
 	uint32_t i;
 	uint32_t reg_val;
 	uint32_t idx = 3;
@@ -382,7 +390,7 @@ static int spim_get_empty_valid_cmd_slot(const struct device *dev)
 	uint32_t reg_val;
 
 	for (idx = 4; idx < SPIM_CMD_TABLE_NUM; idx++) {
-		reg_val = sys_read32(config->ctrl_base + SPIM_VALID_LIST_BASE + idx * 4);
+		reg_val = sys_read32(config->ctrl_base + SPIM_VALID_CMD_BASE + idx * 4);
 		if (reg_val == 0)
 			return idx;
 	}
@@ -398,7 +406,7 @@ static int spim_get_valid_cmd_slot(const struct device *dev,
 	uint32_t reg_val;
 
 	for (idx = start_off; idx < SPIM_CMD_TABLE_NUM; idx++) {
-		reg_val = sys_read32(config->ctrl_base + SPIM_VALID_LIST_BASE + idx * 4);
+		reg_val = sys_read32(config->ctrl_base + SPIM_VALID_CMD_BASE + idx * 4);
 		if ((reg_val & SPIM_CMD_TABLE_CMD_MASK) == cmd)
 			return idx;
 	}
@@ -421,7 +429,7 @@ int spim_add_valid_command(const struct device *dev,
 {
 	int ret = 0;
 	const struct aspeed_spim_config *config = dev->config;
-	mm_reg_t table_base = config->ctrl_base + SPIM_VALID_LIST_BASE;
+	mm_reg_t table_base = config->ctrl_base + SPIM_VALID_CMD_BASE;
 	int idx;
 	uint32_t off;
 	uint32_t reg_val;
@@ -451,6 +459,8 @@ int spim_add_valid_command(const struct device *dev,
 				found = true;
 				goto end;
 			}
+		} else {
+			break;
 		}
 	}
 
@@ -510,7 +520,7 @@ int spim_remove_valid_command(const struct device *dev, uint8_t cmd)
 {
 	int ret = 0;
 	const struct aspeed_spim_config *config = dev->config;
-	mm_reg_t table_base = config->ctrl_base + SPIM_VALID_LIST_BASE;
+	mm_reg_t table_base = config->ctrl_base + SPIM_VALID_CMD_BASE;
 	int idx;
 	uint32_t off;
 	uint32_t reg_val;
@@ -539,6 +549,8 @@ int spim_remove_valid_command(const struct device *dev, uint8_t cmd)
 
 			off = idx + 1;
 			continue;
+		} else {
+			break;
 		}
 	}
 
@@ -564,7 +576,7 @@ int spim_lock_valid_command_table(const struct device *dev,
 {
 	int ret = 0;
 	const struct aspeed_spim_config *config = dev->config;
-	mm_reg_t table_base = config->ctrl_base + SPIM_VALID_LIST_BASE;
+	mm_reg_t table_base = config->ctrl_base + SPIM_VALID_CMD_BASE;
 	int idx;
 	uint32_t off;
 	uint32_t reg_val;
@@ -595,6 +607,8 @@ int spim_lock_valid_command_table(const struct device *dev,
 
 			off = idx + 1;
 			continue;
+		} else {
+			break;
 		}
 	}
 
@@ -609,27 +623,249 @@ end:
 	return ret;
 }
 
-void spim_rw_perm_init(const struct device *dev)
+#define SPIM_ABS_ADDR(reg_off, bit_off) (reg_off * 524288 + bit_off * 16384)
+
+static void spim_addr_priv_access_enable(
+	const struct device *dev, enum addr_priv_rw_select select)
 {
 	const struct aspeed_spim_config *config = dev->config;
 	uint32_t reg_val;
+
+	reg_val = sys_read32(config->ctrl_base);
+	reg_val &= 0x00FFFFFF;
+
+	switch (select) {
+	case FLAG_ADDR_PRIV_READ_SELECT:
+		reg_val |= SPIM_PRIV_READ_SELECT;
+		break;
+	case FLAG_ADDR_PRIV_WRITE_SELECT:
+		reg_val |= SPIM_PRIV_WRITE_SELECT;
+		break;
+	default:
+		break;
+	};
+
+	sys_write32(reg_val, config->ctrl_base);
+}
+
+static void spim_fobidden_area_parser(const struct device *dev,
+	struct priv_reg_info start, struct priv_reg_info *res,
+	uint32_t *num_forbidden_blk)
+{
+	const struct aspeed_spim_config *config = dev->config;
+	mm_reg_t priv_table_base = config->ctrl_base + SPIM_ADDR_PRIV_TABLE_BASE;
+	uint32_t reg_off = start.start_reg_off;
+	uint32_t bit_off = start.start_bit_off;
+	uint32_t reg_val;
+	uint32_t i;
+
+	/* init search result */
+	*num_forbidden_blk = 0;
+
+	while (reg_off < SPIM_ADDR_PRIV_REG_NUN) {
+		reg_val = sys_read32(priv_table_base + reg_off * 4);
+		reg_val >>= bit_off;
+		for (i = bit_off; i < 32; i++) {
+			if ((reg_val & 1) == 0) {
+				if (*num_forbidden_blk == 0) {
+					/* get the first forbidden block */
+					res->start_reg_off = reg_off;
+					res->start_bit_off = i;
+				}
+
+				(*num_forbidden_blk)++;
+			} else if ((reg_val & 1) == 1 && *num_forbidden_blk != 0) {
+				res->end_reg_off = reg_off;
+				res->end_bit_off = i;
+				return;
+			}
+
+			reg_val >>= 1;
+		}
+
+		bit_off = 0;
+		reg_off++;
+	}
+
+	res->end_reg_off = SPIM_ADDR_PRIV_REG_NUN - 1;
+	res->end_bit_off = 32;
+}
+
+void spim_dump_rw_addr_privilege_table(const struct device *dev)
+{
+	const struct aspeed_spim_config *config = dev->config;
+	uint32_t num_forbidden_blk = 0;
+	struct priv_reg_info start;
+	struct priv_reg_info res;
+	bool protect_en = false;
+	uint32_t rw;
+	bool lock;
+
+	acquire_device(dev);
+
+	for (rw = 0; rw < 2; rw++) {
+		if (rw == 0)
+			spim_addr_priv_access_enable(dev, FLAG_ADDR_PRIV_READ_SELECT);
+		else
+			spim_addr_priv_access_enable(dev, FLAG_ADDR_PRIV_WRITE_SELECT);
+
+		lock = false;
+		if (sys_read32(config->ctrl_base + SPIM_LOCK_REG) & BIT(31 - rw))
+			lock = true;
+
+		memset(&start, 0x0, sizeof(struct priv_reg_info));
+		memset(&res, 0x0, sizeof(struct priv_reg_info));
+		printk("%s protection regions:\n", rw == 0 ? "read" : "write");
+		printk("privilege table is %s\n", lock ? "locked" : "unlocked");
+		do {
+			spim_fobidden_area_parser(dev, start, &res, &num_forbidden_blk);
+			if (num_forbidden_blk != 0) {
+				protect_en = true;
+				printk("[0x%08x - 0x%08x]\n",
+					SPIM_ABS_ADDR(res.start_reg_off, res.start_bit_off),
+					SPIM_ABS_ADDR(res.end_reg_off, res.end_bit_off));
+				start.start_reg_off = res.end_reg_off;
+				start.start_bit_off = res.end_bit_off;
+			}
+		} while (num_forbidden_blk != 0);
+
+		if (!protect_en)
+			printk("all regions are %s!\n", rw == 0 ? "readable" : "writable");
+		printk("======END======\n\n");
+	}
+
+	release_device(dev);
+}
+
+static uint32_t spim_get_cross_block_num(uint32_t addr, uint32_t len)
+{
+	if (len == 0)
+		return 0;
+
+	if (addr % KB(16) != 0)
+		len += (addr % KB(16));
+
+	/* 16KB aligned */
+	len = (len + KB(16) - 1) / KB(16) * KB(16);
+
+	return len / KB(16);
+}
+
+int spim_address_privilege_config(const struct device *dev,
+	uint32_t rw_op, enum addr_priv_op priv_op, mm_reg_t addr, uint32_t len)
+{
+	const struct aspeed_spim_config *config = dev->config;
+	mm_reg_t priv_table_base = config->ctrl_base + SPIM_ADDR_PRIV_TABLE_BASE;
+	int ret = 0;
+	uint32_t reg_off;
+	uint32_t bit_off;
+	uint32_t total_bit_num;
+	uint32_t reg_val;
+
+	if (addr >= MB(256) || len == 0) {
+		LOG_WRN("invalid address or zero length!");
+		ret = -EINVAL;
+		goto end;
+	}
+
+	if (addr + len > MB(256)) {
+		LOG_WRN("invalid protected regions, change the protected length...");
+		len -= (addr + len - MB(256));
+		LOG_WRN("the new length: 0x%08x", len);
+	}
+
+	if ((addr % KB(16)) != 0 || (len % KB(16)) != 0) {
+		LOG_WRN("protected address(0x%08lx) and length(0x%08x) should be 16KB aligned",
+			addr, len);
+		LOG_WRN("stricter protection regions will be applied. (force 16KB aligned)");
+		/* protect more region in order to align 16KB boundary */
+		len = addr + len - (addr / KB(16)) * KB(16);
+		addr = (addr / KB(16)) * KB(16);
+		len = ((len + KB(16) - 1) / KB(16)) * KB(16);
+	}
+
+	reg_off = addr / KB(512); /* 512K per register; */
+	bit_off = (addr % KB(512)) / KB(16); /* (512K / 16K); */
+	total_bit_num = spim_get_cross_block_num(addr, len);
+	LOG_DBG("addr: 0x%08lx, len: 0x%08x\n", addr, len);
+	LOG_DBG("reg_off: 0x%08x, bit_off: 0x%08x, total_bit_num: 0x%08x\n",
+		reg_off, bit_off, total_bit_num);
+
+	acquire_device(dev);
+
+	/* check lock status */
+	if (rw_op == FLAG_ADDR_PRIV_READ_SELECT &&
+		(sys_read32(config->ctrl_base + SPIM_LOCK_REG) & BIT(31))) {
+		LOG_ERR("read address privilege table is locked!");
+		ret = -ECANCELED;
+		goto end;
+	} else if (rw_op == FLAG_ADDR_PRIV_WRITE_SELECT &&
+		(sys_read32(config->ctrl_base + SPIM_LOCK_REG) & BIT(30))) {
+		LOG_ERR("write address privilege table is locked!");
+		ret = -ECANCELED;
+		goto end;
+	}
+
+	/* enable access */
+	if (rw_op == FLAG_ADDR_PRIV_READ_SELECT)
+		spim_addr_priv_access_enable(dev, FLAG_ADDR_PRIV_READ_SELECT);
+	else
+		spim_addr_priv_access_enable(dev, FLAG_ADDR_PRIV_WRITE_SELECT);
+
+	do {
+		if (bit_off > 31) {
+			bit_off = 0;
+			reg_off++;
+		}
+
+		if (bit_off == 0 && total_bit_num >= 32) {
+			/* speed up for large area configuration */
+			if (priv_op == FLAG_ADDR_PRIV_ENABLE)
+				sys_write32(0xffffffff, priv_table_base + reg_off * 4);
+			else
+				sys_write32(0x0, priv_table_base + reg_off * 4);
+			reg_off++;
+			total_bit_num -= 32;
+		} else {
+			reg_val = sys_read32(priv_table_base + reg_off * 4);
+			if (priv_op == FLAG_ADDR_PRIV_ENABLE)
+				sys_write32(reg_val | BIT(bit_off), priv_table_base + reg_off * 4);
+			else
+				sys_write32(reg_val & (~BIT(bit_off)), priv_table_base + reg_off * 4);
+
+			LOG_DBG("reg: 0x%08lx, val: 0x%08x\n", priv_table_base + reg_off * 4,
+				sys_read32(priv_table_base + reg_off * 4));
+			bit_off++;
+			total_bit_num--;
+		}
+	} while (total_bit_num > 0);
+
+end:
+	release_device(dev);
+
+	return ret;
+}
+
+void spim_rw_perm_init(const struct device *dev)
+{
+	const struct aspeed_spim_config *config = dev->config;
 	uint32_t i;
 
 	acquire_device(dev);
 
-	/* select write privilege */
-	reg_val = sys_read32(config->ctrl_base);
-	reg_val = (reg_val & 0x00ffffff) | SPIM_PRIV_WRITE_SELECT;
-	sys_write32(reg_val, config->ctrl_base);
-	for (i = 0; i < SPIM_ADDR_PRIV_REG_NUN; i++)
-		sys_write32(0xffffffff, config->ctrl_base + SPIM_VALID_ADDR_FTR + i * 4);
-
 	/* select read privilege */
-	reg_val = sys_read32(config->ctrl_base);
-	reg_val = (reg_val & 0x00ffffff) | SPIM_PRIV_READ_SELECT;
-	sys_write32(reg_val, config->ctrl_base);
-	for (i = 0; i < SPIM_ADDR_PRIV_REG_NUN; i++)
-		sys_write32(0xffffffff, config->ctrl_base + SPIM_VALID_ADDR_FTR + i * 4);
+	spim_addr_priv_access_enable(dev, FLAG_ADDR_PRIV_READ_SELECT);
+	for (i = 0; i < SPIM_ADDR_PRIV_REG_NUN; i++) {
+		sys_write32(0xffffffff,
+			config->ctrl_base + SPIM_ADDR_PRIV_TABLE_BASE + i * 4);
+	}
+
+	/* select write privilege */
+	spim_addr_priv_access_enable(dev, FLAG_ADDR_PRIV_WRITE_SELECT);
+	for (i = 0; i < SPIM_ADDR_PRIV_REG_NUN; i++) {
+		sys_write32(0xffffffff,
+			config->ctrl_base + SPIM_ADDR_PRIV_TABLE_BASE + i * 4);
+	}
 
 	release_device(dev);
 }

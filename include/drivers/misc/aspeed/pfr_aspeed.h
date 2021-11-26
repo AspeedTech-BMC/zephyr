@@ -71,9 +71,23 @@ void spim_scu_ctrl_clear(const struct device *dev, uint32_t clear_bits);
 #define FLAG_CMD_TABLE_VALID_ONCE		0x00000001
 #define FLAG_CMD_TABLE_LOCK_ALL			0x00000002
 
+/* address privilege table control */
+enum addr_priv_rw_select {
+	FLAG_ADDR_PRIV_READ_SELECT,
+	FLAG_ADDR_PRIV_WRITE_SELECT
+};
+
+enum addr_priv_op {
+	FLAG_ADDR_PRIV_ENABLE,
+	FLAG_ADDR_PRIV_DISABLE
+};
+
 void spim_dump_valid_command_table(const struct device *dev);
 int spim_add_valid_command(const struct device *dev, uint8_t cmd, uint32_t flag);
 int spim_remove_valid_command(const struct device *dev, uint8_t cmd);
 int spim_lock_valid_command_table(const struct device *dev, uint8_t cmd, uint32_t flag);
+void spim_dump_rw_addr_privilege_table(const struct device *dev);
+int spim_address_privilege_config(const struct device *dev,
+	uint32_t rw_op, enum addr_priv_op priv_op, mm_reg_t addr, uint32_t len);
 
 #endif
