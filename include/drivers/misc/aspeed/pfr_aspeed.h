@@ -88,6 +88,11 @@ int spim_remove_valid_command(const struct device *dev, uint8_t cmd);
 int spim_lock_valid_command_table(const struct device *dev, uint8_t cmd, uint32_t flag);
 void spim_dump_rw_addr_privilege_table(const struct device *dev);
 int spim_address_privilege_config(const struct device *dev,
-	uint32_t rw_op, enum addr_priv_op priv_op, mm_reg_t addr, uint32_t len);
+	enum addr_priv_rw_select rw_select, enum addr_priv_op priv_op,
+	mm_reg_t addr, uint32_t len);
+
+void spim_lock_rw_privilege_table(const struct device *dev,
+	enum addr_priv_rw_select rw_select);
+void spim_lock_common(const struct device *dev);
 
 #endif

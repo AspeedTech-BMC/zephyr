@@ -116,6 +116,21 @@ struct cmd_table_info cmds_array[] = {
 #define SPIM_ADDR_PRIV_REG_NUN	512
 #define SPIM_ADDR_PRIV_BIT_NUN	(SPIM_ADDR_PRIV_REG_NUN * 32)
 
+/* lock register */
+/* SPIPF00 */
+#define SPIM_BLOCK_FIFO_CTRL_LOCK		BIT(22)
+#define SPIM_SW_RST_CTRL_LOCK			BIT(23)
+
+/* SPIPF7C */
+#define SPIM_CTRL_REG_LOCK				BIT(0)
+#define SPIM_INT_STS_REG_LOCK			BIT(1)
+#define SPIM_OVERSPEED_CTRL_REG_LOCK	BIT(2)
+#define SPIM_LOG_BASE_ADDR_REG_LOCK		BIT(4)
+#define SPIM_LOG_CTRL_REG_LOCK			BIT(5)
+#define SPIM_ADDR_PRIV_WRITE_TABLE_LOCK	BIT(30)
+#define SPIM_ADDR_PRIV_READ_TABLE_LOCK	BIT(31)
+
+
 /* PFR related control */
 #define SPIM_MODE_SCU_CTRL		(0x00f0)
 
@@ -752,7 +767,8 @@ static uint32_t spim_get_cross_block_num(uint32_t addr, uint32_t len)
 }
 
 int spim_address_privilege_config(const struct device *dev,
-	uint32_t rw_op, enum addr_priv_op priv_op, mm_reg_t addr, uint32_t len)
+	enum addr_priv_rw_select rw_select, enum addr_priv_op priv_op,
+	mm_reg_t addr, uint32_t len)
 {
 	const struct aspeed_spim_config *config = dev->config;
 	mm_reg_t priv_table_base = config->ctrl_base + SPIM_ADDR_PRIV_TABLE_BASE;
@@ -794,12 +810,12 @@ int spim_address_privilege_config(const struct device *dev,
 	acquire_device(dev);
 
 	/* check lock status */
-	if (rw_op == FLAG_ADDR_PRIV_READ_SELECT &&
+	if (rw_select == FLAG_ADDR_PRIV_READ_SELECT &&
 		(sys_read32(config->ctrl_base + SPIM_LOCK_REG) & BIT(31))) {
 		LOG_ERR("read address privilege table is locked!");
 		ret = -ECANCELED;
 		goto end;
-	} else if (rw_op == FLAG_ADDR_PRIV_WRITE_SELECT &&
+	} else if (rw_select == FLAG_ADDR_PRIV_WRITE_SELECT &&
 		(sys_read32(config->ctrl_base + SPIM_LOCK_REG) & BIT(30))) {
 		LOG_ERR("write address privilege table is locked!");
 		ret = -ECANCELED;
@@ -807,7 +823,7 @@ int spim_address_privilege_config(const struct device *dev,
 	}
 
 	/* enable access */
-	if (rw_op == FLAG_ADDR_PRIV_READ_SELECT)
+	if (rw_select == FLAG_ADDR_PRIV_READ_SELECT)
 		spim_addr_priv_access_enable(dev, FLAG_ADDR_PRIV_READ_SELECT);
 	else
 		spim_addr_priv_access_enable(dev, FLAG_ADDR_PRIV_WRITE_SELECT);
@@ -844,6 +860,61 @@ end:
 	release_device(dev);
 
 	return ret;
+}
+
+void spim_lock_rw_privilege_table(const struct device *dev,
+	enum addr_priv_rw_select rw_select)
+{
+	const struct aspeed_spim_config *config = dev->config;
+	uint32_t reg_val;
+
+	acquire_device(dev);
+
+	reg_val = sys_read32(config->ctrl_base + SPIM_LOCK_REG);
+
+	if (rw_select == FLAG_ADDR_PRIV_READ_SELECT) {
+		reg_val |= SPIM_ADDR_PRIV_READ_TABLE_LOCK;
+	}
+
+	if (rw_select == FLAG_ADDR_PRIV_WRITE_SELECT) {
+		reg_val |= SPIM_ADDR_PRIV_WRITE_TABLE_LOCK;
+	}
+
+	sys_write32(reg_val, config->ctrl_base + SPIM_LOCK_REG);
+
+	release_device(dev);
+}
+
+void spim_lock_common(const struct device *dev)
+{
+	const struct aspeed_spim_config *config = dev->config;
+	uint32_t reg_val;
+
+
+	spim_lock_rw_privilege_table(dev, FLAG_ADDR_PRIV_READ_SELECT);
+	spim_lock_rw_privilege_table(dev, FLAG_ADDR_PRIV_WRITE_SELECT);
+	spim_lock_valid_command_table(dev, 0, FLAG_CMD_TABLE_LOCK_ALL);
+
+	acquire_device(dev);
+
+	reg_val = sys_read32(config->ctrl_base);
+
+	reg_val |= SPIM_BLOCK_FIFO_CTRL_LOCK |
+				SPIM_SW_RST_CTRL_LOCK;
+
+	sys_write32(reg_val, config->ctrl_base);
+
+	reg_val = sys_read32(config->ctrl_base + SPIM_LOCK_REG);
+
+	reg_val |= SPIM_CTRL_REG_LOCK |
+				SPIM_INT_STS_REG_LOCK |
+				SPIM_OVERSPEED_CTRL_REG_LOCK |
+				SPIM_LOG_BASE_ADDR_REG_LOCK |
+				SPIM_LOG_CTRL_REG_LOCK;
+
+	sys_write32(reg_val, config->ctrl_base + SPIM_LOCK_REG);
+
+	release_device(dev);
 }
 
 void spim_rw_perm_init(const struct device *dev)
