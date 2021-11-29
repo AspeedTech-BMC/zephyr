@@ -179,4 +179,3 @@ void aspeed_print_sysrst_info(void)
 
 	aspeed_print_abr_wdt_mode();
 }
-
