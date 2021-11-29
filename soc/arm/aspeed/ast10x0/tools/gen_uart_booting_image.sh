@@ -1,4 +1,7 @@
 #!/bin/sh
+# Copyright (c) 2021 Aspeed Technology Inc.
+#
+# SPDX-License-Identifier: Apache-2.0
 
 print_usage() {
     echo "$0 <src_img> <dst_img>"
