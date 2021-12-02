@@ -258,5 +258,7 @@ int test_spi_host_read(void)
 	k_busy_wait(20000); /* 20ms */
 
 end:
+
+	free(op_buf);
 	return ret;
 }

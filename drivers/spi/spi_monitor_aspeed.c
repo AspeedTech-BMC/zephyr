@@ -18,6 +18,7 @@ LOG_MODULE_REGISTER(spim_aspeed, CONFIG_SPI_LOG_LEVEL);
 #include <sys/__assert.h>
 #include <sys/util.h>
 #include <drivers/misc/aspeed/pfr_aspeed.h>
+#include <soc.h>
 
 
 #define CMD_TABLE_VALUE(G, W, R, M, DAT_MODE, DUMMY, PROG_SZ, ADDR_LEN, ADDR_MODE, CMD) \
@@ -81,75 +82,98 @@ struct cmd_table_info cmds_array[] = {
 		.cmd_table_val = CMD_TABLE_VALUE(1, 0, 1, 0, 1, 0, 0, 0, 0, CMD_RDID)},
 };
 
+uint8_t spim_log_arr[SPIM_LOG_RAM_TOTAL_SIZE] NON_CACHED_BSS_ALIGN16;
+
 /* control register */
-#define SPIM_CTRL				(0x0000)
-#define SPIM_STATUS				(0x0004)
-#define SPIM_EAR				(0x0008)
-#define SPIM_FIFO				(0x000C)
-#define SPIM_LOG_BASE			(0x0010)
-#define SPIM_LOG_SZ				(0x0014)
-#define SPIM_LOG_PTR			(0x0018)
-#define SPIM_LOCK_REG			(0x007C)
-#define SPIM_VALID_CMD_BASE		(0x0080)
-#define SPIM_ADDR_PRIV_TABLE_BASE	(0x0100)
+#define SPIM_CTRL               (0x0000)
+#define SPIM_IRQ_CTRL           (0x0004)
+#define SPIM_EAR                (0x0008)
+#define SPIM_FIFO               (0x000C)
+#define SPIM_LOG_BASE           (0x0010)
+#define SPIM_LOG_SZ             (0x0014)
+#define SPIM_LOG_PTR            (0x0018)
+#define SPIM_LOCK_REG           (0x007C)
+#define SPIM_VALID_CMD_BASE     (0x0080)
+#define SPIM_ADDR_PRIV_TABLE_BASE    (0x0100)
 
 /* valid command table */
-#define SPIM_CMD_TABLE_NUM				32
-#define SPIM_CMD_TABLE_VALID_MASK		GENMASK(31, 30)
-#define SPIM_CMD_TABLE_VALID_ONCE_BIT	BIT(31)
-#define SPIM_CMD_TABLE_VALID_BIT		BIT(30)
-#define SPIM_CMD_TABLE_IS_GENERIC_CMD	BIT(29)
-#define SPIM_CMD_TABLE_IS_WRITE_CMD		BIT(28)
-#define SPIM_CMD_TABLE_IS_READ_CMD		BIT(27)
-#define SPIM_CMD_TABLE_IS_MEM_CMD		BIT(26)
-#define SPIM_CMD_TABLE_DATA_MODE_MASK	GENMASK(25, 24)
-#define SPIM_CMD_TABLE_LOCK_BIT			BIT(23)
-#define SPIM_CMD_TABLE_DUMMY_MASK		GENMASK(21, 16)
-#define SPIM_CMD_TABLE_PROGRAM_SZ_MASK	GENMASK(15, 13)
-#define SPIM_CMD_TABLE_ADDR_LEN_MASK	GENMASK(12, 10)
-#define SPIM_CMD_TABLE_ADDR_MODE_MASK	GENMASK(9, 8)
-#define SPIM_CMD_TABLE_CMD_MASK			GENMASK(7, 0)
+#define SPIM_CMD_TABLE_NUM              32
+#define SPIM_CMD_TABLE_VALID_MASK       GENMASK(31, 30)
+#define SPIM_CMD_TABLE_VALID_ONCE_BIT   BIT(31)
+#define SPIM_CMD_TABLE_VALID_BIT        BIT(30)
+#define SPIM_CMD_TABLE_IS_GENERIC_CMD   BIT(29)
+#define SPIM_CMD_TABLE_IS_WRITE_CMD     BIT(28)
+#define SPIM_CMD_TABLE_IS_READ_CMD      BIT(27)
+#define SPIM_CMD_TABLE_IS_MEM_CMD       BIT(26)
+#define SPIM_CMD_TABLE_DATA_MODE_MASK   GENMASK(25, 24)
+#define SPIM_CMD_TABLE_LOCK_BIT         BIT(23)
+#define SPIM_CMD_TABLE_DUMMY_MASK       GENMASK(21, 16)
+#define SPIM_CMD_TABLE_PROGRAM_SZ_MASK  GENMASK(15, 13)
+#define SPIM_CMD_TABLE_ADDR_LEN_MASK    GENMASK(12, 10)
+#define SPIM_CMD_TABLE_ADDR_MODE_MASK   GENMASK(9, 8)
+#define SPIM_CMD_TABLE_CMD_MASK         GENMASK(7, 0)
 
 /* valid address region configuration */
-#define SPIM_PRIV_WRITE_SELECT	0x57000000
-#define SPIM_PRIV_READ_SELECT	0x52000000
-#define SPIM_ADDR_PRIV_REG_NUN	512
-#define SPIM_ADDR_PRIV_BIT_NUN	(SPIM_ADDR_PRIV_REG_NUN * 32)
+#define SPIM_PRIV_WRITE_SELECT   0x57000000
+#define SPIM_PRIV_READ_SELECT    0x52000000
+#define SPIM_ADDR_PRIV_REG_NUN   512
+#define SPIM_ADDR_PRIV_BIT_NUN   (SPIM_ADDR_PRIV_REG_NUN * 32)
 
 /* lock register */
 /* SPIPF00 */
-#define SPIM_BLOCK_FIFO_CTRL_LOCK		BIT(22)
-#define SPIM_SW_RST_CTRL_LOCK			BIT(23)
+#define SPIM_BLOCK_FIFO_CTRL_LOCK       BIT(22)
+#define SPIM_SW_RST_CTRL_LOCK           BIT(23)
 
 /* SPIPF7C */
-#define SPIM_CTRL_REG_LOCK				BIT(0)
-#define SPIM_INT_STS_REG_LOCK			BIT(1)
-#define SPIM_OVERSPEED_CTRL_REG_LOCK	BIT(2)
-#define SPIM_LOG_BASE_ADDR_REG_LOCK		BIT(4)
-#define SPIM_LOG_CTRL_REG_LOCK			BIT(5)
-#define SPIM_ADDR_PRIV_WRITE_TABLE_LOCK	BIT(30)
-#define SPIM_ADDR_PRIV_READ_TABLE_LOCK	BIT(31)
+#define SPIM_CTRL_REG_LOCK              BIT(0)
+#define SPIM_INT_STS_REG_LOCK           BIT(1)
+#define SPIM_OVERSPEED_CTRL_REG_LOCK    BIT(2)
+#define SPIM_LOG_BASE_ADDR_REG_LOCK     BIT(4)
+#define SPIM_LOG_CTRL_REG_LOCK          BIT(5)
+#define SPIM_ADDR_PRIV_WRITE_TABLE_LOCK BIT(30)
+#define SPIM_ADDR_PRIV_READ_TABLE_LOCK  BIT(31)
+
+/* irq related bit */
+#define SPIM_CMD_BLOCK_IRQ              BIT(0)
+#define SPIM_WRITE_BLOCK_IRQ            BIT(1)
+#define SPIM_READ_BLOCK_IRQ             BIT(2)
+#define SPIM_IRQ_STS_MASK               GENMASK(2, 0)
+#define SPIM_CMD_BLOCK_IRQ_EN           BIT(16)
+#define SPIM_WRITE_BLOCK_IRQ_EN         BIT(17)
+#define SPIM_READ_BLOCK_IRQ_EN          BIT(18)
+
+/* spi monitor log control */
+#define SPIM_BLOCK_INFO_EN              BIT(31)
 
 
 /* PFR related control */
-#define SPIM_MODE_SCU_CTRL		(0x00f0)
+#define SPIM_MODE_SCU_CTRL              (0x00f0)
+
+struct spim_log_info {
+	mem_addr_t log_ram_addr;
+	uint32_t log_ram_sz;
+	uint32_t pre_off;
+	uint32_t cur_off;
+};
 
 struct aspeed_spim_data {
-	struct k_sem sem;
+	const struct device *dev;
+	struct k_sem sem_spim; /* protect most control registers */
+	struct k_spinlock irq_ctrl_lock; /* protect ISR content */
 	uint8_t valid_cmd_list[SPIM_CMD_TABLE_NUM];
 	uint32_t valid_cmd_num;
 	uint32_t read_forbidden_regions[32];
 	uint32_t read_forbidden_region_num;
 	uint32_t write_forbidden_regions[32];
 	uint32_t write_forbidden_region_num;
+	struct k_work log_work;
+	struct spim_log_info log_info;
 };
 
 struct aspeed_spim_config {
 	mm_reg_t ctrl_base;
 	uint32_t irq_num;
 	uint32_t irq_priority;
-	uint32_t log_ram_addr;
-	uint32_t log_max_len;
 	uint32_t ctrl_idx;
 	const struct device *parent;
 	bool multi_passthrough;
@@ -160,7 +184,10 @@ struct aspeed_spim_common_config {
 };
 
 struct aspeed_spim_common_data {
-	struct k_spinlock lock;
+	struct k_spinlock scu_lock; /* protect SCU0F0 */
+
+	struct k_sem sem_log_op; /* protect log info */
+	uint32_t cur_log_sz;
 };
 
 struct priv_reg_info {
@@ -170,19 +197,39 @@ struct priv_reg_info {
 	uint32_t end_bit_off;
 };
 
-static void acquire_device(const struct device *dev)
+static void acquire_spim_device(const struct device *dev)
 {
 	if (IS_ENABLED(CONFIG_MULTITHREADING)) {
 		struct aspeed_spim_data *const data = dev->data;
-		k_sem_take(&data->sem, K_FOREVER);
+
+		k_sem_take(&data->sem_spim, K_FOREVER);
 	}
 }
 
-static void release_device(const struct device *dev)
+static void release_spim_device(const struct device *dev)
 {
 	if (IS_ENABLED(CONFIG_MULTITHREADING)) {
 		struct aspeed_spim_data *const data = dev->data;
-		k_sem_give(&data->sem);
+
+		k_sem_give(&data->sem_spim);
+	}
+}
+
+static void acquire_log_op(const struct device *dev)
+{
+	if (IS_ENABLED(CONFIG_MULTITHREADING)) {
+		struct aspeed_spim_common_data *const data = dev->data;
+
+		k_sem_take(&data->sem_log_op, K_FOREVER);
+	}
+}
+
+static void release_log_op(const struct device *dev)
+{
+	if (IS_ENABLED(CONFIG_MULTITHREADING)) {
+		struct aspeed_spim_common_data *const data = dev->data;
+
+		k_sem_give(&data->sem_log_op);
 	}
 }
 
@@ -193,14 +240,14 @@ void spim_scu_ctrl_set(const struct device *dev, uint32_t mask, uint32_t val)
 	mm_reg_t spim_scu_ctrl = config->scu_base + SPIM_MODE_SCU_CTRL;
 	uint32_t reg_val;
 	/* Avoid SCU0F0 being accessed by more than a thread */
-	k_spinlock_key_t key = k_spin_lock(&data->lock);
+	k_spinlock_key_t key = k_spin_lock(&data->scu_lock);
 
 	reg_val = sys_read32(spim_scu_ctrl);
 	reg_val &= ~(mask);
 	reg_val |= val;
 	sys_write32(reg_val, spim_scu_ctrl);
 
-	k_spin_unlock(&data->lock, key);
+	k_spin_unlock(&data->scu_lock, key);
 }
 
 void spim_scu_ctrl_clear(const struct device *dev, uint32_t clear_bits)
@@ -209,13 +256,13 @@ void spim_scu_ctrl_clear(const struct device *dev, uint32_t clear_bits)
 	struct aspeed_spim_common_data *const data = dev->data;
 	mm_reg_t spim_scu_ctrl = config->scu_base + SPIM_MODE_SCU_CTRL;
 	uint32_t reg_val;
-	k_spinlock_key_t key = k_spin_lock(&data->lock);
+	k_spinlock_key_t key = k_spin_lock(&data->scu_lock);
 
 	reg_val = sys_read32(spim_scu_ctrl);
 	reg_val &= ~(clear_bits);
 	sys_write32(reg_val, spim_scu_ctrl);
 
-	k_spin_unlock(&data->lock, key);
+	k_spin_unlock(&data->scu_lock, key);
 }
 
 void spim_scu_passthrough_mode(const struct device *dev,
@@ -239,7 +286,7 @@ void spim_ctrl_passthrough_mode(const struct device *dev,
 	const struct aspeed_spim_config *config = dev->config;
 	uint32_t ctrl_reg_val;
 
-	acquire_device(dev);
+	acquire_spim_device(dev);
 
 	ctrl_reg_val = sys_read32(config->ctrl_base);
 
@@ -253,7 +300,7 @@ void spim_ctrl_passthrough_mode(const struct device *dev,
 
 	sys_write32(ctrl_reg_val, config->ctrl_base);
 
-	release_device(dev);
+	release_spim_device(dev);
 }
 
 /* dump command information recored in valid command table */
@@ -268,7 +315,7 @@ void spim_dump_valid_command_table(const struct device *dev)
 	uint8_t cmd;
 	uint32_t prog_sz;
 
-	acquire_device(dev);
+	acquire_spim_device(dev);
 
 	for (i = 0; i < SPIM_CMD_TABLE_NUM; i++) {
 		reg_val = sys_read32(config->ctrl_base + SPIM_VALID_CMD_BASE + i * 4);
@@ -339,7 +386,7 @@ void spim_dump_valid_command_table(const struct device *dev)
 		printk("\n");
 	}
 
-	release_device(dev);
+	release_spim_device(dev);
 }
 
 uint32_t spim_get_cmd_table_val(uint8_t cmd)
@@ -364,7 +411,7 @@ void spim_valid_cmd_table_init(const struct device *dev,
 	uint32_t reg_val;
 	uint32_t idx = 3;
 
-	acquire_device(dev);
+	acquire_spim_device(dev);
 
 	for (i = 0; i < cmd_num; i++) {
 		reg_val = spim_get_cmd_table_val(cmd_list[i]);
@@ -395,7 +442,7 @@ void spim_valid_cmd_table_init(const struct device *dev,
 		sys_write32(reg_val, table_base + idx * 4);
 	}
 
-	release_device(dev);
+	release_spim_device(dev);
 }
 
 static int spim_get_empty_valid_cmd_slot(const struct device *dev)
@@ -450,7 +497,7 @@ int spim_add_valid_command(const struct device *dev,
 	uint32_t reg_val;
 	bool found = false;
 
-	acquire_device(dev);
+	acquire_spim_device(dev);
 
 	/* check whether the command is already recorded in valid cmd table */
 	for (off = 0; off < SPIM_CMD_TABLE_NUM; off++) {
@@ -523,7 +570,7 @@ int spim_add_valid_command(const struct device *dev,
 	sys_write32(reg_val, table_base + idx * 4);
 
 end:
-	release_device(dev);
+	release_spim_device(dev);
 
 	return ret;
 }
@@ -541,7 +588,7 @@ int spim_remove_valid_command(const struct device *dev, uint8_t cmd)
 	uint32_t reg_val;
 	bool found = false;
 
-	acquire_device(dev);
+	acquire_spim_device(dev);
 
 	/* check whether the command is already recorded in valid cmd table */
 	for (off = 0; off < SPIM_CMD_TABLE_NUM; off++) {
@@ -576,7 +623,7 @@ int spim_remove_valid_command(const struct device *dev, uint8_t cmd)
 	}
 
 end:
-	release_device(dev);
+	release_spim_device(dev);
 
 	return ret;
 }
@@ -597,7 +644,7 @@ int spim_lock_valid_command_table(const struct device *dev,
 	uint32_t reg_val;
 	bool found = false;
 
-	acquire_device(dev);
+	acquire_spim_device(dev);
 
 	if ((flag & FLAG_CMD_TABLE_LOCK_ALL) != 0) {
 		for (idx = 0; idx < SPIM_CMD_TABLE_NUM; idx++) {
@@ -634,7 +681,7 @@ int spim_lock_valid_command_table(const struct device *dev,
 	}
 
 end:
-	release_device(dev);
+	release_spim_device(dev);
 	return ret;
 }
 
@@ -716,7 +763,7 @@ void spim_dump_rw_addr_privilege_table(const struct device *dev)
 	uint32_t rw;
 	bool lock;
 
-	acquire_device(dev);
+	acquire_spim_device(dev);
 
 	for (rw = 0; rw < 2; rw++) {
 		if (rw == 0)
@@ -749,7 +796,7 @@ void spim_dump_rw_addr_privilege_table(const struct device *dev)
 		printk("======END======\n\n");
 	}
 
-	release_device(dev);
+	release_spim_device(dev);
 }
 
 static uint32_t spim_get_cross_block_num(uint32_t addr, uint32_t len)
@@ -807,7 +854,7 @@ int spim_address_privilege_config(const struct device *dev,
 	LOG_DBG("reg_off: 0x%08x, bit_off: 0x%08x, total_bit_num: 0x%08x\n",
 		reg_off, bit_off, total_bit_num);
 
-	acquire_device(dev);
+	acquire_spim_device(dev);
 
 	/* check lock status */
 	if (rw_select == FLAG_ADDR_PRIV_READ_SELECT &&
@@ -857,7 +904,7 @@ int spim_address_privilege_config(const struct device *dev,
 	} while (total_bit_num > 0);
 
 end:
-	release_device(dev);
+	release_spim_device(dev);
 
 	return ret;
 }
@@ -868,7 +915,7 @@ void spim_lock_rw_privilege_table(const struct device *dev,
 	const struct aspeed_spim_config *config = dev->config;
 	uint32_t reg_val;
 
-	acquire_device(dev);
+	acquire_spim_device(dev);
 
 	reg_val = sys_read32(config->ctrl_base + SPIM_LOCK_REG);
 
@@ -882,7 +929,7 @@ void spim_lock_rw_privilege_table(const struct device *dev,
 
 	sys_write32(reg_val, config->ctrl_base + SPIM_LOCK_REG);
 
-	release_device(dev);
+	release_spim_device(dev);
 }
 
 void spim_lock_common(const struct device *dev)
@@ -895,7 +942,7 @@ void spim_lock_common(const struct device *dev)
 	spim_lock_rw_privilege_table(dev, FLAG_ADDR_PRIV_WRITE_SELECT);
 	spim_lock_valid_command_table(dev, 0, FLAG_CMD_TABLE_LOCK_ALL);
 
-	acquire_device(dev);
+	acquire_spim_device(dev);
 
 	reg_val = sys_read32(config->ctrl_base);
 
@@ -914,7 +961,7 @@ void spim_lock_common(const struct device *dev)
 
 	sys_write32(reg_val, config->ctrl_base + SPIM_LOCK_REG);
 
-	release_device(dev);
+	release_spim_device(dev);
 }
 
 void spim_rw_perm_init(const struct device *dev)
@@ -981,7 +1028,7 @@ void spim_ctrl_monitor_config(const struct device *dev, bool enable)
 	const struct aspeed_spim_config *config = dev->config;
 	uint32_t reg_val;
 
-	acquire_device(dev);
+	acquire_spim_device(dev);
 
 	reg_val = sys_read32(config->ctrl_base);
 	if (enable)
@@ -991,7 +1038,7 @@ void spim_ctrl_monitor_config(const struct device *dev, bool enable)
 
 	sys_write32(reg_val, config->ctrl_base);
 
-	release_device(dev);
+	release_spim_device(dev);
 }
 
 void spim_monitor_enable(const struct device *dev, bool enable)
@@ -999,13 +1046,135 @@ void spim_monitor_enable(const struct device *dev, bool enable)
 	spim_ctrl_monitor_config(dev, enable);
 }
 
+void spim_log_parser(const struct device *dev, uint32_t idx, uint32_t log_val)
+{
+	switch ((log_val & 0x000c0000) >> 18) {
+	case 0x0:
+		/* block command */
+		printk("[%s][b][%03d][cmd] %02xh\n",
+				dev->name, idx, log_val & 0xFF);
+		break;
+
+	case 0x1:
+		/* block write command */
+		printk("[%s][b][%03d][w_addr] 0x%08x\n",
+				dev->name, idx, (log_val & 0x3FFFF) << 14);
+		break;
+
+	case 0x2:
+		/* block read command */
+		printk("[%s][b][%03d][r_addr] 0x%08x\n",
+				dev->name, idx, (log_val & 0x3FFFF) << 14);
+		break;
+
+	default:
+		LOG_ERR("[%s][%03d]invalid ctx: 0x%08x", dev->name, idx, log_val);
+	}
+}
+
+void spim_log_work(struct k_work *item)
+{
+	struct aspeed_spim_data *const data =
+		CONTAINER_OF(item, struct aspeed_spim_data, log_work);
+	const struct device *dev = data->dev;
+	const struct aspeed_spim_config *config = dev->config;
+	uint32_t i;
+
+	acquire_log_op(config->parent);
+
+	data->log_info.cur_off = sys_read32(config->ctrl_base + SPIM_LOG_PTR);
+	if (data->log_info.cur_off < data->log_info.pre_off) {
+		for (i = data->log_info.pre_off; i < data->log_info.log_ram_sz / 4; i++) {
+			spim_log_parser(dev, i,
+				sys_read32(data->log_info.log_ram_addr + i * 4));
+		}
+
+		data->log_info.pre_off = 0;
+	}
+
+	for (i = data->log_info.pre_off; i < data->log_info.cur_off; i++) {
+		spim_log_parser(dev, i, sys_read32(data->log_info.log_ram_addr + i * 4));
+	}
+
+	data->log_info.pre_off = data->log_info.cur_off;
+
+	release_log_op(config->parent);
+}
+
+void spim_isr(const void *param)
+{
+	const struct device *dev = param;
+	const struct aspeed_spim_config *config = dev->config;
+	struct aspeed_spim_data *const data = dev->data;
+	uint32_t reg_val;
+	uint32_t sts_backup;
+	k_spinlock_key_t key = k_spin_lock(&data->irq_ctrl_lock);
+
+	k_work_submit(&data->log_work);
+	/* ack */
+	reg_val = sys_read32(config->ctrl_base + SPIM_IRQ_CTRL);
+	sts_backup = reg_val & SPIM_IRQ_STS_MASK;
+	sys_write32(reg_val | SPIM_IRQ_STS_MASK, config->ctrl_base + SPIM_IRQ_CTRL);
+
+	k_spin_unlock(&data->irq_ctrl_lock, key);
+}
+
+void spim_irq_enable(const struct device *dev)
+{
+	const struct aspeed_spim_config *config = dev->config;
+	struct aspeed_spim_data *const data = dev->data;
+	uint32_t reg_val;
+	k_spinlock_key_t key = k_spin_lock(&data->irq_ctrl_lock);
+
+	reg_val = sys_read32(config->ctrl_base + SPIM_IRQ_CTRL);
+	reg_val |= (SPIM_CMD_BLOCK_IRQ_EN | SPIM_WRITE_BLOCK_IRQ_EN |
+				SPIM_READ_BLOCK_IRQ_EN);
+	sys_write32(reg_val, config->ctrl_base + SPIM_IRQ_CTRL);
+
+	k_spin_unlock(&data->irq_ctrl_lock, key);
+}
+
+static int spim_abnormal_log_init(const struct device *dev)
+{
+	int ret = 0;
+	const struct aspeed_spim_config *config = dev->config;
+	struct aspeed_spim_data *const data = dev->data;
+	const struct device *parent_dev = config->parent;
+	struct aspeed_spim_common_data *const parent_data = parent_dev->data;
+	uint32_t cur_log_sz;
+
+	acquire_log_op(config->parent);
+	data->log_info.log_ram_addr = (mem_addr_t)(&spim_log_arr[0] + parent_data->cur_log_sz);
+	parent_data->cur_log_sz += data->log_info.log_ram_sz;
+	cur_log_sz = parent_data->cur_log_sz;
+	release_log_op(config->parent);
+
+	if (cur_log_sz > SPIM_LOG_RAM_TOTAL_SIZE) {
+		LOG_ERR("[%s]invalid log size on ram", dev->name);
+		ret = -ENOBUFS;
+		goto end;
+	}
+
+	acquire_spim_device(dev);
+	sys_write32(data->log_info.log_ram_addr, config->ctrl_base + SPIM_LOG_BASE);
+	sys_write32(data->log_info.log_ram_sz | SPIM_BLOCK_INFO_EN,
+			config->ctrl_base + SPIM_LOG_SZ);
+	data->log_info.pre_off = 0;
+	data->log_info.cur_off = 0;
+	release_spim_device(dev);
+
+end:
+	return ret;
+}
+
 static int aspeed_spi_monitor_init(const struct device *dev)
 {
 	const struct aspeed_spim_config *config = dev->config;
 	struct aspeed_spim_data *const data = dev->data;
+	int ret = 0;
 
 	if (IS_ENABLED(CONFIG_MULTITHREADING))
-		k_sem_init(&data->sem, 1, 1);
+		k_sem_init(&data->sem_spim, 1, 1);
 
 	/* always enable internal passthrough configuration */
 	spim_scu_passthrough_mode(dev, 0, true);
@@ -1023,12 +1192,32 @@ static int aspeed_spi_monitor_init(const struct device *dev)
 	spim_scu_monitor_config(dev, true);
 	spim_ctrl_monitor_config(dev, true);
 
+	/* log info init */
+	ret = spim_abnormal_log_init(dev);
+	if (ret != 0)
+		return ret;
+
+	k_work_init(&data->log_work, spim_log_work);
+
+	/* irq init */
+	irq_connect_dynamic(config->irq_num, config->irq_priority,
+		spim_isr, dev, 0);
+	irq_enable(config->irq_num);
+	spim_irq_enable(dev);
+
 	return 0;
 }
 
 static int aspeed_spi_monitor_common_init(const struct device *dev)
 {
-	/* nothing to do currently */
+	struct aspeed_spim_common_data *const data = dev->data;
+
+	data->cur_log_sz = 0;
+	if (IS_ENABLED(CONFIG_MULTITHREADING))
+		k_sem_init(&data->sem_log_op, 1, 1);
+
+	memset(spim_log_arr, 0x0, SPIM_LOG_RAM_TOTAL_SIZE);
+
 	return 0;
 }
 
@@ -1038,8 +1227,6 @@ static int aspeed_spi_monitor_common_init(const struct device *dev)
 		.ctrl_base = DT_REG_ADDR(DT_PARENT(node_id)) + 0x1000 * (DT_REG_ADDR(node_id) - 1),	\
 		.irq_num = DT_IRQN(node_id),		\
 		.irq_priority = DT_IRQ(node_id, priority),	\
-		.log_ram_addr = DT_PROP_BY_IDX(node_id, log_ram_info, 0), \
-		.log_max_len = DT_PROP_BY_IDX(node_id, log_ram_info, 1),	\
 		.ctrl_idx = DT_REG_ADDR(node_id),	\
 		.parent = DEVICE_DT_GET(DT_PARENT(node_id)),	\
 		.multi_passthrough = DT_PROP(node_id, multi_passthrough),	\
@@ -1052,6 +1239,8 @@ static int aspeed_spi_monitor_common_init(const struct device *dev)
 		.read_forbidden_region_num = DT_PROP_LEN(node_id, read_forbidden_regions),	\
 		.write_forbidden_regions = DT_PROP(node_id, write_forbidden_regions),	\
 		.write_forbidden_region_num = DT_PROP_LEN(node_id, write_forbidden_regions),	\
+		.log_info.log_ram_sz = DT_PROP_OR(node_id, log_ram_size, 0x200),	\
+		.dev = DEVICE_DT_GET(node_id),	\
 },
 
 /* child node define */

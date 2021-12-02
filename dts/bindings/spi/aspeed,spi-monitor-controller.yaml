@@ -70,15 +70,12 @@ child-binding:
         ...
         start_address_N length_N>;
 
-    log-ram-info:
-      type: array
-      required: true
+    log-ram-size:
+      type: int
+      required: false
       description: |
-        The ram start address and the length
-        for recording log if there is an invalid
+        The ram size for recording log if there is an invalid
         SPI flash access and the related interrupt occurs.
-
-        <ram_start_address length>;
 
     multi-passthrough:
       type: boolean
