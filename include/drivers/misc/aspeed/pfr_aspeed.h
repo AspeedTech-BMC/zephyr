@@ -56,15 +56,24 @@ struct cmd_table_info {
 	uint32_t cmd_table_val;
 };
 
-enum passthrough_mode {
+enum spim_passthrough_mode {
 	SPIM_SINGLE_PASSTHROUGH,
 	SPIM_MULTI_PASSTHROUGH,
+};
+
+enum spim_ext_mux_mode {
+	SPIM_MASTER_MODE,
+	SPIM_MONITOR_MODE,
 };
 
 void pfr_bmc_rst_enable_ctrl(bool enable);
 void pfr_bmc_rst_flash(uint32_t flash_idx);
 void spim_scu_ctrl_set(const struct device *dev, uint32_t mask, uint32_t val);
 void spim_scu_ctrl_clear(const struct device *dev, uint32_t clear_bits);
+void spim_ext_mux_config(const struct device *dev,
+	enum spim_ext_mux_mode mode);
+void spim_passthrough_enable(const struct device *dev,
+	enum spim_passthrough_mode mode, bool passthrough_en);
 
 
 /* valid command table control */

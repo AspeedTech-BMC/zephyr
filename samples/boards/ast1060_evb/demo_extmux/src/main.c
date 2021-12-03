@@ -12,10 +12,10 @@
 void main(void)
 {
 	int ret;
+	const struct device *spim_dev1 = NULL;
 	const struct device *spim_dev = NULL;
 	uint32_t i;
-	static char *spim_devs[4] = {
-		"spi_m1",
+	static char *spim_devs[3] = {
 		"spi_m2",
 		"spi_m3",
 		"spi_m4"
@@ -27,9 +27,18 @@ void main(void)
 	pfr_bmc_rst_enable_ctrl(true);
 	pfr_bmc_rst_flash(1);
 
+	spim_dev1 = device_get_binding("spi_m1");
+	if (!spim_dev1) {
+		printk("[demo_err]: cannot get device, %s.\n", "spi_m1");
+		return;
+	}
 
-	/* disable passthrough mode for SPI monitors */
-	for (i = 0; i < 4; i++) {
+	/* config SPI1 CS0 as master */
+	spim_passthrough_enable(spim_dev1, 0, false);
+	spim_ext_mux_config(spim_dev1, SPIM_MASTER_MODE);
+
+	/* disable passthrough mode for other SPI monitors */
+	for (i = 0; i < 3; i++) {
 		spim_dev = device_get_binding(spim_devs[i]);
 		if (!spim_dev) {
 			printk("[demo_err]: cannot get device, %s.\n", spim_devs[i]);
@@ -44,8 +53,11 @@ void main(void)
 	if (ret)
 		return;
 
-	/* set up passthrough mode for SPI monitors */
-	for (i = 0; i < 4; i++) {
+	/* config spim1 as SPI monitor */
+	spim_ext_mux_config(spim_dev1, SPIM_MONITOR_MODE);
+
+	/* set up passthrough mode for other SPI monitors */
+	for (i = 0; i < 3; i++) {
 		spim_dev = device_get_binding(spim_devs[i]);
 		if (!spim_dev) {
 			printk("[demo_err]: cannot get device, %s.\n", spim_devs[i]);

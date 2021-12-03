@@ -176,7 +176,6 @@ struct aspeed_spim_config {
 	uint32_t irq_priority;
 	uint32_t ctrl_idx;
 	const struct device *parent;
-	bool multi_passthrough;
 };
 
 struct aspeed_spim_common_config {
@@ -266,7 +265,7 @@ void spim_scu_ctrl_clear(const struct device *dev, uint32_t clear_bits)
 }
 
 void spim_scu_passthrough_mode(const struct device *dev,
-	uint32_t passthrough_mode, bool passthrough_en)
+	enum spim_passthrough_mode mode, bool passthrough_en)
 {
 	const struct aspeed_spim_config *config = dev->config;
 
@@ -277,11 +276,11 @@ void spim_scu_passthrough_mode(const struct device *dev,
 		spim_scu_ctrl_clear(config->parent, BIT(config->ctrl_idx - 1) << 4);
 	}
 
-	ARG_UNUSED(passthrough_mode);
+	ARG_UNUSED(mode);
 }
 
-void spim_ctrl_passthrough_mode(const struct device *dev,
-	uint32_t passthrough_mode, bool passthrough_en)
+void spim_passthrough_enable(const struct device *dev,
+	enum spim_passthrough_mode mode, bool passthrough_en)
 {
 	const struct aspeed_spim_config *config = dev->config;
 	uint32_t ctrl_reg_val;
@@ -292,7 +291,7 @@ void spim_ctrl_passthrough_mode(const struct device *dev,
 
 	ctrl_reg_val &= ~0x00000003;
 	if (passthrough_en) {
-		if (passthrough_mode == SPIM_MULTI_PASSTHROUGH)
+		if (mode == SPIM_MULTI_PASSTHROUGH)
 			ctrl_reg_val |= BIT(1);
 		else
 			ctrl_reg_val |= BIT(0);
@@ -301,6 +300,19 @@ void spim_ctrl_passthrough_mode(const struct device *dev,
 	sys_write32(ctrl_reg_val, config->ctrl_base);
 
 	release_spim_device(dev);
+}
+
+void spim_ext_mux_config(const struct device *dev,
+	enum spim_ext_mux_mode mode)
+{
+	const struct aspeed_spim_config *config = dev->config;
+
+	if (mode == SPIM_MONITOR_MODE) {
+		spim_scu_ctrl_set(config->parent, BIT(config->ctrl_idx - 1) << 12,
+					BIT(config->ctrl_idx - 1) << 12);
+	} else {
+		spim_scu_ctrl_clear(config->parent, BIT(config->ctrl_idx - 1) << 12);
+	}
 }
 
 /* dump command information recored in valid command table */
@@ -1043,6 +1055,7 @@ void spim_ctrl_monitor_config(const struct device *dev, bool enable)
 
 void spim_monitor_enable(const struct device *dev, bool enable)
 {
+	spim_scu_monitor_config(dev, enable);
 	spim_ctrl_monitor_config(dev, enable);
 }
 
@@ -1179,18 +1192,9 @@ static int aspeed_spi_monitor_init(const struct device *dev)
 	/* always enable internal passthrough configuration */
 	spim_scu_passthrough_mode(dev, 0, true);
 
-	if (config->multi_passthrough)
-		spim_ctrl_passthrough_mode(dev, SPIM_MULTI_PASSTHROUGH, true);
-	else
-		spim_ctrl_passthrough_mode(dev, SPIM_SINGLE_PASSTHROUGH, true);
-
 	spim_valid_cmd_table_init(dev, data->valid_cmd_list, data->valid_cmd_num, 0);
-
 	spim_rw_perm_init(dev);
-
-	/* enable filter */
-	spim_scu_monitor_config(dev, true);
-	spim_ctrl_monitor_config(dev, true);
+	spim_monitor_enable(dev, true);
 
 	/* log info init */
 	ret = spim_abnormal_log_init(dev);
@@ -1229,7 +1233,6 @@ static int aspeed_spi_monitor_common_init(const struct device *dev)
 		.irq_priority = DT_IRQ(node_id, priority),	\
 		.ctrl_idx = DT_REG_ADDR(node_id),	\
 		.parent = DEVICE_DT_GET(DT_PARENT(node_id)),	\
-		.multi_passthrough = DT_PROP(node_id, multi_passthrough),	\
 },
 
 #define ASPEED_SPIM_DEV_DATA(node_id) {	\

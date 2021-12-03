@@ -77,12 +77,5 @@ child-binding:
         The ram size for recording log if there is an invalid
         SPI flash access and the related interrupt occurs.
 
-    multi-passthrough:
-      type: boolean
-      required: false
-      description: |
-        Enable multiple passthrough, otherwise, single
-        passthrough mode is used by default.
-
     pinctrl-0:
       required: true

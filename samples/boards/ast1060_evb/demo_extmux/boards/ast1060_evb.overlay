@@ -193,10 +193,6 @@
 	status = "okay";
 };
 
-&spim0 {
-	status = "okay";
-};
-
 &fmc {
 	status = "okay";
 };
@@ -213,14 +209,23 @@
 	spi-max-frequency = <50000000>;
 };
 
+&spi1 {
+	num-cs = <1>;
+	status = "okay";
+};
+
+&spi1_cs0 {
+	spi-max-buswidth = <4>;
+	spi-max-frequency = <50000000>;
+	status = "okay";
+};
 
 /* Use AST1060 SPI2 as the internal SPI master to
  * to access the SPI flashes connected to SPI monitors
  * Here,
- * "SPI2_CS0" used to access flash connected to SPI_Monitor_1,
- * "SPI2_CS1" is used to access flash connected to SPI_Monitor_2,
- * "SPI2_CS2" is used to access flash connected to SPI_Monitor_3,
- * "SPI2_CS3" is used to access flash connected to SPI_Monitor_4.
+ * "SPI2_CS0" used to access flash connected to SPI_Monitor_2,
+ * "SPI2_CS1" is used to access flash connected to SPI_Monitor_3,
+ * "SPI2_CS2" is used to access flash connected to SPI_Monitor_4,
  */
 
 &spi2_cs0 {
@@ -239,10 +244,11 @@
 
 &spi2 {
 	internal-mux-master = <2>;
-	spi-monitor-output-base = <1>;
+	spi-monitor-output-base = <2>;
 	spi-monitor-common-ctrl = <&spim0>;
 	pinctrl-0 = <>;
-	num-cs = <4>;
+
+	num-cs = <3>;
 	status = "okay";
 
 	spi2_cs2: flash@2 {
@@ -253,23 +259,17 @@
 		label = "spi2_cs2";
 		status = "okay";
 	};
+};
 
-	spi2_cs3: flash@3 {
-		compatible = "jedec,spi-nor";
-		reg = <3>;
-		spi-max-buswidth = <4>;
-		spi-max-frequency = <50000000>;
-		label = "spi2_cs3";
-		status = "okay";
-	};
+&spim0 {
+	status = "okay";
 };
 
 &spim1 {
 	valid-cmds = [03 13 0b 0c 6b 6c 01 05 35 06 04 20 21 9f 5a b7 e9 32 34 d8 dc 02 12];
 	log-ram-size = <0x200>;
-	pinctrl-0 = <&pinctrl_spim1_cs &pinctrl_spim1_in_default &pinctrl_spim1_out_default
-				&pinctrl_spim1_qspi_in_default &pinctrl_spim1_qspi_out_default
-				&pinctrl_spim1_rst_out>;
+	pinctrl-0 = <&pinctrl_spim1_cs &pinctrl_spim1_in_default &pinctrl_spim1_qspi_in_default
+				&pinctrl_spim1_rst_out &pinctrl_spim1_muxsel>;
 	status = "okay";
 };
 
