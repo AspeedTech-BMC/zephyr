@@ -1059,6 +1059,36 @@ void spim_monitor_enable(const struct device *dev, bool enable)
 	spim_ctrl_monitor_config(dev, enable);
 }
 
+void spim_rst_flash(const struct device *dev, uint32_t rst_duration_ms)
+{
+	uint32_t val;
+	const struct aspeed_spim_config *config = dev->config;
+	const struct device *parent_dev = config->parent;
+	uint32_t bit_off = 1 << (config->ctrl_idx - 1);
+
+	if (rst_duration_ms == 0)
+		rst_duration_ms = 500;
+
+	/* Using SCU0F0 to enable flash rst
+	 * SCU0F0[23:20]: Reset source selection
+	 * SCU0F0[27:24]: Enable reset signal output
+	 */
+	val = (bit_off << 20) | (bit_off << 24);
+	spim_scu_ctrl_set(parent_dev, val, val);
+
+	/* SCU0F0[19:16]: output value */
+	/* reset flash */
+	val = bit_off << 16;
+	spim_scu_ctrl_clear(parent_dev, val);
+
+	k_busy_wait(rst_duration_ms * 1000);
+
+	/* release reset */
+	spim_scu_ctrl_set(parent_dev, val, val);
+
+	k_busy_wait(5000); /* 5ms */
+}
+
 void spim_log_parser(const struct device *dev, uint32_t idx, uint32_t log_val)
 {
 	switch ((log_val & 0x000c0000) >> 18) {

@@ -23,15 +23,15 @@ void main(void)
 
 	printk("%s demo\n", CONFIG_BOARD);
 
-	/* reset BMC and flash */
-	pfr_bmc_rst_enable_ctrl(true);
-	pfr_bmc_rst_flash(1);
-
 	spim_dev1 = device_get_binding("spi_m1");
 	if (!spim_dev1) {
-		printk("[demo_err]: cannot get device, %s.\n", "spi_m1");
+		printk("[demo_err]: cannot get device, spi_m1.\n");
 		return;
 	}
+
+	/* reset BMC and flash */
+	pfr_bmc_rst_enable_ctrl(true);
+	spim_rst_flash(spim_dev1, 500);
 
 	/* config SPI1 CS0 as master */
 	spim_passthrough_enable(spim_dev1, 0, false);

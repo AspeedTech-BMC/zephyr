@@ -23,10 +23,15 @@ void main(void)
 
 	printk("%s demo\n", CONFIG_BOARD);
 
+	spim_dev = device_get_binding("spi_m1");
+	if (!spim_dev) {
+		printk("[demo_err]: cannot get device, spi_m1.\n");
+		return;
+	}
+
 	/* reset BMC and flash */
 	pfr_bmc_rst_enable_ctrl(true);
-	pfr_bmc_rst_flash(1);
-
+	spim_rst_flash(spim_dev, 500);
 
 	/* disable passthrough mode for SPI monitors */
 	for (i = 0; i < 4; i++) {
