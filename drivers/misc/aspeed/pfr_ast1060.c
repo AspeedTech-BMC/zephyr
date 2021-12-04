@@ -16,25 +16,28 @@
 
 #define PFR_SCU_CTRL_REG	0x7e6e20f0
 
+#if !DT_NODE_HAS_STATUS(DT_INST(0, demo_gpio_basic_api), okay)
+#error "no correct gpio device"
+#endif
+
 void pfr_bmc_rst_enable_ctrl(bool enable)
 {
-	const struct device *gpio_dev = NULL;
+	int ret;
+	const struct gpio_dt_spec gpio_m5 =
+		GPIO_DT_SPEC_GET_BY_IDX(DT_INST(0, demo_gpio_basic_api), out_gpios, 0);
 
-	/* GPIOM5 */
-	gpio_dev = device_get_binding("GPIO0_M_P");
-	if (gpio_dev == NULL) {
-		printk("[%d]Fail to get GPIO0_M_P", __LINE__);
+	ret = gpio_pin_configure_dt(&gpio_m5, GPIO_OUTPUT);
+	if (ret)
 		return;
-	}
-	gpio_pin_configure(gpio_dev, 5, GPIO_OUTPUT);
+
 	k_busy_wait(10000); /* 10ms */
 
 	if (enable)
-		gpio_pin_set(gpio_dev, 5, 0);
+		gpio_pin_set(gpio_m5.port, gpio_m5.pin, 0);
 	else
-		gpio_pin_set(gpio_dev, 5, 1);
+		gpio_pin_set(gpio_m5.port, gpio_m5.pin, 1);
 
-	k_busy_wait(50000); /* 50ms */
+	k_busy_wait(10000); /* 10ms */
 }
 
 void pfr_bmc_rst_flash(uint32_t flash_idx)

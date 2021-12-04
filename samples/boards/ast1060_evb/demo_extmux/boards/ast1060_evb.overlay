@@ -1,3 +1,10 @@
+/ {
+	resources {
+		compatible = "demo,gpio_basic_api";
+		out-gpios = <&gpio0_m_p 5 0>;
+	};
+};
+
 &i2cfilter {
 	pinctrl-0 = <&pinctrl_smbflt_default>;
 	status = "okay";
