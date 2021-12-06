@@ -36,7 +36,7 @@ static void ast1060_rst_demo_ext_mux(struct k_work *item)
 	spim_rst_flash(spim_dev1, 500);
 
 	/* config SPI1 CS0 as master */
-	spim_passthrough_enable(spim_dev1, 0, false);
+	spim_passthrough_config(spim_dev1, 0, false);
 	spim_ext_mux_config(spim_dev1, SPIM_MASTER_MODE);
 
 	/* disable passthrough mode for other SPI monitors */
@@ -47,7 +47,7 @@ static void ast1060_rst_demo_ext_mux(struct k_work *item)
 			return;
 		}
 
-		spim_passthrough_enable(spim_dev, 0, false);
+		spim_passthrough_config(spim_dev, 0, false);
 	}
 
 	/* emulate PFR read flash each flash content for verification purpose */
@@ -66,7 +66,7 @@ static void ast1060_rst_demo_ext_mux(struct k_work *item)
 			return;
 		}
 
-		spim_passthrough_enable(spim_dev, SPIM_SINGLE_PASSTHROUGH, true);
+		spim_passthrough_config(spim_dev, SPIM_SINGLE_PASSTHROUGH, true);
 	}
 
 	pfr_bmc_rst_enable_ctrl(false);

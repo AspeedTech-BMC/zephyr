@@ -45,7 +45,7 @@ static void ast1060_rst_demo_passthrough(struct k_work *item)
 			return;
 		}
 
-		spim_passthrough_enable(spim_dev, 0, false);
+		spim_passthrough_config(spim_dev, 0, false);
 	}
 
 	/* emulate PFR read flash each flash content for verification purpose */
@@ -61,7 +61,7 @@ static void ast1060_rst_demo_passthrough(struct k_work *item)
 			return;
 		}
 
-		spim_passthrough_enable(spim_dev, SPIM_SINGLE_PASSTHROUGH, true);
+		spim_passthrough_config(spim_dev, SPIM_SINGLE_PASSTHROUGH, true);
 	}
 
 	pfr_bmc_rst_enable_ctrl(false);

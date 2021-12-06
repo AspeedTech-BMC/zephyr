@@ -270,6 +270,80 @@ static int cmd_lock(const struct shell *shell, size_t argc, char *argv[])
 	return 0;
 }
 
+static int spi_monitor_enabled(const struct shell *shell, size_t argc, char *argv[])
+{
+
+	if (spim_device == NULL) {
+		shell_error(shell, "Please set the device first.");
+		return -ENODEV;
+	}
+
+	spim_monitor_enable(spim_device, true);
+
+	return 0;
+}
+
+static int spi_monitor_disabled(const struct shell *shell, size_t argc, char *argv[])
+{
+
+	if (spim_device == NULL) {
+		shell_error(shell, "Please set the device first.");
+		return -ENODEV;
+	}
+
+	spim_monitor_enable(spim_device, false);
+
+	return 0;
+}
+
+static int external_mux_config(const struct shell *shell, size_t argc, char *argv[])
+{
+	uint32_t flag;
+	char *endptr;
+
+	if (spim_device == NULL) {
+		shell_error(shell, "Please set the device first.");
+		return -ENODEV;
+	}
+
+	flag = strtoul(argv[1], &endptr, 16);
+
+	if (flag == 0)
+		spim_ext_mux_config(spim_device, SPIM_MASTER_MODE);
+	else
+		spim_ext_mux_config(spim_device, SPIM_MONITOR_MODE);
+
+	return 0;
+}
+
+static int passthrough_mode_config(const struct shell *shell, size_t argc, char *argv[])
+{
+	uint32_t flag;
+	char *endptr;
+	enum spim_passthrough_mode mode = SPIM_SINGLE_PASSTHROUGH;
+
+	if (spim_device == NULL) {
+		shell_error(shell, "Please set the device first.");
+		return -ENODEV;
+	}
+
+	if (argc < 3) {
+		shell_error(shell, "spim config passthrough <multi/single> <0/1>.");
+		return -EINVAL;
+	}
+
+	if (strncmp(argv[1], "multi", 5) == 0)
+		mode = SPIM_MULTI_PASSTHROUGH;
+
+	flag = strtoul(argv[2], &endptr, 16);
+
+	if (flag == 0)
+		spim_passthrough_config(spim_device, mode, false);
+	else
+		spim_passthrough_config(spim_device, mode, true);
+
+	return 0;
+}
 
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_spim_cmds,
 	SHELL_CMD_ARG(dump, NULL, "\"dump\"", dump_valid_cmd_table, 1, 0),
@@ -291,11 +365,22 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_spim_addr,
 	SHELL_SUBCMD_SET_END
 );
 
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_spim_config,
+	SHELL_CMD_ARG(enable, NULL, "\"enable\"", spi_monitor_enabled, 1, 0),
+	SHELL_CMD_ARG(disable, NULL, "\"enable\"", spi_monitor_disabled, 1, 0),
+	SHELL_CMD_ARG(extmux, NULL, "<0/1> for clear/set", external_mux_config, 2, 0),
+	SHELL_CMD_ARG(passthrough, NULL, "<multi/single> <0/1> for clear/set",
+		passthrough_mode_config, 3, 0),
+
+	SHELL_SUBCMD_SET_END
+);
+
 SHELL_STATIC_SUBCMD_SET_CREATE(spim_cmds,
 	SHELL_CMD_ARG(set_dev, NULL, "<device>", cmd_probe, 2, 0),
 	SHELL_CMD(cmd, &sub_spim_cmds, "cmd table related operations", NULL),
 	SHELL_CMD(addr, &sub_spim_addr, "address privilege table related operations", NULL),
 	SHELL_CMD_ARG(lock, NULL, "lock", cmd_lock, 1, 0),
+	SHELL_CMD(config, &sub_spim_config, "SPI monitor configuration", NULL),
 
 	SHELL_SUBCMD_SET_END
 );

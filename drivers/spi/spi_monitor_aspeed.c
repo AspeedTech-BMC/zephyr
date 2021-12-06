@@ -279,7 +279,7 @@ void spim_scu_passthrough_mode(const struct device *dev,
 	ARG_UNUSED(mode);
 }
 
-void spim_passthrough_enable(const struct device *dev,
+void spim_passthrough_config(const struct device *dev,
 	enum spim_passthrough_mode mode, bool passthrough_en)
 {
 	const struct aspeed_spim_config *config = dev->config;

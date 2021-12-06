@@ -7,3 +7,9 @@ config SPI_MONITOR_ASPEED
 	bool "ASPEED SPI Monitor Driver"
 	help
 	  Enable ASPEED SPI monitor controller driver.
+
+config SPI_MONITOR_SHELL_ASPEED
+	bool "ASPEED SPI Monitor SHELL"
+	help
+	  Enable ASPEED SPI monitor shell commands.
+

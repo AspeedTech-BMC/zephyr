@@ -72,7 +72,7 @@ void spim_scu_ctrl_set(const struct device *dev, uint32_t mask, uint32_t val);
 void spim_scu_ctrl_clear(const struct device *dev, uint32_t clear_bits);
 void spim_ext_mux_config(const struct device *dev,
 	enum spim_ext_mux_mode mode);
-void spim_passthrough_enable(const struct device *dev,
+void spim_passthrough_config(const struct device *dev,
 	enum spim_passthrough_mode mode, bool passthrough_en);
 
 
@@ -104,5 +104,7 @@ int spim_address_privilege_config(const struct device *dev,
 void spim_lock_rw_privilege_table(const struct device *dev,
 	enum addr_priv_rw_select rw_select);
 void spim_lock_common(const struct device *dev);
+
+void spim_monitor_enable(const struct device *dev, bool enable);
 
 #endif

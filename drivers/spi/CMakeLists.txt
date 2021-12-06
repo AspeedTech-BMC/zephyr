@@ -26,6 +26,6 @@ zephyr_library_sources_ifdef(CONFIG_SPI_TEST		spi_test.c)
 zephyr_library_sources_ifdef(CONFIG_SPI_PSOC6		spi_psoc6.c)
 zephyr_library_sources_ifdef(CONFIG_SPI_ASPEED		spi_aspeed.c)
 zephyr_library_sources_ifdef(CONFIG_SPI_MONITOR_ASPEED	spi_monitor_aspeed.c)
-zephyr_library_sources_ifdef(CONFIG_SPI_MONITOR_ASPEED	spi_monitor_shell.c)
+zephyr_library_sources_ifdef(CONFIG_SPI_MONITOR_SHELL_ASPEED	spi_monitor_shell.c)
 
 zephyr_library_sources_ifdef(CONFIG_USERSPACE		spi_handlers.c)
