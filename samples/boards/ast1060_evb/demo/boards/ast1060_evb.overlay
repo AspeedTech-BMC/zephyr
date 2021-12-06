@@ -2,6 +2,7 @@
 	resources {
 		compatible = "demo,gpio_basic_api";
 		out-gpios = <&gpio0_m_p 5 0>;
+		in-gpios = <&gpio0_m_p 19 0>;
 	};
 };
 

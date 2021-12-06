@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 ASPEED
+ * Copyright (c) 2021 ASPEED Technology Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -8,8 +8,12 @@
 #include <sys/printk.h>
 #include <drivers/misc/aspeed/pfr_aspeed.h>
 #include "spi.h"
+#include "demo_gpio.h"
 
-void main(void)
+static struct k_work rst_work;
+static struct gpio_callback gpio_cb;
+
+static void ast1060_rst_demo_ext_mux(struct k_work *item)
 {
 	int ret;
 	const struct device *spim_dev1 = NULL;
@@ -21,7 +25,7 @@ void main(void)
 		"spi_m4"
 	};
 
-	printk("%s demo\n", CONFIG_BOARD);
+	printk("[demo] BMC is AC on or reset!\n");
 
 	spim_dev1 = device_get_binding("spi_m1");
 	if (!spim_dev1) {
@@ -29,8 +33,6 @@ void main(void)
 		return;
 	}
 
-	/* reset BMC and flash */
-	pfr_bmc_rst_enable_ctrl(true);
 	spim_rst_flash(spim_dev1, 500);
 
 	/* config SPI1 CS0 as master */
@@ -68,4 +70,66 @@ void main(void)
 	}
 
 	pfr_bmc_rst_enable_ctrl(false);
+	ARG_UNUSED(item);
+}
+
+static void gpioo3_callback(const struct device *dev,
+		       struct gpio_callback *gpio_cb, uint32_t pins)
+{
+	/* reset BMC first */
+	pfr_bmc_rst_enable_ctrl(true);
+
+	k_work_submit(&rst_work);
+
+	ARG_UNUSED(*gpio_cb);
+	ARG_UNUSED(pins);
+}
+
+static void rst_gpio_event_register(void)
+{
+	int ret;
+	const struct device *gpio_dev = device_get_binding(GPIOO3_DEV_NAME);
+
+	if (!gpio_dev) {
+		printk("[demo_err]: cannot get device, %s.\n", gpio_dev->name);
+		return;
+	}
+
+	ret = gpio_pin_interrupt_configure(gpio_dev, GPIOO3_PIN_IN, GPIO_INT_DISABLE);
+	if (ret != 0) {
+		printk("[demo_err]: cannot configure GPIO INT(disabled).\n");
+		return;
+	}
+
+	ret = gpio_pin_configure(gpio_dev, GPIOO3_PIN_IN, GPIO_INPUT);
+	if (ret != 0) {
+		printk("[demo_err]: cannot configure gpio device.\n");
+		return;
+	}
+
+	gpio_init_callback(&gpio_cb, gpioo3_callback, BIT(GPIOO3_PIN_IN));
+	ret = gpio_add_callback(gpio_dev, &gpio_cb);
+	if (ret != 0) {
+		printk("[demo_err]: cannot add gpio callback.\n");
+		return;
+	}
+
+	ret = gpio_pin_interrupt_configure(gpio_dev, GPIOO3_PIN_IN, GPIO_INT_EDGE_TO_INACTIVE);
+	if (ret != 0) {
+		printk("[demo_err]: cannot configure GPIO INT(1->0).\n");
+		return;
+	}
+}
+
+void main(void)
+{
+	printk("%s demo\n", CONFIG_BOARD);
+	/* reset BMC first */
+	pfr_bmc_rst_enable_ctrl(true);
+
+	rst_gpio_event_register();
+
+	k_work_init(&rst_work, ast1060_rst_demo_ext_mux);
+
+	ast1060_rst_demo_ext_mux(NULL);
 }

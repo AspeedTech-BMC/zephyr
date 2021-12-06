@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 ASPEED
+ * Copyright (c) 2021 ASPEED Technology Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
