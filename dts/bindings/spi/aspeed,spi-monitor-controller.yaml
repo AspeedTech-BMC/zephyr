@@ -77,5 +77,10 @@ child-binding:
         The ram size for recording log if there is an invalid
         SPI flash access and the related interrupt occurs.
 
+    extra-clk:
+      type: boolean
+      required: false
+      description: Block a invalid access by an extra clock.
+
     pinctrl-0:
       required: true

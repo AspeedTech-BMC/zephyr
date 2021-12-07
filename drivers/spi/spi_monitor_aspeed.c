@@ -96,6 +96,8 @@ static uint8_t spim_log_arr[SPIM_LOG_RAM_TOTAL_SIZE] NON_CACHED_BSS_ALIGN16;
 #define SPIM_VALID_CMD_BASE     (0x0080)
 #define SPIM_ADDR_PRIV_TABLE_BASE    (0x0100)
 
+#define SPIM_BLOCK_CMD_EXTRA_CLK	BIT(7)
+
 /* valid command table */
 #define SPIM_CMD_TABLE_NUM              32
 #define SPIM_CMD_TABLE_VALID_MASK       GENMASK(31, 30)
@@ -175,6 +177,7 @@ struct aspeed_spim_config {
 	uint32_t irq_num;
 	uint32_t irq_priority;
 	uint32_t ctrl_idx;
+	bool extra_clk_en;
 	const struct device *parent;
 };
 
@@ -313,6 +316,26 @@ void spim_ext_mux_config(const struct device *dev,
 	} else {
 		spim_scu_ctrl_clear(config->parent, BIT(config->ctrl_idx - 1) << 12);
 	}
+}
+
+
+void spim_block_mode_config(const struct device *dev, enum spim_block_mode mode)
+{
+	const struct aspeed_spim_config *config = dev->config;
+	uint32_t reg_val;
+
+	acquire_spim_device(dev);
+
+	reg_val = sys_read32(config->ctrl_base);
+
+	if (mode == SPIM_BLOCK_EXTRA_CLK)
+		reg_val |= SPIM_BLOCK_CMD_EXTRA_CLK;
+	else
+		reg_val &= ~(SPIM_BLOCK_CMD_EXTRA_CLK);
+
+	sys_write32(reg_val, config->ctrl_base);
+
+	release_spim_device(dev);
 }
 
 /* dump command information recored in valid command table */
@@ -1222,6 +1245,9 @@ static int aspeed_spi_monitor_init(const struct device *dev)
 	/* always enable internal passthrough configuration */
 	spim_scu_passthrough_mode(dev, 0, true);
 
+	if (config->extra_clk_en)
+		spim_block_mode_config(dev, SPIM_BLOCK_EXTRA_CLK);
+
 	spim_valid_cmd_table_init(dev, data->valid_cmd_list, data->valid_cmd_num, 0);
 	spim_rw_perm_init(dev);
 	spim_monitor_enable(dev, true);
@@ -1262,6 +1288,7 @@ static int aspeed_spi_monitor_common_init(const struct device *dev)
 		.irq_num = DT_IRQN(node_id),		\
 		.irq_priority = DT_IRQ(node_id, priority),	\
 		.ctrl_idx = DT_REG_ADDR(node_id),	\
+		.extra_clk_en = DT_PROP(node_id, extra_clk),	\
 		.parent = DEVICE_DT_GET(DT_PARENT(node_id)),	\
 },
 

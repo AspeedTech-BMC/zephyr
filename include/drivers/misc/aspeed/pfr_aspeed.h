@@ -66,6 +66,11 @@ enum spim_ext_mux_mode {
 	SPIM_MONITOR_MODE,
 };
 
+enum spim_block_mode {
+	SPIM_DEASSERT_CS_EARLY,
+	SPIM_BLOCK_EXTRA_CLK
+};
+
 void pfr_bmc_rst_enable_ctrl(bool enable);
 void spim_rst_flash(const struct device *dev, uint32_t rst_duration_ms);
 void spim_scu_ctrl_set(const struct device *dev, uint32_t mask, uint32_t val);
@@ -74,6 +79,7 @@ void spim_ext_mux_config(const struct device *dev,
 	enum spim_ext_mux_mode mode);
 void spim_passthrough_config(const struct device *dev,
 	enum spim_passthrough_mode mode, bool passthrough_en);
+void spim_block_mode_config(const struct device *dev, enum spim_block_mode mode);
 
 
 /* valid command table control */
