@@ -20,6 +20,11 @@ config MAILBOX_ASPEED
 	  SoCs.
 	  Say y if you wish to use LPC mailbox on ASPEED MCU.
 
+config PFR_SHELL_ASPEED
+	bool "Enable ASPEED PFR shell"
+	help
+	  Enable PFR related control shell environment.
+
 config PFR_FLOW_CTRL_AST1060
 	bool "Enable ASPEED PFR Control Flow"
 	help
