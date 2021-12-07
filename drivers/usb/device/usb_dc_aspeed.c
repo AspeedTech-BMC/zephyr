@@ -10,6 +10,7 @@
 #include <drivers/reset_control.h>
 #include <stdio.h>
 #include <usb/usb_device.h>
+#include <cache.h>
 
 #include "soc.h"
 #define LOG_LEVEL	CONFIG_USB_DRIVER_LOG_LEVEL
@@ -132,12 +133,6 @@ LOG_MODULE_REGISTER(usb_dc_aspeed);
 
 #define RX_DMA_BUFF_SIZE	1024
 #define TX_DMA_BUFF_SIZE	1024
-
-#define SCU_BASE		0x7e6e2000
-#define DCACHE_INVALID() { \
-	sys_write32(sys_read32(SCU_BASE + 0xa58) | 0x2, SCU_BASE + 0xa58); \
-	sys_write32(sys_read32(SCU_BASE + 0xa58) & ~0x2, SCU_BASE + 0xa58); \
-}
 
 enum ep_state {
 	ep_state_token = 0,
@@ -1096,7 +1091,8 @@ int usb_dc_ep_read_wait(uint8_t ep, uint8_t *data, uint32_t max_data_len,
 
 			LOG_DBG("Copy data from rx_dma, %s:0x%x",
 				"data_len", data_len);
-			DCACHE_INVALID();
+			cache_data_range(dev_data.ep_data[0].rx_dma, data_len,
+					 K_CACHE_INVD);
 			memcpy(data, dev_data.ep_data[0].rx_dma, data_len);
 			memset(dev_data.ep_data[0].rx_dma, 0, RX_DMA_BUFF_SIZE);
 			*read_bytes = data_len;
@@ -1119,7 +1115,8 @@ int usb_dc_ep_read_wait(uint8_t ep, uint8_t *data, uint32_t max_data_len,
 			byte_to_copy = data_len;
 		}
 
-		DCACHE_INVALID();
+		cache_data_range(dev_data.ep_data[ep_num].rx_dma, data_len,
+				 K_CACHE_INVD);
 		if (byte_to_copy <= RX_DMA_BUFF_SIZE) {
 			memcpy(data, dev_data.ep_data[ep_num].rx_dma,
 				byte_to_copy);
