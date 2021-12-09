@@ -637,10 +637,11 @@ static int i2c_aspeed_configure(const struct device *dev,
 	/*Set interrupt generation of I2C master controller*/
 	if (config->smbus_alert) {
 		sys_write32(AST_I2CM_PKT_DONE | AST_I2CM_BUS_RECOVER |
-			    AST_I2CM_SMBUS_ALT,
+			    AST_I2CM_ABNORMAL | AST_I2CM_SMBUS_ALT,
 			    i2c_base + AST_I2CM_IER);
 	} else {
-		sys_write32(AST_I2CM_PKT_DONE | AST_I2CM_BUS_RECOVER,
+		sys_write32(AST_I2CM_PKT_DONE | AST_I2CM_BUS_RECOVER |
+			    AST_I2CM_ABNORMAL,
 			    i2c_base + AST_I2CM_IER);
 	}
 
@@ -1131,7 +1132,8 @@ int aspeed_i2c_master_irq(const struct device *dev)
 	if (data->cmd_err) {
 		LOG_DBG("received error interrupt: 0x%02x\n",
 			sts);
-		sys_write32(AST_I2CM_PKT_DONE, i2c_base + AST_I2CM_ISR);
+		sys_write32(AST_I2CM_PKT_DONE | AST_I2CM_PKT_ERROR,
+			i2c_base + AST_I2CM_ISR);
 		k_sem_give(&data->sync_sem);
 		return 1;
 	}
