@@ -20,36 +20,17 @@ LOG_MODULE_REGISTER(i2c_aspeed);
 
 #include "i2c-priv.h"
 
-#define I2C_SLAVE_BUF_SIZE      256
+#define I2C_SLAVE_BUF_SIZE		256
 
-#define I2C_BUF_SIZE            0x20
-#define I2C_BUF_BASE            0xC00
+#define I2C_BUF_SIZE			0x20
+#define I2C_BUF_BASE			0xC00
 
-/***************************************************************************/
-#define ASPEED_I2CG_ISR                         0x00
-#define ASPEED_I2CG_SLAVE_ISR           0x04    /* ast2600 */
-#define ASPEED_I2CG_OWNER                       0x08
-#define ASPEED_I2CG_CTRL                        0x0C
-#define ASPEED_I2CG_CLK_DIV_CTRL        0x10    /* ast2600 */
+/* i2c global */
+#define ASPEED_I2CG_CLK_DIV		0x10
+#define ASPEED_I2CG_CONTROL		0x0C
+#define ASPEED_I2CG_NEW_CLK_BIT	BIT(1)
 
-#define ASPEED_I2CG_MBX_FIFO_ADDR       0x14    /* ast1060 */
-
-/* 0x0C : I2CG SRAM Buffer Enable  */
-#define ASPEED_I2CG_SRAM_BUFFER_ENABLE          BIT(0)
-
-/*ast2600 */
-#define ASPEED_I2CG_SLAVE_PKT_NAK               BIT(4)
-#define ASPEED_I2CG_M_S_SEPARATE_INTR   BIT(3)
-#define ASPEED_I2CG_CTRL_NEW_REG                BIT(2)
-#define ASPEED_I2CG_CTRL_NEW_CLK_DIV    BIT(1)
-
-/* ASPEED_I2CG_MBX_FIFO_ADDR	0x14	ast1060 FIFO register */
-#define AST_I2CG_FIFO_ADDR_MASK                 0xffff
-#define AST_I2CG_FIFO_SIZE(x)                   (x << 16)
-
-/***************************************************************************/
-
-/* AST2600 reg */
+/* i2c control reg */
 /* 0x00 : I2CC Master/Slave Function Control Register  */
 #define AST_I2CC_FUN_CTRL                       0x00
 #define AST_I2CC_SLAVE_MAILBOX_EN               BIT(24)
@@ -176,7 +157,7 @@ LOG_MODULE_REGISTER(i2c_aspeed);
 #define AST_I2CS_ISR                    0x24
 
 #define AST_I2CS_ADDR_INDICAT_MASK      (3 << 30)
-#define AST_I2CS_Wait_DMA_Process   BIT(29)
+#define AST_I2CS_SLAVE_PENDING   BIT(29)
 
 #define AST_I2CS_Wait_TX_DMA            BIT(25)
 #define AST_I2CS_Wait_RX_DMA            BIT(24)
@@ -507,7 +488,7 @@ static uint32_t i2c_aspeed_select_clock(const struct device *dev)
 
 	/*LOG_DBG("clk src %d, targe %d\n", config->clk_src, data->bus_frequency);*/
 	if (config->clk_div_mode) {
-		clk_div_reg = sys_read32(config->global_reg + ASPEED_I2CG_CLK_DIV_CTRL);
+		clk_div_reg = sys_read32(config->global_reg + ASPEED_I2CG_CLK_DIV);
 		base_clk4 = (config->clk_src * 10) /
 		(((((clk_div_reg >> 24) & 0xff) + 2) * 10) / 2);
 
@@ -1218,21 +1199,23 @@ int aspeed_i2c_slave_irq(const struct device *dev)
 	uint32_t cmd = 0;
 	int ret = 0;
 	int i = 0;
+	uint32_t ier = sys_read32(i2c_base + AST_I2CS_IER);
 	uint32_t sts = sys_read32(i2c_base + AST_I2CS_ISR);
 	uint8_t byte_data = 0;
 	int slave_rx_len = 0;
 	uint8_t value;
 
-	LOG_DBG("S sts %x\n", sts);
+	/* return without necessary slave interrupt */
+	if (!(sts & ier)) {
+		return 0;
+	}
+
+	LOG_DBG("S irq sts %x, bus %x\n", sts, sys_read32(i2c_base + AST_I2CC_STS_AND_BUFF));
 
 	if ((config->mode == DMA_MODE) || (config->mode == BUFF_MODE)) {
 		if (!(sts & AST_I2CS_PKT_DONE)) {
 			return 0;
 		}
-	}
-
-	if (!sts) {
-		return 0;
 	}
 
 	sts &= ~AST_I2CS_ADDR_INDICAT_MASK;
@@ -1254,7 +1237,7 @@ int aspeed_i2c_slave_irq(const struct device *dev)
 	}
 
 	if (AST_I2CS_PKT_DONE & sts) {
-		sts &= ~(AST_I2CS_PKT_DONE | AST_I2CS_PKT_ERROR | AST_I2CS_Wait_DMA_Process);
+		sts &= ~(AST_I2CS_PKT_DONE | AST_I2CS_PKT_ERROR | AST_I2CS_SLAVE_PENDING);
 		sys_write32(AST_I2CS_PKT_DONE, i2c_base + AST_I2CS_ISR);
 
 		switch (sts) {
@@ -1708,7 +1691,7 @@ static int i2c_aspeed_init(const struct device *dev)
 	config->global_reg = i2c_base & 0xfffff000;
 
 	/*get global control register*/
-	if (sys_read32(config->global_reg + ASPEED_I2CG_CTRL) & ASPEED_I2CG_CTRL_NEW_CLK_DIV) {
+	if (sys_read32(config->global_reg + ASPEED_I2CG_CONTROL) & ASPEED_I2CG_NEW_CLK_BIT) {
 		config->clk_div_mode = 1;
 	}
 

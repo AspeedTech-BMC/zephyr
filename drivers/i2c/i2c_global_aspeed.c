@@ -18,6 +18,19 @@ LOG_MODULE_REGISTER(i2c_global);
 #include <sys/sys_io.h>
 #include <device.h>
 
+#define ASPEED_I2CG_CONTROL		0x0C
+#define ASPEED_I2CG_NEW_CLK_DIV	0x10
+
+#define CLK_NEW_MODE		BIT(1)
+#define REG_NEW_MODE		BIT(2)
+#define ISSUE_NAK_EMPTY	BIT(4)
+
+#define I2CG_SET	(CLK_NEW_MODE |\
+			REG_NEW_MODE |\
+			ISSUE_NAK_EMPTY)
+
+#define CLK_DIV		0x03020100
+
 /* Device config */
 struct i2c_global_config {
 	uintptr_t base; /* i2c controller base address */
@@ -37,14 +50,15 @@ static int i2c_global_init(const struct device *dev)
 
 	const struct device *reset_dev = device_get_binding(ASPEED_RST_CTRL_NAME);
 
+	/* i2c controller reset / de-reset (delay is necessary) */
 	reset_control_assert(reset_dev, DEV_CFG(dev)->rst_id);
 	k_msleep(1);
 	reset_control_deassert(reset_dev, DEV_CFG(dev)->rst_id);
 	k_msleep(1);
 
-	/* TODO check delay */
-	sys_write32(0x16, i2c_global_base + 0x0C);
-	sys_write32(0x03020100, i2c_global_base + 0x10);
+	/* set i2c global setting */
+	sys_write32(I2CG_SET, i2c_global_base + ASPEED_I2CG_CONTROL);
+	sys_write32(CLK_DIV, i2c_global_base + ASPEED_I2CG_NEW_CLK_DIV);
 
 	return 0;
 }
