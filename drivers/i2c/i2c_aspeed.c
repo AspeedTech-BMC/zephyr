@@ -637,11 +637,10 @@ static int i2c_aspeed_configure(const struct device *dev,
 	/*Set interrupt generation of I2C master controller*/
 	if (config->smbus_alert) {
 		sys_write32(AST_I2CM_PKT_DONE | AST_I2CM_BUS_RECOVER |
-			    AST_I2CM_ABNORMAL | AST_I2CM_SMBUS_ALT,
+			    AST_I2CM_SMBUS_ALT,
 			    i2c_base + AST_I2CM_IER);
 	} else {
-		sys_write32(AST_I2CM_PKT_DONE | AST_I2CM_BUS_RECOVER |
-			    AST_I2CM_ABNORMAL,
+		sys_write32(AST_I2CM_PKT_DONE | AST_I2CM_BUS_RECOVER,
 			    i2c_base + AST_I2CM_IER);
 	}
 
@@ -812,6 +811,8 @@ static int i2c_aspeed_transfer(const struct device *dev, struct i2c_msg *msgs,
 	struct i2c_aspeed_config *config = DEV_CFG(dev);
 	struct i2c_aspeed_data *data = DEV_DATA(dev);
 	uint32_t i2c_base = DEV_BASE(dev);
+	uint32_t isr = 0, ctrl = 0, sts = 0;
+	uint32_t cmd = AST_I2CS_ACTIVE_ALL | AST_I2CS_PKT_MODE_EN;
 
 	if (!num_msgs) {
 		return 0;
@@ -842,14 +843,36 @@ static int i2c_aspeed_transfer(const struct device *dev, struct i2c_msg *msgs,
 
 	aspeed_new_i2c_do_start(dev);
 	if (i2c_wait_completion(dev)) {
-		/*
-		* If timed out and bus is still busy in a multi master
-		* environment, attempt recovery at here.
-		*/
-		if (data->multi_master &&
-		    (sys_read32(i2c_base + AST_I2CC_STS_AND_BUFF) & AST_I2CC_BUS_BUSY_STS)) {
-			aspeed_new_i2c_recover_bus(dev);
+		isr = sys_read32(i2c_base + AST_I2CM_ISR);
+		sts = sys_read32(i2c_base + AST_I2CC_STS_AND_BUFF);
+		LOG_DBG("timeout isr: %x, sts %x\n", isr, sts);
+
+		/* do controller reset */
+		if (isr || (sts & AST_I2CC_TX_DIR_MASK)) {
+			ctrl = sys_read32(i2c_base + AST_I2CC_FUN_CTRL);
+			sys_write32(0, i2c_base + AST_I2CC_FUN_CTRL);
+			sys_write32(ctrl, i2c_base + AST_I2CC_FUN_CTRL);
+#ifdef CONFIG_I2C_SLAVE
+			if (ctrl & AST_I2CC_SLAVE_EN) {
+				if (config->mode == DMA_MODE) {
+					cmd |= AST_I2CS_RX_DMA_EN;
+					sys_write32((uint32_t)data->slave_dma_buf, i2c_base + AST_I2CS_RX_DMA);
+					sys_write32((uint32_t)data->slave_dma_buf, i2c_base + AST_I2CS_TX_DMA);
+					sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE)
+					, i2c_base + AST_I2CS_DMA_LEN);
+				} else if (config->mode == BUFF_MODE) {
+					cmd |= AST_I2CS_RX_BUFF_EN;
+					sys_write32(AST_I2CC_SET_RX_BUF_LEN(I2C_BUF_SIZE)
+					, i2c_base + AST_I2CC_BUFF_CTRL);
+				} else {
+					cmd &= ~AST_I2CS_PKT_MODE_EN;
+				}
+				LOG_DBG("slave trigger: %x\n", cmd);
+				sys_write32(cmd, i2c_base + AST_I2CS_CMD_STS);
+			}
+#endif
 		}
+
 		k_mutex_unlock(&data->trans_mutex);
 		return -ETIMEDOUT;
 	}
