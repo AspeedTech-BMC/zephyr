@@ -10,6 +10,7 @@
 #include "spi.h"
 #include "demo_gpio.h"
 #include <drivers/watchdog.h>
+#include <soc.h>
 
 static struct k_work rst_work;
 static struct gpio_callback gpio_cb;
@@ -25,8 +26,6 @@ static void ast1060_rst_demo_ext_mux(struct k_work *item)
 		"spi_m3",
 		"spi_m4"
 	};
-
-	printk("[demo] BMC is AC on or reset!\n");
 
 	spim_dev1 = device_get_binding("spi_m1");
 	if (!spim_dev1) {
@@ -203,6 +202,8 @@ static void wdt_demo(void)
 void main(void)
 {
 	printk("%s demo\n", CONFIG_BOARD);
+	aspeed_print_sysrst_info();
+
 	/* reset BMC first */
 	pfr_bmc_rst_enable_ctrl(true);
 
