@@ -982,44 +982,46 @@
 			};
 		};
 
-		wdt1: wdt@7e785000 {
+		wdt0: wdt_common@7e785000 {
 			compatible = "aspeed,ast-watchdog";
-			reg = <0x7e785000 0x80>;
 			interrupts = <INTR_WDT AST10X0_IRQ_DEFAULT_PRIORITY>;
-			aspeed,scu = <&syscon>;
-			reset-mask= <0x30f1ff1 0x03fffff1>;
-			label = "wdt1";
+			reg = <0x7e785000 0x200>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			label = "wdt0";
 			status = "disabled";
-		};
 
-		wdt2: wdt@7e785080 {
-			compatible = "aspeed,ast-watchdog";
-			reg = <0x7e785080 0x80>;
-			interrupts = <INTR_WDT AST10X0_IRQ_DEFAULT_PRIORITY>;
-			aspeed,scu = <&syscon>;
-			reset-mask= <0x30f1ff1 0x03fffff1>;
-			label = "wdt2";
-			status = "disabled";
-		};
+			wdt1: wdt@1 {
+				reg = <1>;
+				aspeed,scu = <&syscon>;
+				reset-mask= <0x30f1ff1 0x03fffff1>;
+				label = "wdt1";
+				status = "disabled";
+			};
 
-		wdt3: wdt@7e785100 {
-			compatible = "aspeed,ast-watchdog";
-			reg = <0x7e785100 0x80>;
-			interrupts = <INTR_WDT AST10X0_IRQ_DEFAULT_PRIORITY>;
-			aspeed,scu = <&syscon>;
-			reset-mask= <0x30f1ff1 0x03fffff1>;
-			label = "wdt3";
-			status = "disabled";
-		};
+			wdt2: wdt@2 {
+				reg = <2>;
+				aspeed,scu = <&syscon>;
+				reset-mask= <0x30f1ff1 0x03fffff1>;
+				label = "wdt2";
+				status = "disabled";
+			};
 
-		wdt4: wdt@7e785180 {
-			compatible = "aspeed,ast-watchdog";
-			reg = <0x7e785180 0x80>;
-			interrupts = <INTR_WDT AST10X0_IRQ_DEFAULT_PRIORITY>;
-			aspeed,scu = <&syscon>;
-			reset-mask= <0x30f1ff1 0x03fffff1>;
-			label = "wdt4";
-			status = "disabled";
+			wdt3: wdt@3 {
+				reg = <3>;
+				aspeed,scu = <&syscon>;
+				reset-mask= <0x30f1ff1 0x03fffff1>;
+				label = "wdt3";
+				status = "disabled";
+			};
+
+			wdt4: wdt@4 {
+				reg = <4>;
+				aspeed,scu = <&syscon>;
+				reset-mask= <0x30f1ff1 0x03fffff1>;
+				label = "wdt4";
+				status = "disabled";
+			};
 		};
 
 		i3c: bus@7e7a0000 {

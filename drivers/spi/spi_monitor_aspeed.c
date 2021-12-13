@@ -1244,6 +1244,8 @@ static int aspeed_spi_monitor_init(const struct device *dev)
 
 	/* always enable internal passthrough configuration */
 	spim_scu_passthrough_mode(dev, 0, true);
+	/* always keep at master mode during booting up stage */
+	spim_ext_mux_config(dev, SPIM_MASTER_MODE);
 
 	if (config->extra_clk_en)
 		spim_block_mode_config(dev, SPIM_BLOCK_EXTRA_CLK);

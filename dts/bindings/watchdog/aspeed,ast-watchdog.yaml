@@ -11,19 +11,30 @@ properties:
   reg:
     required: true
 
-  label:
-    required: true
-
   interrupts:
     required: true
 
-  aspeed,scu:
-    type: phandle
-    required: true
-    description: phandle to SCU device tree node
+child-binding:
+  description: watchdog timer physical controller node
+  properties:
+    reg:
+      type: int
+      required: true
+      description: Record the index(number) of SPI monitor controller.
 
-  reset-mask:
-    type: array
-    required: true
-    description: Record default reset mask1 and mask2
+    aspeed,scu:
+      type: phandle
+      required: true
+      description: phandle to SCU device tree node.
 
+    label:
+      type: string
+      required: true
+      description: |
+        Human readable string describing the device
+        (used as device_get_binding() argument).
+
+    reset-mask:
+      type: array
+      required: true
+      description: Record default reset mask1 and mask2.

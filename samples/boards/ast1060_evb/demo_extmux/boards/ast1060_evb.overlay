@@ -185,6 +185,10 @@
 
 };
 
+&wdt0 {
+	status = "okay";
+};
+
 &wdt1 {
 	status = "okay";
 };

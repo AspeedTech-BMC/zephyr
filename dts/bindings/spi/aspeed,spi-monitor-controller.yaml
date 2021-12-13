@@ -32,7 +32,7 @@ child-binding:
 
     label:
       type: string
-      required: false
+      required: true
       description: Human readable string describing the device (used as device_get_binding() argument)
 
     valid-cmds:
