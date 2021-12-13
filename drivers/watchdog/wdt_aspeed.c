@@ -289,7 +289,12 @@ void wdt_common_isr(const void *param)
 		reg_val = sys_read32(config->ctrl_base + WDT_CTRL_REG_OFF * idx +
 			WDT_TIMEOUT_STATUS_REG);
 		if ((reg_val & WDT_TIMEOUT_INDICATOR) != 0) {
-			data->callbacks[idx](data->wdt_devs[idx], 0);
+			if (data->callbacks[idx] != NULL) {
+				data->callbacks[idx](data->wdt_devs[idx], 0);
+			} else {
+				LOG_ERR("invalid callback function pointer");
+			}
+
 			data->pre_wdt_timeout_idx++;
 			/* ack */
 			sys_write32(WDT_TIMEOUT_INDICATOR,
