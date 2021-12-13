@@ -93,12 +93,12 @@ static uint8_t spim_log_arr[SPIM_LOG_RAM_TOTAL_SIZE] NON_CACHED_BSS_ALIGN16;
 #define SPIM_LOG_SZ             (0x0014)
 #define SPIM_LOG_PTR            (0x0018)
 #define SPIM_LOCK_REG           (0x007C)
-#define SPIM_VALID_CMD_BASE     (0x0080)
+#define SPIM_ALLOW_CMD_BASE     (0x0080)
 #define SPIM_ADDR_PRIV_TABLE_BASE    (0x0100)
 
 #define SPIM_BLOCK_CMD_EXTRA_CLK	BIT(7)
 
-/* valid command table */
+/* allow command table */
 #define SPIM_CMD_TABLE_NUM              32
 #define SPIM_CMD_TABLE_VALID_MASK       GENMASK(31, 30)
 #define SPIM_CMD_TABLE_VALID_ONCE_BIT   BIT(31)
@@ -115,7 +115,7 @@ static uint8_t spim_log_arr[SPIM_LOG_RAM_TOTAL_SIZE] NON_CACHED_BSS_ALIGN16;
 #define SPIM_CMD_TABLE_ADDR_MODE_MASK   GENMASK(9, 8)
 #define SPIM_CMD_TABLE_CMD_MASK         GENMASK(7, 0)
 
-/* valid address region configuration */
+/* allow address region configuration */
 #define SPIM_PRIV_WRITE_SELECT   0x57000000
 #define SPIM_PRIV_READ_SELECT    0x52000000
 #define SPIM_ADDR_PRIV_REG_NUN   512
@@ -162,8 +162,8 @@ struct aspeed_spim_data {
 	const struct device *dev;
 	struct k_sem sem_spim; /* protect most control registers */
 	struct k_spinlock irq_ctrl_lock; /* protect ISR content */
-	uint8_t valid_cmd_list[SPIM_CMD_TABLE_NUM];
-	uint32_t valid_cmd_num;
+	uint8_t allow_cmd_list[SPIM_CMD_TABLE_NUM];
+	uint32_t allow_cmd_num;
 	uint32_t read_forbidden_regions[32];
 	uint32_t read_forbidden_region_num;
 	uint32_t write_forbidden_regions[32];
@@ -338,8 +338,8 @@ void spim_block_mode_config(const struct device *dev, enum spim_block_mode mode)
 	release_spim_device(dev);
 }
 
-/* dump command information recored in valid command table */
-void spim_dump_valid_command_table(const struct device *dev)
+/* dump command information recored in allow command table */
+void spim_dump_allow_command_table(const struct device *dev)
 {
 	uint32_t i;
 	const struct aspeed_spim_config *config = dev->config;
@@ -353,7 +353,7 @@ void spim_dump_valid_command_table(const struct device *dev)
 	acquire_spim_device(dev);
 
 	for (i = 0; i < SPIM_CMD_TABLE_NUM; i++) {
-		reg_val = sys_read32(config->ctrl_base + SPIM_VALID_CMD_BASE + i * 4);
+		reg_val = sys_read32(config->ctrl_base + SPIM_ALLOW_CMD_BASE + i * 4);
 		if (reg_val == 0)
 			continue;
 		printk("[%s]idx %02d: 0x%08x\n", dev->name, i, reg_val);
@@ -361,7 +361,7 @@ void spim_dump_valid_command_table(const struct device *dev)
 
 	printk("\ncmd info:\n");
 	for (i = 0; i < SPIM_CMD_TABLE_NUM; i++) {
-		reg_val = sys_read32(config->ctrl_base + SPIM_VALID_CMD_BASE + i * 4);
+		reg_val = sys_read32(config->ctrl_base + SPIM_ALLOW_CMD_BASE + i * 4);
 		if (reg_val == 0)
 			continue;
 
@@ -437,11 +437,11 @@ uint32_t spim_get_cmd_table_val(uint8_t cmd)
 	return 0;
 }
 
-void spim_valid_cmd_table_init(const struct device *dev,
+void spim_allow_cmd_table_init(const struct device *dev,
 	const uint8_t cmd_list[], uint32_t cmd_num, uint32_t flag)
 {
 	const struct aspeed_spim_config *config = dev->config;
-	mm_reg_t table_base = config->ctrl_base + SPIM_VALID_CMD_BASE;
+	mm_reg_t table_base = config->ctrl_base + SPIM_ALLOW_CMD_BASE;
 	uint32_t i;
 	uint32_t reg_val;
 	uint32_t idx = 3;
@@ -480,14 +480,14 @@ void spim_valid_cmd_table_init(const struct device *dev,
 	release_spim_device(dev);
 }
 
-static int spim_get_empty_valid_cmd_slot(const struct device *dev)
+static int spim_get_empty_allow_cmd_slot(const struct device *dev)
 {
 	const struct aspeed_spim_config *config = dev->config;
 	int idx;
 	uint32_t reg_val;
 
 	for (idx = 4; idx < SPIM_CMD_TABLE_NUM; idx++) {
-		reg_val = sys_read32(config->ctrl_base + SPIM_VALID_CMD_BASE + idx * 4);
+		reg_val = sys_read32(config->ctrl_base + SPIM_ALLOW_CMD_BASE + idx * 4);
 		if (reg_val == 0)
 			return idx;
 	}
@@ -495,7 +495,7 @@ static int spim_get_empty_valid_cmd_slot(const struct device *dev)
 	return -ENOSR;
 }
 
-static int spim_get_valid_cmd_slot(const struct device *dev,
+static int spim_get_allow_cmd_slot(const struct device *dev,
 	uint8_t cmd, uint32_t start_off)
 {
 	const struct aspeed_spim_config *config = dev->config;
@@ -503,7 +503,7 @@ static int spim_get_valid_cmd_slot(const struct device *dev,
 	uint32_t reg_val;
 
 	for (idx = start_off; idx < SPIM_CMD_TABLE_NUM; idx++) {
-		reg_val = sys_read32(config->ctrl_base + SPIM_VALID_CMD_BASE + idx * 4);
+		reg_val = sys_read32(config->ctrl_base + SPIM_ALLOW_CMD_BASE + idx * 4);
 		if ((reg_val & SPIM_CMD_TABLE_CMD_MASK) == cmd)
 			return idx;
 	}
@@ -511,22 +511,22 @@ static int spim_get_valid_cmd_slot(const struct device *dev,
 	return -ENOSR;
 }
 
-/* - If the command already exists in valid command table and
- *   it is disabled, it will be enabled by spim_add_valid_command.
- * - If the command already exists in valid command table and
+/* - If the command already exists in allow command table and
+ *   it is disabled, it will be enabled by spim_add_allow_command.
+ * - If the command already exists in allow command table and
  *   it is lock, it will not be enabled and an error code will
  *   be returned.
- * - If the command doesn't exist in valid command table, an
+ * - If the command doesn't exist in allow command table, an
  *   empty slot will be found and the command info will be
  *   filled into.
  */
 
-int spim_add_valid_command(const struct device *dev,
+int spim_add_allow_command(const struct device *dev,
 	uint8_t cmd, uint32_t flag)
 {
 	int ret = 0;
 	const struct aspeed_spim_config *config = dev->config;
-	mm_reg_t table_base = config->ctrl_base + SPIM_VALID_CMD_BASE;
+	mm_reg_t table_base = config->ctrl_base + SPIM_ALLOW_CMD_BASE;
 	int idx;
 	uint32_t off;
 	uint32_t reg_val;
@@ -534,14 +534,14 @@ int spim_add_valid_command(const struct device *dev,
 
 	acquire_spim_device(dev);
 
-	/* check whether the command is already recorded in valid cmd table */
+	/* check whether the command is already recorded in allow cmd table */
 	for (off = 0; off < SPIM_CMD_TABLE_NUM; off++) {
-		idx = spim_get_valid_cmd_slot(dev, cmd, off);
+		idx = spim_get_allow_cmd_slot(dev, cmd, off);
 		if (idx >= 0) {
 			found = true;
 			reg_val = sys_read32(table_base + idx * 4);
 			if ((reg_val & SPIM_CMD_TABLE_LOCK_BIT) != 0) {
-				LOG_WRN("cmd %02x cannot be enabled in valid cmd table(%d)", cmd, idx);
+				LOG_WRN("cmd %02x cannot be enabled in allow cmd table(%d)", cmd, idx);
 				off = idx + 1;
 				/* search for the next slot with the same command */
 				continue;
@@ -561,16 +561,16 @@ int spim_add_valid_command(const struct device *dev,
 		}
 	}
 
-	/* If the cmd already exists in the valid command table and
+	/* If the cmd already exists in the allow command table and
 	 * the register is locked, the same command should not be added again.
 	 */
 	if (found) {
-		LOG_WRN("cmd %02x should not be added in the valid command table again", cmd);
+		LOG_WRN("cmd %02x should not be added in the allow command table again", cmd);
 		goto end;
 	}
 
 	reg_val = spim_get_cmd_table_val(cmd);
-	/* cmd info is not found in valid table array */
+	/* cmd info is not found in allow table array */
 	if (reg_val == 0) {
 		LOG_ERR("cmd is not recorded in \"cmds_array\" array");
 		LOG_ERR("please edit it in spi_monitor_aspeed.c");
@@ -596,7 +596,7 @@ int spim_add_valid_command(const struct device *dev,
 		break;
 	}
 
-	idx = spim_get_empty_valid_cmd_slot(dev);
+	idx = spim_get_empty_allow_cmd_slot(dev);
 	if (idx < 0) {
 		LOG_ERR("No more space for new command");
 		ret = -ENOSR;
@@ -613,11 +613,11 @@ end:
 /* All command table slot which command is equal to "cmd"
  * parameter will be removed.
  */
-int spim_remove_valid_command(const struct device *dev, uint8_t cmd)
+int spim_remove_allow_command(const struct device *dev, uint8_t cmd)
 {
 	int ret = 0;
 	const struct aspeed_spim_config *config = dev->config;
-	mm_reg_t table_base = config->ctrl_base + SPIM_VALID_CMD_BASE;
+	mm_reg_t table_base = config->ctrl_base + SPIM_ALLOW_CMD_BASE;
 	int idx;
 	uint32_t off;
 	uint32_t reg_val;
@@ -625,9 +625,9 @@ int spim_remove_valid_command(const struct device *dev, uint8_t cmd)
 
 	acquire_spim_device(dev);
 
-	/* check whether the command is already recorded in valid cmd table */
+	/* check whether the command is already recorded in allow cmd table */
 	for (off = 0; off < SPIM_CMD_TABLE_NUM; off++) {
-		idx = spim_get_valid_cmd_slot(dev, cmd, off);
+		idx = spim_get_allow_cmd_slot(dev, cmd, off);
 		if (idx >= 0) {
 			found = true;
 			reg_val = sys_read32(table_base + idx * 4);
@@ -652,7 +652,7 @@ int spim_remove_valid_command(const struct device *dev, uint8_t cmd)
 	}
 
 	if (!found) {
-		LOG_ERR("cmd %02x is not found in valid command table", cmd);
+		LOG_ERR("cmd %02x is not found in allow command table", cmd);
 		ret = -EINVAL;
 		goto end;
 	}
@@ -663,17 +663,17 @@ end:
 	return ret;
 }
 
-/* - The overall valid command table will be locked when
+/* - The overall allow command table will be locked when
  *   flag is FLAG_CMD_TABLE_LOCK_ALL.
  * - All command table slot which command is equal to "cmd"
  *   parameter will be locked.
  */
-int spim_lock_valid_command_table(const struct device *dev,
+int spim_lock_allow_command_table(const struct device *dev,
 	uint8_t cmd, uint32_t flag)
 {
 	int ret = 0;
 	const struct aspeed_spim_config *config = dev->config;
-	mm_reg_t table_base = config->ctrl_base + SPIM_VALID_CMD_BASE;
+	mm_reg_t table_base = config->ctrl_base + SPIM_ALLOW_CMD_BASE;
 	int idx;
 	uint32_t off;
 	uint32_t reg_val;
@@ -691,7 +691,7 @@ int spim_lock_valid_command_table(const struct device *dev,
 	}
 
 	for (off = 0; off < SPIM_CMD_TABLE_NUM; off++) {
-		idx = spim_get_valid_cmd_slot(dev, cmd, off);
+		idx = spim_get_allow_cmd_slot(dev, cmd, off);
 		if (idx >= 0) {
 			found = true;
 			reg_val = sys_read32(table_base + idx * 4);
@@ -710,7 +710,7 @@ int spim_lock_valid_command_table(const struct device *dev,
 	}
 
 	if (!found) {
-		LOG_ERR("cmd %02x is not found in valid command table", cmd);
+		LOG_ERR("cmd %02x is not found in allow command table", cmd);
 		ret = -EINVAL;
 		goto end;
 	}
@@ -975,7 +975,7 @@ void spim_lock_common(const struct device *dev)
 
 	spim_lock_rw_privilege_table(dev, FLAG_ADDR_PRIV_READ_SELECT);
 	spim_lock_rw_privilege_table(dev, FLAG_ADDR_PRIV_WRITE_SELECT);
-	spim_lock_valid_command_table(dev, 0, FLAG_CMD_TABLE_LOCK_ALL);
+	spim_lock_allow_command_table(dev, 0, FLAG_CMD_TABLE_LOCK_ALL);
 
 	acquire_spim_device(dev);
 
@@ -1250,7 +1250,7 @@ static int aspeed_spi_monitor_init(const struct device *dev)
 	if (config->extra_clk_en)
 		spim_block_mode_config(dev, SPIM_BLOCK_EXTRA_CLK);
 
-	spim_valid_cmd_table_init(dev, data->valid_cmd_list, data->valid_cmd_num, 0);
+	spim_allow_cmd_table_init(dev, data->allow_cmd_list, data->allow_cmd_num, 0);
 	spim_rw_perm_init(dev);
 	spim_monitor_enable(dev, true);
 
@@ -1295,8 +1295,8 @@ static int aspeed_spi_monitor_common_init(const struct device *dev)
 },
 
 #define ASPEED_SPIM_DEV_DATA(node_id) {	\
-		.valid_cmd_list = DT_PROP(node_id, valid_cmds), \
-		.valid_cmd_num = DT_PROP_LEN(node_id, valid_cmds), \
+		.allow_cmd_list = DT_PROP(node_id, allow_cmds), \
+		.allow_cmd_num = DT_PROP_LEN(node_id, allow_cmds), \
 		.read_forbidden_regions = DT_PROP(node_id, read_forbidden_regions),	\
 		.read_forbidden_region_num = DT_PROP_LEN(node_id, read_forbidden_regions),	\
 		.write_forbidden_regions = DT_PROP(node_id, write_forbidden_regions),	\

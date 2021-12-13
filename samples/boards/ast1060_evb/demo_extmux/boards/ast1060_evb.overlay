@@ -278,7 +278,7 @@
 };
 
 &spim1 {
-	valid-cmds = [03 13 0b 0c 6b 6c 01 05 35 06 04 20 21 9f 5a b7 e9 32 34 d8 dc 02 12];
+	allow-cmds = [03 13 0b 0c 6b 6c 01 05 35 06 04 20 21 9f 5a b7 e9 32 34 d8 dc 02 12];
 	log-ram-size = <0x200>;
 	pinctrl-0 = <&pinctrl_spim1_cs &pinctrl_spim1_in_default &pinctrl_spim1_qspi_in_default
 				&pinctrl_spim1_rst_out &pinctrl_spim1_muxsel>;
@@ -286,7 +286,7 @@
 };
 
 &spim2 {
-	valid-cmds = [03 13 0b 0c 6b 6c 01 05 35 06 04 20 21 9f 5a b7 e9 32 34 d8 dc 02 12];
+	allow-cmds = [03 13 0b 0c 6b 6c 01 05 35 06 04 20 21 9f 5a b7 e9 32 34 d8 dc 02 12];
 	log-ram-size = <0x200>;
 	pinctrl-0 = <&pinctrl_spim2_cs &pinctrl_spim2_in_default &pinctrl_spim2_out_default
 				&pinctrl_spim2_qspi_in_default &pinctrl_spim2_qspi_out_default
@@ -295,7 +295,7 @@
 };
 
 &spim3 {
-	valid-cmds = [03 13 0b 0c 6b 6c 01 05 35 06 04 20 21 9f 5a b7 e9 32 34 d8 dc 02 12];
+	allow-cmds = [03 13 0b 0c 6b 6c 01 05 35 06 04 20 21 9f 5a b7 e9 32 34 d8 dc 02 12];
 	log-ram-size = <0x200>;
 	pinctrl-0 = <&pinctrl_spim3_cs &pinctrl_spim3_in_default &pinctrl_spim3_out_default
 				&pinctrl_spim3_qspi_in_default &pinctrl_spim3_qspi_out_default
@@ -304,7 +304,7 @@
 };
 
 &spim4 {
-	valid-cmds = [03 13 0b 0c 6b 6c 01 05 35 06 04 20 21 9f 5a b7 e9 32 34 d8 dc 02 12];
+	allow-cmds = [03 13 0b 0c 6b 6c 01 05 35 06 04 20 21 9f 5a b7 e9 32 34 d8 dc 02 12];
 	log-ram-size = <0x200>;
 	/* for demo purpose */
 	read-forbidden-regions = <

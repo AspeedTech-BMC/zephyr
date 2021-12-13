@@ -76,19 +76,19 @@ end:
 	return ret;
 }
 
-static int dump_valid_cmd_table(const struct shell *shell, size_t argc, char *argv[])
+static int dump_allow_cmd_table(const struct shell *shell, size_t argc, char *argv[])
 {
 	if (spim_device == NULL) {
 		shell_error(shell, "Please set the device first.");
 		return -ENODEV;
 	}
 
-	spim_dump_valid_command_table(spim_device);
+	spim_dump_allow_command_table(spim_device);
 
 	return 0;
 }
 
-static int add_valid_cmd(const struct shell *shell, size_t argc, char *argv[])
+static int add_allow_cmd(const struct shell *shell, size_t argc, char *argv[])
 {
 	int ret;
 	uint8_t cmd = 0;
@@ -103,15 +103,15 @@ static int add_valid_cmd(const struct shell *shell, size_t argc, char *argv[])
 		goto end;
 
 	if (argc == 3 && strncmp(argv[2], "once", 4) == 0)
-		ret = spim_add_valid_command(spim_device, cmd, FLAG_CMD_TABLE_VALID_ONCE);
+		ret = spim_add_allow_command(spim_device, cmd, FLAG_CMD_TABLE_VALID_ONCE);
 	else
-		ret = spim_add_valid_command(spim_device, cmd, FLAG_CMD_TABLE_VALID);
+		ret = spim_add_allow_command(spim_device, cmd, FLAG_CMD_TABLE_VALID);
 
 end:
 	return ret;
 }
 
-static int remove_valid_cmd(const struct shell *shell, size_t argc, char *argv[])
+static int remove_allow_cmd(const struct shell *shell, size_t argc, char *argv[])
 {
 	int ret;
 	uint8_t cmd = 0;
@@ -125,7 +125,7 @@ static int remove_valid_cmd(const struct shell *shell, size_t argc, char *argv[]
 	if (ret)
 		goto end;
 
-	ret = spim_remove_valid_command(spim_device, cmd);
+	ret = spim_remove_allow_command(spim_device, cmd);
 	if (ret)
 		goto end;
 
@@ -133,7 +133,7 @@ end:
 	return ret;
 }
 
-static int lock_valid_cmd(const struct shell *shell, size_t argc, char *argv[])
+static int lock_allow_cmd(const struct shell *shell, size_t argc, char *argv[])
 {
 	int ret;
 	uint8_t cmd = 0;
@@ -145,7 +145,7 @@ static int lock_valid_cmd(const struct shell *shell, size_t argc, char *argv[])
 
 	if (strncmp(argv[1], "all", 3) == 0) {
 		/* lock individual register */
-		ret = spim_lock_valid_command_table(spim_device, 0, FLAG_CMD_TABLE_LOCK_ALL);
+		ret = spim_lock_allow_command_table(spim_device, 0, FLAG_CMD_TABLE_LOCK_ALL);
 		goto end;
 	}
 
@@ -154,7 +154,7 @@ static int lock_valid_cmd(const struct shell *shell, size_t argc, char *argv[])
 		goto end;
 
 	/* lock individual register */
-	ret = spim_lock_valid_command_table(spim_device, cmd, 0);
+	ret = spim_lock_allow_command_table(spim_device, cmd, 0);
 
 end:
 	return ret;
@@ -346,10 +346,10 @@ static int passthrough_mode_config(const struct shell *shell, size_t argc, char 
 }
 
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_spim_cmds,
-	SHELL_CMD_ARG(dump, NULL, "\"dump\"", dump_valid_cmd_table, 1, 0),
-	SHELL_CMD_ARG(add, NULL, "<command>", add_valid_cmd, 2, 1),
-	SHELL_CMD_ARG(rm, NULL, "<command>", remove_valid_cmd, 2, 0),
-	SHELL_CMD_ARG(lock, NULL, "<command>", lock_valid_cmd, 2, 0),
+	SHELL_CMD_ARG(dump, NULL, "\"dump\"", dump_allow_cmd_table, 1, 0),
+	SHELL_CMD_ARG(add, NULL, "<command>", add_allow_cmd, 2, 1),
+	SHELL_CMD_ARG(rm, NULL, "<command>", remove_allow_cmd, 2, 0),
+	SHELL_CMD_ARG(lock, NULL, "<command>", lock_allow_cmd, 2, 0),
 
 	SHELL_SUBCMD_SET_END
 );

@@ -35,12 +35,12 @@ child-binding:
       required: true
       description: Human readable string describing the device (used as device_get_binding() argument)
 
-    valid-cmds:
+    allow-cmds:
       type: uint8-array
       required: true
       description: |
         Assign the commands which should be filled
-        in valid list table.
+        in allow command list table.
 
         [cmd1 cmd2 ... cmdN];
 
