@@ -147,16 +147,8 @@ static uint8_t spim_log_arr[SPIM_LOG_RAM_TOTAL_SIZE] NON_CACHED_BSS_ALIGN16;
 /* spi monitor log control */
 #define SPIM_BLOCK_INFO_EN              BIT(31)
 
-
 /* PFR related control */
 #define SPIM_MODE_SCU_CTRL              (0x00f0)
-
-struct spim_log_info {
-	mem_addr_t log_ram_addr;
-	uint32_t log_ram_sz;
-	uint32_t pre_off;
-	uint32_t cur_off;
-};
 
 struct aspeed_spim_data {
 	const struct device *dev;
@@ -170,6 +162,7 @@ struct aspeed_spim_data {
 	uint32_t write_forbidden_region_num;
 	struct k_work log_work;
 	struct spim_log_info log_info;
+	spim_isr_callback_t isr_callback;
 };
 
 struct aspeed_spim_config {
@@ -318,7 +311,6 @@ void spim_ext_mux_config(const struct device *dev,
 		spim_scu_ctrl_clear(config->parent, BIT(config->ctrl_idx - 1) << 12);
 	}
 }
-
 
 void spim_block_mode_config(const struct device *dev, enum spim_block_mode mode)
 {
@@ -1115,59 +1107,34 @@ void spim_rst_flash(const struct device *dev, uint32_t rst_duration_ms)
 	k_busy_wait(5000); /* 5ms */
 }
 
-void spim_log_parser(const struct device *dev, uint32_t idx, uint32_t log_val)
+void spim_get_log_info(const struct device *dev, struct spim_log_info *info)
 {
-	switch ((log_val & 0x000c0000) >> 18) {
-	case 0x0:
-		/* block command */
-		printk("[%s][b][%03d][cmd] %02xh\n",
-				dev->name, idx, log_val & 0xFF);
-		break;
+	const struct aspeed_spim_config *config = dev->config;
+	struct aspeed_spim_data *const data = dev->data;
 
-	case 0x1:
-		/* block write command */
-		printk("[%s][b][%03d][w_addr] 0x%08x\n",
-				dev->name, idx, (log_val & 0x3FFFF) << 14);
-		break;
+	if (info == NULL)
+		return;
 
-	case 0x2:
-		/* block read command */
-		printk("[%s][b][%03d][r_addr] 0x%08x\n",
-				dev->name, idx, (log_val & 0x3FFFF) << 14);
-		break;
+	info->log_ram_addr = data->log_info.log_ram_addr;
+	info->log_max_sz = data->log_info.log_max_sz;
+	info->log_idx_reg = sys_read32(config->ctrl_base + SPIM_LOG_PTR);
 
-	default:
-		LOG_ERR("[%s][%03d]invalid ctx: 0x%08x", dev->name, idx, log_val);
-	}
+	return;
 }
 
-void spim_log_work(struct k_work *item)
+uint32_t spim_get_ctrl_idx(const struct device *dev)
 {
-	struct aspeed_spim_data *const data =
-		CONTAINER_OF(item, struct aspeed_spim_data, log_work);
-	const struct device *dev = data->dev;
 	const struct aspeed_spim_config *config = dev->config;
-	uint32_t i;
 
-	acquire_log_op(config->parent);
+	return config->ctrl_idx;
+}
 
-	data->log_info.cur_off = sys_read32(config->ctrl_base + SPIM_LOG_PTR);
-	if (data->log_info.cur_off < data->log_info.pre_off) {
-		for (i = data->log_info.pre_off; i < data->log_info.log_ram_sz / 4; i++) {
-			spim_log_parser(dev, i,
-				sys_read32(data->log_info.log_ram_addr + i * 4));
-		}
+void spim_isr_callback_install(const struct device *dev,
+	spim_isr_callback_t isr_callback)
+{
+	struct aspeed_spim_data *const data = dev->data;
 
-		data->log_info.pre_off = 0;
-	}
-
-	for (i = data->log_info.pre_off; i < data->log_info.cur_off; i++) {
-		spim_log_parser(dev, i, sys_read32(data->log_info.log_ram_addr + i * 4));
-	}
-
-	data->log_info.pre_off = data->log_info.cur_off;
-
-	release_log_op(config->parent);
+	data->isr_callback = isr_callback;
 }
 
 void spim_isr(const void *param)
@@ -1179,7 +1146,9 @@ void spim_isr(const void *param)
 	uint32_t sts_backup;
 	k_spinlock_key_t key = k_spin_lock(&data->irq_ctrl_lock);
 
-	k_work_submit(&data->log_work);
+	if (data->isr_callback != NULL)
+		data->isr_callback(dev);
+
 	/* ack */
 	reg_val = sys_read32(config->ctrl_base + SPIM_IRQ_CTRL);
 	sts_backup = reg_val & SPIM_IRQ_STS_MASK;
@@ -1214,7 +1183,7 @@ static int spim_abnormal_log_init(const struct device *dev)
 
 	acquire_log_op(config->parent);
 	data->log_info.log_ram_addr = (mem_addr_t)(&spim_log_arr[0] + parent_data->cur_log_sz);
-	parent_data->cur_log_sz += data->log_info.log_ram_sz;
+	parent_data->cur_log_sz += data->log_info.log_max_sz;
 	cur_log_sz = parent_data->cur_log_sz;
 	release_log_op(config->parent);
 
@@ -1226,10 +1195,8 @@ static int spim_abnormal_log_init(const struct device *dev)
 
 	acquire_spim_device(dev);
 	sys_write32(data->log_info.log_ram_addr, config->ctrl_base + SPIM_LOG_BASE);
-	sys_write32(data->log_info.log_ram_sz | SPIM_BLOCK_INFO_EN,
+	sys_write32(data->log_info.log_max_sz | SPIM_BLOCK_INFO_EN,
 			config->ctrl_base + SPIM_LOG_SZ);
-	data->log_info.pre_off = 0;
-	data->log_info.cur_off = 0;
 	release_spim_device(dev);
 
 end:
@@ -1261,8 +1228,6 @@ static int aspeed_spi_monitor_init(const struct device *dev)
 	ret = spim_abnormal_log_init(dev);
 	if (ret != 0)
 		return ret;
-
-	k_work_init(&data->log_work, spim_log_work);
 
 	/* irq init */
 	irq_connect_dynamic(config->irq_num, config->irq_priority,
@@ -1305,7 +1270,7 @@ static int aspeed_spi_monitor_common_init(const struct device *dev)
 		.read_forbidden_region_num = DT_PROP_LEN(node_id, read_forbidden_regions),	\
 		.write_forbidden_regions = DT_PROP(node_id, write_forbidden_regions),	\
 		.write_forbidden_region_num = DT_PROP_LEN(node_id, write_forbidden_regions),	\
-		.log_info.log_ram_sz = DT_PROP_OR(node_id, log_ram_size, 0x200),	\
+		.log_info.log_max_sz = DT_PROP_OR(node_id, log_ram_size, 0x200),	\
 		.dev = DEVICE_DT_GET(node_id),	\
 },
 

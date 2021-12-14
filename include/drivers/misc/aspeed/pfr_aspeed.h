@@ -113,4 +113,16 @@ void spim_lock_common(const struct device *dev);
 
 void spim_monitor_enable(const struct device *dev, bool enable);
 
+struct spim_log_info {
+	mem_addr_t log_ram_addr;
+	uint32_t log_max_sz;
+	uint32_t log_idx_reg;
+};
+
+typedef void (*spim_isr_callback_t)(const struct device *dev);
+void spim_isr_callback_install(const struct device *dev,
+	spim_isr_callback_t isr_callback);
+void spim_get_log_info(const struct device *dev, struct spim_log_info *info);
+uint32_t spim_get_ctrl_idx(const struct device *dev);
+
 #endif

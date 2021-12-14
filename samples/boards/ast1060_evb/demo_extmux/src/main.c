@@ -15,6 +15,8 @@
 static struct k_work rst_work;
 static struct gpio_callback gpio_cb;
 
+void demo_spim_irq_init(void);
+
 static void ast1060_rst_demo_ext_mux(struct k_work *item)
 {
 	int ret;
@@ -210,6 +212,7 @@ void main(void)
 	rst_gpio_event_register();
 
 	k_work_init(&rst_work, ast1060_rst_demo_ext_mux);
+	demo_spim_irq_init();
 
 	ast1060_rst_demo_ext_mux(NULL);
 
