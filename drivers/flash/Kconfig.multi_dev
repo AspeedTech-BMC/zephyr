@@ -57,4 +57,13 @@ config SPI_NOR_FLASH_LAYOUT_PAGE_SIZE
 	  (32768), the sector size (4096), or any non-zero multiple of the
 	  sector size.
 
+config SPI_NOR_ADDR_MODE_FALLBACK_DISABLED
+	bool "Address mode fallback disable"
+	default n
+	help
+	  If this configuration is enabled and the flash was ever set
+	  to 4-byte mode before, the driver will force to set the flash
+	  to 4-byte mode before read, write or erase flash memory
+	  operation no matter the current address mode of the flash is.
+
 endif # SPI_NOR_MULTI_DEV

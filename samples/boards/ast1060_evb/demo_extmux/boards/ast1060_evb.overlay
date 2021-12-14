@@ -282,6 +282,8 @@
 	log-ram-size = <0x200>;
 	pinctrl-0 = <&pinctrl_spim1_cs &pinctrl_spim1_in_default &pinctrl_spim1_qspi_in_default
 				&pinctrl_spim1_rst_out &pinctrl_spim1_muxsel>;
+
+	flash-device = <&spi1_cs0>;
 	status = "okay";
 };
 
@@ -291,6 +293,8 @@
 	pinctrl-0 = <&pinctrl_spim2_cs &pinctrl_spim2_in_default &pinctrl_spim2_out_default
 				&pinctrl_spim2_qspi_in_default &pinctrl_spim2_qspi_out_default
 				&pinctrl_spim2_rst_out>;
+
+	flash-device = <&spi2_cs0>;
 	status = "okay";
 };
 
@@ -300,6 +304,8 @@
 	pinctrl-0 = <&pinctrl_spim3_cs &pinctrl_spim3_in_default &pinctrl_spim3_out_default
 				&pinctrl_spim3_qspi_in_default &pinctrl_spim3_qspi_out_default
 				&pinctrl_spim3_rst_out>;
+
+	flash-device = <&spi2_cs1>;
 	status = "okay";
 };
 
@@ -322,5 +328,7 @@
 	pinctrl-0 = <&pinctrl_spim4_cs &pinctrl_spim4_in_default &pinctrl_spim4_out_default
 				&pinctrl_spim4_qspi_in_default &pinctrl_spim4_qspi_out_default
 				&pinctrl_spim4_rst_out>;
+
+	flash-device = <&spi2_cs2>;
 	status = "okay";
 };

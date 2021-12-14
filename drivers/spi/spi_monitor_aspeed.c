@@ -19,7 +19,7 @@ LOG_MODULE_REGISTER(spim_aspeed, CONFIG_SPI_LOG_LEVEL);
 #include <sys/util.h>
 #include <drivers/misc/aspeed/pfr_aspeed.h>
 #include <soc.h>
-
+#include <drivers/spi_nor.h>
 
 #define CMD_TABLE_VALUE(G, W, R, M, DAT_MODE, DUMMY, PROG_SZ, ADDR_LEN, ADDR_MODE, CMD) \
 	(G << 29 | W << 28 | R << 27 | M << 26 | DAT_MODE << 24 | DUMMY << 16 | PROG_SZ << 13 | \
@@ -179,6 +179,7 @@ struct aspeed_spim_config {
 	uint32_t ctrl_idx;
 	bool extra_clk_en;
 	const struct device *parent;
+	const struct device *flash_dev;
 };
 
 struct aspeed_spim_common_config {
@@ -1109,6 +1110,8 @@ void spim_rst_flash(const struct device *dev, uint32_t rst_duration_ms)
 	/* release reset */
 	spim_scu_ctrl_set(parent_dev, val, val);
 
+	spi_nor_config_4byte_mode(config->flash_dev, false);
+
 	k_busy_wait(5000); /* 5ms */
 }
 
@@ -1292,6 +1295,7 @@ static int aspeed_spi_monitor_common_init(const struct device *dev)
 		.ctrl_idx = DT_REG_ADDR(node_id),	\
 		.extra_clk_en = DT_PROP(node_id, extra_clk),	\
 		.parent = DEVICE_DT_GET(DT_PARENT(node_id)),	\
+		.flash_dev = DEVICE_DT_GET(DT_PHANDLE(node_id, flash_device)),	\
 },
 
 #define ASPEED_SPIM_DEV_DATA(node_id) {	\

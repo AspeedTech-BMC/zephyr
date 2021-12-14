@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <drivers/flash.h>
+#include <drivers/spi_nor.h>
 #include <soc.h>
 
 #include <kernel.h>
@@ -436,6 +437,27 @@ static int cmd_update_test(const struct shell *shell, size_t argc, char *argv[])
 	return ret;
 }
 
+static int cmd_address_mode_config(const struct shell *shell, size_t argc, char *argv[])
+{
+	int ret = 0;
+	const struct device *flash_dev;
+	uint32_t addr_mode;
+
+	ret = parse_helper(shell, &argc, &argv, &flash_dev, &addr_mode);
+	if (ret)
+		return ret;
+
+	if (addr_mode == 4) {
+		ret = spi_nor_config_4byte_mode(flash_dev, true);
+	} else if (addr_mode == 3) {
+		ret = spi_nor_config_4byte_mode(flash_dev, false);
+	} else {
+		shell_error(shell, "Wrong addrss mode: %d", addr_mode);
+		ret = -EINVAL;
+	}
+
+	return ret;
+}
 
 static void device_name_get(size_t idx, struct shell_static_entry *entry);
 
@@ -467,6 +489,9 @@ SHELL_STATIC_SUBCMD_SET_CREATE(flash_cmds,
 	SHELL_CMD_ARG(update_test, &dsub_device_name,
 		"[<device>] <address> [<count>]",
 		cmd_update_test, 2, 2),
+	SHELL_CMD_ARG(addr_mode, NULL,
+		"[<device>] <address byte mode>",
+		cmd_address_mode_config, 3, 0),
 
 	SHELL_SUBCMD_SET_END
 );

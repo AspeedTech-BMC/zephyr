@@ -92,6 +92,8 @@ struct spi_nor_data {
 	struct flash_pages_layout layout;
 
 	struct flash_parameters flash_nor_parameter;
+
+	bool init_4b_mode_once;
 };
 
 #define SPI_NOR_PROT_NUM 8
@@ -712,11 +714,22 @@ static int spi_nor_read(const struct device *dev, off_t addr, void *dest,
 		return -EINVAL;
 	}
 
+#if CONFIG_SPI_NOR_ADDR_MODE_FALLBACK_DISABLED
+	if (data->init_4b_mode_once && !data->flag_access_32bit) {
+		ret = spi_nor_config_4byte_mode(dev, true);
+		if (ret != 0)
+			return ret;
+
+		op_info.addr_len = 4;
+	}
+#endif
+
 	acquire_device(dev);
 
 	ret = spi_nor_op_exec(dev, op_info);
 
 	release_device(dev);
+
 	return ret;
 }
 
@@ -738,6 +751,16 @@ static int spi_nor_write(const struct device *dev, off_t addr,
 	if ((addr < 0) || ((size + addr) > flash_size)) {
 		return -EINVAL;
 	}
+
+#if CONFIG_SPI_NOR_ADDR_MODE_FALLBACK_DISABLED
+	if (data->init_4b_mode_once && !data->flag_access_32bit) {
+		ret = spi_nor_config_4byte_mode(dev, true);
+		if (ret != 0)
+			return ret;
+
+		op_info.addr_len = 4;
+	}
+#endif
 
 	acquire_device(dev);
 	ret = spi_nor_write_protection_set(dev, false);
@@ -784,6 +807,7 @@ static int spi_nor_write(const struct device *dev, off_t addr,
 	}
 
 	release_device(dev);
+
 	return ret;
 }
 
@@ -812,6 +836,16 @@ static int spi_nor_erase(const struct device *dev, off_t addr, size_t size)
 	if ((size % SPI_NOR_SECTOR_SIZE) != 0) {
 		return -EINVAL;
 	}
+
+#if CONFIG_SPI_NOR_ADDR_MODE_FALLBACK_DISABLED
+	if (data->init_4b_mode_once && !data->flag_access_32bit) {
+		ret = spi_nor_config_4byte_mode(dev, true);
+		if (ret != 0)
+			return ret;
+
+		op_info.addr_len = 4;
+	}
+#endif
 
 	acquire_device(dev);
 	ret = spi_nor_write_protection_set(dev, false);
@@ -970,6 +1004,9 @@ static int spi_nor_set_address_mode(const struct device *dev,
 		struct spi_nor_data *data = dev->data;
 
 		data->flag_access_32bit = true;
+#if CONFIG_SPI_NOR_ADDR_MODE_FALLBACK_DISABLED
+		data->init_4b_mode_once = true;
+#endif
 	}
 
 	release_device(dev);
@@ -995,10 +1032,21 @@ int spi_nor_config_4byte_mode(const struct device *dev, bool en4b)
 		ret = spi_nor_op_exec(dev, op_info);
 	}
 
+	if (ret != 0)
+		goto end;
+
 	ret = spi_nor_wrdi(dev);
 
-	data->flag_access_32bit = true;
+	if (en4b) {
+		data->flag_access_32bit = true;
+#if CONFIG_SPI_NOR_ADDR_MODE_FALLBACK_DISABLED
+		data->init_4b_mode_once = true;
+#endif
+	} else {
+		data->flag_access_32bit = false;
+	}
 
+end:
 	release_device(dev);
 
 	return ret;
@@ -1120,6 +1168,7 @@ static int spi_nor_process_4bai(const struct device *dev,
 
 	data->jedec_4bai_support = true;
 	data->flag_access_32bit = true;
+	data->init_4b_mode_once = true;
 
 end:
 	LOG_DBG("[4bai][mode] read: %08x, write: %08x, erase: %08x",
@@ -1523,6 +1572,7 @@ static const struct flash_driver_api spi_nor_api = {
 			.erase_value = 0xff,	\
 			.flash_size = 0,	\
 		},	\
+		.init_4b_mode_once = false,	\
 	};	\
 		\
 	DEVICE_DT_INST_DEFINE(n, &spi_nor_init, NULL,	\

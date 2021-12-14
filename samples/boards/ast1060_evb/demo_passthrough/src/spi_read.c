@@ -249,12 +249,9 @@ int test_spi_host_read(void)
 		spim_dump_buf(op_buf, 4);
 		spim_dump_buf(op_buf + SPIM_TEST_SIZE - 4, 4);
 
-		/* reset BMC boot up flash */
-		if (i == 0) {
-			ret = spi_nor_config_4byte_mode(flash_dev, false);
-			if (ret)
-				goto end;
-		}
+		ret = spi_nor_config_4byte_mode(flash_dev, false);
+		if (ret)
+			goto end;
 	}
 
 	k_busy_wait(20000); /* 20ms */
