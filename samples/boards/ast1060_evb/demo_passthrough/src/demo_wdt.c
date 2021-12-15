@@ -18,7 +18,7 @@
 #if CONFIG_WDT_DEMO_ASPEED
 static void demo_wdt_callback(const struct device *dev, int channel_id)
 {
-	printk("[%s] timeout triggered.\n", dev->name);
+	printk("[%s] timeout is triggered.\n", dev->name);
 }
 
 void demo_wdt(void)
