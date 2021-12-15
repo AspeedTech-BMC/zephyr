@@ -9,8 +9,6 @@
 #include <zephyr/types.h>
 #include <sys/printk.h>
 #include <drivers/misc/aspeed/pfr_aspeed.h>
-#include "spi.h"
-#include <soc.h>
 #include <sys/sys_io.h>
 #include <sys/__assert.h>
 #include <sys/util.h>

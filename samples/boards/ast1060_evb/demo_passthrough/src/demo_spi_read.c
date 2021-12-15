@@ -23,10 +23,10 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 static uint8_t __aligned(4) test_arr[SPIM_TEST_ARR_SIZE];
 
 static char *flash_devices[6] = {
-	"spi1_cs0",
 	"spi2_cs0",
 	"spi2_cs1",
-	"spi2_cs2"
+	"spi2_cs2",
+	"spi2_cs3"
 };
 
 static void spim_dump_buf(uint8_t *buf, uint32_t len)
@@ -189,7 +189,7 @@ end:
 	return ret;
 }
 
-int test_spi_host_read(void)
+int demo_spi_host_read(void)
 {
 	int ret = 0;
 	const struct device *flash_dev;
