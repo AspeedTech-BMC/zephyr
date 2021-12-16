@@ -478,36 +478,64 @@ static uint32_t i2c_aspeed_select_clock(const struct device *dev)
 	int divider_ratio = 0;
 	uint32_t clk_div_reg;
 	int inc = 0;
+	unsigned long base_clk1;
+	unsigned long base_clk2;
+	unsigned long base_clk3;
 	unsigned long base_clk4;
 	uint32_t scl_low, scl_high;
 	uint32_t hl_ratio_term = 3;
 
-	/*LOG_DBG("clk src %d, targe %d\n", config->clk_src, data->bus_frequency);*/
 	if (config->clk_div_mode) {
 		clk_div_reg = sys_read32(config->global_reg + ASPEED_I2CG_CLK_DIV);
+
+		base_clk1 = (config->clk_src * 10) /
+		((((clk_div_reg & 0xff) + 2) * 10) / 2);
+		base_clk2 = (config->clk_src * 10) /
+		(((((clk_div_reg >> 8) & 0xff) + 2) * 10) / 2);
+		base_clk3 = (config->clk_src * 10) /
+		(((((clk_div_reg >> 16) & 0xff) + 2) * 10) / 2);
 		base_clk4 = (config->clk_src * 10) /
 		(((((clk_div_reg >> 24) & 0xff) + 2) * 10) / 2);
 
-		div = 4;
-		divider_ratio = base_clk4 / data->bus_frequency;
-		inc = 0;
-		while ((divider_ratio + inc) > 32) {
-			inc |= divider_ratio & 0x1;
-			divider_ratio >>= 1;
-			div++;
+		if ((config->clk_src / data->bus_frequency) <= 32) {
+			div = 0;
+			divider_ratio = config->clk_src / data->bus_frequency;
+		} else if ((base_clk1 / data->bus_frequency) <= 32) {
+			div = 1;
+			divider_ratio = base_clk1 / data->bus_frequency;
+		} else if ((base_clk2 / data->bus_frequency) <= 32) {
+			div = 2;
+			divider_ratio = base_clk2 / data->bus_frequency;
+		} else if ((base_clk3 / data->bus_frequency) <= 32) {
+			div = 3;
+			divider_ratio = base_clk3 / data->bus_frequency;
+		} else {
+			div = 4;
+			divider_ratio = base_clk4 / data->bus_frequency;
+			inc = 0;
+			while ((divider_ratio + inc) > 32) {
+				inc |= divider_ratio & 0x1;
+				divider_ratio >>= 1;
+				div++;
+			}
+			divider_ratio += inc;
 		}
-		divider_ratio += inc;
+
+		LOG_DBG("div %d", div);
+		LOG_DBG("ratio %x", divider_ratio);
 
 		div &= 0xf;
-
 		scl_low = ((divider_ratio >> 1) - 1) & 0xf;
 		scl_high = (divider_ratio - scl_low - 2) & 0xf;
 
-		if (data->bus_frequency == I2C_BITRATE_STANDARD)
-			hl_ratio_term = 1;
+		/* modified the H/L ratio for spec request */
+		if (data->bus_frequency != I2C_BITRATE_STANDARD) {
+			scl_low += hl_ratio_term;
+			scl_high -= hl_ratio_term;
+		}
 
-		scl_low += hl_ratio_term;
-		scl_high -= hl_ratio_term;
+		LOG_DBG("scl_low %x", scl_low);
+		LOG_DBG("scl_high %x", scl_high);
 
 		/*Divisor : Base Clock : tCKHighMin : tCK High : tCK Low*/
 		ac_timing = ((scl_high-1) << 20) | (scl_high << 16) | (scl_low << 12) | (div);
