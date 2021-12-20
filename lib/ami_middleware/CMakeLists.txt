@@ -10,10 +10,14 @@ zephyr_library()
 
 zephyr_library_sources(
     crypto/hash_aspeed.c
+    flash/flash_aspeed.c
+    gpio/gpio_aspeed.c
 )
 zephyr_system_include_directories(	
     .
     cerberus/crypto/
+    cerberus/flash/
+    cerberus/gpio/
     $ENV{ZEPHYR_BASE}/build/zephyr/include/generated/
 )
 
