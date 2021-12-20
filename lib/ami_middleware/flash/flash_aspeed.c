@@ -23,8 +23,8 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 static char *Flash_Devices_List[6] = {
 	"spi1_cs0",
 	"spi1_cs1",
-	"spi1_cs2",
-	"spi1_cs3",
+	"spi2_cs0",
+	"spi2_cs1",
 	"fmc_cs0",
 	"fmc_cs1"
 };
