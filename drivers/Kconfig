@@ -123,4 +123,6 @@ source "drivers/misc/Kconfig"
 
 source "drivers/disk/Kconfig"
 
+source "drivers/otp/Kconfig.aspeed"
+
 endmenu
