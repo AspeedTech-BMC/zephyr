@@ -10,6 +10,7 @@
 #include <drivers/i2c/slave/eeprom.h>
 #include <drivers/i2c/slave/ipmb.h>
 #include "ast_test.h"
+#include <random/rand32.h>
 
 #define LOG_MODULE_NAME i2c_test
 
@@ -22,6 +23,7 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #define DATA_COUNT 0x20
 #define EEPROM_ADDR 0x40
 #define IPMB_ADDR 0x50
+#define RANDOM
 #else
 #error No known devicetree compatible match for I2C test
 #endif
@@ -34,6 +36,27 @@ uint8_t i2c_speed[] = {I2C_SPEED_STANDARD,
 					I2C_SPEED_FAST,
 					I2C_SPEED_FAST_PLUS};
 
+static void prepare_test_data(uint8_t *data, int nbytes)
+{
+	uint32_t value = sys_rand32_get();
+
+#ifdef RANDOM
+	uint32_t shift;
+
+	for (int i = 0; i < nbytes; i++) {
+		shift = (i & 0x3) * 8;
+		data[i] = (value >> shift) & 0xff;
+		if ((i & 0x3) == 0x3) {
+			value = sys_rand32_get();
+		}
+	}
+#else
+	for (int i = 0; i < nbytes; i++) {
+		data[i] = (value & 0xff) + i;
+	}
+#endif
+}
+
 void test_i2c_slave_EEPROM(void)
 {
 	int i, j, result;
@@ -44,7 +67,7 @@ void test_i2c_slave_EEPROM(void)
 	const struct device *slave_dev;
 	uint32_t dev_config_raw;
 	uint32_t i2c_clock = I2C_SPEED_FAST;
-	uint8_t data_add = 0, dev_addr;
+	uint8_t dev_addr;
 
 	/* change odd device as EEPROM slave device */
 	for (i = 0; i < ASPEED_I2C_NUMBER ; i += 2) {
@@ -80,10 +103,8 @@ void test_i2c_slave_EEPROM(void)
 		ast_zassert_false(i2c_slave_driver_register(slave_dev),
 		"I2C: %s Slave register is got failed", name_s);
 
-		for (j = 0; j < DATA_COUNT; j++) {
-			data_s[j] = data_add + j;
-			data_r[j] = 0;
-		}
+		/* fill transfer data */
+		prepare_test_data(data_s, DATA_COUNT);
 
 		/* burst transfer data */
 		result = i2c_burst_write(master_dev, dev_addr, 0, data_s, DATA_COUNT);
@@ -106,7 +127,6 @@ void test_i2c_slave_EEPROM(void)
 		ast_zassert_false(i2c_slave_driver_unregister(slave_dev),
 		"I2C: %s Slave un-register is got failed", name_s);
 
-		data_add += 0x10;
 	}
 }
 
@@ -119,7 +139,7 @@ void test_i2c_slave_IPMB(void)
 	const struct device *slave_dev;
 	uint32_t dev_config_raw;
 	uint32_t i2c_clock = I2C_SPEED_FAST;
-	uint8_t data_add = 0, dev_addr;
+	uint8_t dev_addr;
 	struct ipmb_msg *msg = NULL;
 	uint8_t length = 0;
 	uint8_t *buf = NULL;
@@ -158,9 +178,8 @@ void test_i2c_slave_IPMB(void)
 		ast_zassert_false(i2c_slave_driver_register(slave_dev),
 		"I2C: %s Slave register is got failed", name_s);
 
-		for (j = 0; j < DATA_COUNT; j++) {
-			data_s[j] = data_add + j;
-		}
+		/* fill transfer data */
+		prepare_test_data(data_s, DATA_COUNT);
 
 		/* burst transfer data */
 		result = i2c_burst_write(master_dev, dev_addr, 0, data_s, DATA_COUNT);
@@ -194,10 +213,8 @@ void test_i2c_slave_IPMB(void)
 		ast_zassert_false(i2c_slave_driver_unregister(slave_dev),
 		"I2C: %s Slave un-register is got failed", name_s);
 
-		data_add += 0x10;
 	}
 }
-
 
 int test_i2c(int count, enum aspeed_test_type type)
 {
