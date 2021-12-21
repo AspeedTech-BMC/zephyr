@@ -804,6 +804,20 @@ static int usb_dfu_init(const struct device *dev)
 	dfu_data.flash_upload_size = fa->fa_size;
 	flash_area_close(fa);
 
+#if CONFIG_USB_ASPEED
+	if (dfu_data.state == appIDLE) {
+		dfu_data.state = dfuIDLE;
+
+		/* Set the DFU mode descriptors to be used for Windows
+		 * host cannot send reset after DFU_DETACH request
+		 */
+		dfu_config.usb_device_description =
+			(uint8_t *) &dfu_mode_desc;
+		if (usb_set_config(dfu_config.usb_device_description)) {
+			LOG_ERR("usb_set_config failed");
+		}
+	}
+#endif
 	return 0;
 }
 
