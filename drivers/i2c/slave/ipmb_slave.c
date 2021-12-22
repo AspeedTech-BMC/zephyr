@@ -34,6 +34,7 @@ struct i2c_ipmb_slave_data {
 	uint32_t msg_index; /* data message index */
 	uint32_t max_msg_count; /* max message count */
 	uint32_t cur_msg_count; /* current message count */
+	uint32_t pend_msg_count; /* pendding message count */
 };
 
 struct i2c_ipmb_slave_config {
@@ -55,6 +56,14 @@ static int ipmb_slave_write_requested(struct i2c_slave_config *config)
 							struct i2c_ipmb_slave_data,
 							config);
 
+	/* drease cur msg count from pending msg */
+	if (data->pend_msg_count <= data->cur_msg_count) {
+		data->cur_msg_count -= data->pend_msg_count;
+		data->pend_msg_count = 0;
+	} else {
+		LOG_WRN("cur msg %d < pend msg %d", data->cur_msg_count, data->pend_msg_count);
+	}
+
 	/* check the max msg length */
 	if (data->cur_msg_count < data->max_msg_count) {
 
@@ -73,7 +82,8 @@ static int ipmb_slave_write_requested(struct i2c_slave_config *config)
 
 		LOG_DBG("ipmb: slave write data->current %x", (uint32_t)(data->current));
 	} else {
-		LOG_DBG("ipmb: buffer full");
+		/* LOG_INF("ipmb: buffer full"); */
+		LOG_INF("b full");
 		data->current = NULL;
 		return 1;
 	}
@@ -139,6 +149,8 @@ int ipmb_slave_read(const struct device *dev, struct ipmb_msg **ipmb_data, uint8
 	struct i2c_ipmb_slave_data *data = DEV_DATA(dev);
 	sys_snode_t *list_node = NULL;
 	struct ipmb_msg_package *pack = NULL;
+	uint32_t count = data->cur_msg_count;
+	uint32_t countp = data->pend_msg_count;
 
 	list_node = sys_slist_peek_head(&(data->list_head));
 
@@ -151,16 +163,17 @@ int ipmb_slave_read(const struct device *dev, struct ipmb_msg **ipmb_data, uint8
 
 		/* remove this item from list */
 		sys_slist_find_and_remove(&(data->list_head), list_node);
-		data->cur_msg_count--;
+		data->pend_msg_count++;
 		LOG_DBG("ipmb: slave remove successful.");
 
-		return 0;
 	} else {
-		LOG_DBG("ipmb slave read: buffer empty!");
+		if (count != countp)
+			LOG_WRN("cur msg %d / pend msg %d", data->cur_msg_count, data->pend_msg_count);
+		LOG_DBG("b em");
 		return 1;
 	}
-	return 0;
 
+	return 0;
 }
 
 static int ipmb_slave_register(const struct device *dev)
@@ -170,6 +183,7 @@ static int ipmb_slave_register(const struct device *dev)
 	/* initial msg index */
 	data->msg_index = 0;
 	data->cur_msg_count = 0;
+	data->pend_msg_count = 0;
 
 	return i2c_slave_register(data->i2c_controller, &data->config);
 }
