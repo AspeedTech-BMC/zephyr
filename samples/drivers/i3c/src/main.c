@@ -16,7 +16,7 @@ int i3c_slave_mqueue_write(const struct device *dev, uint8_t *src, int size);
 
 
 #ifdef CONFIG_I3C_SAMPLE_IMX3102
-void i3c_imx3112_test(void)
+void i3c_imx3102_test(void)
 {
 	const struct device *master;
 	struct i3c_dev_desc slave;
@@ -224,7 +224,7 @@ void i3c_loopback_test(void)
 void main(void)
 {
 #ifdef CONFIG_I3C_SAMPLE_IMX3102
-	i3c_imx3112_test();
+	i3c_imx3102_test();
 #endif
 
 #ifdef CONFIG_I3C_SAMPLE_LOOPBACK
