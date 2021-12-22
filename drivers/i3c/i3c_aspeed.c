@@ -1067,7 +1067,7 @@ int i3c_aspeed_master_deattach_device(const struct device *dev, struct i3c_dev_d
 	obj->hw_dat_free_pos |= BIT(pos);
 	obj->dev_addr_tbl[pos] = 0;
 
-	dat_addr = (uint32_t)obj->config->base + obj->hw_dat.fields.start_addr + (pos << 4);
+	dat_addr = (uint32_t)obj->config->base + obj->hw_dat.fields.start_addr + (pos << 2);
 	sys_write32(0, dat_addr);
 
 	k_free(slave->priv_data);
@@ -1164,7 +1164,7 @@ int i3c_aspeed_master_enable_ibi(struct i3c_dev_desc *i3cdev)
 	sir_reject &= ~BIT(pos);
 	i3c_register->sir_reject = sir_reject;
 
-	dat_addr = (uint32_t)obj->config->base + obj->hw_dat.fields.start_addr + (pos << 4);
+	dat_addr = (uint32_t)obj->config->base + obj->hw_dat.fields.start_addr + (pos << 2);
 	dat.value = sys_read32(dat_addr);
 	dat.fields.ibi_with_data = 1;
 	dat.fields.sir_reject = 0;
