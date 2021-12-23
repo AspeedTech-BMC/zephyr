@@ -135,6 +135,46 @@ int i3c_jesd_read(struct i3c_dev_desc *slave, uint8_t addr, uint8_t *buf, int le
 	return i3c_master_priv_xfer(slave, xfer, 2);
 }
 
+/**
+ * @brief data write for the JESD compliant devices
+ * @param slave the JESD compliant device
+ * @param add the address to be write
+ * @param buf buffer to store the write data
+ * @param length length of the write data
+ * @return 0 if success
+ */
+int i3c_jesd_write(struct i3c_dev_desc *slave, uint8_t addr, uint8_t *buf, int length)
+{
+	struct i3c_priv_xfer xfer[1];
+	uint8_t *out;
+	int ret;
+
+	__ASSERT(slave->master_dev, "Unregistered device\n");
+	__ASSERT(!slave->info.i2c_mode, "Not I3C device\n\n");
+
+	out = k_calloc(sizeof(uint8_t), length + 2);
+	out[0] = addr;
+	out[1] = 0;
+	memcpy(&out[2], buf, length);
+
+	xfer[0].rnw = 0;
+	xfer[0].len = length + 2;
+	xfer[0].data.out = out;
+
+	ret = i3c_master_priv_xfer(slave, xfer, 1);
+	k_free(out);
+
+	return ret;
+}
+
+/**
+ * @brief data read for the I2C devices
+ * @param slave the I2C device
+ * @param add the address to be read
+ * @param buf buffer to store the read data
+ * @param length length of the read data
+ * @return 0 if success
+ */
 int i3c_i2c_read(struct i3c_dev_desc *slave, uint8_t addr, uint8_t *buf, int length)
 {
 	struct i3c_priv_xfer xfer;
@@ -156,4 +196,34 @@ int i3c_i2c_read(struct i3c_dev_desc *slave, uint8_t addr, uint8_t *buf, int len
 	xfer.len = length;
 	xfer.data.in = buf;
 	return i3c_master_priv_xfer(slave, &xfer, 1);
+}
+
+/**
+ * @brief data write for the I2C devices
+ * @param slave the I2C device
+ * @param add the address to be write
+ * @param buf buffer to store the write data
+ * @param length length of the write data
+ * @return 0 if success
+ */
+int i3c_i2c_write(struct i3c_dev_desc *slave, uint8_t addr, uint8_t *buf, int length)
+{
+	struct i3c_priv_xfer xfer;
+	uint8_t *out;
+	int ret;
+
+	__ASSERT(slave->master_dev, "Unregistered device\n");
+	__ASSERT(slave->info.i2c_mode, "Not I2C device\n\n");
+
+	out = k_calloc(sizeof(uint8_t), length + 1);
+	out[0] = addr;
+	memcpy(&out[1], buf, length);
+
+	xfer.rnw = 0;
+	xfer.len = length + 1;
+	xfer.data.out = out;
+	ret = i3c_master_priv_xfer(slave, &xfer, 1);
+	k_free(out);
+
+	return ret;
 }
