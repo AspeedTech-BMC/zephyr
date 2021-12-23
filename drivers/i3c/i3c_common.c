@@ -114,22 +114,15 @@ int i3c_master_send_getpid(const struct device *master, uint8_t addr, uint64_t *
  * @param add the address to be read
  * @param buf buffer to store the read data
  * @param length length of the read data
- * @return -1 if the slave device is not registered
+ * @return 0 if success
  */
 int i3c_jesd_read(struct i3c_dev_desc *slave, uint8_t addr, uint8_t *buf, int length)
 {
 	struct i3c_priv_xfer xfer[2];
 	uint8_t mode_reg = addr;
 
-	if (!slave->master_dev) {
-		printk("unregistered device\n");
-		return -1;
-	}
-
-	if (slave->info.i2c_mode) {
-		printk("Not I3C device\n");
-		return -2;
-	}
+	__ASSERT(slave->master_dev, "Unregistered device\n");
+	__ASSERT(!slave->info.i2c_mode, "Not I3C device\n\n");
 
 	xfer[0].rnw = 0;
 	xfer[0].len = 1;
@@ -148,15 +141,8 @@ int i3c_i2c_read(struct i3c_dev_desc *slave, uint8_t addr, uint8_t *buf, int len
 	uint8_t mode_reg = addr;
 	int ret;
 
-	if (!slave->master_dev) {
-		printk("unregistered device\n");
-		return -1;
-	}
-
-	if (!slave->info.i2c_mode) {
-		printk("Not I2C device\n");
-		return -2;
-	}
+	__ASSERT(slave->master_dev, "Unregistered device\n");
+	__ASSERT(slave->info.i2c_mode, "Not I2C device\n\n");
 
 	xfer.rnw = 0;
 	xfer.len = 1;
