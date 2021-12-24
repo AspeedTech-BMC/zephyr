@@ -119,7 +119,7 @@ static int cmd_i2c_write(const struct shell *shell, size_t argc, char **argv)
 
 	dev = device_get_binding(argv[1]);
 	if (!dev) {
-		shell_error(shell, "I2C: Device driver %s not found.", argv[1]);
+		shell_error(shell, "I2C: Device driver not found.", argv[1]);
 		return -ENODEV;
 	}
 
@@ -868,6 +868,97 @@ static int cmd_mbx_f_access(const struct shell *shell,
 
 #endif
 
+#define thread_size 1024
+#define IPMB_DEV 0x51
+#define DATA_SIZE 64
+#define SEND_DELAY 30
+#define READ_DELAY 30
+static struct k_thread zipmb_s_t;
+static struct k_thread zipmb_r_t;
+K_THREAD_STACK_DEFINE(i2c_thread_s_s, thread_size);
+K_THREAD_STACK_DEFINE(i2c_thread_r_s, thread_size);
+const struct device *slave_dev;
+/* i2c thread demo for ipmb stress */
+/* i2c1 is used as master / slave */
+void ipmb_i2c_send(void *a, void *b, void *c)
+{
+	const struct device *dev = NULL;
+	uint8_t data[DATA_SIZE];
+	uint8_t i = 0;
+	int ret = 0;
+
+	LOG_INF("ipmb: ipmb_i2c_send successful.");
+
+	slave_dev = device_get_binding("IPMB_SLAVE_1");
+	i2c_slave_driver_register(slave_dev);
+
+	dev = device_get_binding("I2C_1");
+
+	for (i = 0; i < DATA_SIZE; i++)
+		data[i] = i;
+
+	while (1) {
+		data[5]++;
+		ret = i2c_burst_write(dev, IPMB_DEV, 0, data, DATA_SIZE);
+		if (ret < 0) {
+			LOG_INF("Failed to write to device %x", ret);
+		}
+		k_sleep(K_MSEC(SEND_DELAY));
+	}
+}
+
+void ipmb_i2c_read(void *a, void *b, void *c)
+{
+	int ret = 0;
+	struct ipmb_msg *msg = NULL;
+	uint8_t length = 0;
+	uint8_t *buf = NULL;
+
+	LOG_INF("ipmb: ipmb_i2c_read successful.");
+
+	if (slave_dev != NULL) {
+		while (1) {
+			ret = ipmb_slave_read(slave_dev, &msg, &length);
+
+			if (!ret) {
+				buf = (uint8_t *)(msg);
+				LOG_INF("buf[7] = %x", buf[7]);
+			} else {
+				LOG_DBG("ipmb read empty");
+			}
+
+			k_sleep(K_MSEC(READ_DELAY));
+		}
+	}
+}
+
+static int cmd_i2c_thread_demo(const struct shell *shell,
+			      size_t argc, char **argv)
+{
+	int ret = 0;
+	k_tid_t pids, pidr;
+
+	if (IS_ENABLED(CONFIG_MULTITHREADING)) {
+		pids = k_thread_create(&zipmb_s_t,
+				      i2c_thread_s_s,
+				      thread_size,
+				      (k_thread_entry_t) ipmb_i2c_send,
+				      NULL, NULL, NULL,
+				      -1,
+				      0, K_NO_WAIT);
+
+		pidr = k_thread_create(&zipmb_r_t,
+				      i2c_thread_r_s,
+				      thread_size,
+				      (k_thread_entry_t) ipmb_i2c_read,
+				      NULL, NULL, NULL,
+				      -1,
+				      0, K_NO_WAIT);
+	}
+
+	return ret;
+}
+
 #ifdef CONFIG_I2C_PFR
 uint8_t EEPROM_COUNT = 8;
 uint8_t EEPROM_PASS_TBL[] = {0, 0, 0, 1, 1, 4, 4, 5};
@@ -1104,6 +1195,10 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_i2c_cmds,
 					      cmd_i2c_ipmb_read, 0, 1),
 #endif
 #endif
+				/* */
+				/* SHELL_CMD_ARG(thread_demo, &dsub_device_name, */
+				/*	  "thread demo default", */
+				/*	   cmd_i2c_thread_demo, 0, 0), */
 #ifdef CONFIG_I2C_PFR
 				SHELL_CMD_ARG(pfr_demo, &dsub_device_name,
 					  "pfr demo default",
