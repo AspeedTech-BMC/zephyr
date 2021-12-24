@@ -28,7 +28,7 @@ int i3c_slave_mqueue_write(const struct device *dev, uint8_t *src, int size);
  *                                        |       |
  *                                        SPD@52  SPD@53
  */
-void i3c_imx3112_test(void)
+static void i3c_imx3112_test(void)
 {
 	const struct device *master;
 	struct i3c_dev_desc slave[5];
@@ -54,7 +54,6 @@ void i3c_imx3112_test(void)
 		ret = i3c_master_attach_device(master, &slave[i]);
 		__ASSERT(!ret, "failed to attach i2c slave[%d]\n", i);
 	}
-
 
 	/* errata: must write 1 to MR46[0] before accessing */
 	data[0] = 0x1;
@@ -305,7 +304,7 @@ static struct i3c_ibi_callbacks i3c_ibi_def_callbacks = {
  * Use SETAASA to assign the dynamic address.
  *
  */
-void i3c_loopback_test(void)
+static void i3c_loopback_test(void)
 {
 	const struct device *master, *slave_mq;
 	struct i3c_dev_desc slave;
