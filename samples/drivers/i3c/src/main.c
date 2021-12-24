@@ -146,62 +146,123 @@ void i3c_imx3112_test(void)
 #endif
 
 #ifdef CONFIG_I3C_SAMPLE_IMX3102
-void i3c_imx3102_test(void)
+/*
+ * IMX3102: 2-to-1 multiplexier
+ *
+ * +------------------   +
+ * | SoC                 |
+ * |                     |
+ * | I3C controller #0 - | --+
+ * |                     |    \                  SPD@51
+ * |                     |     +---------+       |
+ * |                     |     | IMX3102 | ---+--+---- i3c bus
+ * |                     |     +---------+    |
+ * |                     |    /               SPD@50
+ * | I3C controller #1 - | --+
+ * |                     |
+ * +---------------------+
+ */
+#define IMX3102_PORT_CONF		0x40
+#define   IMX3102_PORT_CONF_M1_EN	BIT(7)
+#define   IMX3102_PORT_CONF_S_EN	BIT(6)
+#define IMX3102_PORT_SEL		0x41
+#define   IMX3102_PORT_SEL_M1		BIT(7)
+#define   IMX3102_PORT_SEL_S_EN		BIT(6)
+
+static void i3c_imx3102_release_ownership(struct i3c_dev_desc *imx3102)
 {
-	const struct device *master;
-	struct i3c_dev_desc slave;
 	int ret;
-	uint8_t id[2];
+	uint8_t select;
 
-	master = device_get_binding(DT_LABEL(DT_NODELABEL(i3c0)));
-	if (!master) {
-		printk("master device not found\n");
-		return;
+	if (imx3102->info.i2c_mode) {
+		ret = i3c_i2c_read(imx3102, IMX3102_PORT_SEL, &select, 1);
+		__ASSERT_NO_MSG(!ret);
+
+		select ^= IMX3102_PORT_SEL_M1;
+		ret = i3c_i2c_write(imx3102, IMX3102_PORT_SEL, &select, 1);
+		__ASSERT_NO_MSG(!ret);
+	} else {
+		ret = i3c_jesd_read(imx3102, IMX3102_PORT_SEL, &select, 1);
+		__ASSERT_NO_MSG(!ret);
+
+		select ^= IMX3102_PORT_SEL_M1;
+		ret = i3c_jesd_write(imx3102, 0x41, &select, 1);
+		__ASSERT_NO_MSG(!ret);
+	}
+}
+
+static void i3c_imx3102_test(void)
+{
+	const struct device *master[2];
+	struct i3c_dev_desc slave[2][3];
+	int ret, i, j;
+	uint8_t data[2];
+
+	master[0] = device_get_binding(DT_LABEL(DT_NODELABEL(i3c0)));
+	__ASSERT(master[0], "master device not found\n");
+	master[1] = device_get_binding(DT_LABEL(DT_NODELABEL(i3c1)));
+	__ASSERT(master[1], "master device not found\n");
+
+	/* init descriptors to the slave devices */
+	for (i = 0; i < 2; i++) {
+		slave[i][0].info.static_addr = 0xf;
+		slave[i][1].info.static_addr = 0x50;
+		slave[i][2].info.static_addr = 0x51;
+		for (j = 0; j < 3; j++) {
+			slave[i][j].info.i2c_mode = 1;
+			slave[i][j].info.assigned_dynamic_addr = slave[i][j].info.static_addr;
+			ret = i3c_master_attach_device(master[i], &slave[i][j]);
+			__ASSERT(!ret, "failed to attach i2c slave%d to master%d\n", j, i);
+		}
 	}
 
-	/* Renesas IMX3102 */
-	slave.info.static_addr = 0xf;
-	slave.info.assigned_dynamic_addr = 0xf;
-	slave.info.i2c_mode = 1;
-	ret = i3c_master_attach_device(master, &slave);
-	if (ret) {
-		printk("failed to attach i2c slave\n");
-		return;
+	ret = i3c_master_send_rstdaa(master[0]);
+	__ASSERT(!ret, "RSTDAA failed %d\n", ret);
+
+	/* init the local port */
+	data[0] = IMX3102_PORT_CONF_M1_EN | IMX3102_PORT_CONF_S_EN;
+	data[1] = IMX3102_PORT_SEL_S_EN;
+	ret = i3c_i2c_write(&slave[0][0], IMX3102_PORT_CONF, data, 2);
+
+	for (j = 0; j < 3; j++) {
+		ret = i3c_i2c_read(&slave[0][j], 0, data, 2);
+		__ASSERT(!ret, "i2c xfer failed\n");
+		printk("[I3C0][I2C mode] device%d ID %02x %02x\n", j, data[0], data[1]);
 	}
 
-	ret = i3c_master_send_rstdaa(master);
-	if (ret) {
-		printk("RSTDAA failed %d\n", ret);
-		return;
+	i3c_imx3102_release_ownership(&slave[0][0]);
+
+	for (j = 0; j < 3; j++) {
+		ret = i3c_i2c_read(&slave[1][j], 0, data, 2);
+		__ASSERT(!ret, "i2c xfer failed\n");
+		printk("[I3C1][I2C mode] device%d ID %02x %02x\n", j, data[0], data[1]);
 	}
 
-	ret = i3c_i2c_read(&slave, 0, id, 2);
-	if (ret) {
-		printk("i2c xfer failed\n");
-		return;
-	}
-	printk("device ID in I2C mode %02x %02x\n", id[0], id[1]);
-
-	i3c_master_deattach_device(master, &slave);
-	slave.info.i2c_mode = 0;
-	ret = i3c_master_attach_device(master, &slave);
-	if (ret) {
-		printk("failed to attach i3c slave\n");
-		return;
+	for (i = 0; i < 2; i++) {
+		for (j = 0; j < 3; j++) {
+			i3c_master_deattach_device(master[i], &slave[i][j]);
+			slave[i][j].info.i2c_mode = 0;
+			ret = i3c_master_attach_device(master[i], &slave[i][j]);
+			__ASSERT(!ret, "failed to attach i3c slave%d to master%d\n", j, i);
+		}
 	}
 
-	ret = i3c_master_send_aasa(master);
-	if (ret) {
-		printk("SETAASA failed\n");
-		return;
+	ret = i3c_master_send_aasa(master[1]);
+	__ASSERT_NO_MSG(!ret);
+
+	for (j = 0; j < 3; j++) {
+		ret = i3c_jesd_read(&slave[1][j], 0, data, 2);
+		__ASSERT(!ret, "i3c xfer failed\n");
+		printk("[I3C1][I3C mode] device%d ID %02x %02x\n", j, data[0], data[1]);
 	}
-	/* read device ID */
-	ret = i3c_jesd_read(&slave, 0, id, 2);
-	if (ret) {
-		printk("priv xfer failed %d\n", ret);
-		return;
+
+	i3c_imx3102_release_ownership(&slave[1][0]);
+
+	for (j = 0; j < 3; j++) {
+		ret = i3c_jesd_read(&slave[0][j], 0, data, 2);
+		__ASSERT(!ret, "i3c xfer failed\n");
+		printk("[I3C0][I3C mode] device%d ID %02x %02x\n", j, data[0], data[1]);
 	}
-	printk("device ID in I3C mode %02x %02x\n", id[0], id[1]);
 }
 #endif
 

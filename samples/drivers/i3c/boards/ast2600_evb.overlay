@@ -8,6 +8,11 @@
 	assigned-address = <0x8>;
 };
 
+&i3c1 {
+	status = "okay";
+	assigned-address = <0x8>;
+};
+
 &i3c2 {
 	status = "okay";
 	pinctrl-0 = <&pinctrl_hvi3c2_default>;
