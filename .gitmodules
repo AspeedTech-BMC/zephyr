@@ -1,3 +1,5 @@
 [submodule "lib/cerberus"]
 	path = lib/cerberus
 	url = https://git.ami.com/security/nightfury/opensourceprojects/cerberus.git
+[submodule "Submod"]
+	branch = Zephyr-porting
