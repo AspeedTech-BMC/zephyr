@@ -28,6 +28,28 @@ int i3c_slave_mqueue_write(const struct device *dev, uint8_t *src, int size);
  *                                        |       |
  *                                        SPD@52  SPD@53
  */
+static void i3c_imx3112_select(struct i3c_dev_desc *imx3112, int chan)
+{
+	int ret;
+	uint8_t data[2];
+
+	if (chan) {
+		data[0] = 0x80;
+		data[1] = 0x80;
+	} else {
+		data[0] = 0x40;
+		data[1] = 0x40;
+	}
+
+	if (imx3112->info.i2c_mode) {
+		ret = i3c_i2c_write(imx3112, 0x40, data, 2);
+		__ASSERT_NO_MSG(!ret);
+	} else {
+		ret = i3c_jesd_write(imx3112, 0x40, data, 2);
+		__ASSERT_NO_MSG(!ret);
+	}
+}
+
 static void i3c_imx3112_test(void)
 {
 	const struct device *master;
@@ -39,18 +61,14 @@ static void i3c_imx3112_test(void)
 	__ASSERT(master, "master device not found\n");
 
 	slave[0].info.static_addr = 0x70;
-	slave[0].info.assigned_dynamic_addr = 0x70;
 	slave[1].info.static_addr = 0x50;
-	slave[1].info.assigned_dynamic_addr = 0x50;
 	slave[2].info.static_addr = 0x51;
-	slave[2].info.assigned_dynamic_addr = 0x51;
 	slave[3].info.static_addr = 0x52;
-	slave[3].info.assigned_dynamic_addr = 0x52;
 	slave[4].info.static_addr = 0x53;
-	slave[4].info.assigned_dynamic_addr = 0x53;
 
 	for (i = 0; i < 5; i++) {
 		slave[i].info.i2c_mode = 1;
+		slave[i].info.assigned_dynamic_addr = slave[i].info.static_addr;
 		ret = i3c_master_attach_device(master, &slave[i]);
 		__ASSERT(!ret, "failed to attach i2c slave[%d]\n", i);
 	}
@@ -64,15 +82,7 @@ static void i3c_imx3112_test(void)
 	__ASSERT_NO_MSG(!ret);
 
 	/* select child bus 0 */
-	data[0] = 0x40;
-	data[1] = 0x40;
-	ret = i3c_i2c_write(&slave[0], 0x40, data, 2);
-	__ASSERT_NO_MSG(!ret);
-
-	ret = i3c_i2c_read(&slave[0], 0x40, data, 2);
-	__ASSERT_NO_MSG(!ret);
-	printk("slave port in I2C mode %02x %02x\n", data[0], data[1]);
-
+	i3c_imx3112_select(&slave[0], 0);
 	for (i = 0; i < 3; i++) {
 		ret = i3c_i2c_read(&slave[i], 0, data, 2);
 		__ASSERT_NO_MSG(!ret);
@@ -80,13 +90,7 @@ static void i3c_imx3112_test(void)
 	}
 
 	/* select child bus 1 */
-	data[0] = 0x80;
-	data[1] = 0x80;
-	ret = i3c_i2c_write(&slave[0], 0x40, data, 2);
-	__ASSERT_NO_MSG(!ret);
-	ret = i3c_i2c_read(&slave[0], 0x40, data, 2);
-	__ASSERT_NO_MSG(!ret);
-	printk("slave port in I2C mode %02x %02x\n", data[0], data[1]);
+	i3c_imx3112_select(&slave[0], 1);
 
 	for (i = 3; i < 5; i++) {
 		ret = i3c_i2c_read(&slave[i], 0, data, 2);
@@ -95,13 +99,7 @@ static void i3c_imx3112_test(void)
 	}
 
 	/* select child bus 0 */
-	data[0] = 0x40;
-	data[1] = 0x40;
-	ret = i3c_i2c_write(&slave[0], 0x40, data, 2);
-	__ASSERT_NO_MSG(!ret);
-	ret = i3c_i2c_read(&slave[0], 0x40, data, 2);
-	__ASSERT_NO_MSG(!ret);
-	printk("slave port in I2C mode %02x %02x\n", data[0], data[1]);
+	i3c_imx3112_select(&slave[0], 0);
 
 	/* bring the bus to I3C mode */
 	for (i = 0; i < 5; i++) {
@@ -117,30 +115,20 @@ static void i3c_imx3112_test(void)
 	ret = i3c_master_send_aasa(master);
 	__ASSERT(!ret, "SETAASA failed\n");
 
-	ret = i3c_jesd_read(&slave[1], 0, data, 2);
-	__ASSERT_NO_MSG(!ret);
-	printk("device1 ID in I3C mode %02x %02x\n", data[0], data[1]);
-
-	ret = i3c_jesd_read(&slave[2], 0, data, 2);
-	__ASSERT_NO_MSG(!ret);
-	printk("device2 ID in I3C mode %02x %02x\n", data[0], data[1]);
+	for (i = 0; i < 3; i++) {
+		ret = i3c_jesd_read(&slave[i], 0, data, 2);
+		__ASSERT_NO_MSG(!ret);
+		printk("device%d ID in I3C mode %02x %02x\n", i, data[0], data[1]);
+	}
 
 	/* select child bus 1 */
-	data[0] = 0x80;
-	data[1] = 0x80;
-	ret = i3c_jesd_write(&slave[0], 0x40, data, 2);
-	__ASSERT_NO_MSG(!ret);
-	ret = i3c_jesd_read(&slave[0], 0x40, data, 2);
-	__ASSERT_NO_MSG(!ret);
-	printk("slave port in I3C mode %02x %02x\n", data[0], data[1]);
+	i3c_imx3112_select(&slave[0], 1);
 
-	ret = i3c_jesd_read(&slave[3], 0, data, 2);
-	__ASSERT_NO_MSG(!ret);
-	printk("device3 ID in I3C mode %02x %02x\n", data[0], data[1]);
-
-	ret = i3c_jesd_read(&slave[4], 0, data, 2);
-	__ASSERT_NO_MSG(!ret);
-	printk("device4 ID in I3C mode %02x %02x\n", data[0], data[1]);
+	for (i = 3; i < 5; i++) {
+		ret = i3c_jesd_read(&slave[i], 0, data, 2);
+		__ASSERT_NO_MSG(!ret);
+		printk("device%d ID in I3C mode %02x %02x\n", i, data[0], data[1]);
+	}
 }
 #endif
 
