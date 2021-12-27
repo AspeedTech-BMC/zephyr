@@ -1,23 +1,17 @@
-cmake_minimum_required(VERSION 3.13.1)
-# project(ami_middleware)
+set(AMI_PORT_ROOT ${CMAKE_CURRENT_LIST_DIR} CACHE INTERNAL "AMI_PORT_ROOT")
+
 zephyr_interface_library_named(ami_middleware)
 zephyr_library()
 
-# zephyr_system_include_directories(
-#     .
-#     cerberus/crypto/
-# )
-
+set(AMI_MIDDLEWARE_ROOT ${CMAKE_CURRENT_LIST_DIR} CACHE INTERNAL "AMI_MIDDLEWARE_ROOT")
 zephyr_library_sources(
-    crypto/hash_aspeed.c
-    flash/flash_aspeed.c
-    gpio/gpio_aspeed.c
+    ${AMI_MIDDLEWARE_ROOT}/flash/flash_aspeed.c
+    ${AMI_MIDDLEWARE_ROOT}/gpio/gpio_aspeed.c
+    ${AMI_MIDDLEWARE_ROOT}/crypto/hash_aspeed.c
+    ${AMI_MIDDLEWARE_ROOT}/crypto/rsa_aspeed.c
 )
-zephyr_system_include_directories(	
+zephyr_library_include_directories(	
     .
-    cerberus/crypto/
-    cerberus/flash/
-    cerberus/gpio/
     $ENV{ZEPHYR_BASE}/build/zephyr/include/generated/
 )
 

@@ -23,8 +23,8 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 static char *Flash_Devices_List[6] = {
 	"spi1_cs0",
 	"spi1_cs1",
-	"spi2_cs0",
-	"spi2_cs1",
+	"spi1_cs2",
+	"spi1_cs3",
 	"fmc_cs0",
 	"fmc_cs1"
 };
@@ -61,7 +61,7 @@ int SPI_Command_Xfer(struct pflash_master *spi, struct pflash_xfer * xfer)
 	AdrOffset = xfer->address;
 	Datalen = xfer->length;
 
-	//printk("<---- SPI_Command_Xfer Command = %d Device = %s ---->\n",xfer->cmd,Flash_Devices_List[DeviceId]);
+	printk("<---- SPI_Command_Xfer Command = %d Device = %s ---->\n",xfer->cmd,Flash_Devices_List[DeviceId]);
 
 	switch(xfer->cmd)
 	{
@@ -79,7 +79,9 @@ int SPI_Command_Xfer(struct pflash_master *spi, struct pflash_xfer * xfer)
 		break;
 		case MIDLEY_FLASH_CMD_READ:
 			ret = flash_read(flash_device, AdrOffset, buf, Datalen);
-			Data_dump_buf(buf,Datalen);
+			//Data_dump_buf(buf,Datalen);
+			if(xfer->data != NULL)
+				memcpy(xfer->data,buf,Datalen);
 		break;
 		case MIDLEY_FLASH_CMD_PP://Flash Write
 			memset(buf,0xff,Datalen);

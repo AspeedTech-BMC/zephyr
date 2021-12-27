@@ -1,283 +1,314 @@
+/*
+ * Copyright (c) 2021 AMI
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include <zephyr.h>
+#include <string.h>
 #include <sys/printk.h>
-#include <drivers/misc/aspeed/pfr_aspeed.h>
-#include <drivers/gpio.h>
 #include <crypto/hash_structs.h>
 #include <crypto/hash.h>
-#include <shell/shell.h>
-#include <kernel.h>
-#include <syscall.h>
-#include <syscall_list.h>
+#include "hash_aspeed.h"
 
-#define ASPEED_HASH_TEST_SUPPORT 1
-#define ASPEED_GPIO_TEST_SUPPORT 0
-#define  GPIO_PIN_TST 0
+static struct hash_params hashParams;	// hash internal parameters
 
-uint32_t TestCount = 0;
-
-#if ASPEED_HASH_TEST_SUPPORT
-
-struct hash_testvec {
-	const char *plaintext;
-	const char *digest;
-	unsigned int psize;
-};
-static const struct hash_testvec sha256_tv_template[] = {
-	{
-		.plaintext = "",
-		.psize	= 0,
-		.digest	= "\xe3\xb0\xc4\x42\x98\xfc\x1c\x14"
-		"\x9a\xfb\xf4\xc8\x99\x6f\xb9\x24"
-		"\x27\xae\x41\xe4\x64\x9b\x93\x4c"
-		"\xa4\x95\x99\x1b\x78\x52\xb8\x55",
-	}, {
-		.plaintext = "abc",
-		.psize	= 3,
-		.digest	= "\xba\x78\x16\xbf\x8f\x01\xcf\xea"
-		"\x41\x41\x40\xde\x5d\xae\x22\x23"
-		"\xb0\x03\x61\xa3\x96\x17\x7a\x9c"
-		"\xb4\x10\xff\x61\xf2\x00\x15\xad",
-	}, {
-		.plaintext = "Im Superman",
-		.psize	= sizeof("Im Superman") - 1,
-		.digest	= \
-		"\xb2\x25\xcc\x6e\xd4\x58\x28\x06"
-		"\x1b\x24\xa2\xd9\x52\x6e\xca\x9a"
-		"\xed\x38\x23\xe0\x8e\x6b\xbf\x21"
-		"\x06\xb8\xcb\xe7\xd1\x16\x59\x6d",
-	},
-};
-
-static const struct hash_testvec sha384_tv_template[] = {
-	{
-		.plaintext = "Im Nero",
-		.psize	= sizeof("Im Nero") - 1,
-		.digest	= \
-		"\x5f\x25\x96\xd4\x76\x54\x8c\xe3"
-		"\x4c\x2c\xfe\x4d\x19\xf7\x11\xcd"
-		"\x27\x29\x99\x80\x24\x35\x7b\x43"
-		"\x12\xf4\x0a\x3b\x71\xce\x6c\x03"
-		"\xc3\x09\x68\x62\x93\x84\x6e\xc8"
-		"\x1f\xfa\x4a\x87\x23\xd7\xb9\x21",
-	},
-};
-
-static uint8_t AspeedHashTest(void)
+/**	 
+ * @brief Calculate a hash on a complete set of data.
+ *
+ * @param algo hash algorithm as SHA1, SHA256, SHA384, SHA512
+ * @param data plain text
+ * @param length size of plain text
+ * @param hash hash digest
+ * @param hash_length hash digest length
+ *
+ * @return 0 if the hash calculated successfully or an error code.
+ */
+int hash_engine_sha_calculate(enum hash_algo algo, const uint8_t* data, size_t length, uint8_t *hash, size_t hash_length)
 {
-	const struct device *dev = device_get_binding(CONFIG_CRYPTO_ASPEED_HASH_DRV_NAME);
-	struct hash_ctx ini;
-	struct hash_pkt pkt;
-	uint8_t digest[64];
+	const struct device *dev;	// hash engine driver info
+	int ret;
 
-	const struct hash_testvec *tv = sha256_tv_template;	//Test Vectors
-	enum hash_algo algo = HASH_SHA256;
-	uint8_t i = 2, ret = 0, index = 0;
+	dev = device_get_binding(HASH_DRV_NAME);	// retrieves hash driver device info
 
-	printk("%20s : 0x%X\n", "HeapCount", TestCount);
+	hashParams.pkt.in_buf = (uint8_t *)data;	//plaint text info
+	hashParams.pkt.in_len = length;	// plaint text size
+	hashParams.pkt.out_buf = hash;	 // hash value and this will updated by hash engine
+	hashParams.pkt.out_buf_max = hash_length;	// hash length
 
-	printk("tv[%d]:", i);
-
-	pkt.in_buf = (uint8_t *)tv[i].plaintext;
-	pkt.in_len = tv[i].psize;
-	pkt.out_buf = digest;
-	pkt.out_buf_max = sizeof(digest);
-
-	if(dev != NULL)
+	if( hashParams.sessionReady )
 	{
-		const char *digestPtr;
-		digestPtr = (uint8_t *)tv[i].digest;
-
-		for(index = 0; index < 33; index++)
-			printk("%x", (uint8_t)(*(digestPtr + index)));
-
-		printk("%s\n", dev->name);
+		ret = 0;	// hash engine session is ready
 	}
 	else
 	{
-		printk("[%d]Fail in %s\n", __LINE__, __FILE__);
-
-		return 0xFF;
+		ret = hash_begin_session(dev, &hashParams.ctx, algo);	// initializes hash engine session
 	}
 
-	printk("-------------------------------hash_begin_session\n");
-	
-	ret = hash_begin_session(dev, &ini, algo);
-
-	if (ret) {
-		printk("hash_begin_session error\n");
-		return ret;
-	}
-
-	printk("-------------------------------hash_update\n");
-
-	ret = hash_update(&ini, &pkt);
-
-	if (ret) {
-		printk("hash_update error\n");
-		goto out;
-	}
-
-	printk("-------------------------------hash_final\n");
-
-	ret = hash_final(&ini, &pkt);
-
-	if (ret) {
-		printk("hash_final error\n");
-		goto out;
-	}
-
-	printk("-------------------------------hash_free_session\n");
-	
-	hash_free_session(dev, &ini);
-
-	printk("Tv Size : %d\n", tv->psize);
-
-	for(index = 0; index < ini.digest_size; index++)
-		printk("%x", (uint8_t)(*(digest + index)));
-
-	printk("\n");
-
-	for(index = 0; index < ini.digest_size; index++)
-		printk("%x", (uint8_t)(*(tv[i].digest + index)));
-
-	printk("\n======SHA256=====\n");
-	
-	if (!memcmp(digest, tv[i].digest, ini.digest_size))
-		printk("PASS\n");
-	else
-		printk("FAIL\n");
-
-	printk("=================\n");
-
-	tv = sha384_tv_template;	//Test Vectors
-	algo = HASH_SHA384;
-
-	i = 0;
-	pkt.in_buf = (uint8_t *)tv[i].plaintext;
-	pkt.in_len = tv[i].psize;
-	pkt.out_buf = digest;
-	pkt.out_buf_max = sizeof(digest);
-
-	if(dev != NULL)
+	if(!ret)	// success to initializes hash engine
 	{
-		const char *digestPtr;
-		digestPtr = (uint8_t *)tv[i].digest;
+		ret = hash_update(&hashParams.ctx, &hashParams.pkt);  // update plaint text into hash engine
 
-		for(index = 0; index < 33; index++)
-			printk("%x", (uint8_t)(*(digestPtr + index)));
-
-		printk("%s\n", dev->name);
-	}
-	else
-	{
-		printk("[%d]Fail in %s\n", __LINE__, __FILE__);
-
-		return 0xFF;
+		if (!ret)	// success to update hash engine
+		{
+			ret = hash_final(&hashParams.ctx, &hashParams.pkt);	// final setup hash engine
+		}
 	}
 
-	printk("-------------------------------hash_begin_session\n");
-	
-	ret = hash_begin_session(dev, &ini, algo);
+	hash_free_session(dev, &hashParams.ctx);	// free hash engine
 
-	if (ret) {
-		printk("hash_begin_session error\n");
-		return ret;
-	}
-
-	printk("-------------------------------hash_update\n");
-
-	ret = hash_update(&ini, &pkt);
-
-	if (ret) {
-		printk("hash_update error\n");
-		goto out;
-	}
-
-	printk("-------------------------------hash_final\n");
-
-	ret = hash_final(&ini, &pkt);
-
-	if (ret) {
-		printk("hash_final error\n");
-		goto out;
-	}
-
-	printk("-------------------------------hash_free_session\n");
-	
-	hash_free_session(dev, &ini);
-
-	printk("Tv Size : %d\n", tv->psize);
-
-	for(index = 0; index < ini.digest_size; index++)
-		printk("%x", (uint8_t)(*(digest + index)));
-
-	printk("\n");
-
-	for(index = 0; index < ini.digest_size; index++)
-		printk("%x", (uint8_t)(*(tv[i].digest + index)));
-
-	printk("\n======SHA384=====\n");
-	
-	if (!memcmp(digest, tv[i].digest, ini.digest_size))
-		printk("PASS\n");
-	else
-		printk("FAIL\n");
-
-	printk("=================\n");
-
-	return 0;
-
-out:
-	hash_free_session(dev, &ini);
 	return ret;
 }
-#endif
 
-#if ASPEED_GPIO_TEST_SUPPORT
-void AspeedGpioTest(void)
+/**
+ * @brief Configure the hash engine to process independent blocks of data to calculate a hash
+ * the aggregated data.
+ *
+ * Calling this function will reset any active hashing operation.
+ *
+ * Every call to start MUST be followed by either a call to finish or cancel.
+ *
+ * @param algo hash algorithm as SHA1, SHA256, SHA384, SHA512
+ *
+ * @return 0 if the hash engine was configured successfully or an error code.
+ */
+int hash_engine_start(enum hash_algo algo)
 {
-	uint8_t enable = 0;
-	uint8_t count = 0;
+	const struct device *dev;	// hash engine driver
+	int ret;
 
-	printk("GPIO Base Address : %X\n", Gpiotest());
+	memset (&hashParams, 0, sizeof(hashParams));	// clear all the hash internal parameters
 
-	/* GPIOL0 */
-	const struct device *gpio_dev = NULL;
+	dev = device_get_binding(HASH_DRV_NAME);	// retrieves hash driver device info
 
-	gpio_dev = device_get_binding("GPIO0_I_L");
+	ret = hash_begin_session(dev, &hashParams.ctx, algo);	// initializes hash engine
 
-	if (gpio_dev == NULL)
-	{
-		printk("[%d]Fail to get GPIO0_I_L", __LINE__);
-		return;
-	}
-	else
-	{
-		printk("Device Name : %s\n", gpio_dev->name);
-	}
+	if(!ret)
+		hashParams.sessionReady = 1;	// hash engine session is ready
 
-	for(count = 0; count < 32; count++)
-		gpio_pin_configure(gpio_dev, GPIO_PIN_TST, GPIO_OUTPUT);
-
-	k_busy_wait(10000); /* 10ms */
-
-	for(;;) 
-	{
-		if (enable)
-			for(count = 0; count < 32; count++)
-				gpio_pin_set(gpio_dev, count, 0);
-		else
-			for(count = 0; count < 32; count++)
-				gpio_pin_set(gpio_dev, count, 1);
-
-		k_busy_wait(500000); /* 500ms */
-
-		enable = (enable) ? (0) : (1);
-
-		for(count = 31; count != 255; count--)
-			printk("%X ", gpio_pin_get(gpio_dev, count));
-
-		printk("\nEnable : %X\n", enable);
-	}
+	return ret;
 }
+
+/**
+ * @brief Update the current hash operation with a block of data.
+ *
+ * @param data The data that should be added to generate the final hash.
+ * @param length The length of the data.
+ *
+ * @return 0 if the hash operation was updated successfully or an error code.
+ */
+int hash_engine_update(const uint8_t *data, size_t length)
+{
+	int status; //hash operation status
+
+	hashParams.pkt.in_buf = (uint8_t *)data;  // plaint text info
+	hashParams.pkt.in_len = length; // plaint text size
+	status = hash_update(&hashParams.ctx, &hashParams.pkt);  // update plaint text into hash engine
+
+	return status;
+}
+
+/**
+ * @brief Complete the current hash operation and get the calculated digest.
+ *
+ * If a call to finish fails, finish MUST be called until it succeeds or the operation can be
+ * terminated with a call to cancel.
+ *
+ * @param hash The buffer to hold the completed hash.
+ * @param hash_length The length of the hash buffer.
+ *
+ * @return 0 if the hash was completed successfully or an error code.
+ */
+int hash_engine_finish (uint8_t *hash, size_t hash_length)
+{
+	const struct device *dev = device_get_binding(HASH_DRV_NAME);	// retrieves hash driver device info
+	int ret;
+
+	hashParams.pkt.out_buf = hash,	// hash value and this will updated by hash engine
+	hashParams.pkt.out_buf_max = hash_length,	//hash size
+	hashParams.sessionReady = 0;	// clear as hash engine session as expired, this should initialize again
+
+	ret = hash_final(&hashParams.ctx, &hashParams.pkt);	// final setup hash engine
+
+	hash_free_session(dev, &hashParams.ctx);	// free hash engine
+
+	return ret;
+}
+
+/**
+ * @brief Cancel an in-progress hash operation without getting the hash values.  After canceling, a new
+ * hash operation needs to be started.
+ *
+ * @param engine The hash engine to cancel.
+ */
+void hash_engine_cancel(void)
+{
+	const struct device *dev = device_get_binding(HASH_DRV_NAME);	// retrieves hash driver device info
+
+	hashParams.sessionReady = 0;	// clear as hash engine session as expired, this should initialize again
+
+	hash_free_session(dev, &hashParams.ctx);	// free hash engine
+}
+
+#if ZEPHYR_HASH_API_MIDLEYER_TEST_SUPPORT
+
+const uint8_t *SHA_DISPLAY_MSG[] = {
+	"SHA1",
+	"SHA256",
+	"SHA384",
+	"SHA512",
+};
+
+struct hash_test_hmac_info {
+	enum hash_algo shaAlgo;
+	uint32_t hmacLength;
+	const uint8_t *message;
+	uint32_t messageSize;
+	const uint8_t *key;
+	uint32_t keySize;
+	uint8_t *expected;
+};
+
+const struct hash_test_hmac_info HASH_TEST_CAL_SHA_INFO[] = {
+	 {
+		.shaAlgo = HASH_SHA256,
+		.hmacLength = (256 / 8),
+		.message = "Test",
+		.messageSize = sizeof("Test") - 1,
+		.expected = "\x53\x2e\xaa\xbd\x95\x74\x88\x0d\xbf\x76\xb9\xb8\xcc\x00\x83\x2c"
+					"\x20\xa6\xec\x11\x3d\x68\x22\x99\x55\x0d\x7a\x6e\x0f\x34\x5e\x25",
+	 },
+#ifdef HASH_ENABLE_SHA384
+	{
+		.shaAlgo = HASH_SHA384,
+		.hmacLength = (384 / 8),
+		.message = "Test",
+		.messageSize = sizeof("Test") - 1,
+		.expected = "\x7b\x8f\x46\x54\x07\x6b\x80\xeb\x96\x39\x11\xf1\x9c\xfa\xd1\xaa"
+					"\xf4\x28\x5e\xd4\x8e\x82\x6f\x6c\xde\x1b\x01\xa7\x9a\xa7\x3f\xad"
+					"\xb5\x44\x6e\x66\x7f\xc4\xf9\x04\x17\x78\x2c\x91\x27\x05\x40\xf3"
+	 },
 #endif
+#ifdef HASH_ENABLE_SHA512
+	{
+		.shaAlgo = HASH_SHA512,
+		.hmacLength = (512 / 8),
+		.message = "Test",
+		.messageSize = sizeof("Test") - 1,
+		.expected = "\xc6\xee\x9e\x33\xcf\x5c\x67\x15\xa1\xd1\x48\xfd\x73\xf7\x31\x88"
+					"\x84\xb4\x1a\xdc\xb9\x16\x02\x1e\x2b\xc0\xe8\x00\xa5\xc5\xdd\x97"
+					"\xf5\x14\x21\x78\xf6\xae\x88\xc8\xfd\xd9\x8e\x1a\xfb\x0c\xe4\xc8"
+					"\xd2\xc5\x4b\x5f\x37\xb3\x0b\x7d\xa1\x99\x7b\xb3\x3b\x0b\x8a\x31",
+	 },
+#endif
+};
+
+static int hash_test_start_new_hash_sha (void)
+{
+	int status, failure;
+	uint8_t hash[512/8];
+
+	printk("\n%s :\n", __func__);
+
+	failure = 0;
+
+	for(size_t i = 0; i < (sizeof(HASH_TEST_CAL_SHA_INFO)/sizeof(HASH_TEST_CAL_SHA_INFO[0])); i++)
+	{
+		status = hash_engine_start(HASH_TEST_CAL_SHA_INFO[i].shaAlgo);
+
+		if( status ) {
+			printk(" X hash_engine_start failed !\n");
+			failure = 1;
+			continue;
+		}
+
+		status = hash_engine_update (HASH_TEST_CAL_SHA_INFO[i].message, HASH_TEST_CAL_SHA_INFO[i].messageSize);
+		if( status ) {
+			printk(" X engine.base.update failed ! index : %d status : %x\n", i, status);
+			failure = 1;
+			continue;
+		}
+		//hmacLength = hash length
+		status = hash_engine_finish (hash, HASH_TEST_CAL_SHA_INFO[i].hmacLength);
+		if( status ) {
+			printk(" X engine.base.finish failed ! index : %d status : %x\n", i, status);
+			failure = 1;
+			continue;
+		}
+
+		//hmacLength = hash length
+		status = memcmp(HASH_TEST_CAL_SHA_INFO[i].expected, hash, HASH_TEST_CAL_SHA_INFO[i].hmacLength);
+		if( status ) {
+			printk(" X not match ! index : %d status : %x\n", i, status);
+			failure = 1;
+			continue;
+		}
+		else {
+			printk("index : %d %s PASS\n", i, SHA_DISPLAY_MSG[HASH_TEST_CAL_SHA_INFO[i].shaAlgo]);
+		}
+	}
+
+	return failure;
+}
+
+static int hash_test_calculate_sha (void)
+{
+	int status, failure;
+	uint8_t hash[(512 / 8)];
+
+	failure = 0;
+
+	printk("\n%s :\n", __func__);
+
+	for(size_t i = 0; i < (sizeof(HASH_TEST_CAL_SHA_INFO)/sizeof(HASH_TEST_CAL_SHA_INFO[0])); i++)
+	{   //hmacLength = hash length
+
+		status = hash_engine_start(HASH_TEST_CAL_SHA_INFO[i].shaAlgo);
+
+		if( status ) {
+			printk(" X hash_engine_start failed !\n");
+			failure = 1;
+			continue;
+		}
+
+		status = hash_engine_sha_calculate (	HASH_TEST_CAL_SHA_INFO[i].shaAlgo,
+												HASH_TEST_CAL_SHA_INFO[i].message, HASH_TEST_CAL_SHA_INFO[i].messageSize,
+												hash, HASH_TEST_CAL_SHA_INFO[i].hmacLength );
+
+		if( status ) {
+			printk(" X hash_calculate failed ! index : %d status : %x\n", i, status);
+			failure = 1;
+			continue;
+		}
+		//hmacLength = hash length
+		status = memcmp(HASH_TEST_CAL_SHA_INFO[i].expected, hash, HASH_TEST_CAL_SHA_INFO[i].hmacLength);
+		if( status ) {
+			printk(" X not match ! index : %d status : %x\n", i, status);
+			failure = 1;
+			continue;
+		}
+		else {
+			printk("index : %d %s PASS\n", i, SHA_DISPLAY_MSG[ HASH_TEST_CAL_SHA_INFO[i].shaAlgo ]);
+		}
+	}
+
+	return failure;
+}
+
+/**
+ * @brief test hash engine features
+ */
+void hash_engine_function_test(void)
+{
+	uint8_t* status_string;
+
+	status_string = ( hash_test_calculate_sha() ) ? ("FAIL") : ("PASS");
+
+	printk("hash_test_calculate_sha : %s\n", status_string);
+
+	status_string = ( hash_test_start_new_hash_sha() ) ? ("FAIL") : ("PASS");
+
+	printk("hash_test_start_new_hash_sha : %s\n", status_string);
+}
+
+#endif  /* #if ZEPHYR_HASH_API_MIDLEYER_TEST_SUPPORT */

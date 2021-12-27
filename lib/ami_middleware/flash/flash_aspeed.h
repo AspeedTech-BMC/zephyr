@@ -112,5 +112,4 @@ struct pflash_master {
 
 int SPI_Command_Xfer(struct pflash_master *spi, struct pflash_xfer * xfer);
 
-
 #endif
