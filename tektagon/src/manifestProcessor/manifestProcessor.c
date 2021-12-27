@@ -34,9 +34,9 @@ int processPfmFlashManifest()
 	if(status)
 		return status;
 
-	if(getManifestFlashInstance()->manifest_valid)
+	/*if(getManifestFlashInstance()->manifest_valid)
 	{
-	}
+	}*/
 
 	return status;
 }
