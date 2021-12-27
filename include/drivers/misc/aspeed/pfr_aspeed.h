@@ -56,6 +56,12 @@ struct cmd_table_info {
 	uint32_t cmd_table_val;
 };
 
+enum spim_spi_master {
+	SPI_NONE,
+	SPI1,
+	SPI2
+};
+
 enum spim_passthrough_mode {
 	SPIM_SINGLE_PASSTHROUGH,
 	SPIM_MULTI_PASSTHROUGH,
@@ -79,6 +85,8 @@ void spim_ext_mux_config(const struct device *dev,
 	enum spim_ext_mux_mode mode);
 void spim_passthrough_config(const struct device *dev,
 	enum spim_passthrough_mode mode, bool passthrough_en);
+void spim_spi_ctrl_detour_enable(const struct device *dev,
+	enum spim_spi_master spi, bool master_en);
 void spim_block_mode_config(const struct device *dev, enum spim_block_mode mode);
 
 

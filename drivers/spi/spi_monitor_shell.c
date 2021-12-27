@@ -345,6 +345,38 @@ static int passthrough_mode_config(const struct shell *shell, size_t argc, char 
 	return 0;
 }
 
+static int spim_spi_ctrl_detour_config(
+	const struct shell *shell, size_t argc, char *argv[])
+{
+	uint32_t enable;
+	char *endptr;
+	enum spim_spi_master spi = SPI1;
+
+	if (spim_device == NULL) {
+		shell_error(shell, "Please set the device first.");
+		return -ENODEV;
+	}
+
+	if (argc < 3) {
+		shell_error(shell, "spim config detour <spi master> <0/1>.");
+		return -EINVAL;
+	}
+
+	if (strncmp(argv[1], "spi1", 4) == 0)
+		spi = SPI1;
+	else if (strncmp(argv[1], "spi2", 4) == 0)
+		spi = SPI2;
+
+	enable = strtoul(argv[2], &endptr, 16);
+
+	if (enable == 0)
+		spim_spi_ctrl_detour_enable(spim_device, spi, false);
+	else
+		spim_spi_ctrl_detour_enable(spim_device, spi, true);
+
+	return 0;
+}
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_spim_cmds,
 	SHELL_CMD_ARG(dump, NULL, "\"dump\"", dump_allow_cmd_table, 1, 0),
 	SHELL_CMD_ARG(add, NULL, "<command>", add_allow_cmd, 2, 1),
@@ -371,6 +403,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_spim_config,
 	SHELL_CMD_ARG(extmux, NULL, "<0/1> for clear/set", external_mux_config, 2, 0),
 	SHELL_CMD_ARG(passthrough, NULL, "<multi/single> <0/1> for clear/set",
 		passthrough_mode_config, 3, 0),
+	SHELL_CMD_ARG(detour, NULL, "<SPI master> <0/1>",
+		spim_spi_ctrl_detour_config, 3, 0),
 
 	SHELL_SUBCMD_SET_END
 );
