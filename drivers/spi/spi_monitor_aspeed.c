@@ -277,7 +277,7 @@ void spim_scu_passthrough_mode(const struct device *dev,
 }
 
 void spim_spi_ctrl_detour_enable(const struct device *dev,
-	enum spim_spi_master spi, bool master_en)
+	enum spim_spi_master spi, bool enable)
 {
 	const struct aspeed_spim_config *config = dev->config;
 	uint32_t spim_idx = config->ctrl_idx;
@@ -285,7 +285,7 @@ void spim_spi_ctrl_detour_enable(const struct device *dev,
 	if (spi == SPI_NONE || spi > SPI2)
 		return;
 
-	if (master_en)
+	if (enable)
 		spim_scu_ctrl_set(config->parent, 0xF, ((spi - 1) << 3) | spim_idx);
 	else
 		spim_scu_ctrl_clear(config->parent, 0xF);

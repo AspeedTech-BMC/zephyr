@@ -86,7 +86,7 @@ void spim_ext_mux_config(const struct device *dev,
 void spim_passthrough_config(const struct device *dev,
 	enum spim_passthrough_mode mode, bool passthrough_en);
 void spim_spi_ctrl_detour_enable(const struct device *dev,
-	enum spim_spi_master spi, bool master_en);
+	enum spim_spi_master spi, bool enable);
 void spim_block_mode_config(const struct device *dev, enum spim_block_mode mode);
 
 
