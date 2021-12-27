@@ -204,7 +204,9 @@ int i3c_master_send_getpid(const struct device *master, uint8_t addr, uint64_t *
 #define i3c_slave_prep_read_data	i3c_aspeed_slave_prep_read_data
 #define i3c_slave_wait_data_consume	i3c_aspeed_slave_wait_data_consume
 
-int i3c_jesd_read(struct i3c_dev_desc *slave, uint8_t addr, uint8_t *buf, int length);
-int i3c_jesd_write(struct i3c_dev_desc *slave, uint8_t addr, uint8_t *buf, int length);
+int i3c_jesd403_read(struct i3c_dev_desc *slave, uint8_t *addr, int addr_size, uint8_t *data,
+		     int data_size);
+int i3c_jesd403_write(struct i3c_dev_desc *slave, uint8_t *addr, int addr_size, uint8_t *data,
+		      int data_size);
 int i3c_i2c_read(struct i3c_dev_desc *slave, uint8_t addr, uint8_t *buf, int length);
 int i3c_i2c_write(struct i3c_dev_desc *slave, uint8_t addr, uint8_t *buf, int length);

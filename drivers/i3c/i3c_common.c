@@ -111,26 +111,27 @@ int i3c_master_send_getpid(const struct device *master, uint8_t addr, uint64_t *
 /**
  * @brief data read for the JESD compliant devices
  * @param slave the JESD compliant device
- * @param add the address to be read
- * @param buf buffer to store the read data
- * @param length length of the read data
+ * @param addr the address buffer
+ * @param addr_size size of the address buffer in byte
+ * @param data buffer to store the read data
+ * @param data_size size of the read data in byte
  * @return 0 if success
  */
-int i3c_jesd_read(struct i3c_dev_desc *slave, uint8_t addr, uint8_t *buf, int length)
+int i3c_jesd403_read(struct i3c_dev_desc *slave, uint8_t *addr, int addr_size, uint8_t *data,
+		     int data_size)
 {
 	struct i3c_priv_xfer xfer[2];
-	uint8_t mode_reg = addr;
 
 	__ASSERT(slave->master_dev, "Unregistered device\n");
 	__ASSERT(!slave->info.i2c_mode, "Not I3C device\n\n");
 
 	xfer[0].rnw = 0;
-	xfer[0].len = 1;
-	xfer[0].data.out = &mode_reg;
+	xfer[0].len = addr_size;
+	xfer[0].data.out = addr;
 
 	xfer[1].rnw = 1;
-	xfer[1].len = length;
-	xfer[1].data.in = buf;
+	xfer[1].len = data_size;
+	xfer[1].data.in = data;
 
 	return i3c_master_priv_xfer(slave, xfer, 2);
 }
@@ -138,12 +139,14 @@ int i3c_jesd_read(struct i3c_dev_desc *slave, uint8_t addr, uint8_t *buf, int le
 /**
  * @brief data write for the JESD compliant devices
  * @param slave the JESD compliant device
- * @param add the address to be write
- * @param buf buffer to store the write data
- * @param length length of the write data
+ * @param addr the address buffer
+ * @param addr_size size of the address buffer in byte
+ * @param data buffer to store the write data
+ * @param data_size size of the write data in byte
  * @return 0 if success
  */
-int i3c_jesd_write(struct i3c_dev_desc *slave, uint8_t addr, uint8_t *buf, int length)
+int i3c_jesd403_write(struct i3c_dev_desc *slave, uint8_t *addr, int addr_size, uint8_t *data,
+		      int data_size)
 {
 	struct i3c_priv_xfer xfer[1];
 	uint8_t *out;
@@ -152,13 +155,12 @@ int i3c_jesd_write(struct i3c_dev_desc *slave, uint8_t addr, uint8_t *buf, int l
 	__ASSERT(slave->master_dev, "Unregistered device\n");
 	__ASSERT(!slave->info.i2c_mode, "Not I3C device\n\n");
 
-	out = k_calloc(sizeof(uint8_t), length + 2);
-	out[0] = addr;
-	out[1] = 0;
-	memcpy(&out[2], buf, length);
+	out = k_calloc(sizeof(uint8_t), addr_size + data_size);
+	memcpy(&out[0], addr, addr_size);
+	memcpy(&out[addr_size], data, data_size);
 
 	xfer[0].rnw = 0;
-	xfer[0].len = length + 2;
+	xfer[0].len = addr_size + data_size;
 	xfer[0].data.out = out;
 
 	ret = i3c_master_priv_xfer(slave, xfer, 1);

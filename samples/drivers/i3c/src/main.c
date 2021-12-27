@@ -28,27 +28,11 @@ int i3c_slave_mqueue_write(const struct device *dev, uint8_t *src, int size);
  *                                        |       |
  *                                        SPD@52  SPD@53
  */
-static void i3c_imx3112_select(struct i3c_dev_desc *imx3112, int chan)
-{
-	int ret;
-	uint8_t data[2];
-
-	if (chan) {
-		data[0] = 0x80;
-		data[1] = 0x80;
-	} else {
-		data[0] = 0x40;
-		data[1] = 0x40;
-	}
-
-	if (imx3112->info.i2c_mode) {
-		ret = i3c_i2c_write(imx3112, 0x40, data, 2);
-		__ASSERT_NO_MSG(!ret);
-	} else {
-		ret = i3c_jesd_write(imx3112, 0x40, data, 2);
-		__ASSERT_NO_MSG(!ret);
-	}
-}
+void i3c_imx3112_reg_read(struct i3c_dev_desc *imx3112, uint8_t addr, uint8_t *data, int data_size);
+void i3c_imx3112_reg_write(struct i3c_dev_desc *imx3112, uint8_t addr, uint8_t *data,
+			   int data_size);
+void i3c_imx3112_select(struct i3c_dev_desc *imx3112, int chan);
+void i3c_spd5118_reg_read(struct i3c_dev_desc *spd5118, uint8_t addr, uint8_t *data, int data_size);
 
 static void i3c_imx3112_test(void)
 {
@@ -116,8 +100,7 @@ static void i3c_imx3112_test(void)
 	__ASSERT(!ret, "SETAASA failed\n");
 
 	for (i = 0; i < 3; i++) {
-		ret = i3c_jesd_read(&slave[i], 0, data, 2);
-		__ASSERT_NO_MSG(!ret);
+		i3c_spd5118_reg_read(&slave[i], 0, data, 2);
 		printk("device%d ID in I3C mode %02x %02x\n", i, data[0], data[1]);
 	}
 
@@ -125,8 +108,7 @@ static void i3c_imx3112_test(void)
 	i3c_imx3112_select(&slave[0], 1);
 
 	for (i = 3; i < 5; i++) {
-		ret = i3c_jesd_read(&slave[i], 0, data, 2);
-		__ASSERT_NO_MSG(!ret);
+		i3c_spd5118_reg_read(&slave[i], 0, data, 2);
 		printk("device%d ID in I3C mode %02x %02x\n", i, data[0], data[1]);
 	}
 }
@@ -149,34 +131,12 @@ static void i3c_imx3112_test(void)
  * |                     |
  * +---------------------+
  */
-#define IMX3102_PORT_CONF		0x40
-#define   IMX3102_PORT_CONF_M1_EN	BIT(7)
-#define   IMX3102_PORT_CONF_S_EN	BIT(6)
-#define IMX3102_PORT_SEL		0x41
-#define   IMX3102_PORT_SEL_M1		BIT(7)
-#define   IMX3102_PORT_SEL_S_EN		BIT(6)
-
-static void i3c_imx3102_release_ownership(struct i3c_dev_desc *imx3102)
-{
-	int ret;
-	uint8_t select;
-
-	if (imx3102->info.i2c_mode) {
-		ret = i3c_i2c_read(imx3102, IMX3102_PORT_SEL, &select, 1);
-		__ASSERT_NO_MSG(!ret);
-
-		select ^= IMX3102_PORT_SEL_M1;
-		ret = i3c_i2c_write(imx3102, IMX3102_PORT_SEL, &select, 1);
-		__ASSERT_NO_MSG(!ret);
-	} else {
-		ret = i3c_jesd_read(imx3102, IMX3102_PORT_SEL, &select, 1);
-		__ASSERT_NO_MSG(!ret);
-
-		select ^= IMX3102_PORT_SEL_M1;
-		ret = i3c_jesd_write(imx3102, 0x41, &select, 1);
-		__ASSERT_NO_MSG(!ret);
-	}
-}
+void i3c_imx3102_reg_read(struct i3c_dev_desc *imx3102, uint8_t addr, uint8_t *data, int data_size);
+void i3c_imx3102_reg_write(struct i3c_dev_desc *imx3102, uint8_t addr, uint8_t *data,
+			   int data_size);
+void i3c_imx3102_release_ownership(struct i3c_dev_desc *imx3102);
+void i3c_imx3102_init(struct i3c_dev_desc *imx3102);
+void i3c_spd5118_reg_read(struct i3c_dev_desc *spd5118, uint8_t addr, uint8_t *data, int data_size);
 
 static void i3c_imx3102_test(void)
 {
@@ -207,9 +167,7 @@ static void i3c_imx3102_test(void)
 	__ASSERT(!ret, "RSTDAA failed %d\n", ret);
 
 	/* init the local port */
-	data[0] = IMX3102_PORT_CONF_M1_EN | IMX3102_PORT_CONF_S_EN;
-	data[1] = IMX3102_PORT_SEL_S_EN;
-	ret = i3c_i2c_write(&slave[0][0], IMX3102_PORT_CONF, data, 2);
+	i3c_imx3102_init(&slave[0][0]);
 
 	for (j = 0; j < 3; j++) {
 		ret = i3c_i2c_read(&slave[0][j], 0, data, 2);
@@ -237,17 +195,19 @@ static void i3c_imx3102_test(void)
 	ret = i3c_master_send_aasa(master[1]);
 	__ASSERT_NO_MSG(!ret);
 
-	for (j = 0; j < 3; j++) {
-		ret = i3c_jesd_read(&slave[1][j], 0, data, 2);
-		__ASSERT(!ret, "i3c xfer failed\n");
+	i3c_imx3102_reg_read(&slave[1][0], 0, data, 2);
+	printk("[I3C1][I3C mode] device0 ID %02x %02x\n", data[0], data[1]);
+	for (j = 1; j < 3; j++) {
+		i3c_spd5118_reg_read(&slave[1][j], 0, data, 2);
 		printk("[I3C1][I3C mode] device%d ID %02x %02x\n", j, data[0], data[1]);
 	}
 
 	i3c_imx3102_release_ownership(&slave[1][0]);
 
-	for (j = 0; j < 3; j++) {
-		ret = i3c_jesd_read(&slave[0][j], 0, data, 2);
-		__ASSERT(!ret, "i3c xfer failed\n");
+	i3c_imx3102_reg_read(&slave[0][0], 0, data, 2);
+	printk("[I3C0][I3C mode] device0 ID %02x %02x\n", data[0], data[1]);
+	for (j = 1; j < 3; j++) {
+		i3c_spd5118_reg_read(&slave[0][j], 0, data, 2);
 		printk("[I3C0][I3C mode] device%d ID %02x %02x\n", j, data[0], data[1]);
 	}
 }
