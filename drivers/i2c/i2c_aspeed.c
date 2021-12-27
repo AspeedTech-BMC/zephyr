@@ -1210,7 +1210,18 @@ int aspeed_i2c_master_irq(const struct device *dev)
 			k_sem_give(&data->sync_sem);
 			break;
 		case AST_I2CM_TX_ACK:
-			/*LOG_DBG("M : AST_I2CM_TX_ACK = %x\n", sts);*/
+#ifdef CONFIG_I2C_SLAVE
+			/* Workaround for master/slave package mode enable rx done stuck issue
+			 * When master go for first read (RX_DONE), slave mode will also effect
+			 * Then controller will send nack, not operate anymore.
+			 */
+			if (sys_read32(i2c_base + AST_I2CS_CMD_STS) & AST_I2CS_PKT_MODE_EN) {
+				uint32_t slave_cmd = sys_read32(i2c_base + AST_I2CS_CMD_STS);
+
+				sys_write32(0, i2c_base + AST_I2CS_CMD_STS);
+				sys_write32(slave_cmd, i2c_base + AST_I2CS_CMD_STS);
+			}
+#endif
 		case AST_I2CM_TX_ACK | AST_I2CM_NORMAL_STOP:
 			LOG_DBG("M : I2CM_TX_ACK | I2CM_N_S = %x\n", sts);
 			do_i2cm_tx(dev);
