@@ -129,7 +129,6 @@ static uint8_t spim_log_arr[SPIM_LOG_RAM_TOTAL_SIZE] NON_CACHED_BSS_ALIGN16;
 /* SPIPF7C */
 #define SPIM_CTRL_REG_LOCK              BIT(0)
 #define SPIM_INT_STS_REG_LOCK           BIT(1)
-#define SPIM_OVERSPEED_CTRL_REG_LOCK    BIT(2)
 #define SPIM_LOG_BASE_ADDR_REG_LOCK     BIT(4)
 #define SPIM_LOG_CTRL_REG_LOCK          BIT(5)
 #define SPIM_ADDR_PRIV_WRITE_TABLE_LOCK BIT(30)
@@ -998,7 +997,6 @@ void spim_lock_common(const struct device *dev)
 
 	reg_val |= SPIM_CTRL_REG_LOCK |
 				SPIM_INT_STS_REG_LOCK |
-				SPIM_OVERSPEED_CTRL_REG_LOCK |
 				SPIM_LOG_BASE_ADDR_REG_LOCK |
 				SPIM_LOG_CTRL_REG_LOCK;
 
