@@ -45,7 +45,7 @@ void ast1060_rst_demo_ext_mux(struct k_work *item)
 		spim_passthrough_config(spim_dev, 0, false);
 	}
 
-	/* emulate PFR read flash each flash content for verification purpose */
+	/* emulate PFR reads each flash content for verification purpose */
 	ret = demo_spi_host_read();
 	if (ret)
 		return;
