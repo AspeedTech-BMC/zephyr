@@ -9,6 +9,7 @@ set(TEKTAGON_ROOT ${CMAKE_CURRENT_LIST_DIR})
 
 FILE(GLOB_RECURSE app_sources src/*.c)
 target_sources(app PRIVATE ${app_sources})
+set(CERBERUS_ROOT $ENV{ZEPHYR_BASE}/lib/cerberus)
 
 #message(STATUS "Printing app_sources - ${app_sources}")
 
