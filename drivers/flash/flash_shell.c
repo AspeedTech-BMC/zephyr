@@ -27,7 +27,9 @@
 #define FLASH_DEV_NAME ""
 #endif
 
-static uint8_t __aligned(4) test_arr[TEST_ARR_SIZE];
+static uint8_t test_arr[TEST_ARR_SIZE] NON_CACHED_BSS_ALIGN16;
+static uint8_t read_back_arr[TEST_ARR_SIZE] NON_CACHED_BSS_ALIGN16;
+static uint8_t op_arr[TEST_ARR_SIZE] NON_CACHED_BSS_ALIGN16;
 
 static int parse_helper(const struct shell *shell, size_t *argc,
 		char **argv[], const struct device * *flash_dev,
@@ -305,19 +307,8 @@ static int do_update(const struct device *flash_device,
 		goto end;
 	}
 
-	op_buf = (uint8_t *)malloc(sector_sz);
-	if (op_buf == NULL) {
-		printk("heap full %d %d\n", __LINE__, sector_sz);
-		ret = -EINVAL;
-		goto end;
-	}
-
-	read_back_buf = (uint8_t *)malloc(sector_sz);
-	if (read_back_buf == NULL) {
-		printk("heap full %d %d\n", __LINE__, sector_sz);
-		ret = -EINVAL;
-		goto end;
-	}
+	op_buf = (uint8_t *)op_arr;
+	read_back_buf = (uint8_t *)read_back_arr;
 
 	/* initial op_addr */
 	op_addr = (flash_offset / sector_sz) * sector_sz;
@@ -380,11 +371,6 @@ static int do_update(const struct device *flash_device,
 
 end:
 	printk("Update %s.\n", ret ? "FAILED" : "done");
-
-	if (op_buf != NULL)
-		free(op_buf);
-	if (read_back_buf != NULL)
-		free(read_back_buf);
 
 	return ret;
 }

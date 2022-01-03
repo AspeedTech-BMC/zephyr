@@ -8,3 +8,12 @@ config SPI_ASPEED
 	bool "ASPEED SPI(FMC) driver"
 	help
 	  Enable ASPEED SPI(FMC) controller driver.
+
+config SPI_DMA_SUPPORT_ASPEED
+	depends on SPI_ASPEED
+	bool "Enable ASPEED SPI DMA"
+	default n
+	help
+	  Enable ASPEED SPI DMA. Notice, both
+	  flash start addrss and ram start address
+	  MUST be 4-byte aligned.

@@ -829,6 +829,7 @@
 			compatible = "aspeed,spi-controller";
 			reg = <0x7e620000 0xc4>, <0x80000000 0x10000000>;
 			reg-names = "ctrl_reg", "spi_mmap";
+			interrupts = <INTR_FMC AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_HCLK>;
 			pinctrl-0 = <&pinctrl_fmc_quad>;
 			num-cs = <2>;
@@ -866,6 +867,7 @@
 			compatible = "aspeed,spi-controller";
 			reg = <0x7e630000 0xc4>, <0x90000000 0x10000000>;
 			reg-names = "ctrl_reg", "spi_mmap";
+			interrupts = <INTR_SPI1 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_HCLK>;
 			pinctrl-0 = <&pinctrl_spi1_quad>;
 			num-cs = <2>;
@@ -900,6 +902,7 @@
 			compatible = "aspeed,spi-controller";
 			reg = <0x7e640000 0xc4>, <0xb0000000 0x10000000>;
 			reg-names = "ctrl_reg", "spi_mmap";
+			interrupts = <INTR_SPI2 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_HCLK>;
 			pinctrl-0 = <&pinctrl_spi2_default
 						&pinctrl_spi2_cs1

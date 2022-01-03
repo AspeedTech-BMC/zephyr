@@ -8,6 +8,7 @@
 #include <drivers/spi_nor.h>
 #include <kernel.h>
 #include <sys/util.h>
+#include <soc.h>
 #include <stdlib.h>
 #include <string.h>
 #include <zephyr.h>
@@ -19,8 +20,11 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
 #define SPIM_TEST_SIZE 0x1000
 #define SPIM_TEST_ARR_SIZE 0x1100
+#define SPIM_TEST_SECTOR_SIZE 0x1000
 
-static uint8_t __aligned(4) test_arr[SPIM_TEST_ARR_SIZE];
+static uint8_t test_arr[SPIM_TEST_ARR_SIZE] NON_CACHED_BSS_ALIGN16;
+static uint8_t read_back_arr[SPIM_TEST_SECTOR_SIZE] NON_CACHED_BSS_ALIGN16;
+static uint8_t op_arr[SPIM_TEST_SECTOR_SIZE] NON_CACHED_BSS_ALIGN16;
 
 static char *flash_devices[6] = {
 	"spi2_cs0",
@@ -105,19 +109,8 @@ static int do_update(const struct device *flash_device,
 		goto end;
 	}
 
-	op_buf = (uint8_t *)malloc(sector_sz);
-	if (op_buf == NULL) {
-		LOG_ERR("heap full %d %d", __LINE__, sector_sz);
-		ret = -EINVAL;
-		goto end;
-	}
-
-	read_back_buf = (uint8_t *)malloc(sector_sz);
-	if (read_back_buf == NULL) {
-		LOG_ERR("heap full %d %d", __LINE__, sector_sz);
-		ret = -EINVAL;
-		goto end;
-	}
+	op_buf = (uint8_t *)op_arr;
+	read_back_buf = (uint8_t *)read_back_arr;
 
 	/* initial op_addr */
 	op_addr = (flash_offset / sector_sz) * sector_sz;
@@ -180,12 +173,6 @@ static int do_update(const struct device *flash_device,
 
 end:
 	LOG_INF("Update %s.", ret ? "FAILED" : "done");
-
-	if (op_buf != NULL)
-		free(op_buf);
-	if (read_back_buf != NULL)
-		free(read_back_buf);
-
 	return ret;
 }
 
@@ -196,12 +183,7 @@ int demo_spi_host_read(void)
 	uint8_t *op_buf = NULL;
 	uint32_t i;
 
-	op_buf = (uint8_t *)malloc(SPIM_TEST_SIZE);
-	if (op_buf == NULL) {
-		LOG_ERR("heap full %d %d", __LINE__, SPIM_TEST_SIZE);
-		ret = -EINVAL;
-		goto end;
-	}
+	op_buf = (uint8_t *)op_arr;
 
 	for (i = 0; i < SPIM_TEST_ARR_SIZE; i++)
 		test_arr[i] = 'a' + (i % 26);
@@ -258,6 +240,5 @@ int demo_spi_host_read(void)
 
 end:
 
-	free(op_buf);
 	return ret;
 }
