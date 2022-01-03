@@ -133,4 +133,6 @@ void spim_isr_callback_install(const struct device *dev,
 void spim_get_log_info(const struct device *dev, struct spim_log_info *info);
 uint32_t spim_get_ctrl_idx(const struct device *dev);
 
+bool get_wdt_timeout_status(const struct device *dev);
+
 #endif

@@ -45,6 +45,7 @@ LOG_MODULE_REGISTER(wdt_ast, CONFIG_WDT_LOG_LEVEL);
 #define WDT_CTRL_ENABLE             BIT(0)
 
 #define WDT_TIMEOUT_INDICATOR       BIT(0)
+#define WDT_TIMEOUT_COUNTER_CLR     0x3B
 
 /* 32-bit timer with 1MHz clock.
  * The maximum timeout ms is (2^32 - 1) / 10^6 * 1000.
@@ -60,8 +61,9 @@ struct aspeed_wdt_common_config {
 
 struct aspeed_wdt_common_data {
 	struct k_spinlock wdt_irq_lock;
-	wdt_callback_t callbacks[4];
-	const struct device *wdt_devs[4];
+	const struct device *wdt_devs[WDT_CTRL_NUM];
+	wdt_callback_t callbacks[WDT_CTRL_NUM];
+	uint8_t wdt_timeout_sts[WDT_CTRL_NUM];
 	uint32_t pre_wdt_timeout_idx;
 };
 
@@ -164,6 +166,8 @@ static int wdt_aspeed_setup(const struct device *dev, uint8_t options)
 	int ret = 0;
 	struct aspeed_wdt_data *const data = dev->data;
 	const struct aspeed_wdt_config *config = dev->config;
+	const struct device *parent_dev = config->parent;
+	struct aspeed_wdt_common_data *const parent_data = parent_dev->data;
 	uint32_t reg_val;
 	k_spinlock_key_t key = k_spin_lock(&data->wdt_spin_lock);
 
@@ -181,6 +185,10 @@ static int wdt_aspeed_setup(const struct device *dev, uint8_t options)
 	/* setup reload counter */
 	sys_write32(data->timeout_counter, config->ctrl_base + WDT_RELOAD_VAL_REG);
 	sys_write32(WDT_RESTART_MAGIC, config->ctrl_base + WDT_RESTART_REG);
+
+	sys_write32(WDT_TIMEOUT_INDICATOR,
+		config->ctrl_base + WDT_TIMEOUT_STATUS_CLR_REG);
+	parent_data->wdt_timeout_sts[config->ctrl_idx - 1] = 0;
 
 	reg_val = sys_read32(config->ctrl_base + WDT_CTRL_REG);
 	reg_val &= (~WDT_CTRL_RST_MASK & ~WDT_CTRL_RST_WDT_BY_SOC &
@@ -221,13 +229,19 @@ static int wdt_aspeed_disable(const struct device *dev)
 {
 	const struct aspeed_wdt_config *config = dev->config;
 	struct aspeed_wdt_data *const data = dev->data;
-	uint32_t reg_val;
+	const struct device *parent_dev = config->parent;
+	struct aspeed_wdt_common_data *const parent_data = parent_dev->data;
 	k_spinlock_key_t key = k_spin_lock(&data->wdt_spin_lock);
 
-	reg_val = sys_read32(config->ctrl_base + WDT_CTRL_REG);
-	reg_val &= ~WDT_CTRL_ENABLE;
-	sys_write32(reg_val, config->ctrl_base + WDT_CTRL_REG);
+	/* reset to initial value */
+	sys_write32(WDT_CTRL_RST_WDT_BY_SOC,
+		config->ctrl_base + WDT_CTRL_REG);
+	sys_write32(WDT_TIMEOUT_COUNTER_CLR << 1,
+		config->ctrl_base + WDT_TIMEOUT_STATUS_CLR_REG);
+	sys_write32(WDT_TIMEOUT_INDICATOR,
+		config->ctrl_base + WDT_TIMEOUT_STATUS_CLR_REG);
 
+	parent_data->wdt_timeout_sts[config->ctrl_idx - 1] = 0;
 	data->timeout_installed = false;
 
 	k_spin_unlock(&data->wdt_spin_lock, key);
@@ -249,6 +263,20 @@ static int wdt_aspeed_feed(const struct device *dev, int channel_id)
 	ARG_UNUSED(channel_id);
 
 	return ret;
+}
+
+bool get_wdt_timeout_status(const struct device *dev)
+{
+	const struct aspeed_wdt_config *config = dev->config;
+	const struct device *parent_dev = config->parent;
+	struct aspeed_wdt_common_data *const parent_data = parent_dev->data;
+	uint32_t reg_val;
+
+	reg_val = sys_read32(config->ctrl_base + WDT_TIMEOUT_STATUS_REG) &
+				WDT_TIMEOUT_INDICATOR;
+
+	return (reg_val & WDT_TIMEOUT_INDICATOR) ||
+			(parent_data->wdt_timeout_sts[config->ctrl_idx - 1] == 1) ? true : false;
 }
 
 static int aspeed_wdt_init(const struct device *dev)
@@ -299,6 +327,7 @@ void wdt_common_isr(const void *param)
 			/* ack */
 			sys_write32(WDT_TIMEOUT_INDICATOR,
 				config->ctrl_base + WDT_CTRL_REG_OFF * idx + WDT_TIMEOUT_STATUS_CLR_REG);
+			data->wdt_timeout_sts[idx] = 1;
 			goto end;
 		}
 
@@ -316,11 +345,15 @@ static int aspeed_wdt_common_init(const struct device *dev)
 {
 	const struct aspeed_wdt_common_config *config = dev->config;
 	struct aspeed_wdt_common_data *const data = dev->data;
+	uint32_t i;
 
 	/* irq init */
 	irq_connect_dynamic(config->irq_num, config->irq_priority,
 		wdt_common_isr, dev, 0);
 	irq_enable(config->irq_num);
+
+	for (i = 0; i < WDT_CTRL_NUM; i++)
+		data->wdt_timeout_sts[i] = 0;
 
 	data->pre_wdt_timeout_idx = 0;
 
