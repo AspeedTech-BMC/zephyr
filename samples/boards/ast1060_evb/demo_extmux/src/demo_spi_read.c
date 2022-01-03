@@ -18,13 +18,13 @@
 #include <logging/log.h>
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
-#define SPIM_TEST_SIZE 0x1000
-#define SPIM_TEST_ARR_SIZE 0x1100
-#define SPIM_TEST_SECTOR_SIZE 0x1000
+#define SPI_FLASH_TEST_SECTOR_SIZE 0x1000
+#define SPI_FLASH_TEST_SIZE SPI_FLASH_TEST_SECTOR_SIZE
+#define SPI_FLASH_TEST_ARR_SIZE 0x1100
 
-static uint8_t test_arr[SPIM_TEST_ARR_SIZE] NON_CACHED_BSS_ALIGN16;
-static uint8_t read_back_arr[SPIM_TEST_SECTOR_SIZE] NON_CACHED_BSS_ALIGN16;
-static uint8_t op_arr[SPIM_TEST_SECTOR_SIZE] NON_CACHED_BSS_ALIGN16;
+static uint8_t test_arr[SPI_FLASH_TEST_ARR_SIZE] NON_CACHED_BSS_ALIGN16;
+static uint8_t read_back_arr[SPI_FLASH_TEST_SIZE] NON_CACHED_BSS_ALIGN16;
+static uint8_t op_arr[SPI_FLASH_TEST_SIZE] NON_CACHED_BSS_ALIGN16;
 
 static char *flash_devices[6] = {
 	"spi1_cs0",
@@ -33,7 +33,7 @@ static char *flash_devices[6] = {
 	"spi2_cs2"
 };
 
-static void spim_dump_buf(uint8_t *buf, uint32_t len)
+static void spi_flash_dump_buf(uint8_t *buf, uint32_t len)
 {
 	uint32_t i;
 
@@ -77,10 +77,10 @@ static int do_erase_write_verify(const struct device *flash_device,
 		LOG_ERR("ERROR: %s %d fail to write flash at 0x%x",
 				__func__, __LINE__, op_addr);
 		printk("to be written:\n");
-		spim_dump_buf(write_buf, 256);
+		spi_flash_dump_buf(write_buf, 256);
 
 		printk("readback:\n");
-		spim_dump_buf(read_back_buf, 256);
+		spi_flash_dump_buf(read_back_buf, 256);
 
 		goto end;
 	}
@@ -185,7 +185,7 @@ int demo_spi_host_read(void)
 
 	op_buf = (uint8_t *)op_arr;
 
-	for (i = 0; i < SPIM_TEST_ARR_SIZE; i++)
+	for (i = 0; i < SPI_FLASH_TEST_ARR_SIZE; i++)
 		test_arr[i] = 'a' + (i % 26);
 
 	/* Don't modify flash of spi1_cs0
@@ -198,15 +198,15 @@ int demo_spi_host_read(void)
 			return -ENOEXEC;
 		}
 
-		ret = flash_read(flash_dev, 0x0, op_buf, SPIM_TEST_SIZE);
+		ret = flash_read(flash_dev, 0x0, op_buf, SPI_FLASH_TEST_SIZE);
 		if (ret) {
 			LOG_ERR("fail to read flash %s", flash_devices[i]);
 			goto end;
 		}
 
-		if (memcmp(op_buf, test_arr + (i * 4), SPIM_TEST_SIZE) != 0) {
+		if (memcmp(op_buf, test_arr + (i * 4), SPI_FLASH_TEST_SIZE) != 0) {
 			ret = do_update(flash_dev, 0x0,
-					test_arr + (i * 4), SPIM_TEST_SIZE);
+					test_arr + (i * 4), SPI_FLASH_TEST_SIZE);
 			if (ret != 0) {
 				LOG_ERR("fail to update flash %s", flash_devices[i]);
 				goto end;
@@ -221,15 +221,15 @@ int demo_spi_host_read(void)
 			return -ENOEXEC;
 		}
 
-		ret = flash_read(flash_dev, 0x0, op_buf, SPIM_TEST_SIZE);
+		ret = flash_read(flash_dev, 0x0, op_buf, SPI_FLASH_TEST_SIZE);
 		if (ret) {
 			LOG_ERR("fail to read flash %s", flash_devices[i]);
 			goto end;
 		}
 
 		printk("[%s]read result:\n", flash_devices[i]);
-		spim_dump_buf(op_buf, 4);
-		spim_dump_buf(op_buf + SPIM_TEST_SIZE - 4, 4);
+		spi_flash_dump_buf(op_buf, 4);
+		spi_flash_dump_buf(op_buf + SPI_FLASH_TEST_SIZE - 4, 4);
 
 		ret = spi_nor_config_4byte_mode(flash_dev, false);
 		if (ret)
