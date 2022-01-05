@@ -21,7 +21,7 @@ static int crypto_engine_init(/*struct engine_instances *engineInstances*/)
 
 	status = hash_wrapper_init (getHashEngineInstance());
 	assert(status == 0);
-	status = rsa_aspeed_init(getRsaEngineInstance());
+	status = rsa_wrapper_init(getRsaEngineInstance());
 	assert(status == 0);
 
 /*	engineInstances->hashEngine = getHashEngineInstance();
