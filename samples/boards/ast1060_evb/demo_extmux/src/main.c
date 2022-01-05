@@ -15,6 +15,7 @@ void demo_spim_irq_init(void);
 void demo_wdt(void);
 void ast1060_rst_demo_ext_mux(struct k_work *item);
 void rst_gpio_event_register(void);
+void ast1060_i2c_demo_flt(void);
 
 void main(void)
 {
@@ -31,6 +32,9 @@ void main(void)
 
 	ast1060_rst_demo_ext_mux(NULL);
 
+#if CONFIG_I2C_PFR_FILTER
+	ast1060_i2c_demo_flt();
+#endif
 	/* the following demo part should be allocated
 	 * at the final step of main function.
 	 */
