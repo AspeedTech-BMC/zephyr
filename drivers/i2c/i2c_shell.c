@@ -1093,7 +1093,7 @@ static int cmd_i2c_slave_attach(const struct shell *shell,
 	return 0;
 }
 
-static int cmd_i2c_slave_deattach(const struct shell *shell,
+static int cmd_i2c_slave_detach(const struct shell *shell,
 			      size_t argc, char **argv)
 {
 	const struct device *slave_dev;
@@ -1186,9 +1186,9 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_i2c_cmds,
 			       SHELL_CMD_ARG(slave_attach, &dsub_device_name,
 					     "Attach slave device",
 					     cmd_i2c_slave_attach, 2, 1),
-			       SHELL_CMD_ARG(slave_deattach, &dsub_device_name,
-					     "Deattach slave device",
-					     cmd_i2c_slave_deattach, 0, 1),
+			       SHELL_CMD_ARG(slave_detach, &dsub_device_name,
+					     "Detach slave device",
+					     cmd_i2c_slave_detach, 0, 1),
 #ifdef CONFIG_I2C_IPMB_SLAVE
 			       SHELL_CMD_ARG(slave_ipmb_read, &dsub_device_name,
 					     "Read ipmb buffer from slave",
