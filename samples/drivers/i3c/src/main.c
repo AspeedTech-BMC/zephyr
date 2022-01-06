@@ -87,7 +87,7 @@ static void i3c_imx3112_test(void)
 
 	/* bring the bus to I3C mode */
 	for (i = 0; i < 5; i++) {
-		i3c_master_deattach_device(master, &slave[i]);
+		i3c_master_detach_device(master, &slave[i]);
 		slave[i].info.i2c_mode = 0;
 		ret = i3c_master_attach_device(master, &slave[i]);
 		if (ret) {
@@ -185,7 +185,7 @@ static void i3c_imx3102_test(void)
 
 	for (i = 0; i < 2; i++) {
 		for (j = 0; j < 3; j++) {
-			i3c_master_deattach_device(master[i], &slave[i][j]);
+			i3c_master_detach_device(master[i], &slave[i][j]);
 			slave[i][j].info.i2c_mode = 0;
 			ret = i3c_master_attach_device(master[i], &slave[i][j]);
 			__ASSERT(!ret, "failed to attach i3c slave%d to master%d\n", j, i);

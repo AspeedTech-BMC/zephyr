@@ -1052,7 +1052,7 @@ int i3c_aspeed_master_priv_xfer(struct i3c_dev_desc *i3cdev, struct i3c_priv_xfe
 	return ret;
 }
 
-int i3c_aspeed_master_deattach_device(const struct device *dev, struct i3c_dev_desc *slave)
+int i3c_aspeed_master_detach_device(const struct device *dev, struct i3c_dev_desc *slave)
 {
 	struct i3c_aspeed_obj *obj = DEV_DATA(dev);
 	struct i3c_aspeed_dev_priv *priv = DESC_PRIV(slave);

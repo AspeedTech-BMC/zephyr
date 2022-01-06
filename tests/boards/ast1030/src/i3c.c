@@ -187,8 +187,8 @@ static void test_i3c_ci(int count)
 		}
 	}
 
-	ret = i3c_master_deattach_device(master, &slave);
-	ast_zassert_equal(ret, 0, "failed to deattach device");
+	ret = i3c_master_detach_device(master, &slave);
+	ast_zassert_equal(ret, 0, "failed to detach device");
 
 	k_thread_abort(&test_i3c_slave_thread);
 }
