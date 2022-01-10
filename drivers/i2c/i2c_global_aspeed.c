@@ -21,6 +21,9 @@ LOG_MODULE_REGISTER(i2c_global);
 #define ASPEED_I2CG_CONTROL		0x0C
 #define ASPEED_I2CG_NEW_CLK_DIV	0x10
 
+#define ASPEED_I2C_SRAM_BASE		0x7e7b0e00
+#define ASPEED_I2C_SRAM_SIZE		0x80
+
 #define CLK_NEW_MODE		BIT(1)
 #define REG_NEW_MODE		BIT(2)
 #define ISSUE_NAK_EMPTY	BIT(4)
@@ -86,6 +89,7 @@ static int i2c_global_init(const struct device *dev)
 	struct i2c_global_config *config = DEV_CFG(dev);
 	uint32_t i2c_global_base = config->base;
 	uint32_t clk_divider = 0;
+	uint32_t *base = (uint32_t *)ASPEED_I2C_SRAM_BASE;
 
 	const struct device *reset_dev = device_get_binding(ASPEED_RST_CTRL_NAME);
 
@@ -105,6 +109,10 @@ static int i2c_global_init(const struct device *dev)
 	clk_divider = i2c_get_new_clk_divider(config->clk_src);
 	LOG_DBG("i2c clk divider %x\n", clk_divider);
 	sys_write32(clk_divider, i2c_global_base + ASPEED_I2CG_NEW_CLK_DIV);
+
+	/* initial i2c sram region */
+	for (int i = 0; i < ASPEED_I2C_SRAM_SIZE; i++)
+		*(base + i) = 0;
 
 	return 0;
 }
