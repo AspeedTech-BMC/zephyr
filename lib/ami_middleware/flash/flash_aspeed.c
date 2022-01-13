@@ -61,7 +61,7 @@ int SPI_Command_Xfer(struct pflash_master *spi, struct pflash_xfer * xfer)
 	AdrOffset = xfer->address;
 	Datalen = xfer->length;
 
-	printk("<---- SPI_Command_Xfer Command = %d Device = %s ---->\n",xfer->cmd,Flash_Devices_List[DeviceId]);
+	//printk("<---- SPI_Command_Xfer Command = %d Device = %s ---->\n",xfer->cmd,Flash_Devices_List[DeviceId]);
 
 	switch(xfer->cmd)
 	{

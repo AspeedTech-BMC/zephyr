@@ -26,6 +26,8 @@ uint8_t hashStorage[64];
 
 struct flash *getFlashDeviceInstance()
 {
+	flashDevice = spiEngineWrapper.spi.base;
+	
 	return &flashDevice;
 }
 

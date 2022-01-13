@@ -20,6 +20,7 @@
 #include <crypto/x509.h>
 
 #include <crypto/rsa_wrapper.h>
+#include <crypto/signature_verification_rsa_wrapper.h>
 
 #include <flash/flash.h>
 #include <flash/flash_master.h>

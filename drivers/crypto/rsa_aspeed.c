@@ -72,15 +72,17 @@ static int aspeed_rsa_trigger(const struct device *dev, char *data, uint32_t dat
 	for (i = 0; i < data_len; i++) {
 		s[i] = data[data_len - i - 1];
 	}
-
+	printk("Before System write\n");
 	SEC_WR(e_bits << 16 | m_bits, ASPEED_SEC_RSA_KEY_LEN);
 	SEC_WR(1, ASPEED_SEC_RSA_TRIG);
 	SEC_WR(0, ASPEED_SEC_RSA_TRIG);
+	printk("after System Write\n");
 	do {
 		k_usleep(10);
 		sts = SEC_RD(ASPEED_SEC_STS);
-	} while (!(sts & BIT(4)));
 
+	} while (!(sts & BIT(4)));
+	printk("After loop\n");
 	s = sram + 0x1400;
 	i = 0;
 	leading_zero = 1;

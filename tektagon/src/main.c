@@ -11,7 +11,7 @@
 
 #include "engineManager/engine_manager.h"
 #include "include/definitions.h"
-
+#include <crypto/rsa_aspeed.h>
 //struct engine_instances engineInstances;
 
 static int tektagonPlatformInit()
@@ -36,12 +36,11 @@ void main(void)
 {
 	int status = 0;
 
-	DEBUG_PRINTF("\r\n *** Tektagon OE version 1.0 ***\r\n");
-
+	printk("\r\n *** Tektagon OE version 1.0 ***\r\n");
 	// clear internal logging
-	status = debug_log_clear();
-	if(status)
-		return status;
+	//status = debug_log_clear();
+	//if(status)
+		//return status;
 
 	status = tektagonPlatformInit();
 	if(status)

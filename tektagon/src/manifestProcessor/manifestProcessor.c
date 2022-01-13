@@ -18,10 +18,10 @@ int initializeManifestProcessor()
 	status = manifest_flash_init(getManifestFlashInstance(), getFlashDeviceInstance(), PFM_FLASH_MANIFEST_ADDRESS, PFM_V2_MAGIC_NUM);
 	if(status)
 		return status;
-
-	status = pfm_manager_flash_init(getPfmManagerFlashInstance(), getPfmFlashInstance(), getPfmFlashInstance(),
-			getHostStateManagerInstance(), getHashEngineInstance(), getSignatureVerificationInstance());
-
+	
+	//status = pfm_manager_flash_init(getPfmManagerFlashInstance(), getPfmFlashInstance(), getPfmFlashInstance(),
+			//getHostStateManagerInstance(), getHashEngineInstance(), getSignatureVerificationInstance());
+	
 	return status;
 }
 
