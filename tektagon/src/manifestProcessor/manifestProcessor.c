@@ -29,8 +29,8 @@ int processPfmFlashManifest()
 {
 	int status = 0;
 	uint8_t *hashStorage = getNewHashStorage();
-
-	status = manifest_flash_verify(getManifestFlashInstance(), getHashEngineInstance(), getSignatureVerificationInstance(), hashStorage, sizeof(hashStorage));
+	status = manifest_flash_verify(getManifestFlashInstance(), getHashEngineInstance(), getSignatureVerificationInstance(), hashStorage, 256);//sizeof(hashStorage));
+	printk("manifest_flash_verify status:%x\n", status);
 	if(status)
 		return status;
 
