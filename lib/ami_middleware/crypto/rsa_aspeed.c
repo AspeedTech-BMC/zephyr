@@ -41,63 +41,58 @@ int decrypt_aspeed (const struct rsa_key *key, const uint8_t *encrypted, size_t 
  *
  * @return 0 if the signature matches the digest or an error code.
  */
-int sig_verify_aspeed (const struct rsa_key *key, const uint8_t *signature, size_t sig_length, const uint8_t *match, size_t match_length)
+int sig_verify_aspeed (const struct rsa_key *key, const uint8_t *signature, int sig_length, const uint8_t *match, size_t match_length)
 {
+	printk("Signature Verify in AMI Middleware\n");
     const struct device *dev = device_get_binding(RSA_DRV_NAME);
     struct rsa_ctx ini;
     struct rsa_pkt pkt;
-    //struct rsa_key *rk;
-    uint8_t plain_text[match_length];
-    int i, j;
+    char plain_text[sig_length];
     int ret;
-
-	// for(int i = 0;i < 256; i++){
-	// 	if(i % 16 == 0){
-	// 		printk("\n");
-	// 	}
-	// 	printk("%x,", *(key->m+i));
-	// }
-
-    // rk->m = key->m;
-    // rk->m_bits = key->m_bits;
-    // rk->d = key->d;
-    // rk->d_bits = key->d_bits;
+	printk("sig_length:%x",sig_length);
     pkt.in_buf = signature;
     pkt.in_len = sig_length;
     pkt.out_buf = plain_text;//match;
-    pkt.out_buf_max = match_length;
+    pkt.out_buf_max = sig_length;
+	memset(plain_text, 0, sig_length);
     ret = rsa_begin_session(dev, &ini, key);
-	
+
     if (ret)
         printk("rsa_begin_session fail: %d", ret);
-	printk("rsa_begin_session\n");
-	rsa_verify(&ini, &pkt);//decrypt signature
-    printk("rsa_begin_session111\n");
-	rsa_free_session(dev, &ini);
-	printk("rsa_free session\n");
-    ret = memcmp(plain_text, match, match_length);//rsa_tv[i].p = OTP hash data 
 
-    if (ret != 0) 
-    {
-        printk("decrypt fail: %d\n", ret);
-        printk("input text:\n");
-        printk("c_size=%x\n", sig_length);
-        printk("p_size=%x\n", match_length);
-        for (j = 0; j < sig_length; j++) 
-        {
-            printk("%x ", signature[j]);
-            if ((j + 1) % 16 == 0)
-                printk("\n");
-        }
-        printk("result text:\n");
-        for (j = 0; j < match_length; j++)
-        {
-            printk("%x ", plain_text[j]);
-            if ((j + 1) % 16 == 0)
-                printk("\n");
-        }
-        printk( "\n");
-    }
+	rsa_verify(&ini, &pkt);//decrypt signature
+
+	rsa_free_session(dev, &ini);
+
+	ret = memcmp(plain_text + pkt.out_len - match_length, match, match_length);
+	if (ret != 0) 
+	{
+		printk("verify Fail:\n");
+		printk("Result Text:");
+		for(int i = 0; i < sig_length; i++){
+			if(i % 16 == 0)
+				printk("\n");
+			printk("%2x,", plain_text[i]);
+		}
+		printk("\n");
+		printk("Signature:");
+		for(int i = 0; i < sig_length; i++){
+			if(i % 16 ==0)
+				printk("\n");
+			printk("%2x,", *(signature+i));
+		}
+		printk("\n");
+
+		printk("Hash:\n");
+		for(int i = 0; i < match_length; i++){
+			if(i % 16 == 0)
+				printk("\n");
+			printk("%x,", *(match+i));
+		}
+		printk("\n");
+	}else{
+		printk("Verification Successful \n");
+	}
 
     return ret;
 }

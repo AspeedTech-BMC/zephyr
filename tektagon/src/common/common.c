@@ -22,7 +22,7 @@ struct rsa_engine_wrapper rsaEngineWrapper;
 struct spi_engine_wrapper spiEngineWrapper;
 struct flash_master_wrapper flashEngineWrapper;
 
-uint8_t hashStorage[64];
+uint8_t hashStorage[256];
 
 struct flash *getFlashDeviceInstance()
 {
@@ -88,7 +88,7 @@ struct flash_master_wrapper *getFlashEngineWrapper()
 
 uint8_t *getNewHashStorage()
 {
-	memset(hashStorage, 0, 64);
+	memset(hashStorage, 0, 256);
 
 	return hashStorage;
 }

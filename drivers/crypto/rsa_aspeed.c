@@ -12,6 +12,7 @@
 #include <crypto/rsa.h>
 #include <stdint.h>
 #include <soc.h>
+#include <stdio.h>
 #include "rsa_aspeed_priv.h"
 LOG_MODULE_REGISTER(rsa_aspeed, CONFIG_LOG_DEFAULT_LEVEL);
 
@@ -41,7 +42,7 @@ struct rsa_config {
 static struct aspeed_rsa_drv_state drv_state NON_CACHED_BSS_ALIGN16;
 
 static int aspeed_rsa_trigger(const struct device *dev, char *data, uint32_t data_len, char *dst,
-							  char *m, char *e,
+							  int *out_len, char *m, char *e,
 							  uint32_t m_bits, uint32_t e_bits)
 {
 	uint32_t m_len = (m_bits + 7) / 8;
@@ -51,6 +52,7 @@ static int aspeed_rsa_trigger(const struct device *dev, char *data, uint32_t dat
 	char *s;
 	int leading_zero;
 	int i, j;
+	int result_nbytes;
 
 	if (data_len > 512) {
 		LOG_ERR("the maximum rsa input data length is 4096\n");
@@ -72,28 +74,30 @@ static int aspeed_rsa_trigger(const struct device *dev, char *data, uint32_t dat
 	for (i = 0; i < data_len; i++) {
 		s[i] = data[data_len - i - 1];
 	}
-	printk("Before System write\n");
+
 	SEC_WR(e_bits << 16 | m_bits, ASPEED_SEC_RSA_KEY_LEN);
 	SEC_WR(1, ASPEED_SEC_RSA_TRIG);
 	SEC_WR(0, ASPEED_SEC_RSA_TRIG);
-	printk("after System Write\n");
 	do {
 		k_usleep(10);
 		sts = SEC_RD(ASPEED_SEC_STS);
-
 	} while (!(sts & BIT(4)));
-	printk("After loop\n");
+
 	s = sram + 0x1400;
 	i = 0;
 	leading_zero = 1;
+	result_nbytes = RSA_MAX_LEN;
 	for (j = RSA_MAX_LEN - 1; j >= 0; j--) {
-		if (s[j] != 0 || !leading_zero) {
+		if (s[j] == 0 && leading_zero) {
+			result_nbytes--;
+		} else {
 			leading_zero = 0;
 			dst[i] = s[j];
 			i++;
 		}
 	}
 
+	*out_len = result_nbytes;
 	memset(sram, 0, 0x1800);
 
 	return 0;
@@ -104,7 +108,7 @@ int aspeed_rsa_dec(struct rsa_ctx *ctx, struct rsa_pkt *pkt)
 	struct rsa_key *key = &drv_state.data.key;
 
 	return aspeed_rsa_trigger(ctx->device, pkt->in_buf, pkt->in_len,
-							  pkt->out_buf, key->m, key->d,
+							  pkt->out_buf, &pkt->out_len, key->m, key->d,
 							  key->m_bits, key->d_bits);
 }
 
@@ -113,7 +117,7 @@ int aspeed_rsa_enc(struct rsa_ctx *ctx, struct rsa_pkt *pkt)
 	struct rsa_key *key = &drv_state.data.key;
 
 	return aspeed_rsa_trigger(ctx->device, pkt->in_buf, pkt->in_len,
-							  pkt->out_buf, key->m, key->e,
+							  pkt->out_buf, &pkt->out_len, key->m, key->e,
 							  key->m_bits, key->e_bits);
 }
 
