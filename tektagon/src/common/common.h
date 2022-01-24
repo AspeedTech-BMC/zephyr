@@ -35,6 +35,8 @@
 #include <manifest/pfm/pfm_flash.h>
 #include <manifest/pfm/pfm_manager_flash.h>
 
+#define hashStorageLength 256
+
 struct flash *getFlashDeviceInstance();
 struct flash_master *getFlashMasterInstance();
 struct hash_engine *getHashEngineInstance();

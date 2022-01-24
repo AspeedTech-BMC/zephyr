@@ -11,7 +11,10 @@
 
 #include "engineManager/engine_manager.h"
 #include "include/definitions.h"
-#include <crypto/rsa_aspeed.h>
+#include "platform.h"
+#include <kernel.h>
+#include <flash/flash_wrapper.h>
+#include <crypto/hash_wrapper.h>
 //struct engine_instances engineInstances;
 
 static int tektagonPlatformInit()
@@ -43,6 +46,7 @@ void main(void)
 		//return status;
 
 	status = tektagonPlatformInit();
+
 	if(status)
 			return status;
 	printk("After tektagon_platform_init()\r\n");
