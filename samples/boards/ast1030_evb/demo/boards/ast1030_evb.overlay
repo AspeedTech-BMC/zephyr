@@ -201,6 +201,14 @@
 #endif
 	};
 
+	swmbx0: swmbx0@60 {
+		compatible = "aspeed,swmbx";
+		reg = <0x60>;
+		base = <0x7e7b0e00>;
+		label = "SWMBX_SLAVE_0";
+		size = <256>;
+		status = "okay";
+	};
 };
 
 &i2c1 {
@@ -230,6 +238,14 @@
 #endif
 	};
 
+	swmbx1: swmbx0@61 {
+		compatible = "aspeed,swmbx";
+		reg = <0x61>;
+		base = <0x7e7b0e00>;
+		label = "SWMBX_SLAVE_1";
+		size = <256>;
+		status = "okay";
+	};
 };
 
 &i2c2 {

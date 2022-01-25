@@ -9,6 +9,7 @@
 #include <drivers/i2c.h>
 #include <drivers/i2c/slave/eeprom.h>
 #include <drivers/i2c/slave/ipmb.h>
+#include <drivers/i2c/slave/swmbx.h>
 #include <drivers/i2c/pfr/i2c_snoop.h>
 #include <drivers/i2c/pfr/i2c_filter.h>
 #include <drivers/i2c/pfr/i2c_mailbox.h>
@@ -1112,6 +1113,111 @@ static int cmd_i2c_slave_detach(const struct shell *shell,
 	return 0;
 }
 
+#ifdef CONFIG_I2C_SWMBX_SLAVE
+#define thread_check_size 256
+#define CHECK_DELAY 100
+static struct k_thread zipmb_c_t;
+struct k_sem sem_30, sem_40;
+
+K_THREAD_STACK_DEFINE(i2c_thread_c_s, thread_check_size);
+
+/* i2c thread demo for swmbx notify */
+void swmbx_check(void *a, void *b, void *c)
+{
+	LOG_INF("swmbx: swmbx_check successful.");
+
+	while (1) {
+		if (k_sem_take(&sem_30, K_MSEC(50)) == 0) {
+			LOG_INF("swmbx: SEM_30 is taken!!");
+		}
+
+		if (k_sem_take(&sem_40, K_MSEC(50)) == 0) {
+			LOG_INF("swmbx: SEM_40 is taken!!");
+		}
+
+		k_sleep(K_MSEC(CHECK_DELAY));
+	}
+}
+
+static int cmd_i2c_sw_mbx(const struct shell *shell,
+			      size_t argc, char **argv)
+{
+	const struct device *slave_dev = NULL;
+	int ret = 0;
+	k_tid_t pidc;
+	uint32_t temp[] = {0x55555555, 0xaaaaaaaa, 0x0, 0x0,
+	0xaaaaaaaa, 0x55555555, 0x0, 0xffffffff};
+
+	slave_dev = device_get_binding("SWMBX_SLAVE_0");
+	if (!slave_dev) {
+		shell_error(shell, "xx I2C: Slave Device driver 0 not found.");
+		return -ENODEV;
+	}
+
+	if (slave_dev != NULL) {
+		ret = swmbx_enable_behavior(slave_dev,
+			(SWMBX_PROTECT | SWMBX_NOTIFY), true);
+
+		if (ret) {
+			shell_error(shell, "xx I2C: Enable enhance 0 failed.");
+			return -ENODEV;
+		}
+
+		ret = swmbx_apply_protect(slave_dev, temp, 0, 7);
+		if (ret) {
+			shell_error(shell, "xx I2C: Apply protect bitmap 0 fail.");
+			return -ENODEV;
+		}
+
+		ret = swmbx_update_protect(slave_dev, 0x40, 1);
+		ret = swmbx_update_protect(slave_dev, 0x43, 1);
+		ret = swmbx_update_protect(slave_dev, 0x47, 1);
+		ret = swmbx_update_protect(slave_dev, 0x4c, 1);
+
+		k_sem_init(&sem_30, 0, 1);
+		k_sem_init(&sem_40, 0, 1);
+
+		ret = swmbx_update_notify(slave_dev, &sem_30,
+		0x0, 0x30, true);
+
+		ret = swmbx_update_notify(slave_dev, &sem_40,
+		0x1, 0x40, true);
+
+		if (IS_ENABLED(CONFIG_MULTITHREADING)) {
+			pidc = k_thread_create(&zipmb_c_t,
+					      i2c_thread_c_s,
+					      thread_check_size,
+					      (k_thread_entry_t) swmbx_check,
+					      NULL, NULL, NULL,
+					      -1,
+					      0, K_NO_WAIT);
+		}
+	}
+
+	slave_dev = device_get_binding("SWMBX_SLAVE_1");
+	if (!slave_dev) {
+		shell_error(shell, "xx I2C: Slave Device driver 1 not found.");
+		return -ENODEV;
+	}
+
+	if (slave_dev != NULL) {
+		ret = swmbx_enable_behavior(slave_dev, SWMBX_PROTECT, 1);
+		if (ret) {
+			shell_error(shell, "xx I2C: Enable enhance 1 failed.");
+			return -ENODEV;
+		}
+
+		ret = swmbx_apply_protect(slave_dev, temp, 1, 6);
+		if (ret) {
+			shell_error(shell, "xx I2C: Apply protect 1 bitmap.");
+			return -ENODEV;
+		}
+	}
+
+	return 0;
+}
+#endif
+
 #ifdef CONFIG_I2C_IPMB_SLAVE
 static int cmd_i2c_ipmb_read(const struct shell *shell,
 			      size_t argc, char **argv)
@@ -1193,6 +1299,11 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_i2c_cmds,
 			       SHELL_CMD_ARG(slave_ipmb_read, &dsub_device_name,
 					     "Read ipmb buffer from slave",
 					      cmd_i2c_ipmb_read, 0, 1),
+#endif
+#ifdef CONFIG_I2C_SWMBX_SLAVE
+				SHELL_CMD_ARG(slave_swmbx, &dsub_device_name,
+					  "Apply sw mbx slave",
+					   cmd_i2c_sw_mbx, 0, 0),
 #endif
 #endif
 				/* */
