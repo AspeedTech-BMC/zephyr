@@ -45,11 +45,13 @@ static uintptr_t lpc_base;
 #define LPC_RD(reg)             sys_read32(lpc_base + reg)
 #define LPC_WR(val, reg)        sys_write32(val, lpc_base + reg)
 
+struct snoop_aspeed_fifo {
+	intptr_t reserved;
+	uint32_t byte;
+};
+
 struct snoop_aspeed_data {
-	struct {
-		uint8_t data;
-		struct k_sem lock;
-	} rx[SNOOP_CHANNEL_NUM];
+	struct k_fifo fifo[SNOOP_CHANNEL_NUM];
 };
 
 struct snoop_aspeed_config {
@@ -59,14 +61,19 @@ struct snoop_aspeed_config {
 
 int snoop_aspeed_read(const struct device *dev, uint32_t ch, uint8_t *out, bool blocking)
 {
-	int rc;
+	struct snoop_aspeed_fifo *node;
 	struct snoop_aspeed_data *data = (struct snoop_aspeed_data *)dev->data;
 
-	rc = k_sem_take(&data->rx[ch].lock, (blocking) ? K_FOREVER : K_NO_WAIT);
-	if (rc)
-		return rc;
+	if (ch >= SNOOP_CHANNEL_NUM)
+		return -EINVAL;
 
-	*out = data->rx[ch].data;
+	node = k_fifo_get(&data->fifo[ch], (blocking) ? K_FOREVER : K_NO_WAIT);
+	if (!node)
+		return -ENODATA;
+
+	*out = (uint8_t)node->byte;
+
+	k_free(node);
 
 	return 0;
 }
@@ -74,19 +81,28 @@ int snoop_aspeed_read(const struct device *dev, uint32_t ch, uint8_t *out, bool 
 static void snoop_aspeed_isr(const struct device *dev)
 {
 	uint32_t hicr6, snpwdr;
+	struct snoop_aspeed_fifo *node;
 	struct snoop_aspeed_data *data = (struct snoop_aspeed_data *)dev->data;
 
 	hicr6 = LPC_RD(HICR6);
 	snpwdr = LPC_RD(SNPWDR);
 
 	if (hicr6 & HICR6_STR_SNP0W) {
-		data->rx[0].data = (snpwdr & SNPWDR_DATA0_MASK) >> SNPWDR_DATA0_SHIFT;
-		k_sem_give(&data->rx[0].lock);
+		node = k_malloc(sizeof(struct snoop_aspeed_fifo));
+		if (node) {
+			node->byte = (snpwdr & SNPWDR_DATA0_MASK) >> SNPWDR_DATA0_SHIFT;
+			k_fifo_put(&data->fifo[0], node);
+		} else
+			LOG_ERR("failed to allocate FIFO0, drop data\n");
 	}
 
 	if (hicr6 & HICR6_STR_SNP1W) {
-		data->rx[1].data = (snpwdr & SNPWDR_DATA1_MASK) >> SNPWDR_DATA1_SHIFT;
-		k_sem_give(&data->rx[1].lock);
+		node = k_malloc(sizeof(struct snoop_aspeed_fifo));
+		if (node) {
+			node->byte = (snpwdr & SNPWDR_DATA1_MASK) >> SNPWDR_DATA1_SHIFT;
+			k_fifo_put(&data->fifo[1], node);
+		} else
+			LOG_ERR("failed to allocate FIFO1, drop data\n");
 	}
 
 	LPC_WR(hicr6, HICR6);
@@ -144,7 +160,7 @@ static int snoop_aspeed_init(const struct device *dev)
 		if (!cfg->port[i])
 			continue;
 
-		k_sem_init(&data->rx[i].lock, 0, 1);
+		k_fifo_init(&data->fifo[i]);
 		snoop_aspeed_enable(dev, i);
 	}
 
