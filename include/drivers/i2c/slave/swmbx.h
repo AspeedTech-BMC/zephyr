@@ -9,12 +9,13 @@
 
 /* swmbx define */
 #define SWMBX_DEVICE_COUNT	0x10
-#define SWMBX_INFO_BASE	0x7e7b0f00
+#define SWMBX_INFO_BASE		0x7e7b0f00
 #define SWMBX_PROTECT_COUNT	0x8
 #define SWMBX_NOTIFY_COUNT	0x8
+#define SWMBX_FIFO_COUNT	0x8
 
 /* i2c controller define */
-#define AST_I2CS_ADDR_CTRL		0x40
+#define AST_I2CS_ADDR_CTRL	0x40
 #define AST_I2CS_ADDR1_MASK	0x7f
 
 /* swmbx flags define */
@@ -23,7 +24,8 @@
 /* enhance behavior flags define */
 #define SWMBX_PROTECT		BIT(0)
 #define SWMBX_NOTIFY		BIT(1)
-#define FLAG_MASK		(BIT(0) | BIT(1))
+#define SWMBX_FIFO		BIT(2)
+#define FLAG_MASK		(BIT(0) | BIT(1)|BIT(2))
 
 /**
  * @brief I2C SW Mailbox Slave Driver API
@@ -83,6 +85,22 @@ int swmbx_update_protect(const struct device *dev, uint8_t addr, uint8_t enable)
  */
 int swmbx_update_notify(const struct device *dev, struct k_sem *sem,
 uint8_t idx, uint8_t addr, uint8_t enable);
+
+/**
+ * @brief Set sw mailbox fifo
+ *
+ * @param dev Pointer to the device structure for the driver instance
+ * @param sem Pointer to the semaphore that is initiailed and sent when notify is trigger
+ * @param idx Index to the fifo internal index position (0x0~0x7)
+ * @param addr Address to the fifo in mbx device
+ * @param depth fifo depth to the fifo in mbx device
+ * @param enable Enable to the fifo in sw mbx device
+ *
+ * @retval 0 If successful
+ * @retval -EINVAL Invalid data pointer or offset
+ */
+int swmbx_update_fifo(const struct device *dev, struct k_sem *sem,
+uint8_t idx, uint8_t addr, uint8_t depth, uint8_t enable);
 
 
 /**
