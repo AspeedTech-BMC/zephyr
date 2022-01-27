@@ -94,8 +94,17 @@ int swmbx_write(const struct device *dev, uint8_t index, uint8_t *val)
 		return -EINVAL;
 
 	struct i2c_swmbx_slave_data *data = dev->data;
+	unsigned int key = 0;
+
+	/* enter critical section sw mbx access */
+	if (!k_is_in_isr())
+		key = irq_lock();
 
 	data->buffer[index] = *val;
+
+	/* exit critical section */
+	if (!k_is_in_isr())
+		irq_unlock(key);
 
 	return 0;
 }
@@ -106,8 +115,17 @@ int swmbx_read(const struct device *dev, uint8_t index, uint8_t *val)
 		return -EINVAL;
 
 	struct i2c_swmbx_slave_data *data = dev->data;
+	unsigned int key = 0;
+
+	/* enter critical section sw mbx access */
+	if (!k_is_in_isr())
+		key = irq_lock();
 
 	*val = data->buffer[index];
+
+	/* exit critical section */
+	if (!k_is_in_isr())
+		irq_unlock(key);
 
 	return 0;
 }
