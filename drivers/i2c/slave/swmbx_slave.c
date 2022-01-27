@@ -105,7 +105,7 @@ int swmbx_enable_behavior(const struct device *dev, uint32_t item_flag, uint8_t 
 int swmbx_apply_protect(const struct device *dev, uint32_t *bitmap, uint8_t start_idx, uint8_t num)
 {
 	if ((dev == NULL) || (bitmap == NULL) ||
-	(start_idx + num) > (SWMBX_PROTECT_COUNT-1))
+	(start_idx + num) > (SWMBX_PROTECT_COUNT))
 		return -EINVAL;
 
 	struct i2c_swmbx_slave_data *data = dev->data;
