@@ -1216,6 +1216,59 @@ static int cmd_i2c_sw_mbx(const struct shell *shell,
 
 	return 0;
 }
+
+static int cmd_i2c_sw_mbx_r(const struct shell *shell,
+			      size_t argc, char **argv)
+{
+	const struct device *slave_dev = NULL;
+	int ret = 0;
+	uint8_t index;
+	uint8_t val;
+
+	slave_dev = device_get_binding(argv[1]);
+	if (!slave_dev) {
+		shell_error(shell, "xx I2C: Slave Device driver %s not found.",
+			    argv[1]);
+		return -ENODEV;
+	}
+
+	if (slave_dev != NULL) {
+		index = strtol(argv[2], NULL, 16);
+
+		ret =  swmbx_read(slave_dev, index, &val);
+		if (!ret) {
+			shell_hexdump(shell, &val, 1);
+		}
+	}
+
+	return 0;
+}
+
+static int cmd_i2c_sw_mbx_w(const struct shell *shell,
+			      size_t argc, char **argv)
+{
+	const struct device *slave_dev = NULL;
+	int ret = 0;
+	uint8_t index;
+	uint8_t val;
+
+	slave_dev = device_get_binding(argv[1]);
+	if (!slave_dev) {
+		shell_error(shell, "xx I2C: Slave Device driver %s not found.",
+			    argv[1]);
+		return -ENODEV;
+	}
+
+	if (slave_dev != NULL) {
+		index = strtol(argv[2], NULL, 16);
+		val = strtol(argv[3], NULL, 16);
+
+		ret =  swmbx_write(slave_dev, index, &val);
+	}
+
+	return 0;
+}
+
 #endif
 
 #ifdef CONFIG_I2C_IPMB_SLAVE
@@ -1304,6 +1357,12 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_i2c_cmds,
 				SHELL_CMD_ARG(slave_swmbx, &dsub_device_name,
 					  "Apply sw mbx slave",
 					   cmd_i2c_sw_mbx, 0, 0),
+				SHELL_CMD_ARG(slave_swmbx_r, &dsub_device_name,
+					  "Read sw mbx slave",
+					   cmd_i2c_sw_mbx_r, 0, 0),
+				SHELL_CMD_ARG(slave_swmbx_w, &dsub_device_name,
+					  "Write sw mbx slave",
+					   cmd_i2c_sw_mbx_w, 0, 0),
 #endif
 #endif
 				/* */

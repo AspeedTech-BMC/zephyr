@@ -88,6 +88,30 @@ struct i2c_swmbx_slave_config {
 #define DEV_F_DATA(dev)	\
 	((struct i2c_swmbx_fifo_data *const)(dev)->data)
 
+int swmbx_write(const struct device *dev, uint8_t index, uint8_t *val)
+{
+	if (dev == NULL)
+		return -EINVAL;
+
+	struct i2c_swmbx_slave_data *data = dev->data;
+
+	data->buffer[index] = *val;
+
+	return 0;
+}
+
+int swmbx_read(const struct device *dev, uint8_t index, uint8_t *val)
+{
+	if (dev == NULL)
+		return -EINVAL;
+
+	struct i2c_swmbx_slave_data *data = dev->data;
+
+	*val = data->buffer[index];
+
+	return 0;
+}
+
 /* general control */
 int swmbx_enable_behavior(const struct device *dev, uint32_t item_flag, uint8_t enable)
 {
