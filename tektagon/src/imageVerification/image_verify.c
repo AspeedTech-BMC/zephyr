@@ -39,7 +39,6 @@ int rsa_public_key_init(struct rsa_public_key *public_key){
 int rsa_verify_signature (struct signature_verification *verification,
 	const uint8_t *digest, size_t length, const uint8_t *signature, size_t sig_length)
 {
-	printk("rsa_verify_signature\n");
 	struct rsa_public_key rsa_public;
 	rsa_public_key_init(&rsa_public);
 	struct rsa_engine_wrapper *rsa = getRsaEngineInstance();
@@ -49,7 +48,6 @@ int rsa_verify_signature (struct signature_verification *verification,
 
 int signature_verification_init(struct signature_verification *verification)
 {
-	printk("signature_verification_init\n");
 	int status = 0;
 	memset (verification, 0, sizeof (struct signature_verification));
 

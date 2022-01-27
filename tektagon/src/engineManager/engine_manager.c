@@ -24,14 +24,6 @@ static int crypto_engine_init(/*struct engine_instances *engineInstances*/)
 	status = rsa_wrapper_init(getRsaEngineInstance());
 	assert(status == 0);
 
-/*	engineInstances->hashEngine = getHashEngineInstance();
-	engineInstances->rsaEngine = getRsaEngineInstance();
-
-	engineInstances->hashEngine = getHashEngineInstance();
-	engineInstances->flashMaster = getFlashMasterInstance();
-	engineInstances->spiFlash = getSpiFlashInstance();
-	engineInstances->pfmFlash = getPfmFlashInstance();*/
-
 	return status;
 }
 
@@ -43,17 +35,12 @@ static int flash_initialize(/*struct engine_instances *engineInstances*/)
 	if(status)
 		return status;
 
-/*	engineInstances->spiEngineWrapper = getSpiEngineWrapper();
-	engineInstances->flashEngineWrapper = getFlashEngineWrapper();*/
-
 	return status;
 }
 
 int initializeEngines(/*struct engine_instances *engineInstances*/)
 {
 	int status = 0;
-
-	printk("Inside Initialize Engines\r\n");
 	
 	status = flash_master_wrapper_init (getFlashMasterInstance());
 	assert(status == 0);
@@ -63,20 +50,12 @@ int initializeEngines(/*struct engine_instances *engineInstances*/)
 	assert(status == 0);
 	status = signature_verification_init (getSignatureVerificationInstance());
 	assert(status == 0);
-	
-	// status = flash_wrapper_init (getSpiFlashInstance(), getFlashMasterInstance());
-	// assert(status == 0);
-	// status = spi_flash_init (getSpiFlashInstance(), getFlashMasterInstance());
-	// assert(status == 0);
-	// status = spi_flash_initialize_device(getSpiFlashInstance(), getFlashMasterInstance(), true, false, false, false);
-	// assert(status == 0);
+
 	status = pfm_flash_init(getPfmFlashInstance(), getFlashDeviceInstance(), getHashEngineInstance(), PFM_FLASH_MANIFEST_ADDRESS, signature, RSA_MAX_KEY_LENGTH, platform_id, sizeof(platform_id));
 	assert(status == 0);
 	
 	if(status)
 		return status;
-
-	printk("After InitializeEngines\r\n");
 
 	return status;
 }

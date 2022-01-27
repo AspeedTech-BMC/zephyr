@@ -43,13 +43,12 @@ int decrypt_aspeed (const struct rsa_key *key, const uint8_t *encrypted, size_t 
  */
 int sig_verify_aspeed (const struct rsa_key *key, const uint8_t *signature, int sig_length, const uint8_t *match, size_t match_length)
 {
-	printk("Signature Verify in AMI Middleware\n");
     const struct device *dev = device_get_binding(RSA_DRV_NAME);
     struct rsa_ctx ini;
     struct rsa_pkt pkt;
     char plain_text[sig_length];
     int ret;
-	printk("sig_length:%x",sig_length);
+
     pkt.in_buf = signature;
     pkt.in_len = sig_length;
     pkt.out_buf = plain_text;//match;
@@ -65,34 +64,34 @@ int sig_verify_aspeed (const struct rsa_key *key, const uint8_t *signature, int 
 	rsa_free_session(dev, &ini);
 
 	ret = memcmp(plain_text + pkt.out_len - match_length, match, match_length);
-	if (ret != 0) 
-	{
-		printk("verify Fail:\n");
-		printk("Result Text:");
-		for(int i = 0; i < sig_length; i++){
-			if(i % 16 == 0)
-				printk("\n");
-			printk("%2x,", plain_text[i]);
-		}
-		printk("\n");
-		printk("Signature:");
-		for(int i = 0; i < sig_length; i++){
-			if(i % 16 ==0)
-				printk("\n");
-			printk("%2x,", *(signature+i));
-		}
-		printk("\n");
+	// if (ret != 0) 
+	// {
+	// 	printk("verify Fail:\n");
+	// 	printk("Result Text:");
+	// 	for(int i = 0; i < sig_length; i++){
+	// 		if(i % 16 == 0)
+	// 			printk("\n");
+	// 		printk("%2x,", plain_text[i]);
+	// 	}
+	// 	printk("\n");
+	// 	printk("Signature:");
+	// 	for(int i = 0; i < sig_length; i++){
+	// 		if(i % 16 ==0)
+	// 			printk("\n");
+	// 		printk("%2x,", *(signature+i));
+	// 	}
+	// 	printk("\n");
 
-		printk("Hash:\n");
-		for(int i = 0; i < match_length; i++){
-			if(i % 16 == 0)
-				printk("\n");
-			printk("%x,", *(match+i));
-		}
-		printk("\n");
-	}else{
-		printk("Verification Successful \n");
-	}
+	// 	printk("Hash:\n");
+	// 	for(int i = 0; i < match_length; i++){
+	// 		if(i % 16 == 0)
+	// 			printk("\n");
+	// 		printk("%x,", *(match+i));
+	// 	}
+	// 	printk("\n");
+	// }else{
+	// 	printk("Verification Successful \n");
+	// }
 
     return ret;
 }

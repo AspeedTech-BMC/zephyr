@@ -64,4 +64,24 @@ struct signature_firmware_region{
     uint8_t end_address[4];
 };
 
+uint8_t recovery_image_magic_num[4] = {0x8A,0x14,0x7C,0x29};
+
+struct recovery_image_header{
+    uint16_t header_length;
+    uint16_t format;
+    uint8_t magic_num[4];
+    uint8_t version_id[32];
+    uint8_t image_length[4];
+    uint8_t sig_length[4];    
+};
+
+struct recovery_image{
+    uint16_t header_length;
+    uint16_t format;
+    uint8_t magic_num[4];
+    uint8_t address[4];
+    uint8_t image_length[4];
+};
+
+
 #endif /* ZEPHYR_TEKTAGON_SRC_MANIFESTPROCESSOR_MANIFESTPROCESSOR_H_ */
