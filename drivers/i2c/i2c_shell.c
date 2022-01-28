@@ -1118,6 +1118,7 @@ static int cmd_i2c_slave_detach(const struct shell *shell,
 #define CHECK_DELAY 100
 static struct k_thread zipmb_c_t;
 struct k_sem sem_30, sem_40;
+struct k_sem sem_fifo;
 
 K_THREAD_STACK_DEFINE(i2c_thread_c_s, thread_check_size);
 
@@ -1156,7 +1157,7 @@ static int cmd_i2c_sw_mbx(const struct shell *shell,
 
 	if (slave_dev != NULL) {
 		ret = swmbx_enable_behavior(slave_dev,
-			(SWMBX_PROTECT | SWMBX_NOTIFY), true);
+			(SWMBX_PROTECT | SWMBX_NOTIFY | SWMBX_FIFO), true);
 
 		if (ret) {
 			shell_error(shell, "xx I2C: Enable enhance 0 failed.");
@@ -1191,6 +1192,15 @@ static int cmd_i2c_sw_mbx(const struct shell *shell,
 					      NULL, NULL, NULL,
 					      -1,
 					      0, K_NO_WAIT);
+		}
+
+		/* turn on fifo */
+		k_sem_init(&sem_fifo, 0, 1);
+
+		ret = swmbx_update_fifo(slave_dev, &sem_fifo, 0, 0x50, 0x5, true);
+		if (ret) {
+			shell_error(shell, "xx I2C: Apply fifo 0 fail.");
+			return -ENODEV;
 		}
 	}
 
