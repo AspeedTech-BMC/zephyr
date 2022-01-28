@@ -214,7 +214,7 @@ uint8_t idx, uint8_t addr, uint8_t depth, uint8_t enable)
 		data->fifo[idx].buffer = k_malloc(sizeof(struct i2c_swmbx_fifo) * depth);
 		if (!data->fifo[idx].buffer) {
 			data->fifo[idx].enable = 0x0;
-			LOG_ERR("swmbx could not alloc enougth fifo buffer");
+			LOG_ERR("fifo could not alloc enougth fifo buffer");
 			return -EINVAL;
 		}
 
@@ -258,6 +258,7 @@ int check_swmbx_fifo(struct i2c_swmbx_slave_data *data, uint8_t addr, uint8_t *i
 		if ((data->fifo[i].fifo_offset == addr) && (data->fifo[i].enable)
 		&& (data->fifo[i].sem_fifo)) {
 			*index = i;
+			LOG_DBG("fifo: fifo inx %x and address %x", i, addr);
 			return 1;
 		}
 	}
@@ -322,20 +323,6 @@ void turn_swmbx_slave(struct i2c_swmbx_slave_data *data, uint8_t on)
 	}
 }
 
-int swmbx_slave_read(const struct device *dev, uint8_t *swmbx_data,
-		      unsigned int offset)
-{
-	struct i2c_swmbx_slave_data *data = dev->data;
-
-	if (!data || offset >= data->buffer_size) {
-		return -EINVAL;
-	}
-
-	*swmbx_data = data->buffer[offset];
-
-	return 0;
-}
-
 static int swmbx_slave_write_requested(struct i2c_slave_config *config)
 {
 	struct i2c_swmbx_slave_data *data = CONTAINER_OF(config,
@@ -352,25 +339,6 @@ static int swmbx_slave_write_requested(struct i2c_slave_config *config)
 	return 0;
 }
 
-static int swmbx_slave_read_requested(struct i2c_slave_config *config,
-				       uint8_t *val)
-{
-	struct i2c_swmbx_slave_data *data = CONTAINER_OF(config,
-						struct i2c_swmbx_slave_data,
-						config);
-
-	/* turn off other swmbx */
-	turn_swmbx_slave(data, 0x0);
-
-	*val = data->buffer[data->buffer_idx];
-
-	LOG_DBG("swmbx: read req, val=0x%x", *val);
-
-	/* Increment will be done in the read_processed callback */
-
-	return 0;
-}
-
 static int swmbx_slave_write_received(struct i2c_slave_config *config,
 				       uint8_t val)
 {
@@ -380,7 +348,7 @@ static int swmbx_slave_write_received(struct i2c_slave_config *config,
 	struct i2c_swmbx_fifo_data *fifo = NULL;
 	uint8_t index;
 
-	LOG_DBG("swmbx: write done, val=0x%x", val);
+	LOG_DBG("swmbx: write received, val=0x%x", val);
 
 	if (data->first_write) {
 		data->mbx_fifo_execute = check_swmbx_fifo(data, val, &index);
@@ -406,7 +374,7 @@ static int swmbx_slave_write_received(struct i2c_slave_config *config,
 		}
 
 		/* check the FIFO is executed or not */
-		if (data->mbx_fifo_execute) {
+		if ((data->mbx_fifo_execute) && (data->mbx_en & SWMBX_FIFO)) {
 			/* find out the fifo item */
 			fifo = &data->fifo[data->mbx_fifo_idx];
 
@@ -457,7 +425,7 @@ static int swmbx_slave_read_processed(struct i2c_slave_config *config,
 	data->buffer_idx = (data->buffer_idx + 1) % data->buffer_size;
 
 	/* check the FIFO is executed or not */
-	if (data->mbx_fifo_execute) {
+	if ((data->mbx_fifo_execute) && (data->mbx_en & SWMBX_FIFO)) {
 		/* find out the fifo item */
 		fifo = &data->fifo[data->mbx_fifo_idx];
 		list_node = sys_slist_peek_head(&(fifo->list_head));
@@ -466,12 +434,13 @@ static int swmbx_slave_read_processed(struct i2c_slave_config *config,
 		if (list_node != NULL) {
 			fifo->current = (struct i2c_swmbx_fifo *)(list_node);
 			*val = fifo->current->value;
+			LOG_DBG("fifo: slave read %x ", *val);
 
 			/* remove this item from list */
 			sys_slist_find_and_remove(&(fifo->list_head), list_node);
 
 			fifo->cur_msg_count--;
-			LOG_DBG("fifo: slave remove successful.");
+			LOG_DBG("fifo: fifo msg %x", fifo->cur_msg_count);
 		} else {
 			LOG_DBG("fifo: fifo empty at %d group", data->mbx_fifo_idx);
 			*val = 0;
@@ -482,11 +451,36 @@ static int swmbx_slave_read_processed(struct i2c_slave_config *config,
 		*val = data->buffer[data->buffer_idx];
 	}
 
-	LOG_DBG("swmbx: read done, val=0x%x", *val);
+	LOG_DBG("swmbx: read proc, val=0x%x", *val);
 
 	/* Increment will be done in the next read_processed callback
 	 * In case of STOP, the byte won't be taken in account
 	 */
+
+	return 0;
+}
+
+static int swmbx_slave_read_requested(struct i2c_slave_config *config,
+				       uint8_t *val)
+{
+	struct i2c_swmbx_slave_data *data = CONTAINER_OF(config,
+						struct i2c_swmbx_slave_data,
+						config);
+
+	/* turn off other swmbx */
+	turn_swmbx_slave(data, 0x0);
+
+	/* check the FIFO is executed or not */
+	if ((data->mbx_fifo_execute) && (data->mbx_en & SWMBX_FIFO)) {
+		/* read fifo will be handled in the read process */
+		swmbx_slave_read_processed(config, val);
+	} else {
+		*val = data->buffer[data->buffer_idx];
+	}
+
+	LOG_DBG("swmbx: read req, val=0x%x", *val);
+
+	/* Increment will be done in the read_processed callback */
 
 	return 0;
 }
