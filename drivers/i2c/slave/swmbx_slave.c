@@ -396,6 +396,7 @@ static int swmbx_slave_write_received(struct i2c_slave_config *config,
 
 				LOG_DBG("fifo: slave write data->current %x", (uint32_t)(fifo->current));
 			} else {
+				k_sem_give(data->fifo[data->mbx_fifo_idx].sem_fifo);
 				LOG_DBG("fifo: fifo full at %d group", data->mbx_fifo_idx);
 			}
 
@@ -442,8 +443,9 @@ static int swmbx_slave_read_processed(struct i2c_slave_config *config,
 			fifo->cur_msg_count--;
 			LOG_DBG("fifo: fifo msg %x", fifo->cur_msg_count);
 		} else {
-			LOG_DBG("fifo: fifo empty at %d group", data->mbx_fifo_idx);
 			*val = 0;
+			k_sem_give(data->fifo[data->mbx_fifo_idx].sem_fifo);
+			LOG_DBG("fifo: fifo empty at %d group", data->mbx_fifo_idx);
 			return 1;
 		}
 
