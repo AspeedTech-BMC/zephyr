@@ -1114,15 +1114,15 @@ static int cmd_i2c_slave_detach(const struct shell *shell,
 }
 
 #ifdef CONFIG_I2C_SWMBX_SLAVE
-#define thread_size 256
+#define thread_fifo_size 256
 #define THREAD_DELAY 100
 static struct k_thread zipmb_n_t;
 static struct k_thread zipmb_f_t;
 struct k_sem sem_30, sem_40;
 struct k_sem sem_fifo;
 
-K_THREAD_STACK_DEFINE(i2c_thread_n_s, thread_size);
-K_THREAD_STACK_DEFINE(i2c_thread_f_s, thread_size);
+K_THREAD_STACK_DEFINE(i2c_thread_n_s, thread_fifo_size);
+K_THREAD_STACK_DEFINE(i2c_thread_f_s, thread_fifo_size);
 
 /* i2c thread demo for swmbx notify */
 void swmbx_notify(void *a, void *b, void *c)
@@ -1206,7 +1206,7 @@ static int cmd_i2c_sw_mbx(const struct shell *shell,
 		if (IS_ENABLED(CONFIG_MULTITHREADING)) {
 			pidn = k_thread_create(&zipmb_n_t,
 					      i2c_thread_n_s,
-					      thread_size,
+					      thread_fifo_size,
 					      (k_thread_entry_t) swmbx_notify,
 					      NULL, NULL, NULL,
 					      -1,
@@ -1225,7 +1225,7 @@ static int cmd_i2c_sw_mbx(const struct shell *shell,
 		if (IS_ENABLED(CONFIG_MULTITHREADING)) {
 			pidf = k_thread_create(&zipmb_f_t,
 					      i2c_thread_f_s,
-					      thread_size,
+					      thread_fifo_size,
 					      (k_thread_entry_t) swmbx_fifo,
 					      NULL, NULL, NULL,
 					      -1,
@@ -1262,6 +1262,7 @@ static int cmd_i2c_sw_mbx_r(const struct shell *shell,
 {
 	const struct device *slave_dev = NULL;
 	int ret = 0;
+	uint8_t fifo;
 	uint8_t index;
 	uint8_t val;
 
@@ -1273,9 +1274,10 @@ static int cmd_i2c_sw_mbx_r(const struct shell *shell,
 	}
 
 	if (slave_dev != NULL) {
-		index = strtol(argv[2], NULL, 16);
+		fifo = strtol(argv[2], NULL, 16);
+		index = strtol(argv[3], NULL, 16);
 
-		ret =  swmbx_read(slave_dev, index, &val);
+		ret =  swmbx_read(slave_dev, fifo, index, &val);
 		if (!ret) {
 			shell_hexdump(shell, &val, 1);
 		}
@@ -1289,6 +1291,7 @@ static int cmd_i2c_sw_mbx_w(const struct shell *shell,
 {
 	const struct device *slave_dev = NULL;
 	int ret = 0;
+	uint8_t fifo;
 	uint8_t index;
 	uint8_t val;
 
@@ -1300,10 +1303,11 @@ static int cmd_i2c_sw_mbx_w(const struct shell *shell,
 	}
 
 	if (slave_dev != NULL) {
-		index = strtol(argv[2], NULL, 16);
-		val = strtol(argv[3], NULL, 16);
+		fifo = strtol(argv[2], NULL, 16);
+		index = strtol(argv[3], NULL, 16);
+		val = strtol(argv[4], NULL, 16);
 
-		ret =  swmbx_write(slave_dev, index, &val);
+		ret = swmbx_write(slave_dev, fifo, index, &val);
 	}
 
 	return 0;
