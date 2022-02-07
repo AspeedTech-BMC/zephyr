@@ -38,25 +38,27 @@
  * @brief write sw mailbox value
  *
  * @param dev Pointer to the device structure for the driver instance
+ * @param fifo append value into fifo
  * @param index Index of swmbx
  * @param val value of swmbx
  *
  * @retval 0 If successful
  * @retval -EINVAL Invalid data pointer
  */
-int swmbx_write(const struct device *dev, uint8_t index, uint8_t *val);
+int swmbx_write(const struct device *dev, uint8_t fifo, uint8_t index, uint8_t *val);
 
 /**
  * @brief read sw mailbox value
  *
  * @param dev Pointer to the device structure for the driver instance
+ * @param fifo peak value from fifo
  * @param index Index of swmbx
  * @param val value of swmbx
  *
  * @retval 0 If successful
  * @retval -EINVAL Invalid data pointer
  */
-int swmbx_read(const struct device *dev, uint8_t index, uint8_t *val);
+int swmbx_read(const struct device *dev, uint8_t fifo, uint8_t index, uint8_t *val);
 
 /**
  * @brief Enable / Disable sw mailbox enhance behavior

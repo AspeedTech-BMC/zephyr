@@ -77,19 +77,141 @@ struct i2c_swmbx_slave_config {
 #define DEV_DATA(dev)	\
 	((struct i2c_swmbx_slave_data *const)(dev)->data)
 
-int swmbx_write(const struct device *dev, uint8_t index, uint8_t *val)
+/* internal api for pfr sw mbx control */
+int check_swmbx_fifo(struct i2c_swmbx_slave_data *data, uint8_t addr, uint8_t *index)
+{
+	for (uint8_t i = 0; i < SWMBX_FIFO_COUNT; i++) {
+		if ((data->fifo[i].fifo_offset == addr) && (data->fifo[i].enable)
+		&& (data->fifo[i].sem_fifo)) {
+			*index = i;
+			LOG_DBG("fifo: fifo inx %x and address %x", i, addr);
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+int check_swmbx_notify(struct i2c_swmbx_slave_data *data, uint8_t addr)
+{
+	for (uint8_t i = 0; i < SWMBX_NOTIFY_COUNT; i++) {
+		if ((data->notify[i].address == addr) && (data->notify[i].enable)
+		&& (data->notify[i].sem_notify)) {
+			data->mbx_notify_idx = i;
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+int check_swmbx_protect(struct i2c_swmbx_slave_data *data, uint8_t addr)
+{
+	uint8_t index, bit;
+	uint32_t value;
+
+	/* calculte bitmap position */
+	index = addr / 0x20;
+	bit = addr % 0x20;
+
+	value = data->mbx_protect[index];
+
+	if (value & (0x1 << bit))
+		return 1;
+
+	return 0;
+}
+
+int append_fifo_write(struct i2c_swmbx_slave_data *data, uint8_t fifo_idx, uint8_t val)
+{
+	struct i2c_swmbx_fifo_data *fifo = NULL;
+
+	/* find out the fifo item */
+	fifo = &data->fifo[fifo_idx];
+
+	/* check the max msg length */
+	if (fifo->cur_msg_count < fifo->max_msg_count) {
+		LOG_DBG("fifo: cur_msg_index %x", (uint32_t)(fifo->msg_index));
+
+		fifo->current = &(fifo->buffer[fifo->cur_msg_count]);
+		fifo->current->value = val;
+		sys_slist_append(&(fifo->list_head), &(fifo->current->list));
+		fifo->cur_msg_count++;
+
+		/* bondary condition */
+		if (fifo->msg_index == (fifo->max_msg_count - 1)) {
+			fifo->msg_index = 0;
+		} else {
+			fifo->msg_index++;
+		}
+
+		LOG_DBG("fifo: slave write data->current %x", (uint32_t)(fifo->current));
+	} else {
+		return 1;
+	}
+
+	return 0;
+}
+
+int peak_fifo_read(struct i2c_swmbx_slave_data *data, uint8_t fifo_idx, uint8_t *val)
+{
+	struct i2c_swmbx_fifo_data *fifo = NULL;
+	sys_snode_t *list_node = NULL;
+
+	/* find out the fifo item */
+	fifo = &data->fifo[fifo_idx];
+	list_node = sys_slist_peek_head(&(fifo->list_head));
+	LOG_DBG("fifo: slave read %x", (uint32_t)list_node);
+
+	if (list_node != NULL) {
+		fifo->current = (struct i2c_swmbx_fifo *)(list_node);
+		*val = fifo->current->value;
+		LOG_DBG("fifo: slave read %x ", *val);
+
+		/* remove this item from list */
+		sys_slist_find_and_remove(&(fifo->list_head), list_node);
+
+		fifo->cur_msg_count--;
+		LOG_DBG("fifo: fifo msg %x", fifo->cur_msg_count);
+	} else {
+		*val = 0;
+		return 1;
+	}
+
+	return 0;
+}
+
+/* External API for swmbx access */
+int swmbx_write(const struct device *dev, uint8_t fifo, uint8_t index, uint8_t *val)
 {
 	if (dev == NULL)
 		return -EINVAL;
 
 	struct i2c_swmbx_slave_data *data = dev->data;
 	unsigned int key = 0;
+	bool mbx_fifo_execute = false;
+	uint8_t fifo_idx = 0;
 
 	/* enter critical section sw mbx access */
 	if (!k_is_in_isr())
 		key = irq_lock();
 
-	data->buffer[index] = *val;
+	if (fifo) {
+		/*check fifo enable and find out fifo index*/
+		mbx_fifo_execute = check_swmbx_fifo(data, index, &fifo_idx);
+		if (mbx_fifo_execute) {
+			/* append value into fifo */
+			if (append_fifo_write(data, fifo_idx, *val)) {
+				LOG_DBG("swmbx_write: fifo full at %d group", fifo_idx);
+				return 1;
+			}
+		} else {
+			LOG_DBG("swmbx_write: could not find address %d fifo", index);
+			return 1;
+		}
+	} else {
+		data->buffer[index] = *val;
+	}
 
 	/* exit critical section */
 	if (!k_is_in_isr())
@@ -98,19 +220,36 @@ int swmbx_write(const struct device *dev, uint8_t index, uint8_t *val)
 	return 0;
 }
 
-int swmbx_read(const struct device *dev, uint8_t index, uint8_t *val)
+int swmbx_read(const struct device *dev, uint8_t fifo, uint8_t index, uint8_t *val)
 {
 	if (dev == NULL)
 		return -EINVAL;
 
 	struct i2c_swmbx_slave_data *data = dev->data;
 	unsigned int key = 0;
+	bool mbx_fifo_execute = false;
+	uint8_t fifo_idx = 0;
 
 	/* enter critical section sw mbx access */
 	if (!k_is_in_isr())
 		key = irq_lock();
 
-	*val = data->buffer[index];
+	if (fifo) {
+		/*check fifo enable and find out fifo index*/
+		mbx_fifo_execute = check_swmbx_fifo(data, index, &fifo_idx);
+		if (mbx_fifo_execute) {
+			/* peak value from fifo */
+			if (peak_fifo_read(data, fifo_idx, val)) {
+				LOG_DBG("swmbx_read: fifo empty at %d group", fifo_idx);
+				return 1;
+			}
+		} else {
+			LOG_DBG("swmbx_read: could not find fifo %d group", index);
+			return 1;
+		}
+	} else {
+		*val = data->buffer[index];
+	}
 
 	/* exit critical section */
 	if (!k_is_in_isr())
@@ -251,51 +390,6 @@ uint8_t idx, uint8_t addr, uint8_t depth, uint8_t enable)
 	return 0;
 }
 
-/* internal api for pfr sw mbx control */
-int check_swmbx_fifo(struct i2c_swmbx_slave_data *data, uint8_t addr, uint8_t *index)
-{
-	for (uint8_t i = 0; i < SWMBX_FIFO_COUNT; i++) {
-		if ((data->fifo[i].fifo_offset == addr) && (data->fifo[i].enable)
-		&& (data->fifo[i].sem_fifo)) {
-			*index = i;
-			LOG_DBG("fifo: fifo inx %x and address %x", i, addr);
-			return 1;
-		}
-	}
-
-	return 0;
-}
-
-int check_swmbx_notify(struct i2c_swmbx_slave_data *data, uint8_t addr)
-{
-	for (uint8_t i = 0; i < SWMBX_NOTIFY_COUNT; i++) {
-		if ((data->notify[i].address == addr) && (data->notify[i].enable)
-		&& (data->notify[i].sem_notify)) {
-			data->mbx_notify_idx = i;
-			return 1;
-		}
-	}
-
-	return 0;
-}
-
-int check_swmbx_protect(struct i2c_swmbx_slave_data *data, uint8_t addr)
-{
-	uint8_t index, bit;
-	uint32_t value;
-
-	/* calculte bitmap position */
-	index = addr / 0x20;
-	bit = addr % 0x20;
-
-	value = data->mbx_protect[index];
-
-	if (value & (0x1 << bit))
-		return 1;
-
-	return 0;
-}
-
 /* turn on / off other swmbx support */
 void turn_swmbx_slave(struct i2c_swmbx_slave_data *data, uint8_t on)
 {
@@ -323,6 +417,7 @@ void turn_swmbx_slave(struct i2c_swmbx_slave_data *data, uint8_t on)
 	}
 }
 
+/* i2c virtual slave functions */
 static int swmbx_slave_write_requested(struct i2c_slave_config *config)
 {
 	struct i2c_swmbx_slave_data *data = CONTAINER_OF(config,
@@ -345,7 +440,6 @@ static int swmbx_slave_write_received(struct i2c_slave_config *config,
 	struct i2c_swmbx_slave_data *data = CONTAINER_OF(config,
 						struct i2c_swmbx_slave_data,
 						config);
-	struct i2c_swmbx_fifo_data *fifo = NULL;
 	uint8_t index;
 
 	LOG_DBG("swmbx: write received, val=0x%x", val);
@@ -375,31 +469,13 @@ static int swmbx_slave_write_received(struct i2c_slave_config *config,
 
 		/* check the FIFO is executed or not */
 		if ((data->mbx_fifo_execute) && (data->mbx_en & SWMBX_FIFO)) {
-			/* find out the fifo item */
-			fifo = &data->fifo[data->mbx_fifo_idx];
-
-			/* check the max msg length */
-			if (fifo->cur_msg_count < fifo->max_msg_count) {
-				LOG_DBG("fifo: cur_msg_index %x", (uint32_t)(fifo->msg_index));
-
-				fifo->current = &(fifo->buffer[fifo->msg_index]);
-				fifo->current->value = val;
-				sys_slist_append(&(fifo->list_head), &(fifo->current->list));
-				fifo->cur_msg_count++;
-
-				/* bondary condition */
-				if (fifo->msg_index == (fifo->max_msg_count - 1)) {
-					fifo->msg_index = 0;
-				} else {
-					fifo->msg_index++;
-				}
-
-				LOG_DBG("fifo: slave write data->current %x", (uint32_t)(fifo->current));
-			} else {
+			/* append value into fifo */
+			if (append_fifo_write(data, data->mbx_fifo_idx, val)) {
+				/* issue semaphore when fifo full */
 				k_sem_give(data->fifo[data->mbx_fifo_idx].sem_fifo);
 				LOG_DBG("fifo: fifo full at %d group", data->mbx_fifo_idx);
+				return 1;
 			}
-
 		} else {
 			if (data->mbx_write_data)
 				data->buffer[data->buffer_idx] = val;
@@ -419,36 +495,19 @@ static int swmbx_slave_read_processed(struct i2c_slave_config *config,
 	struct i2c_swmbx_slave_data *data = CONTAINER_OF(config,
 						struct i2c_swmbx_slave_data,
 						config);
-	struct i2c_swmbx_fifo_data *fifo = NULL;
-	sys_snode_t *list_node = NULL;
 
 	/* Increment here */
 	data->buffer_idx = (data->buffer_idx + 1) % data->buffer_size;
 
 	/* check the FIFO is executed or not */
 	if ((data->mbx_fifo_execute) && (data->mbx_en & SWMBX_FIFO)) {
-		/* find out the fifo item */
-		fifo = &data->fifo[data->mbx_fifo_idx];
-		list_node = sys_slist_peek_head(&(fifo->list_head));
-		LOG_DBG("fifo: slave read %x", (uint32_t)list_node);
-
-		if (list_node != NULL) {
-			fifo->current = (struct i2c_swmbx_fifo *)(list_node);
-			*val = fifo->current->value;
-			LOG_DBG("fifo: slave read %x ", *val);
-
-			/* remove this item from list */
-			sys_slist_find_and_remove(&(fifo->list_head), list_node);
-
-			fifo->cur_msg_count--;
-			LOG_DBG("fifo: fifo msg %x", fifo->cur_msg_count);
-		} else {
-			*val = 0;
+		/* peak value from fifo */
+		if (peak_fifo_read(data, data->mbx_fifo_idx, val)) {
+			/* issue semaphore when fifo empty */
 			k_sem_give(data->fifo[data->mbx_fifo_idx].sem_fifo);
 			LOG_DBG("fifo: fifo empty at %d group", data->mbx_fifo_idx);
 			return 1;
 		}
-
 	} else {
 		*val = data->buffer[data->buffer_idx];
 	}
@@ -504,6 +563,7 @@ static int swmbx_slave_stop(struct i2c_slave_config *config)
 	return 0;
 }
 
+/* i2c virtual slave register functions */
 static int swmbx_slave_register(const struct device *dev)
 {
 	struct i2c_swmbx_slave_data *data = dev->data;
