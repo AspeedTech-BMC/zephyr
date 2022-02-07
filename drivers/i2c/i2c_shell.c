@@ -1114,18 +1114,20 @@ static int cmd_i2c_slave_detach(const struct shell *shell,
 }
 
 #ifdef CONFIG_I2C_SWMBX_SLAVE
-#define thread_check_size 256
-#define CHECK_DELAY 100
-static struct k_thread zipmb_c_t;
+#define thread_size 256
+#define THREAD_DELAY 100
+static struct k_thread zipmb_n_t;
+static struct k_thread zipmb_f_t;
 struct k_sem sem_30, sem_40;
 struct k_sem sem_fifo;
 
-K_THREAD_STACK_DEFINE(i2c_thread_c_s, thread_check_size);
+K_THREAD_STACK_DEFINE(i2c_thread_n_s, thread_size);
+K_THREAD_STACK_DEFINE(i2c_thread_f_s, thread_size);
 
 /* i2c thread demo for swmbx notify */
-void swmbx_check(void *a, void *b, void *c)
+void swmbx_notify(void *a, void *b, void *c)
 {
-	LOG_INF("swmbx: swmbx_check successful.");
+	LOG_INF("swmbx: swmbx_notify successful.");
 
 	while (1) {
 		if (k_sem_take(&sem_30, K_MSEC(50)) == 0) {
@@ -1136,7 +1138,21 @@ void swmbx_check(void *a, void *b, void *c)
 			LOG_INF("swmbx: SEM_40 is taken!!");
 		}
 
-		k_sleep(K_MSEC(CHECK_DELAY));
+		k_sleep(K_MSEC(THREAD_DELAY));
+	}
+}
+
+/* i2c thread demo for swmbx fifo */
+void swmbx_fifo(void *a, void *b, void *c)
+{
+	LOG_INF("swmbx: swmbx_fifo successful.");
+
+	while (1) {
+		if (k_sem_take(&sem_fifo, K_MSEC(50)) == 0) {
+			LOG_INF("swmbx: SEM_FIFO is taken!!");
+		}
+
+		k_sleep(K_MSEC(THREAD_DELAY));
 	}
 }
 
@@ -1145,10 +1161,11 @@ static int cmd_i2c_sw_mbx(const struct shell *shell,
 {
 	const struct device *slave_dev = NULL;
 	int ret = 0;
-	k_tid_t pidc;
-	uint32_t temp[] = {0x55555555, 0xaaaaaaaa, 0x0, 0x0,
+	k_tid_t pidn, pidf;
+	uint32_t protect_bit[] = {0x55555555, 0xaaaaaaaa, 0x0, 0x0,
 	0xaaaaaaaa, 0x55555555, 0x0, 0xffffffff};
 
+	/* swmbx device 0 with write protect / notify / FIFO */
 	slave_dev = device_get_binding("SWMBX_SLAVE_0");
 	if (!slave_dev) {
 		shell_error(shell, "xx I2C: Slave Device driver 0 not found.");
@@ -1164,17 +1181,19 @@ static int cmd_i2c_sw_mbx(const struct shell *shell,
 			return -ENODEV;
 		}
 
-		ret = swmbx_apply_protect(slave_dev, temp, 0, 7);
+		/* swmbx protect usage */
+		ret = swmbx_apply_protect(slave_dev, protect_bit, 0, 7);
 		if (ret) {
 			shell_error(shell, "xx I2C: Apply protect bitmap 0 fail.");
 			return -ENODEV;
 		}
 
-		ret = swmbx_update_protect(slave_dev, 0x40, 1);
-		ret = swmbx_update_protect(slave_dev, 0x43, 1);
-		ret = swmbx_update_protect(slave_dev, 0x47, 1);
-		ret = swmbx_update_protect(slave_dev, 0x4c, 1);
+		ret = swmbx_update_protect(slave_dev, 0x40, true);
+		ret = swmbx_update_protect(slave_dev, 0x43, true);
+		ret = swmbx_update_protect(slave_dev, 0x47, true);
+		ret = swmbx_update_protect(slave_dev, 0x4c, true);
 
+		/* swmbx notify usage */
 		k_sem_init(&sem_30, 0, 1);
 		k_sem_init(&sem_40, 0, 1);
 
@@ -1185,10 +1204,10 @@ static int cmd_i2c_sw_mbx(const struct shell *shell,
 		0x1, 0x40, true);
 
 		if (IS_ENABLED(CONFIG_MULTITHREADING)) {
-			pidc = k_thread_create(&zipmb_c_t,
-					      i2c_thread_c_s,
-					      thread_check_size,
-					      (k_thread_entry_t) swmbx_check,
+			pidn = k_thread_create(&zipmb_n_t,
+					      i2c_thread_n_s,
+					      thread_size,
+					      (k_thread_entry_t) swmbx_notify,
 					      NULL, NULL, NULL,
 					      -1,
 					      0, K_NO_WAIT);
@@ -1202,6 +1221,17 @@ static int cmd_i2c_sw_mbx(const struct shell *shell,
 			shell_error(shell, "xx I2C: Apply fifo 0 fail.");
 			return -ENODEV;
 		}
+
+		if (IS_ENABLED(CONFIG_MULTITHREADING)) {
+			pidf = k_thread_create(&zipmb_f_t,
+					      i2c_thread_f_s,
+					      thread_size,
+					      (k_thread_entry_t) swmbx_fifo,
+					      NULL, NULL, NULL,
+					      -1,
+					      0, K_NO_WAIT);
+		}
+
 	}
 
 	slave_dev = device_get_binding("SWMBX_SLAVE_1");
@@ -1217,7 +1247,7 @@ static int cmd_i2c_sw_mbx(const struct shell *shell,
 			return -ENODEV;
 		}
 
-		ret = swmbx_apply_protect(slave_dev, temp, 1, 6);
+		ret = swmbx_apply_protect(slave_dev, protect_bit, 1, 6);
 		if (ret) {
 			shell_error(shell, "xx I2C: Apply protect 1 bitmap.");
 			return -ENODEV;
