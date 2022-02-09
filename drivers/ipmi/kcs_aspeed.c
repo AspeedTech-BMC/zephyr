@@ -279,6 +279,7 @@ static void kcs_handle_data(struct kcs_aspeed_data *kcs)
 		kcs_read_data(kcs);
 		kcs_write_data(kcs, KCS_DUMMY_ZERO);
 		kcs->phase = KCS_PHASE_IDLE;
+		break;
 
 	default:
 		kcs_force_abort(kcs);
