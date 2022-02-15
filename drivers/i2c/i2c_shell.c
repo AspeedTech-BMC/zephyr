@@ -1118,7 +1118,7 @@ static int cmd_i2c_slave_detach(const struct shell *shell,
 #define THREAD_DELAY 100
 static struct k_thread zipmb_n_t;
 static struct k_thread zipmb_f_t;
-struct k_sem sem_30, sem_40;
+struct k_sem sem_30, sem_40, sem_42;
 struct k_sem sem_fifo;
 
 K_THREAD_STACK_DEFINE(i2c_thread_n_s, thread_fifo_size);
@@ -1136,6 +1136,10 @@ void swmbx_notify(void *a, void *b, void *c)
 
 		if (k_sem_take(&sem_40, K_MSEC(50)) == 0) {
 			LOG_INF("swmbx: SEM_40 is taken!!");
+		}
+
+		if (k_sem_take(&sem_42, K_MSEC(50)) == 0) {
+			LOG_INF("swmbx: SEM_42 is taken!!");
 		}
 
 		k_sleep(K_MSEC(THREAD_DELAY));
@@ -1188,7 +1192,11 @@ static int cmd_i2c_sw_mbx(const struct shell *shell,
 			return -ENODEV;
 		}
 
-		ret = swmbx_update_protect(slave_dev, 0x40, true);
+		ret = swmbx_update_protect(slave_dev, 0x3f, false);
+		ret = swmbx_update_protect(slave_dev, 0x40, false);
+		ret = swmbx_update_protect(slave_dev, 0x41, false);
+		ret = swmbx_update_protect(slave_dev, 0x42, false);
+
 		ret = swmbx_update_protect(slave_dev, 0x43, true);
 		ret = swmbx_update_protect(slave_dev, 0x47, true);
 		ret = swmbx_update_protect(slave_dev, 0x4c, true);
@@ -1196,12 +1204,16 @@ static int cmd_i2c_sw_mbx(const struct shell *shell,
 		/* swmbx notify usage */
 		k_sem_init(&sem_30, 0, 1);
 		k_sem_init(&sem_40, 0, 1);
+		k_sem_init(&sem_42, 0, 1);
 
 		ret = swmbx_update_notify(slave_dev, &sem_30,
 		0x0, 0x30, true);
 
 		ret = swmbx_update_notify(slave_dev, &sem_40,
 		0x1, 0x40, true);
+
+		ret = swmbx_update_notify(slave_dev, &sem_42,
+		0x2, 0x42, true);
 
 		if (IS_ENABLED(CONFIG_MULTITHREADING)) {
 			pidn = k_thread_create(&zipmb_n_t,
@@ -1216,7 +1228,7 @@ static int cmd_i2c_sw_mbx(const struct shell *shell,
 		/* turn on fifo */
 		k_sem_init(&sem_fifo, 0, 1);
 
-		ret = swmbx_update_fifo(slave_dev, &sem_fifo, 0, 0x50, 0x5, true);
+		ret = swmbx_update_fifo(slave_dev, &sem_fifo, 0, 0x40, 0x5, SWMBX_FIFO_NOTIFY_STOP, true);
 		if (ret) {
 			shell_error(shell, "xx I2C: Apply fifo 0 fail.");
 			return -ENODEV;
