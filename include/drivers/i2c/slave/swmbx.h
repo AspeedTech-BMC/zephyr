@@ -27,6 +27,11 @@
 #define SWMBX_FIFO		BIT(2)
 #define FLAG_MASK		(BIT(0) | BIT(1)|BIT(2))
 
+/* fifo notify flags */
+#define SWMBX_FIFO_NOTIFY_START	BIT(0)
+#define SWMBX_FIFO_NOTIFY_STOP	BIT(1)
+#define FIFO_NOTIFY_MASK	(BIT(0) | BIT(1))
+
 /**
  * @brief I2C SW Mailbox Slave Driver API
  * @defgroup i2c_swmbx_slave_api i2c SW Mailbox slave driver API
@@ -131,13 +136,14 @@ int swmbx_flush_fifo(const struct device *dev, uint8_t idx);
  * @param idx Index to the fifo internal index position (0x0~0x7)
  * @param addr Address to the fifo in mbx device
  * @param depth fifo depth to the fifo in mbx device
+ * @param notify fifo notify behavior flag
  * @param enable Enable to the fifo in sw mbx device
  *
  * @retval 0 If successful
  * @retval -EINVAL Invalid data pointer or offset
  */
 int swmbx_update_fifo(const struct device *dev, struct k_sem *sem,
-uint8_t idx, uint8_t addr, uint8_t depth, uint8_t enable);
+uint8_t idx, uint8_t addr, uint8_t depth, uint8_t notify, uint8_t enable);
 
 
 /**

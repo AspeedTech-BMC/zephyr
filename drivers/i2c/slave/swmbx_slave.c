@@ -36,6 +36,9 @@ struct i2c_swmbx_fifo_data {
 	sys_slist_t list_head;
 	uint8_t fifo_offset;
 	uint8_t enable;
+	uint8_t notify_flag;
+	uint8_t notify_start;
+	uint8_t fifo_write;
 	uint32_t msg_index;
 	uint32_t max_msg_count;
 
@@ -375,7 +378,7 @@ int swmbx_flush_fifo(const struct device *dev, uint8_t index)
 }
 
 int swmbx_update_fifo(const struct device *dev, struct k_sem *sem,
-uint8_t idx, uint8_t addr, uint8_t depth, uint8_t enable)
+uint8_t idx, uint8_t addr, uint8_t depth, uint8_t notify, uint8_t enable)
 {
 	if ((dev == NULL) || idx > (SWMBX_FIFO_COUNT-1))
 		return -EINVAL;
@@ -402,6 +405,7 @@ uint8_t idx, uint8_t addr, uint8_t depth, uint8_t enable)
 		data->fifo[idx].sem_fifo = sem;
 		data->fifo[idx].max_msg_count = depth;
 		data->fifo[idx].fifo_offset = addr;
+		data->fifo[idx].notify_flag = notify;
 		data->fifo[idx].msg_index = 0;
 		data->fifo[idx].cur_msg_count = 0;
 	} else {
@@ -485,6 +489,7 @@ static int swmbx_slave_write_received(struct i2c_slave_config *config,
 	LOG_DBG("swmbx: write received, val=0x%x", val);
 
 	if (data->first_write) {
+		/* obtain fifo index */
 		data->mbx_fifo_execute = check_swmbx_fifo(data, val, &index);
 		if (data->mbx_fifo_execute)
 			data->mbx_fifo_idx = index;
@@ -492,21 +497,6 @@ static int swmbx_slave_write_received(struct i2c_slave_config *config,
 		data->buffer_idx = val;
 		data->first_write = false;
 	} else {
-		/* check write protect behavior */
-		if (!check_swmbx_protect(data, data->buffer_idx) ||
-		!(data->mbx_en & SWMBX_PROTECT)) {
-			data->mbx_write_data = true;
-		} else {
-			data->mbx_write_data = false;
-		}
-
-		/* check notify behavior */
-		if (data->mbx_en & SWMBX_NOTIFY) {
-			if (check_swmbx_notify(data, data->buffer_idx)) {
-				k_sem_give(data->notify[data->mbx_notify_idx].sem_notify);
-			}
-		}
-
 		/* check the FIFO is executed or not */
 		if ((data->mbx_fifo_execute) && (data->mbx_en & SWMBX_FIFO)) {
 			/* append value into fifo */
@@ -516,12 +506,40 @@ static int swmbx_slave_write_received(struct i2c_slave_config *config,
 				LOG_DBG("fifo: fifo full at %d group", data->mbx_fifo_idx);
 				return 1;
 			}
+
+			/* check fifo notify start*/
+			if ((data->mbx_en & SWMBX_NOTIFY) &&
+			(data->fifo[data->mbx_fifo_idx].notify_flag & SWMBX_FIFO_NOTIFY_START) &&
+			(!data->fifo[data->mbx_fifo_idx].notify_start)) {
+				if (check_swmbx_notify(data, data->buffer_idx)) {
+					k_sem_give(data->notify[data->mbx_notify_idx].sem_notify);
+					data->fifo[data->mbx_fifo_idx].notify_start = true;
+				}
+			}
+
+			if (!data->fifo[data->mbx_fifo_idx].fifo_write)
+				data->fifo[data->mbx_fifo_idx].fifo_write = true;
 		} else {
+			/* check write protect behavior */
+			if (!check_swmbx_protect(data, data->buffer_idx) ||
+			!(data->mbx_en & SWMBX_PROTECT)) {
+				data->mbx_write_data = true;
+			} else {
+				data->mbx_write_data = false;
+			}
+
+			/* check notify behavior */
+			if (data->mbx_en & SWMBX_NOTIFY) {
+				if (check_swmbx_notify(data, data->buffer_idx)) {
+					k_sem_give(data->notify[data->mbx_notify_idx].sem_notify);
+				}
+			}
+
 			if (data->mbx_write_data)
 				data->buffer[data->buffer_idx] = val;
-		}
 
-		data->buffer_idx++;
+			data->buffer_idx++;
+		}
 	}
 
 	data->buffer_idx = data->buffer_idx % data->buffer_size;
@@ -594,11 +612,24 @@ static int swmbx_slave_stop(struct i2c_slave_config *config)
 
 	LOG_DBG("swmbx: stop");
 
+	/* check fifo notify end*/
+	if (data->mbx_fifo_execute) {
+		if ((data->mbx_en & SWMBX_NOTIFY) &&
+		(data->fifo[data->mbx_fifo_idx].notify_flag & SWMBX_FIFO_NOTIFY_STOP) &&
+		(data->fifo[data->mbx_fifo_idx].fifo_write)) {
+			if (check_swmbx_notify(data, data->buffer_idx)) {
+				k_sem_give(data->notify[data->mbx_notify_idx].sem_notify);
+			}
+		}
+		data->fifo[data->mbx_fifo_idx].notify_start = false;
+		data->fifo[data->mbx_fifo_idx].fifo_write = false;
+		data->mbx_fifo_execute = false;
+	}
+
 	/* turn on other swmbx */
 	turn_swmbx_slave(data, 0x1);
 
 	data->first_write = true;
-	data->mbx_fifo_execute = false;
 
 	return 0;
 }
@@ -633,7 +664,7 @@ static int swmbx_slave_unregister(const struct device *dev)
 
 	/* release fifo memory */
 	for (i = 0; i < SWMBX_FIFO_COUNT; i++) {
-		swmbx_update_fifo(dev, NULL, i, 0x0, 0x0, 0x0);
+		swmbx_update_fifo(dev, NULL, i, 0x0, 0x0, 0x0, 0x0);
 	}
 
 	return i2c_slave_unregister(data->i2c_controller, &data->config);
