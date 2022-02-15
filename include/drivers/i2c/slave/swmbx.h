@@ -113,7 +113,18 @@ int swmbx_update_notify(const struct device *dev, struct k_sem *sem,
 uint8_t idx, uint8_t addr, uint8_t enable);
 
 /**
- * @brief Set sw mailbox fifo
+ * @brief Flush sw mailbox fifo
+ *
+ * @param dev Pointer to the device structure for the driver instance
+ * @param idx Index to the fifo internal index position (0x0~0x7)
+ *
+ * @retval 0 If successful
+ * @retval -EINVAL Invalid data pointer or index
+ */
+int swmbx_flush_fifo(const struct device *dev, uint8_t idx);
+
+/**
+ * @brief Update sw mailbox fifo
  *
  * @param dev Pointer to the device structure for the driver instance
  * @param sem Pointer to the semaphore that is initiailed and sent when notify is trigger

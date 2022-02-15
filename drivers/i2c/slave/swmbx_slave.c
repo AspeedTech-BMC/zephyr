@@ -180,8 +180,9 @@ int peak_fifo_read(struct i2c_swmbx_slave_data *data, uint8_t fifo_idx, uint8_t 
 
 	return 0;
 }
+/* internal api define end */
 
-/* External API for swmbx access */
+/* external API for swmbx access */
 int swmbx_write(const struct device *dev, uint8_t fifo, uint8_t index, uint8_t *val)
 {
 	if (dev == NULL)
@@ -271,7 +272,7 @@ int swmbx_enable_behavior(const struct device *dev, uint32_t item_flag, uint8_t 
 	return 0;
 }
 
-/* swmbx write protect */
+/* apply swmbx write protect with bitmap*/
 int swmbx_apply_protect(const struct device *dev, uint32_t *bitmap, uint8_t start_idx, uint8_t num)
 {
 	if ((dev == NULL) || (bitmap == NULL) ||
@@ -286,6 +287,7 @@ int swmbx_apply_protect(const struct device *dev, uint32_t *bitmap, uint8_t star
 	return 0;
 }
 
+/* update swmbx write protect with single address */
 int swmbx_update_protect(const struct device *dev, uint8_t addr, uint8_t enable)
 {
 	if (dev == NULL)
@@ -311,6 +313,7 @@ int swmbx_update_protect(const struct device *dev, uint8_t addr, uint8_t enable)
 	return 0;
 }
 
+/* update swmbx notify with single address and index */
 int swmbx_update_notify(const struct device *dev, struct k_sem *sem,
 uint8_t idx, uint8_t addr, uint8_t enable)
 {
@@ -331,6 +334,42 @@ uint8_t idx, uint8_t addr, uint8_t enable)
 	}
 
 	data->notify[idx].enable = enable;
+
+	return 0;
+}
+
+int swmbx_flush_fifo(const struct device *dev, uint8_t index)
+{
+	if (dev == NULL)
+		return -EINVAL;
+
+	struct i2c_swmbx_slave_data *data = dev->data;
+	sys_snode_t *list_node = NULL;
+	bool mbx_fifo_execute = false;
+	uint8_t fifo_idx;
+
+	mbx_fifo_execute = check_swmbx_fifo(data, index, &fifo_idx);
+	if (mbx_fifo_execute) {
+		if (data->fifo[fifo_idx].enable) {
+			/* free link list */
+			do {
+				list_node = sys_slist_peek_head(&(data->fifo[fifo_idx].list_head));
+				if (list_node != NULL) {
+					LOG_DBG("swmbx: slave drop fifo %x", (uint32_t)list_node);
+					/* remove this item from list */
+					sys_slist_find_and_remove(&(data->fifo[fifo_idx].list_head), list_node);
+				}
+			} while (list_node != NULL);
+
+			data->fifo[fifo_idx].msg_index = 0;
+			data->fifo[fifo_idx].cur_msg_count = 0;
+		} else {
+			LOG_DBG("swmbx: fifo %d would not be enable", fifo_idx);
+		}
+	} else {
+		LOG_DBG("swmbx_flush: could not find address %d fifo", index);
+		return -EINVAL;
+	}
 
 	return 0;
 }
@@ -416,6 +455,7 @@ void turn_swmbx_slave(struct i2c_swmbx_slave_data *data, uint8_t on)
 		}
 	}
 }
+/* end external API for swmbx */
 
 /* i2c virtual slave functions */
 static int swmbx_slave_write_requested(struct i2c_slave_config *config)
