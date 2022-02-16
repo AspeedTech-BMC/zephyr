@@ -690,7 +690,7 @@ static int i2c_aspeed_configure(const struct device *dev,
 	return 0;
 }
 
-static void aspeed_new_i2c_do_start(const struct device *dev)
+static int aspeed_new_i2c_do_start(const struct device *dev)
 {
 	struct i2c_aspeed_config *config = DEV_CFG(dev);
 	struct i2c_aspeed_data *data = DEV_DATA(dev);
@@ -700,6 +700,12 @@ static void aspeed_new_i2c_do_start(const struct device *dev)
 	int xfer_len;
 	struct i2c_msg *msg = &data->msgs[data->msgs_index];
 	uint32_t cmd = AST_I2CM_PKT_EN | AST_I2CM_PKT_ADDR(data->addr) | AST_I2CM_START_CMD;
+
+	/* check the message length first */
+	if (!msg->len) {
+		LOG_DBG("i2c msg length is zero");
+		return 1;
+	}
 
 	/*send start*/
 	LOG_DBG("[%s]: [%d/%d] %sing %d byte%s %s 0x%02x\n",
@@ -832,6 +838,7 @@ static void aspeed_new_i2c_do_start(const struct device *dev)
 	LOG_DBG("len %d , cmd %x\n", xfer_len, cmd);
 	sys_write32(cmd, i2c_base + AST_I2CM_CMD_STS);
 
+	return 0;
 }
 
 static int i2c_aspeed_transfer(const struct device *dev, struct i2c_msg *msgs,
@@ -870,7 +877,10 @@ static int i2c_aspeed_transfer(const struct device *dev, struct i2c_msg *msgs,
 	data->msgs_count = num_msgs;
 	k_sem_reset(&data->sync_sem);
 
-	aspeed_new_i2c_do_start(dev);
+	/* check length empty */
+	if (aspeed_new_i2c_do_start(dev))
+		return 0;
+
 	if (i2c_wait_completion(dev)) {
 		isr = sys_read32(i2c_base + AST_I2CM_ISR);
 		sts = sys_read32(i2c_base + AST_I2CC_STS_AND_BUFF);
@@ -963,7 +973,8 @@ void do_i2cm_tx(const struct device *dev)
 		if (data->msgs_index == data->msgs_count) {
 			k_sem_give(&data->sync_sem);
 		} else {
-			aspeed_new_i2c_do_start(dev);
+			if (aspeed_new_i2c_do_start(dev))
+				return;
 		}
 	} else {
 		/*do next tx*/
@@ -1074,7 +1085,8 @@ void do_i2cm_rx(const struct device *dev)
 		if (data->msgs_index == data->msgs_count) {
 			k_sem_give(&data->sync_sem);
 		} else {
-			aspeed_new_i2c_do_start(dev);
+			if (aspeed_new_i2c_do_start(dev))
+				return;
 		}
 	} else {
 		/*next rx*/
