@@ -838,7 +838,7 @@
 			label = "FMC";
 			#address-cells = <1>;
 			#size-cells = <0>;
-			spi-ctrl-caps-mask = <0x000e0c0c>;
+			spi-ctrl-caps-mask = <0x000e0e0c>;
 			status = "disabled";
 
 			fmc_cs0: flash@0 {
@@ -876,7 +876,7 @@
 			label = "SPI1";
 			#address-cells = <1>;
 			#size-cells = <0>;
-			spi-ctrl-caps-mask = <0x000e0c0c>;
+			spi-ctrl-caps-mask = <0x000e0e0c>;
 			status = "disabled";
 
 			spi1_cs0: flash@0 {
@@ -913,7 +913,7 @@
 			label = "SPI2";
 			#address-cells = <1>;
 			#size-cells = <0>;
-			spi-ctrl-caps-mask = <0x000e0c0c>;
+			spi-ctrl-caps-mask = <0x000e0e0c>;
 			status = "disabled";
 
 			spi2_cs0: flash@0 {
