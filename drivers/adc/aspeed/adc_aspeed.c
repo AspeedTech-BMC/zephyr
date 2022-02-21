@@ -43,8 +43,15 @@ struct adc_aspeed_data {
 			      CONFIG_ADC_ASPEED_ACQUISITION_THREAD_STACK_SIZE);
 };
 
+struct aspeed_adc_trim_locate {
+	const unsigned int offset;
+	const unsigned int field;
+};
 struct adc_aspeed_cfg {
 	struct adc_register_s *base;
+	uint32_t scu_base;
+	bool trim_valid;
+	struct aspeed_adc_trim_locate trim_locate;
 	const struct device *clock_dev;
 	const reset_control_subsys_t rst_id;
 	const uint16_t ref_voltage_mv;
@@ -129,6 +136,27 @@ static int adc_aspeed_set_rate(const struct device *dev, uint32_t rate)
 	return 0;
 }
 
+static int aspeed_adc_set_trim_data(const struct adc_aspeed_cfg *config)
+{
+	uint32_t scu_otp, trimming_val;
+	struct adc_register_s *adc_register = config->base;
+	union adc_compensating_trimming_s comp_trim;
+
+	if (!config->trim_locate.field || !config->scu_base) {
+		return -EINVAL;
+	}
+	scu_otp = sys_read32(config->scu_base + config->trim_locate.offset);
+	trimming_val = (scu_otp & config->trim_locate.field) >>
+		       (find_lsb_set(config->trim_locate.field) - 1);
+
+	LOG_INF("ADC-%08x trimming_val = %x", (uint32_t)config->base, trimming_val);
+	comp_trim.value = adc_register->comp_trim.value;
+	comp_trim.fields.trimming_value = trimming_val;
+	adc_register->comp_trim.value = comp_trim.fields.trimming_value;
+
+	return 0;
+}
+
 static void aspeed_adc_calibration(const struct device *dev)
 {
 	const struct adc_aspeed_cfg *config = DEV_CFG(dev);
@@ -136,8 +164,15 @@ static void aspeed_adc_calibration(const struct device *dev)
 	struct adc_register_s *adc_register = config->base;
 	uint32_t raw_data = 0, index, backup_value;
 	union adc_engine_control_s engine_ctrl;
+	int ret;
 
 	/*TODO: trimming data setting */
+	if (config->trim_valid) {
+		ret = aspeed_adc_set_trim_data(config);
+		if (ret) {
+			LOG_WRN("Set trimming data fail = %d", ret);
+		}
+	}
 
 	/* Enable Compensating Sensing mode */
 	backup_value = adc_register->engine_ctrl.value;
@@ -440,22 +475,26 @@ static struct adc_driver_api adc_aspeed_api = {
 #endif
 };
 
-#define ASPEED_ADC_INIT(n)						       \
-	static struct adc_aspeed_data adc_aspeed_data_##n = {		       \
-		ADC_CONTEXT_INIT_TIMER(adc_aspeed_data_##n, ctx),	       \
-		ADC_CONTEXT_INIT_LOCK(adc_aspeed_data_##n, ctx),	       \
-		ADC_CONTEXT_INIT_SYNC(adc_aspeed_data_##n, ctx),	       \
-	};								       \
-	static const struct adc_aspeed_cfg adc_aspeed_cfg_##n = {	       \
-		.base = (struct adc_register_s *)DT_INST_REG_ADDR(n),	       \
-		.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(n)),	       \
-		.rst_id = (reset_control_subsys_t)DT_INST_RESETS_CELL(n,       \
-								      rst_id), \
-		.ref_voltage_mv = DT_INST_PROP_OR(n, ref_voltage_mv, 2500),    \
-	};								       \
-	DEVICE_DT_INST_DEFINE(n, adc_aspeed_init, NULL,			       \
-			      &adc_aspeed_data_##n, &adc_aspeed_cfg_##n,       \
-			      POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEVICE, \
+#define ASPEED_ADC_INIT(n)							       \
+	static struct adc_aspeed_data adc_aspeed_data_##n = {			       \
+		ADC_CONTEXT_INIT_TIMER(adc_aspeed_data_##n, ctx),		       \
+		ADC_CONTEXT_INIT_LOCK(adc_aspeed_data_##n, ctx),		       \
+		ADC_CONTEXT_INIT_SYNC(adc_aspeed_data_##n, ctx),		       \
+	};									       \
+	static const struct adc_aspeed_cfg adc_aspeed_cfg_##n = {		       \
+		.base = (struct adc_register_s *)DT_INST_REG_ADDR(n),		       \
+		.scu_base = DT_REG_ADDR_BY_IDX(DT_INST_PHANDLE(n, aspeed_scu), 0),     \
+		.trim_valid = DT_INST_PROP_OR(n, aspeed_trim_data_valid, false),       \
+		.trim_locate = { DT_INST_PROP_BY_IDX(n, aspeed_trim_data_locate, 0),   \
+				 DT_INST_PROP_BY_IDX(n, aspeed_trim_data_locate, 1) }, \
+		.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(n)),		       \
+		.rst_id = (reset_control_subsys_t)DT_INST_RESETS_CELL(n,	       \
+								      rst_id),	       \
+		.ref_voltage_mv = DT_INST_PROP_OR(n, ref_voltage_mv, 2500),	       \
+	};									       \
+	DEVICE_DT_INST_DEFINE(n, adc_aspeed_init, NULL,				       \
+			      &adc_aspeed_data_##n, &adc_aspeed_cfg_##n,	       \
+			      POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEVICE,	       \
 			      &adc_aspeed_api);
 
 DT_INST_FOREACH_STATUS_OKAY(ASPEED_ADC_INIT)

@@ -63,6 +63,8 @@
 			resets = <&sysrst ASPEED_RESET_ADC>;
 			interrupts = <46 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			#io-channel-cells = <1>;
+			aspeed,scu = <&syscon>;
+			aspeed,trim-data-locate = <0x5BC 0x3c000>;
 			label = "ADC0";
 			status = "disabled";
 		};
@@ -74,6 +76,8 @@
 			resets = <&sysrst ASPEED_RESET_ADC>;
 			interrupts = <46 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			#io-channel-cells = <1>;
+			aspeed,scu = <&syscon>;
+			aspeed,trim-data-locate = <0x5D0 0xf00>;
 			label = "ADC1";
 			status = "disabled";
 		};
