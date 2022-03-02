@@ -291,16 +291,11 @@ static inline void spi_nor_assign_se_cmd(
 	if (type < 1)
 		return;
 
-	if (data->flash_nor_parameter.write_block_size != 0 &&
-		data->flash_nor_parameter.write_block_size != size)
-		return;
-
 	data->erase_types[type - 1].cmd = opcode;
 	data->erase_types[type - 1].exp = covert_se_size_to_exp(size);
 	data->cmd_info.se_opcode = opcode;
 	data->sector_size = size;
 	data->cmd_info.se_mode = mode;
-	data->flash_nor_parameter.write_block_size = data->sector_size;
 }
 
 static int spi_nor_op_exec(const struct device *dev,
@@ -1070,7 +1065,7 @@ static int spi_nor_process_bfp(const struct device *dev,
 	memset(data->erase_types, 0, sizeof(data->erase_types));
 	for (uint8_t ti = 1; ti <= ARRAY_SIZE(data->erase_types); ++ti) {
 		if (jesd216_bfp_erase(bfp, ti, etp) == 0) {
-			LOG_DBG("Erase %u with %02x", (uint32_t)BIT(etp->exp), etp->cmd);
+			LOG_DBG("ti: %d, erase %u with %02x", ti, (uint32_t)BIT(etp->exp), etp->cmd);
 		}
 		++etp;
 	}
@@ -1132,9 +1127,10 @@ static int spi_nor_process_4bai(const struct device *dev,
 			       uint32_t *jedec_4bai)
 {
 	struct spi_nor_data *data = dev->data;
-	int rv;
+	int rv = 0;
 	uint8_t cmd;
 	uint8_t ti;
+	bool se_cmd_found = false;
 
 	LOG_DBG("4bai dw: [0x%08x, 0x%08x]", jedec_4bai[0], jedec_4bai[1]);
 
@@ -1156,13 +1152,17 @@ static int spi_nor_process_4bai(const struct device *dev,
 		if (data->erase_types[ti].exp != 0) {
 			rv = jesd216_4bai_se_support(jedec_4bai, ti + 1, &cmd);
 			if (rv < 0)
-				goto end;
+				continue;
 			data->erase_types[ti].cmd = cmd;
+			if (data->flash_nor_parameter.write_block_size ==
+				BIT(data->erase_types[ti].exp)) {
+				se_cmd_found = 1;
+			}
 		}
 	}
 
-	if (ti > JESD216_NUM_ERASE_TYPES) {
-		rv = -ENOTSUP;
+	if (!se_cmd_found) {
+		LOG_ERR("[4bai] cannot get correct sector command (can be ignored)");
 		goto end;
 	}
 
@@ -1263,19 +1263,15 @@ static int spi_nor_process_sfdp(
 	}
 
 	for (ti = 0; ti < JESD216_NUM_ERASE_TYPES; ti++) {
-		if (data->flash_nor_parameter.write_block_size == 0 &&
-				data->erase_types[ti].exp != 0) {
+		if (data->erase_types[ti].exp != 0 &&
+			BIT(data->erase_types[ti].exp) == data->flash_nor_parameter.write_block_size)
 			break;
-		}
-
-		if (data->flash_nor_parameter.write_block_size ==
-			BIT(data->erase_types[ti].exp)) {
-			break;
-		}
 	}
 
-	if (ti >= JESD216_NUM_ERASE_TYPES || data->erase_types[ti].exp == 0)
+	if (ti >= JESD216_NUM_ERASE_TYPES || data->erase_types[ti].exp == 0) {
+		LOG_ERR("cannot get correct sector size");
 		return -EINVAL;
+	}
 
 	spi_nor_assign_se_cmd(data, JESD216_MODE_111, ti + 1,
 		data->erase_types[ti].cmd, BIT(data->erase_types[ti].exp));
@@ -1568,7 +1564,7 @@ static const struct flash_driver_api spi_nor_api = {
 			.slave = DT_INST_REG_ADDR(n),	\
 		},	\
 		.flash_nor_parameter = {	\
-			.write_block_size = DT_INST_PROP_OR(n, write_block_size, 0),	\
+			.write_block_size = DT_INST_PROP_OR(n, write_block_size, 0x1000),	\
 			.erase_value = 0xff,	\
 			.flash_size = 0,	\
 		},	\
