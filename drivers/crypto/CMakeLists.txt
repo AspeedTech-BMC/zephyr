@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 zephyr_library()
+zephyr_library_sources_ifdef(CONFIG_ECDSA_SHELL	ecdsa_shell.c)
 zephyr_library_sources_ifdef(CONFIG_HASH_SHELL	hash_shell.c)
 zephyr_library_sources_ifdef(CONFIG_RSA_SHELL	rsa_shell.c)
 zephyr_library_sources_ifdef(CONFIG_CRYPTO_TINYCRYPT_SHIM	crypto_tc_shim.c)

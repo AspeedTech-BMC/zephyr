@@ -25,6 +25,14 @@ config RSA_SHELL
 	help
 	  Enable RSA Shell for testing.
 
+config ECDSA_SHELL
+	bool "Enable mbedtls ECDSA sample code"
+	default y
+	depends on MBEDTLS
+	depends on SHELL
+	help
+	  Enable mbedtls ECDSA sample code.
+
 config CRYPTO_INIT_PRIORITY
 	int "Crypto devices init priority"
 	default 90
