@@ -896,15 +896,21 @@ static int aspeed_spi_nor_transceive(const struct device *dev,
 
 #ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
 	if (op_info.data_direct == SPI_NOR_DATA_DIRECT_IN) {
-		if (op_info.data_len > SPI_DMA_TRIGGER_LEN)
+		if (op_info.data_len > SPI_DMA_TRIGGER_LEN &&
+		    (op_info.addr % 4) == 0 &&
+		    ((uint32_t)(&((uint8_t *)op_info.buf)[0]) % 4) == 0) {
 			aspeed_spi_read_dma(dev, spi_cfg, op_info);
-		else
+		} else {
 			aspeed_spi_nor_transceive_user(dev, spi_cfg, op_info);
+		}
 	} else if (op_info.data_direct == SPI_NOR_DATA_DIRECT_OUT) {
-		if (op_info.data_len > SPI_DMA_TRIGGER_LEN)
+		if (op_info.data_len > SPI_DMA_TRIGGER_LEN &&
+		    (op_info.addr % 4) == 0 &&
+		    ((uint32_t)(&((uint8_t *)op_info.buf)[0]) % 4) == 0) {
 			aspeed_spi_write_dma(dev, spi_cfg, op_info);
-		else
+		} else {
 			aspeed_spi_nor_transceive_user(dev, spi_cfg, op_info);
+		}
 	}
 #else
 	aspeed_spi_nor_transceive_user(dev, spi_cfg, op_info);
