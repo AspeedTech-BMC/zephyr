@@ -34,6 +34,9 @@ LOG_MODULE_REGISTER(spi_nor_multi_dev, CONFIG_FLASH_LOG_LEVEL);
 
 /* Build-time data associated with the device. */
 struct spi_nor_config {
+	/* Expected JEDEC ID, from jedec-id property */
+	uint8_t jedec_id[SPI_NOR_MAX_ID_LEN];
+
 	/* Size of device in bytes, from size property */
 	uint32_t flash_size;
 
@@ -1404,11 +1407,16 @@ static int spi_nor_configure(const struct device *dev)
 	/* now the spi bus is configured, we can verify SPI
 	 * connectivity by reading the JEDEC ID.
 	 */
-
-	rc = spi_nor_read_jedec_id(dev, data->jedec_id);
-	if (rc != 0) {
-		LOG_ERR("JEDEC ID read failed: %d", rc);
-		return -ENODEV;
+	if (cfg->jedec_id[0] != 0) {
+		LOG_WRN("Using pseudo flash node info %02x %02x %02x",
+			cfg->jedec_id[0], cfg->jedec_id[1], cfg->jedec_id[2]);
+		memcpy(data->jedec_id, cfg->jedec_id, SPI_NOR_MAX_ID_LEN);
+	} else {
+		rc = spi_nor_read_jedec_id(dev, data->jedec_id);
+		if (rc != 0) {
+			LOG_ERR("JEDEC ID read failed: %d", rc);
+			return -ENODEV;
+		}
 	}
 
 	/* Check for block protect bits that need to be cleared.  This
@@ -1548,6 +1556,7 @@ static const struct flash_driver_api spi_nor_api = {
 
 #define SPI_NOR_MULTI_INIT(n)	\
 	static const struct spi_nor_config spi_nor_config_##n = {	\
+		.jedec_id = DT_INST_PROP(n, jedec_id),	\
 		.flash_size = DT_INST_PROP_OR(n, size, 0) / 8,	\
 		.broken_sfdp = DT_PROP(DT_INST(n, DT_DRV_COMPAT), broken_sfdp),	\
 		.spi_max_buswidth = DT_INST_PROP_OR(n, spi_max_buswidth, 1),	\

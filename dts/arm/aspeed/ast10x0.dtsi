@@ -850,6 +850,7 @@
 				reg = <0>;
 				spi-max-buswidth = <1>;
 				spi-max-frequency = <25000000>;
+				jedec-id = [];
 				broken-sfdp;
 				size = <DT_SIZE_M(8)>;
 				label = "fmc_cs0";
@@ -862,6 +863,7 @@
 				reg = <1>;
 				spi-max-buswidth = <1>;
 				spi-max-frequency = <25000000>;
+				jedec-id = [];
 				label = "fmc_cs1";
 				status = "disabled";
 			};
@@ -888,6 +890,7 @@
 				reg = <0>;
 				spi-max-buswidth = <1>;
 				spi-max-frequency = <25000000>;
+				jedec-id = [];
 				label = "spi1_cs0";
 				status = "disabled";
 			};
@@ -897,6 +900,7 @@
 				reg = <1>;
 				spi-max-buswidth = <1>;
 				spi-max-frequency = <25000000>;
+				jedec-id = [];
 				label = "spi1_cs1";
 				status = "disabled";
 			};
@@ -925,6 +929,7 @@
 				reg = <0>;
 				spi-max-buswidth = <1>;
 				spi-max-frequency = <25000000>;
+				jedec-id = [];
 				label = "spi2_cs0";
 				status = "disabled";
 			};
@@ -934,7 +939,30 @@
 				reg = <1>;
 				spi-max-buswidth = <1>;
 				spi-max-frequency = <25000000>;
+				jedec-id = [];
 				label = "spi2_cs1";
+				status = "disabled";
+			};
+
+			/* pseudo node */
+			spi2_cs2: flash@2 {
+				compatible = "jedec,spi-nor";
+				reg = <2>;
+				spi-max-buswidth = <4>;
+				spi-max-frequency = <50000000>;
+				jedec-id = [];
+				label = "spi2_cs2";
+				status = "disabled";
+			};
+
+			/* pseudo node */
+			spi2_cs3: flash@3 {
+				compatible = "jedec,spi-nor";
+				reg = <3>;
+				spi-max-buswidth = <4>;
+				spi-max-frequency = <50000000>;
+				jedec-id = [];
+				label = "spi2_cs3";
 				status = "disabled";
 			};
 		};

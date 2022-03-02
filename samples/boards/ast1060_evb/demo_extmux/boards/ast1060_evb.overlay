@@ -243,14 +243,12 @@
 &spi2_cs0 {
 	spi-max-buswidth = <4>;
 	spi-max-frequency = <50000000>;
-	reg = <0>;
 	status = "okay";
 };
 
 &spi2_cs1 {
 	spi-max-buswidth = <4>;
 	spi-max-frequency = <50000000>;
-	reg = <1>;
 	status = "okay";
 };
 
@@ -262,15 +260,12 @@
 
 	num-cs = <3>;
 	status = "okay";
+};
 
-	spi2_cs2: flash@2 {
-		compatible = "jedec,spi-nor";
-		reg = <2>;
-		spi-max-buswidth = <4>;
-		spi-max-frequency = <50000000>;
-		label = "spi2_cs2";
-		status = "okay";
-	};
+&spi2_cs2 {
+	spi-max-buswidth = <4>;
+	spi-max-frequency = <50000000>;
+	status = "okay";
 };
 
 &spim0 {
