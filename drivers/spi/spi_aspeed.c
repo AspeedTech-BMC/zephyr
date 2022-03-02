@@ -794,7 +794,7 @@ void aspeed_spi_timing_calibration(const struct device *dev)
 	memcpy(check_buf, (uint8_t *)data->decode_addr[cs].start, SPI_CALIB_LEN);
 
 	if (!aspeed_spi_calibriation_enable(check_buf, SPI_CALIB_LEN)) {
-		LOG_INF("Flash data is monotonous, skip calibration.");
+		LOG_DBG("Flash data is monotonous, skip calibration.");
 		goto no_calib;
 	}
 
