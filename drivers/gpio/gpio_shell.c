@@ -149,7 +149,7 @@ static void event_print(const struct device *dev, struct gpio_callback *gpio_cb,
 
 	LOG_INF("%s: %s pin %d", __func__, dev->name, gpio_pin);
 	gpio_pin_interrupt_configure(dev, gpio_pin, GPIO_INT_DISABLE);
-	gpio_remove_callback(dev, &gpio_cb[gpio_pin]);
+	gpio_remove_callback(dev, gpio_cb);
 }
 
 static int cmd_gpio_listen(const struct shell *shell,
