@@ -5,7 +5,7 @@ description: ASPEED GPIO node
 
 compatible: "aspeed,gpio"
 
-include: base.yaml
+include: [base.yaml, aspeed-pinctrl.yaml]
 
 properties:
   aspeed,deb-interval-us:
