@@ -270,7 +270,11 @@ int swmbx_enable_behavior(const struct device *dev, uint32_t item_flag, uint8_t 
 
 	struct i2c_swmbx_slave_data *data = dev->data;
 
-	data->mbx_en = item_flag;
+	if (enable) {
+		data->mbx_en |= item_flag;
+	} else {
+		data->mbx_en &= ~(item_flag);
+	}
 
 	return 0;
 }
