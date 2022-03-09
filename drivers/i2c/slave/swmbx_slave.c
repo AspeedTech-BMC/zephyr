@@ -80,7 +80,7 @@ struct i2c_swmbx_slave_config {
 #define DEV_DATA(dev)	\
 	((struct i2c_swmbx_slave_data *const)(dev)->data)
 
-/* internal api for pfr sw mbx control */
+/* internal api for pfr swmbx control */
 int check_swmbx_fifo(struct i2c_swmbx_slave_data *data, uint8_t addr, uint8_t *index)
 {
 	for (uint8_t i = 0; i < SWMBX_FIFO_COUNT; i++) {
@@ -186,7 +186,7 @@ int peak_fifo_read(struct i2c_swmbx_slave_data *data, uint8_t fifo_idx, uint8_t 
 /* internal api define end */
 
 /* external API for swmbx access */
-int swmbx_write(const struct device *dev, uint8_t fifo, uint8_t index, uint8_t *val)
+int swmbx_write(const struct device *dev, uint8_t fifo, uint8_t addr, uint8_t *val)
 {
 	if (dev == NULL)
 		return -EINVAL;
@@ -196,13 +196,13 @@ int swmbx_write(const struct device *dev, uint8_t fifo, uint8_t index, uint8_t *
 	bool mbx_fifo_execute = false;
 	uint8_t fifo_idx = 0;
 
-	/* enter critical section sw mbx access */
+	/* enter critical section swmbx access */
 	if (!k_is_in_isr())
 		key = irq_lock();
 
 	if (fifo) {
 		/*check fifo enable and find out fifo index*/
-		mbx_fifo_execute = check_swmbx_fifo(data, index, &fifo_idx);
+		mbx_fifo_execute = check_swmbx_fifo(data, addr, &fifo_idx);
 		if (mbx_fifo_execute) {
 			/* append value into fifo */
 			if (append_fifo_write(data, fifo_idx, *val)) {
@@ -210,11 +210,11 @@ int swmbx_write(const struct device *dev, uint8_t fifo, uint8_t index, uint8_t *
 				return 1;
 			}
 		} else {
-			LOG_DBG("swmbx_write: could not find address %d fifo", index);
+			LOG_DBG("swmbx_write: could not find address %d fifo", addr);
 			return 1;
 		}
 	} else {
-		data->buffer[index] = *val;
+		data->buffer[addr] = *val;
 	}
 
 	/* exit critical section */
@@ -224,7 +224,7 @@ int swmbx_write(const struct device *dev, uint8_t fifo, uint8_t index, uint8_t *
 	return 0;
 }
 
-int swmbx_read(const struct device *dev, uint8_t fifo, uint8_t index, uint8_t *val)
+int swmbx_read(const struct device *dev, uint8_t fifo, uint8_t addr, uint8_t *val)
 {
 	if (dev == NULL)
 		return -EINVAL;
@@ -234,13 +234,13 @@ int swmbx_read(const struct device *dev, uint8_t fifo, uint8_t index, uint8_t *v
 	bool mbx_fifo_execute = false;
 	uint8_t fifo_idx = 0;
 
-	/* enter critical section sw mbx access */
+	/* enter critical section swmbx access */
 	if (!k_is_in_isr())
 		key = irq_lock();
 
 	if (fifo) {
 		/*check fifo enable and find out fifo index*/
-		mbx_fifo_execute = check_swmbx_fifo(data, index, &fifo_idx);
+		mbx_fifo_execute = check_swmbx_fifo(data, addr, &fifo_idx);
 		if (mbx_fifo_execute) {
 			/* peak value from fifo */
 			if (peak_fifo_read(data, fifo_idx, val)) {
@@ -248,11 +248,11 @@ int swmbx_read(const struct device *dev, uint8_t fifo, uint8_t index, uint8_t *v
 				return 1;
 			}
 		} else {
-			LOG_DBG("swmbx_read: could not find fifo %d group", index);
+			LOG_DBG("swmbx_read: could not find fifo %d group", addr);
 			return 1;
 		}
 	} else {
-		*val = data->buffer[index];
+		*val = data->buffer[addr];
 	}
 
 	/* exit critical section */

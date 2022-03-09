@@ -44,33 +44,33 @@
  *
  * @param dev Pointer to the device structure for the driver instance
  * @param fifo append value into fifo
- * @param index Index of swmbx
+ * @param addr Address of swmbx
  * @param val value of swmbx
  *
  * @retval 0 If successful
  * @retval -EINVAL Invalid data pointer
  */
-int swmbx_write(const struct device *dev, uint8_t fifo, uint8_t index, uint8_t *val);
+int swmbx_write(const struct device *dev, uint8_t fifo, uint8_t addr, uint8_t *val);
 
 /**
  * @brief read sw mailbox value
  *
  * @param dev Pointer to the device structure for the driver instance
  * @param fifo peak value from fifo
- * @param index Index of swmbx
+ * @param addr Address of swmbx
  * @param val value of swmbx
  *
  * @retval 0 If successful
  * @retval -EINVAL Invalid data pointer
  */
-int swmbx_read(const struct device *dev, uint8_t fifo, uint8_t index, uint8_t *val);
+int swmbx_read(const struct device *dev, uint8_t fifo, uint8_t addr, uint8_t *val);
 
 /**
  * @brief Enable / Disable sw mailbox enhance behavior
  *
  * @param dev Pointer to the device structure for the driver instance
- * @param item_flag Enhance behavior of the sw mbx device
- * @param enable Enable /Disable of the enhance behavior in sw mbx device
+ * @param item_flag Enhance behavior of the swmbx device
+ * @param enable Enable /Disable of the enhance behavior in swmbx device
  *
  * @retval 0 If successful
  * @retval -EINVAL Invalid data pointer
@@ -81,9 +81,9 @@ int swmbx_enable_behavior(const struct device *dev, uint32_t item_flag, uint8_t 
  * @brief Apply sw mailbox write protect by bit map
  *
  * @param dev Pointer to the device structure for the driver instance
- * @param *bitmap Bitmap of the write protect in sw mbx device
- * @param start_idx Start index of the write protect bitmap in sw mbx device
- * @param num Number of bitmap index to the write protect in sw mbx device
+ * @param *bitmap Bitmap of the write protect in swmbx device
+ * @param start_idx Start index of the write protect bitmap in swmbx device
+ * @param num Number of bitmap index to the write protect in swmbx device
  *
  * @retval 0 If successful
  * @retval -EINVAL Invalid data pointer or setting
@@ -94,8 +94,8 @@ int swmbx_apply_protect(const struct device *dev, uint32_t *bitmap, uint8_t star
  * @brief Update sw mailbox write protect by address index
  *
  * @param dev Pointer to the device structure for the driver instance
- * @param addr Address to the write protect in sw mbx device
- * @param enable Enable to the write protect in sw mbx device
+ * @param addr Address to the write protect in swmbx device
+ * @param enable Enable to the write protect in swmbx device
  *
  * @retval 0 If successful
  * @retval -EINVAL Invalid data pointer or offset
@@ -106,10 +106,10 @@ int swmbx_update_protect(const struct device *dev, uint8_t addr, uint8_t enable)
  * @brief Set sw mailbox notify address
  *
  * @param dev Pointer to the device structure for the driver instance
- * @param sem Pointer to the semaphore that is initiailed and sent when notify is trigger
+ * @param sem Pointer to the semaphore that is initialed and sent when notify is trigger
  * @param idx Index to the notify internal index position (0x0~0x7)
  * @param addr Address to the write notify in mbx device
- * @param enable Enable to the notify in sw mbx device
+ * @param enable Enable / Disable to the notify in swmbx device
  *
  * @retval 0 If successful
  * @retval -EINVAL Invalid data pointer or offset
@@ -132,12 +132,12 @@ int swmbx_flush_fifo(const struct device *dev, uint8_t idx);
  * @brief Update sw mailbox fifo
  *
  * @param dev Pointer to the device structure for the driver instance
- * @param sem Pointer to the semaphore that is initiailed and sent when notify is trigger
+ * @param sem Pointer to the semaphore that is initialed and sent when fifo boundary is trigger
  * @param idx Index to the fifo internal index position (0x0~0x7)
- * @param addr Address to the fifo in mbx device
- * @param depth fifo depth to the fifo in mbx device
+ * @param addr Address to the fifo in swmbx device
+ * @param depth fifo depth to the fifo in swmbx device
  * @param notify fifo notify behavior flag
- * @param enable Enable to the fifo in sw mbx device
+ * @param enable Enable / Disable to the fifo in swmbx device
  *
  * @retval 0 If successful
  * @retval -EINVAL Invalid data pointer or offset

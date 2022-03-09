@@ -1275,7 +1275,7 @@ static int cmd_i2c_sw_mbx_r(const struct shell *shell,
 	const struct device *slave_dev = NULL;
 	int ret = 0;
 	uint8_t fifo;
-	uint8_t index;
+	uint8_t addr;
 	uint8_t val;
 
 	slave_dev = device_get_binding(argv[1]);
@@ -1287,9 +1287,9 @@ static int cmd_i2c_sw_mbx_r(const struct shell *shell,
 
 	if (slave_dev != NULL) {
 		fifo = strtol(argv[2], NULL, 16);
-		index = strtol(argv[3], NULL, 16);
+		addr = strtol(argv[3], NULL, 16);
 
-		ret =  swmbx_read(slave_dev, fifo, index, &val);
+		ret =  swmbx_read(slave_dev, fifo, addr, &val);
 		if (!ret) {
 			shell_hexdump(shell, &val, 1);
 		}
@@ -1304,7 +1304,7 @@ static int cmd_i2c_sw_mbx_w(const struct shell *shell,
 	const struct device *slave_dev = NULL;
 	int ret = 0;
 	uint8_t fifo;
-	uint8_t index;
+	uint8_t addr;
 	uint8_t val;
 
 	slave_dev = device_get_binding(argv[1]);
@@ -1316,10 +1316,10 @@ static int cmd_i2c_sw_mbx_w(const struct shell *shell,
 
 	if (slave_dev != NULL) {
 		fifo = strtol(argv[2], NULL, 16);
-		index = strtol(argv[3], NULL, 16);
+		addr = strtol(argv[3], NULL, 16);
 		val = strtol(argv[4], NULL, 16);
 
-		ret = swmbx_write(slave_dev, fifo, index, &val);
+		ret = swmbx_write(slave_dev, fifo, addr, &val);
 	}
 
 	return 0;
@@ -1449,7 +1449,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_i2c_cmds,
 					  "Write sw mbx slave",
 					   cmd_i2c_sw_mbx_w, 0, 0),
 				SHELL_CMD_ARG(slave_swmbx_flush, &dsub_device_name,
-					  "Write sw mbx slave",
+					  "Flush sw mbx slave",
 					   cmd_i2c_sw_mbx_flush, 0, 0),
 #endif
 #endif
