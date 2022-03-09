@@ -128,4 +128,8 @@
 	pinctrl_spim4_rst_out: spim4_rst_out{};
 	pinctrl_spim4_muxsel: spim4_muxsel{};
 	pinctrl_smbflt_default: smbflt_default{};
+	pinctrl_passthrough0_default: passthrough0_default{};
+	pinctrl_passthrough1_default: passthrough1_default{};
+	pinctrl_passthrough2_default: passthrough2_default{};
+	pinctrl_passthrough3_default: passthrough3_default{};
 };

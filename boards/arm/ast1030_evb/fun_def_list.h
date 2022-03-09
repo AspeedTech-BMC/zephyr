@@ -5,6 +5,11 @@
  */
 #include <devicetree.h>
 
+FUN_DEFINE(DT_NODELABEL(pinctrl_passthrough0_default), THRUIN0, THRUOUT0)
+FUN_DEFINE(DT_NODELABEL(pinctrl_passthrough1_default), THRUIN1, THRUOUT1)
+FUN_DEFINE(DT_NODELABEL(pinctrl_passthrough2_default), THRUIN2, THRUOUT2)
+FUN_DEFINE(DT_NODELABEL(pinctrl_passthrough3_default), THRUIN3, THRUOUT3)
+
 #ifdef CONFIG_ARM_ICE
 FUN_DEFINE(DT_NODELABEL(pinctrl_arm_ice_default), ARM_TRST, ARM_TCK, ARM_TDI, ARM_TDO, ARM_TMS)
 #endif
