@@ -1530,8 +1530,10 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 		break;
 
 	case AST_I2CS_TX_NAK | AST_I2CS_STOP:
+		LOG_DBG("S: AST_I2CS_TX_NAK\n");
+	case AST_I2CS_STOP:
 		/*it just tx complete*/
-		LOG_DBG("S: AST_I2CS_TX_NAK | AST_I2CS_STOP\n");
+		LOG_DBG("S: AST_I2CS_STOP\n");
 		cmd = SLAVE_TRIGGER_CMD;
 		if (slave_cb->stop) {
 			slave_cb->stop(data->slave_cfg);
