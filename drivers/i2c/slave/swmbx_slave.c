@@ -183,6 +183,36 @@ int peak_fifo_read(struct i2c_swmbx_slave_data *data, uint8_t fifo_idx, uint8_t 
 
 	return 0;
 }
+
+#ifdef SWMBX_LOCK_PROTECT
+/* turn on / off other swmbx support */
+void turn_swmbx_slave(struct i2c_swmbx_slave_data *data, uint8_t on)
+{
+	uint8_t i = 0, address = 0;
+	uint32_t i2c_base = SWMBX_INFO_BASE & 0xFFFF0000;
+	uint32_t *swmbx_g_info = (uint32_t *)(SWMBX_INFO_BASE);
+
+	for (i = 0; i < SWMBX_DEVICE_COUNT; i++) {
+		/* affect the other device */
+		if (*(swmbx_g_info + i) & SWMBX_REGISTER) {
+			i2c_base += (i + 1) * 0x80;
+
+			if (on)
+				address = *(swmbx_g_info + i) & 0xFF;
+			else
+				address = 0;
+
+			if (i2c_base != data->bus_base) {
+				/*Set slave addr.*/
+				sys_write32(address |
+				(sys_read32(i2c_base + AST_I2CS_ADDR_CTRL)
+				& ~AST_I2CS_ADDR1_MASK), i2c_base + AST_I2CS_ADDR_CTRL);
+			}
+		}
+	}
+}
+#endif
+
 /* internal api define end */
 
 /* external API for swmbx access */
@@ -436,33 +466,6 @@ uint8_t idx, uint8_t addr, uint8_t depth, uint8_t notify, uint8_t enable)
 
 	return 0;
 }
-
-/* turn on / off other swmbx support */
-void turn_swmbx_slave(struct i2c_swmbx_slave_data *data, uint8_t on)
-{
-	uint8_t i = 0, address = 0;
-	uint32_t i2c_base = SWMBX_INFO_BASE & 0xFFFF0000;
-	uint32_t *swmbx_g_info = (uint32_t *)(SWMBX_INFO_BASE);
-
-	for (i = 0; i < SWMBX_DEVICE_COUNT; i++) {
-		/* affect the other device */
-		if (*(swmbx_g_info + i) & SWMBX_REGISTER) {
-			i2c_base += (i + 1) * 0x80;
-
-			if (on)
-				address = *(swmbx_g_info + i) & 0xFF;
-			else
-				address = 0;
-
-			if (i2c_base != data->bus_base) {
-				/*Set slave addr.*/
-				sys_write32(address |
-				(sys_read32(i2c_base + AST_I2CS_ADDR_CTRL)
-				& ~AST_I2CS_ADDR1_MASK), i2c_base + AST_I2CS_ADDR_CTRL);
-			}
-		}
-	}
-}
 /* end external API for swmbx */
 
 /* i2c virtual slave functions */
@@ -474,9 +477,10 @@ static int swmbx_slave_write_requested(struct i2c_slave_config *config)
 
 	LOG_DBG("swmbx: write req");
 
+#ifdef SWMBX_LOCK_PROTECT
 	/* turn off other swmbx */
 	turn_swmbx_slave(data, 0x0);
-
+#endif
 	data->first_write = true;
 
 	return 0;
@@ -590,8 +594,10 @@ static int swmbx_slave_read_requested(struct i2c_slave_config *config,
 						struct i2c_swmbx_slave_data,
 						config);
 
+#ifdef SWMBX_LOCK_PROTECT
 	/* turn off other swmbx */
 	turn_swmbx_slave(data, 0x0);
+#endif
 
 	/* check the FIFO is executed or not */
 	if ((data->mbx_fifo_execute) && (data->mbx_en & SWMBX_FIFO)) {
@@ -630,8 +636,10 @@ static int swmbx_slave_stop(struct i2c_slave_config *config)
 		data->mbx_fifo_execute = false;
 	}
 
+#ifdef SWMBX_LOCK_PROTECT
 	/* turn on other swmbx */
 	turn_swmbx_slave(data, 0x1);
+#endif
 
 	data->first_write = true;
 
@@ -644,7 +652,9 @@ static int swmbx_slave_register(const struct device *dev)
 	struct i2c_swmbx_slave_data *data = dev->data;
 	uint8_t i;
 
+#ifdef SWMBX_LOCK_PROTECT
 	*(data->mbx_info) |= SWMBX_REGISTER;
+#endif
 
 	/* initial data structure value */
 	for (i = 0; i < SWMBX_PROTECT_COUNT; i++) {
@@ -664,7 +674,9 @@ static int swmbx_slave_unregister(const struct device *dev)
 	struct i2c_swmbx_slave_data *data = dev->data;
 	uint8_t i;
 
+#ifdef SWMBX_LOCK_PROTECT
 	*(data->mbx_info) &= ~(SWMBX_REGISTER);
+#endif
 
 	/* release fifo memory */
 	for (i = 0; i < SWMBX_FIFO_COUNT; i++) {
