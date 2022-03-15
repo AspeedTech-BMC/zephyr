@@ -1,6 +1,6 @@
 {
     "name": "evb",
-    "version": "1030A0",
+    "version": "1060A1",
     "data_region": {
         "ecc_region": true,
         "key": [
@@ -14,6 +14,11 @@
                 "key_bin": "test_aes_vault_key.bin",
                 "key_bin2": "test_aes_vault_key_1.bin",
                 "offset": "0x40"
+            },
+            {
+                "types": "rsa_pub_aes",
+                "key_pem": "test_soc_public_key_4096.pem",
+                "offset": "0x80"
             },
             {
                 "types": "rsa_pub_oem",
@@ -48,19 +53,7 @@
         ]
     },
     "config_region": {
-        // "Mode_GCM"
-        // "Mode_2"
-        "Secure Boot Mode": "Mode_2",
-        // "RSA1024"
-        // "RSA2048"
-        // "RSA3072"
-        // "RSA4096"
-        "Secure crypto RSA length": "RSA4096",
-        // "SHA224"
-        // "SHA256"
-        // "SHA384"
-        // "SHA512"
-        "Hash mode": "SHA512",
-        "Enable image encryption": false
+        "Signature Scheme": "RSAPKCS1_4096_SHA512",
+        "Enable image encryption": true
     }
 }

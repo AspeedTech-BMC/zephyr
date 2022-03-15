@@ -1,6 +1,6 @@
 {
     "name": "evb",
-    "version": "1030A0",
+    "version": "1060A1",
     "data_region": {
         "ecc_region": true,
         "key": [
@@ -53,19 +53,7 @@
         ]
     },
     "config_region": {
-        // "Mode_GCM"
-        // "Mode_2"
-        "Secure Boot Mode": "Mode_2",
-        // "RSA1024"
-        // "RSA2048"
-        // "RSA3072"
-        // "RSA4096"
-        "Secure crypto RSA length": "RSA4096",
-        // "SHA224"
-        // "SHA256"
-        // "SHA384"
-        // "SHA512"
-        "Hash mode": "SHA512",
+        "Signature Scheme": "RSAPKCS1_4096_SHA512",
         "Enable image encryption": true
     }
 }

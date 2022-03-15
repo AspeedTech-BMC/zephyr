@@ -12,7 +12,7 @@
 #include "otp_info_10xx.h"
 #include "sha256.h"
 
-#define OTP_VER					"1.2.0"
+#define OTP_VER					"1.2.1"
 
 #define OTP_PASSWD				0x349fe38a
 #define RETRY					20
@@ -65,12 +65,16 @@
 #define ID1_AST1030A0	0x80000000
 #define ID0_AST1030A1	0x80010000
 #define ID1_AST1030A1	0x80010000
+#define ID0_AST1060A1	0xA0010000
+#define ID1_AST1060A1	0xA0010000
 
 #define OTP_AST1030A0	1
 #define OTP_AST1030A1	2
+#define OTP_AST1060A1	3
 
-#define SOC_AST1030A0	1
-#define SOC_AST1030A1	2
+#define SOC_AST1030A0	4
+#define SOC_AST1030A1	5
+#define SOC_AST1060A1	6
 
 #define OTPTOOL_VERSION(a, b, c) (((a) << 24) + ((b) << 12) + (c))
 
@@ -291,6 +295,9 @@ static uint32_t chip_version(void)
 	} else if (revid0 == ID0_AST1030A1 && revid1 == ID1_AST1030A1) {
 		/* AST1030-A1 */
 		return OTP_AST1030A1;
+	} else if (revid0 == ID0_AST1060A1 && revid1 == ID1_AST1060A1) {
+		/* AST1060-A1 */
+		return OTP_AST1060A1;
 	}
 	return OTP_FAILURE;
 }
@@ -1797,6 +1804,8 @@ static int otp_prog_image(const struct shell *shell, int addr, int nconfirm)
 		image_soc_ver = OTP_AST1030A0;
 	} else if (otp_header->soc_ver == SOC_AST1030A1) {
 		image_soc_ver = OTP_AST1030A1;
+	} else if (otp_header->soc_ver == SOC_AST1060A1) {
+		image_soc_ver = OTP_AST1060A1;
 	} else {
 		shell_printf(shell, "Image SOC Version is not supported\n");
 		return OTP_FAILURE;
@@ -2765,6 +2774,16 @@ static int ast_otp_init(const struct shell *shell)
 		info_cb.key_info = ast10xxa1_key_type;
 		info_cb.key_info_len = ARRAY_SIZE(ast10xxa1_key_type);
 		sprintf(info_cb.ver_name, "AST1030A1");
+		break;
+	case OTP_AST1060A1:
+		info_cb.version = OTP_AST1060A1;
+		info_cb.conf_info = ast1030a1_conf_info;
+		info_cb.conf_info_len = ARRAY_SIZE(ast1030a1_conf_info);
+		info_cb.strap_info = ast1030a0_strap_info;
+		info_cb.strap_info_len = ARRAY_SIZE(ast1030a0_strap_info);
+		info_cb.key_info = ast10xxa1_key_type;
+		info_cb.key_info_len = ARRAY_SIZE(ast10xxa1_key_type);
+		sprintf(info_cb.ver_name, "AST1060A1");
 		break;
 	default:
 		shell_printf(shell, "SOC is not supported\n");
