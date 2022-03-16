@@ -1,9 +1,8 @@
 /*
- * Copyright (c) 2017 BayLibre, SAS
+ * Copyright (c) 2022 Aspeed Technology Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
- */
-
+*/
 #define DT_DRV_COMPAT aspeed_swmbx-dev
 
 #include <sys/util.h>

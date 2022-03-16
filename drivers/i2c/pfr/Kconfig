@@ -20,6 +20,7 @@ config I2C_PFR_INIT_PRIORITY
 	  I2C PFR driver initialization priority.
 
 	source "drivers/i2c/pfr/Kconfig.filter"
+	source "drivers/i2c/pfr/Kconfig.swmbx"
 	source "drivers/i2c/pfr/Kconfig.mailbox"
 	source "drivers/i2c/pfr/Kconfig.snoop"
 
