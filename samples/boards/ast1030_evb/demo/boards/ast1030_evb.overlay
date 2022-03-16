@@ -202,9 +202,8 @@
 	};
 
 	swmbx0: swmbx0@60 {
-		compatible = "aspeed,swmbx";
+		compatible = "aspeed,swmbx-dev";
 		reg = <0x60>;
-		base = <0x7e7b0e00>;
 		label = "SWMBX_SLAVE_0";
 		size = <256>;
 		status = "okay";
@@ -239,9 +238,8 @@
 	};
 
 	swmbx1: swmbx0@61 {
-		compatible = "aspeed,swmbx";
+		compatible = "aspeed,swmbx-dev";
 		reg = <0x61>;
-		base = <0x7e7b0e00>;
 		label = "SWMBX_SLAVE_1";
 		size = <256>;
 		status = "okay";
