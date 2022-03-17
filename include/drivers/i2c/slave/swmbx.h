@@ -4,22 +4,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef ZEPHYR_INCLUDE_DRIVERS_I2C_SLAVE_SWMBX_H_
-#define ZEPHYR_INCLUDE_DRIVERS_I2C_SLAVE_SWMBX_H_
+#ifndef ZEPHYR_INCLUDE_DRIVERS_SLAVE_SWMBX_H_
+#define ZEPHYR_INCLUDE_DRIVERS_SLAVE_SWMBX_H_
 
 /* swmbx define */
-#define SWMBX_DEVICE_COUNT	0x10
-#define SWMBX_INFO_BASE		0x7e7b0f00
+#define SWMBX_DEVICE_COUNT	0x2
+#define SWMBX_BUF_BASE		0x7e7b0e00
 #define SWMBX_PROTECT_COUNT	0x100
-#define SWMBX_NOTIFY_COUNT	0x8
-#define SWMBX_FIFO_COUNT	0x8
-
-/* i2c controller define */
-#define AST_I2CS_ADDR_CTRL	0x40
-#define AST_I2CS_ADDR1_MASK	0x7f
-
-/* swmbx flags define */
-#define SWMBX_REGISTER		BIT(31)
+#define SWMBX_NOTIFY_COUNT	0x100
+#define SWMBX_FIFO_COUNT	0x4
 
 /* enhance behavior flags define */
 #define SWMBX_PROTECT		BIT(0)

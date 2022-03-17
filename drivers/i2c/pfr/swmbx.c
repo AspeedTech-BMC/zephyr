@@ -18,19 +18,45 @@
 #include <logging/log.h>
 LOG_MODULE_REGISTER(swmbx_ctrl);
 
+struct swmbx_fifo {
+	sys_snode_t list;
+	uint8_t value;
+};
+
+struct swmbx_notify {
+	struct k_sem *sem_notify[SWMBX_DEVICE_COUNT];
+	uint8_t enable;
+};
+
+struct swmbx_fifo_data {
+	struct k_sem *sem_fifo;
+	struct swmbx_fifo *buffer;
+	struct swmbx_fifo *current;
+	sys_slist_t list_head;
+	uint8_t fifo_offset;
+	uint8_t enable;
+	uint8_t notify_flag;
+	uint8_t notify_start;
+	uint8_t fifo_write;
+	uint32_t msg_index;
+	uint32_t max_msg_count;
+
+	uint32_t volatile cur_msg_count;
+};
+
 struct swmbx_ctrl_data {
 	const struct device *swmbx_controller;
 	uint32_t buffer_size;
 	uint8_t *buffer;
 	uint8_t mbx_en;
-	uint32_t buffer_idx;
 	uint8_t mbx_protect[SWMBX_PROTECT_COUNT];
+	struct swmbx_notify notify[SWMBX_NOTIFY_COUNT];
+	struct swmbx_fifo_data fifo[SWMBX_FIFO_COUNT];
 };
 
 struct swmbx_ctrl_config {
 	char *controller_dev_name;
 	uint32_t buffer_size;
-	uintptr_t buffer;
 };
 
 /* convenience defines */
@@ -61,6 +87,7 @@ static int swmbx_ctrl_init(const struct device *dev)
 {
 	struct swmbx_ctrl_data *data = DEV_DATA(dev);
 	const struct swmbx_ctrl_config *cfg = DEV_CFG(dev);
+	uint32_t i;
 
 	data->swmbx_controller =
 		device_get_binding(cfg->controller_dev_name);
@@ -70,8 +97,21 @@ static int swmbx_ctrl_init(const struct device *dev)
 		return -EINVAL;
 	}
 
-	data->buffer = (uint8_t *)(cfg->buffer);
+	data->buffer = (uint8_t *)(SWMBX_BUF_BASE);
 	data->buffer_size = cfg->buffer_size;
+
+	for (i = 0; i < SWMBX_PROTECT_COUNT; i++) {
+		data->mbx_protect[i] = 0;
+		data->notify[i].enable = 0;
+		data->notify[i].sem_notify[0] = NULL;
+		data->notify[i].sem_notify[1] = NULL;
+	}
+
+	for (i = 0; i < SWMBX_FIFO_COUNT; i++) {
+		data->fifo[i].enable = 0;
+		data->fifo[i].buffer = NULL;
+		data->fifo[i].sem_fifo = NULL;
+	}
 
 	return 0;
 }
@@ -83,7 +123,6 @@ static int swmbx_ctrl_init(const struct device *dev)
 	static const struct swmbx_ctrl_config			\
 		swmbx_ctrl_##inst##_cfg = {			\
 		.controller_dev_name = DT_INST_BUS_LABEL(inst),		\
-		.buffer = DT_INST_PROP(inst, base),			\
 		.buffer_size = DT_INST_PROP(inst, size),		\
 	};								\
 									\
