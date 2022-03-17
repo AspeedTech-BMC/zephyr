@@ -10,7 +10,7 @@
 /* swmbx define */
 #define SWMBX_DEVICE_COUNT	0x10
 #define SWMBX_INFO_BASE		0x7e7b0f00
-#define SWMBX_PROTECT_COUNT	0x8
+#define SWMBX_PROTECT_COUNT	0x100
 #define SWMBX_NOTIFY_COUNT	0x8
 #define SWMBX_FIFO_COUNT	0x8
 
