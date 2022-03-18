@@ -13,7 +13,7 @@
 #define ZEPHYR_INCLUDE_DRIVERS_PECI_H_
 
 /**
- * @brief PECI Interface 3.0
+ * @brief PECI Interface 4.0
  * @defgroup peci_interface PECI Interface
  * @ingroup io_interfaces
  * @{
@@ -49,6 +49,10 @@ enum peci_command_code {
 	PECI_CMD_RD_PCI_CFG1         = 0x62,
 	PECI_CMD_WR_PCI_CFG0         = 0x65,
 	PECI_CMD_WR_PCI_CFG1         = 0x66,
+	PECI_CMD_CRASHDUMP0          = 0x71,
+	PECI_CMD_CRASHDUMP1          = 0x72,
+	PECI_CMD_TELEMETRY0          = 0x81,
+	PECI_CMD_TELEMETRY1          = 0x82,
 	PECI_CMD_RD_PKG_CFG0         = 0xA1,
 	PECI_CMD_RD_PKG_CFG1         = 0xA,
 	PECI_CMD_WR_PKG_CFG0         = 0xA5,
@@ -57,6 +61,12 @@ enum peci_command_code {
 	PECI_CMD_RD_IAMSR1           = 0xB2,
 	PECI_CMD_WR_IAMSR0           = 0xB5,
 	PECI_CMD_WR_IAMSR1           = 0xB6,
+	PECI_CMD_RD_END_PT_CFG0      = 0xC1,
+	PECI_CMD_RD_END_PT_CFG1      = 0xC2,
+	PECI_CMD_WR_END_PT_CFG0      = 0xC5,
+	PECI_CMD_WR_END_PT_CFG1      = 0xC6,
+	PECI_CMD_RD_IAMSREX0         = 0xD1,
+	PECI_CMD_RD_IAMSREX1         = 0xD2,
 	PECI_CMD_RD_PCI_CFG_LOCAL0   = 0xE1,
 	PECI_CMD_RD_PCI_CFG_LOCAL1   = 0xE2,
 	PECI_CMD_WR_PCI_CFG_LOCAL0   = 0xE5,
@@ -155,6 +165,35 @@ enum peci_command_code {
 #define PECI_WR_PCICFGL_WR_LEN_WORD     (8U)
 #define PECI_WR_PCICFGL_WR_LEN_DWORD    (10U)
 #define PECI_WR_PCICFGL_CMD_LEN         (9U)
+
+/** CrashDump command format */
+#define PECI_CRASHDUMP_WR_LEN          (9U)
+#define PECI_CRASHDUMP_RD_LEN_BYTE     (2U)
+#define PECI_CRASHDUMP_RD_LEN_WORD     (3U)
+#define PECI_CRASHDUMP_RD_LEN_QWORD    (9U)
+#define PECI_CRASHDUMP_CMD_LEN         (12U)
+
+/** RdEndPointConfig command format */
+#define PECI_RD_END_PT_CFG_WR_LEN          (12U)
+#define PECI_RD_END_PT_CFG_RD_LEN_BYTE     (2U)
+#define PECI_RD_END_PT_CFG_RD_LEN_WORD     (3U)
+#define PECI_RD_END_PT_CFG_RD_LEN_DWORD    (5U)
+#define PECI_RD_END_PT_CFG_CMD_LEN         (15U)
+
+/** WrEndPointConfig command format */
+#define PECI_WR_END_PT_CFG_RD_LEN          (1U)
+#define PECI_WR_END_PT_CFG_WR_LEN_BYTE     (14U)
+#define PECI_WR_END_PT_CFG_WR_LEN_WORD     (15U)
+#define PECI_WR_END_PT_CFG_WR_LEN_DWORD    (17U)
+#define PECI_WR_END_PT_CFG_CMD_LEN         (16U)
+
+/** RdIAMSREx command format */
+#define PECI_RD_IAMSREX_WR_LEN            (6U)
+#define PECI_RD_IAMSREX_LEN_BYTE          (2U)
+#define PECI_RD_IAMSREX_LEN_WORD          (3U)
+#define PECI_RD_IAMSREX_LEN_DWORD         (5U)
+#define PECI_RD_IAMSREX_LEN_QWORD         (9U)
+#define PECI_RD_IAMSREX_CMD_LEN           (9U)
 
 /**
  * @brief PECI buffer structure
