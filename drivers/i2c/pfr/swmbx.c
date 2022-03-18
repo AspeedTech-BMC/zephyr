@@ -24,7 +24,7 @@ struct swmbx_fifo {
 };
 
 struct swmbx_notify {
-	struct k_sem *sem_notify[SWMBX_DEVICE_COUNT];
+	struct k_sem *sem_notify;
 	uint8_t enable;
 };
 
@@ -49,8 +49,8 @@ struct swmbx_ctrl_data {
 	uint32_t buffer_size;
 	uint8_t *buffer;
 	uint8_t mbx_en;
-	uint8_t mbx_protect[SWMBX_PROTECT_COUNT];
-	struct swmbx_notify notify[SWMBX_NOTIFY_COUNT];
+	uint8_t mbx_protect[SWMBX_DEV_COUNT][SWMBX_PROTECT_COUNT];
+	struct swmbx_notify notify[SWMBX_DEV_COUNT][SWMBX_NOTIFY_COUNT];
 	struct swmbx_fifo_data fifo[SWMBX_FIFO_COUNT];
 };
 
@@ -83,11 +83,57 @@ int swmbx_enable_behavior(const struct device *dev, uint32_t item_flag, uint8_t 
 	return 0;
 }
 
+/* apply swmbx write protect with bitmap and port index*/
+int swmbx_apply_protect(const struct device *dev, uint8_t port,
+uint32_t *bitmap, uint8_t start_idx, uint8_t num)
+{
+	/* check invlaid condition */
+	if ((dev == NULL) || (bitmap == NULL) ||
+	(start_idx + num) > (SWMBX_PROTECT_COUNT) ||
+	(port_index) > SWMBX_DEV_COUNT)
+		return -EINVAL;
+
+	struct swmbx_ctrl_data *data = dev->data;
+
+	for (uint8_t i = start_idx; i < (start_idx + num); i++)
+		data->mbx_protect[port_index][i] = bitmap[i];
+
+	return 0;
+}
+
+/* update swmbx write protect with single address */
+int swmbx_update_protect(const struct device *dev, uint8_t port,
+uint8_t addr, uint8_t enable)
+{
+	/* check invlaid condition */
+	if ((dev == NULL) || ((port_index) > SWMBX_DEV_COUNT))
+		return -EINVAL;
+
+	struct swmbx_ctrl_data *data = dev->data;
+	uint8_t index, bit;
+	uint32_t value;
+
+	/* calculte bitmap position */
+	index = addr / 0x20;
+	bit = addr % 0x20;
+
+	value = data->mbx_protect[port_index][index];
+
+	if (enable)
+		value |= (0x1 << bit);
+	else
+		value = value & ~(0x1 << bit);
+
+	data->mbx_protect[port_index][index] = value;
+
+	return 0;
+}
+
 static int swmbx_ctrl_init(const struct device *dev)
 {
 	struct swmbx_ctrl_data *data = DEV_DATA(dev);
 	const struct swmbx_ctrl_config *cfg = DEV_CFG(dev);
-	uint32_t i;
+	uint32_t i, j;
 
 	data->swmbx_controller =
 		device_get_binding(cfg->controller_dev_name);
@@ -100,11 +146,13 @@ static int swmbx_ctrl_init(const struct device *dev)
 	data->buffer = (uint8_t *)(SWMBX_BUF_BASE);
 	data->buffer_size = cfg->buffer_size;
 
-	for (i = 0; i < SWMBX_PROTECT_COUNT; i++) {
-		data->mbx_protect[i] = 0;
-		data->notify[i].enable = 0;
-		data->notify[i].sem_notify[0] = NULL;
-		data->notify[i].sem_notify[1] = NULL;
+	/* clear data structure */
+	for (j = 0; j < SWMBX_PROTECT_COUNT; j++) {
+		for (i = 0; i < SWMBX_DEV_COUNT; i++) {
+			data->mbx_protect[i][j] = 0;
+			data->notify[i][j].enable = 0;
+			data->notify[i][j].sem_notify = NULL;
+		}
 	}
 
 	for (i = 0; i < SWMBX_FIFO_COUNT; i++) {

@@ -8,7 +8,7 @@
 #define ZEPHYR_INCLUDE_DRIVERS_SLAVE_SWMBX_H_
 
 /* swmbx define */
-#define SWMBX_DEVICE_COUNT	0x2
+#define SWMBX_DEV_COUNT	0x2
 #define SWMBX_BUF_BASE		0x7e7b0e00
 #define SWMBX_PROTECT_COUNT	0x100
 #define SWMBX_NOTIFY_COUNT	0x100
@@ -74,6 +74,7 @@ int swmbx_enable_behavior(const struct device *dev, uint32_t item_flag, uint8_t 
  * @brief Apply sw mailbox write protect by bit map
  *
  * @param dev Pointer to the device structure for the driver instance
+ * @param port port index to the mail box device
  * @param *bitmap Bitmap of the write protect in swmbx device
  * @param start_idx Start index of the write protect bitmap in swmbx device
  * @param num Number of bitmap index to the write protect in swmbx device
@@ -81,19 +82,22 @@ int swmbx_enable_behavior(const struct device *dev, uint32_t item_flag, uint8_t 
  * @retval 0 If successful
  * @retval -EINVAL Invalid data pointer or setting
  */
-int swmbx_apply_protect(const struct device *dev, uint32_t *bitmap, uint8_t start_idx, uint8_t num);
+int swmbx_apply_protect(const struct device *dev, uint8_t port,
+uint32_t *bitmap, uint8_t start_idx, uint8_t num);
 
 /**
  * @brief Update sw mailbox write protect by address index
  *
  * @param dev Pointer to the device structure for the driver instance
+ * @param port port index to the mail box device
  * @param addr Address to the write protect in swmbx device
  * @param enable Enable to the write protect in swmbx device
  *
  * @retval 0 If successful
  * @retval -EINVAL Invalid data pointer or offset
  */
-int swmbx_update_protect(const struct device *dev, uint8_t addr, uint8_t enable);
+int swmbx_update_protect(const struct device *dev, uint8_t port,
+uint8_t addr, uint8_t enable);
 
 /**
  * @brief Set sw mailbox notify address
