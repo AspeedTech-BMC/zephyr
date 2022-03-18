@@ -90,13 +90,13 @@ uint32_t *bitmap, uint8_t start_idx, uint8_t num)
 	/* check invlaid condition */
 	if ((dev == NULL) || (bitmap == NULL) ||
 	(start_idx + num) > (SWMBX_PROTECT_COUNT) ||
-	(port_index) > SWMBX_DEV_COUNT)
+	(port) > SWMBX_DEV_COUNT)
 		return -EINVAL;
 
 	struct swmbx_ctrl_data *data = dev->data;
 
 	for (uint8_t i = start_idx; i < (start_idx + num); i++)
-		data->mbx_protect[port_index][i] = bitmap[i];
+		data->mbx_protect[port][i] = bitmap[i];
 
 	return 0;
 }
@@ -106,7 +106,7 @@ int swmbx_update_protect(const struct device *dev, uint8_t port,
 uint8_t addr, uint8_t enable)
 {
 	/* check invlaid condition */
-	if ((dev == NULL) || ((port_index) > SWMBX_DEV_COUNT))
+	if ((dev == NULL) || ((port) > SWMBX_DEV_COUNT))
 		return -EINVAL;
 
 	struct swmbx_ctrl_data *data = dev->data;
@@ -117,14 +117,14 @@ uint8_t addr, uint8_t enable)
 	index = addr / 0x20;
 	bit = addr % 0x20;
 
-	value = data->mbx_protect[port_index][index];
+	value = data->mbx_protect[port][index];
 
 	if (enable)
 		value |= (0x1 << bit);
 	else
 		value = value & ~(0x1 << bit);
 
-	data->mbx_protect[port_index][index] = value;
+	data->mbx_protect[port][index] = value;
 
 	return 0;
 }
