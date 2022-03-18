@@ -219,6 +219,8 @@ static int peci_aspeed_need_aw_fcs(enum peci_command_code cmd_code)
 	case PECI_CMD_WR_IAMSR1:
 	case PECI_CMD_WR_PCI_CFG_LOCAL0:
 	case PECI_CMD_WR_PCI_CFG_LOCAL1:
+	case PECI_CMD_WR_END_PT_CFG0:
+	case PECI_CMD_WR_END_PT_CFG1:
 		return 1;
 	default:
 		return 0;
