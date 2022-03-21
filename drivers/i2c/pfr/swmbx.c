@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#define DT_DRV_COMPAT aspeed_swmbx-ctrl
+#define DT_DRV_COMPAT aspeed_swmbx_ctrl
 
 #include <sys/util.h>
 #include <sys/slist.h>
@@ -600,15 +600,15 @@ static int swmbx_ctrl_init(const struct device *dev)
 									\
 	static const struct swmbx_ctrl_config			\
 		swmbx_ctrl_##inst##_cfg = {			\
-		.controller_dev_name = DT_INST_BUS_LABEL(inst),		\
+		.controller_dev_name = DT_INST_PROP(inst, label),		\
 		.buffer_size = DT_INST_PROP(inst, size),		\
 	};								\
 									\
 	DEVICE_DT_INST_DEFINE(inst,					\
 			    &swmbx_ctrl_init,			\
 			    NULL,			\
-			    &i2c_swmbx_slave_##inst##_dev_data,	\
-			    &i2c_swmbx_slave_##inst##_cfg,		\
+			    &swmbx_ctrl_##inst##_dev_data,	\
+			    &swmbx_ctrl_##inst##_cfg,		\
 			    POST_KERNEL,				\
 			    CONFIG_I2C_SLAVE_INIT_PRIORITY,		\
 			    NULL);

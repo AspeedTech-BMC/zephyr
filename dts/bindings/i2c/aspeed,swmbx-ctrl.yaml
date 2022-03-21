@@ -13,9 +13,10 @@ include: base.yaml
 properties:
     size:
       type: int
-      required: false
-      description: Total sw mailbox size
+      required: true
 
-
+    label:
+      type: string
+      required: true
 
 
