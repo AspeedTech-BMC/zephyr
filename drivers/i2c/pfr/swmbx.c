@@ -66,6 +66,23 @@ struct swmbx_ctrl_config {
 #define DEV_DATA(dev)	\
 	((struct swmbx_ctrl_data *const)(dev)->data)
 
+/* internal api for pfr swmbx control */
+int check_swmbx_fifo(struct swmbx_ctrl_data *data, uint8_t addr, uint8_t *index)
+{
+	for (uint8_t i = 0; i < SWMBX_FIFO_COUNT; i++) {
+		if ((data->fifo[i].fifo_offset == addr) && (data->fifo[i].enable)
+		&& (data->fifo[i].sem_fifo)) {
+			*index = i;
+			LOG_DBG("fifo: fifo inx %x and address %x", i, addr);
+			return 1;
+		}
+	}
+
+	return 0;
+}
+/* internal api define end */
+
+/* external API for swmbx access */
 /* general control */
 int swmbx_enable_behavior(const struct device *dev, uint32_t item_flag, uint8_t enable)
 {
@@ -90,7 +107,7 @@ uint32_t *bitmap, uint8_t start_idx, uint8_t num)
 	/* check invlaid condition */
 	if ((dev == NULL) || (bitmap == NULL) ||
 	(start_idx + num) > (SWMBX_PROTECT_COUNT) ||
-	(port) > SWMBX_DEV_COUNT)
+	(port > SWMBX_DEV_COUNT))
 		return -EINVAL;
 
 	struct swmbx_ctrl_data *data = dev->data;
@@ -106,7 +123,7 @@ int swmbx_update_protect(const struct device *dev, uint8_t port,
 uint8_t addr, uint8_t enable)
 {
 	/* check invlaid condition */
-	if ((dev == NULL) || ((port) > SWMBX_DEV_COUNT))
+	if ((dev == NULL) || (port > SWMBX_DEV_COUNT))
 		return -EINVAL;
 
 	struct swmbx_ctrl_data *data = dev->data;
@@ -128,6 +145,123 @@ uint8_t addr, uint8_t enable)
 
 	return 0;
 }
+
+/* update swmbx notify with single address and index */
+int swmbx_update_notify(const struct device *dev, uint8_t port,
+struct k_sem *sem, uint8_t addr, uint8_t enable)
+{
+	if ((dev == NULL) || (port > SWMBX_DEV_COUNT))
+		return -EINVAL;
+
+	struct swmbx_ctrl_data *data = dev->data;
+
+	/* check enable or not */
+	if (enable) {
+		if (sem == NULL)
+			return -EINVAL;
+
+		data->notify[port][addr].sem_notify = sem;
+	} else {
+		data->notify[port][addr].sem_notify = NULL;
+	}
+
+	data->notify[port][addr].enable = enable;
+
+	return 0;
+}
+
+int swmbx_flush_fifo(const struct device *dev, uint8_t index)
+{
+	if (dev == NULL)
+		return -EINVAL;
+
+	struct swmbx_ctrl_data *data = dev->data;
+	sys_snode_t *list_node = NULL;
+	bool mbx_fifo_execute = false;
+	uint8_t fifo_idx;
+
+	mbx_fifo_execute = check_swmbx_fifo(data, index, &fifo_idx);
+	if (mbx_fifo_execute) {
+		if (data->fifo[fifo_idx].enable) {
+			/* free link list */
+			do {
+				list_node = sys_slist_peek_head(&(data->fifo[fifo_idx].list_head));
+				if (list_node != NULL) {
+					LOG_DBG("swmbx: slave drop fifo %x", (uint32_t)list_node);
+					/* remove this item from list */
+					sys_slist_find_and_remove(&(data->fifo[fifo_idx].list_head), list_node);
+				}
+			} while (list_node != NULL);
+
+			data->fifo[fifo_idx].msg_index = 0;
+			data->fifo[fifo_idx].cur_msg_count = 0;
+		} else {
+			LOG_DBG("swmbx: fifo %d would not be enable", fifo_idx);
+		}
+	} else {
+		LOG_DBG("swmbx_flush: could not find address %d fifo", index);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+int swmbx_update_fifo(const struct device *dev, struct k_sem *sem,
+uint8_t idx, uint8_t addr, uint8_t depth, uint8_t notify, uint8_t enable)
+{
+	if ((dev == NULL) || idx > (SWMBX_FIFO_COUNT-1))
+		return -EINVAL;
+
+	struct swmbx_ctrl_data *data = dev->data;
+	sys_snode_t *list_node = NULL;
+
+	/* check enable or not */
+	if (enable) {
+		if ((data->fifo[idx].enable) || depth == 0 || sem == NULL)
+			return -EINVAL;
+
+		/* malloc the message buffer */
+		data->fifo[idx].buffer = k_malloc(sizeof(struct swmbx_fifo) * depth);
+		if (!data->fifo[idx].buffer) {
+			data->fifo[idx].enable = 0x0;
+			LOG_ERR("fifo could not alloc enougth fifo buffer");
+			return -EINVAL;
+		}
+
+		/* initial single list structure*/
+		sys_slist_init(&(data->fifo[idx].list_head));
+
+		data->fifo[idx].sem_fifo = sem;
+		data->fifo[idx].max_msg_count = depth;
+		data->fifo[idx].fifo_offset = addr;
+		data->fifo[idx].notify_flag = notify;
+		data->fifo[idx].msg_index = 0;
+		data->fifo[idx].cur_msg_count = 0;
+	} else {
+		if (data->fifo[idx].buffer) {
+			/* free link list */
+			do {
+				list_node = sys_slist_peek_head(&(data->fifo[idx].list_head));
+				if (list_node != NULL) {
+					LOG_DBG("swmbx: slave drop fifo %x", (uint32_t)list_node);
+					/* remove this item from list */
+					sys_slist_find_and_remove(&(data->fifo[idx].list_head), list_node);
+				}
+			} while (list_node != NULL);
+
+			/* free memory */
+			k_free(data->fifo[idx].buffer);
+			data->fifo[idx].buffer = NULL;
+		}
+
+		data->fifo[idx].sem_fifo = NULL;
+	}
+
+	data->fifo[idx].enable = enable;
+
+	return 0;
+}
+/* end external API for swmbx */
 
 static int swmbx_ctrl_init(const struct device *dev)
 {

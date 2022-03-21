@@ -103,16 +103,16 @@ uint8_t addr, uint8_t enable);
  * @brief Set sw mailbox notify address
  *
  * @param dev Pointer to the device structure for the driver instance
+ * @param port port index to the mail box device
  * @param sem Pointer to the semaphore that is initialed and sent when notify is trigger
- * @param idx Index to the notify internal index position (0x0~0x7)
  * @param addr Address to the write notify in mbx device
  * @param enable Enable / Disable to the notify in swmbx device
  *
  * @retval 0 If successful
  * @retval -EINVAL Invalid data pointer or offset
  */
-int swmbx_update_notify(const struct device *dev, struct k_sem *sem,
-uint8_t idx, uint8_t addr, uint8_t enable);
+int swmbx_update_notify(const struct device *dev, uint8_t port,
+struct k_sem *sem, uint8_t addr, uint8_t enable);
 
 /**
  * @brief Flush sw mailbox fifo
