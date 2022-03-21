@@ -80,9 +80,144 @@ int check_swmbx_fifo(struct swmbx_ctrl_data *data, uint8_t addr, uint8_t *index)
 
 	return 0;
 }
+
+int append_fifo_write(struct swmbx_ctrl_data *data, uint8_t fifo_idx, uint8_t val)
+{
+	struct swmbx_fifo_data *fifo = NULL;
+
+	/* find out the fifo item */
+	fifo = &data->fifo[fifo_idx];
+
+	/* check the max msg length */
+	if (fifo->cur_msg_count < fifo->max_msg_count) {
+		LOG_DBG("fifo: cur_msg_index %x", (uint32_t)(fifo->msg_index));
+
+		fifo->current = &(fifo->buffer[fifo->cur_msg_count]);
+		fifo->current->value = val;
+		sys_slist_append(&(fifo->list_head), &(fifo->current->list));
+		fifo->cur_msg_count++;
+
+		/* bondary condition */
+		if (fifo->msg_index == (fifo->max_msg_count - 1)) {
+			fifo->msg_index = 0;
+		} else {
+			fifo->msg_index++;
+		}
+
+		LOG_DBG("fifo: slave write data->current %x", (uint32_t)(fifo->current));
+	} else {
+		return 1;
+	}
+
+	return 0;
+}
+
+int peak_fifo_read(struct swmbx_ctrl_data *data, uint8_t fifo_idx, uint8_t *val)
+{
+	struct swmbx_fifo_data *fifo = NULL;
+	sys_snode_t *list_node = NULL;
+
+	/* find out the fifo item */
+	fifo = &data->fifo[fifo_idx];
+	list_node = sys_slist_peek_head(&(fifo->list_head));
+	LOG_DBG("fifo: slave read %x", (uint32_t)list_node);
+
+	if (list_node != NULL) {
+		fifo->current = (struct swmbx_fifo *)(list_node);
+		*val = fifo->current->value;
+		LOG_DBG("fifo: slave read %x ", *val);
+
+		/* remove this item from list */
+		sys_slist_find_and_remove(&(fifo->list_head), list_node);
+
+		fifo->cur_msg_count--;
+		LOG_DBG("fifo: fifo msg %x", fifo->cur_msg_count);
+	} else {
+		*val = 0;
+		return 1;
+	}
+
+	return 0;
+}
 /* internal api define end */
 
 /* external API for swmbx access */
+int swmbx_write(const struct device *dev, uint8_t fifo, uint8_t addr, uint8_t *val)
+{
+	if (dev == NULL)
+		return -EINVAL;
+
+	struct swmbx_ctrl_data *data = dev->data;
+	unsigned int key = 0;
+	bool mbx_fifo_execute = false;
+	uint8_t fifo_idx = 0;
+
+	/* enter critical section swmbx access */
+	if (!k_is_in_isr())
+		key = irq_lock();
+
+	if (fifo) {
+		/*check fifo enable and find out fifo index*/
+		mbx_fifo_execute = check_swmbx_fifo(data, addr, &fifo_idx);
+		if (mbx_fifo_execute) {
+			/* append value into fifo */
+			if (append_fifo_write(data, fifo_idx, *val)) {
+				LOG_DBG("swmbx_write: fifo full at %d group", fifo_idx);
+				return 1;
+			}
+		} else {
+			LOG_DBG("swmbx_write: could not find address %d fifo", addr);
+			return 1;
+		}
+	} else {
+		data->buffer[addr] = *val;
+	}
+
+	/* exit critical section */
+	if (!k_is_in_isr())
+		irq_unlock(key);
+
+	return 0;
+}
+
+int swmbx_read(const struct device *dev, uint8_t fifo, uint8_t addr, uint8_t *val)
+{
+	if (dev == NULL)
+		return -EINVAL;
+
+	struct swmbx_ctrl_data *data = dev->data;
+	unsigned int key = 0;
+	bool mbx_fifo_execute = false;
+	uint8_t fifo_idx = 0;
+
+	/* enter critical section swmbx access */
+	if (!k_is_in_isr())
+		key = irq_lock();
+
+	if (fifo) {
+		/*check fifo enable and find out fifo index*/
+		mbx_fifo_execute = check_swmbx_fifo(data, addr, &fifo_idx);
+		if (mbx_fifo_execute) {
+			/* peak value from fifo */
+			if (peak_fifo_read(data, fifo_idx, val)) {
+				LOG_DBG("swmbx_read: fifo empty at %d group", fifo_idx);
+				return 1;
+			}
+		} else {
+			LOG_DBG("swmbx_read: could not find fifo %d group", addr);
+			return 1;
+		}
+	} else {
+		*val = data->buffer[addr];
+	}
+
+	/* exit critical section */
+	if (!k_is_in_isr())
+		irq_unlock(key);
+
+	return 0;
+}
+
 /* general control */
 int swmbx_enable_behavior(const struct device *dev, uint32_t item_flag, uint8_t enable)
 {

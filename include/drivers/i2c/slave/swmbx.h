@@ -118,7 +118,7 @@ struct k_sem *sem, uint8_t addr, uint8_t enable);
  * @brief Flush sw mailbox fifo
  *
  * @param dev Pointer to the device structure for the driver instance
- * @param idx Index to the fifo internal index position (0x0~0x7)
+ * @param idx Index to the fifo internal index position (0x0~0x3)
  *
  * @retval 0 If successful
  * @retval -EINVAL Invalid data pointer or index
@@ -130,7 +130,7 @@ int swmbx_flush_fifo(const struct device *dev, uint8_t idx);
  *
  * @param dev Pointer to the device structure for the driver instance
  * @param sem Pointer to the semaphore that is initialed and sent when fifo boundary is trigger
- * @param idx Index to the fifo internal index position (0x0~0x7)
+ * @param idx Index to the fifo internal index position (0x0~0x3)
  * @param addr Address to the fifo in swmbx device
  * @param depth fifo depth to the fifo in swmbx device
  * @param notify fifo notify behavior flag
