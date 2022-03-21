@@ -3,7 +3,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
 */
-#define DT_DRV_COMPAT aspeed_swmbx-dev
+#define DT_DRV_COMPAT aspeed_swmbx_dev
 
 #include <sys/util.h>
 #include <kernel.h>
@@ -20,7 +20,7 @@ struct i2c_swmbx_slave_data {
 	const struct device *i2c_controller;
 	struct i2c_slave_config config;
 	uint32_t buffer_size;
-	uint8_t *buffer;
+	uint8_t port;
 	uint32_t buffer_idx;
 	bool first_write;
 };
@@ -29,7 +29,7 @@ struct i2c_swmbx_slave_config {
 	char *controller_dev_name;
 	uint8_t address;
 	uint32_t buffer_size;
-	uint8_t *buffer;
+	uint8_t port;
 };
 
 /* convenience defines */
@@ -59,11 +59,10 @@ static int swmbx_slave_read_requested(struct i2c_slave_config *config,
 						struct i2c_swmbx_slave_data,
 						config);
 
-	*val = data->buffer[data->buffer_idx];
+	/* send swmbx get message */
+	swmbx_get_msg(data->port, data->buffer_idx, val);
 
 	LOG_DBG("swmbx: read req, val=0x%x", *val);
-
-	/* Increment will be done in the read_processed callback */
 
 	return 0;
 }
@@ -77,16 +76,15 @@ static int swmbx_slave_write_received(struct i2c_slave_config *config,
 
 	LOG_DBG("swmbx: write done, val=0x%x", val);
 
-	/* In case swmbx wants to be R/O, return !0 here could trigger
-	 * a NACK to the I2C controller, support depends on the
-	 * I2C controller support
-	 */
-
 	if (data->first_write) {
 		data->buffer_idx = val;
 		data->first_write = false;
+
+		/* send swmbx start message */
+		swmbx_send_start(data->port, data->buffer_idx);
 	} else {
-		data->buffer[data->buffer_idx++] = val;
+		/* send swmbx send message */
+		swmbx_send_msg(data->port, data->buffer_idx++, &val);
 	}
 
 	data->buffer_idx = data->buffer_idx % data->buffer_size;
@@ -104,13 +102,10 @@ static int swmbx_slave_read_processed(struct i2c_slave_config *config,
 	/* Increment here */
 	data->buffer_idx = (data->buffer_idx + 1) % data->buffer_size;
 
-	*val = data->buffer[data->buffer_idx];
+	/* send swmbx get message */
+	swmbx_get_msg(data->port, data->buffer_idx, val);
 
 	LOG_DBG("swmbx: read done, val=0x%x", *val);
-
-	/* Increment will be done in the next read_processed callback
-	 * In case of STOP, the byte won't be taken in account
-	 */
 
 	return 0;
 }
@@ -122,6 +117,9 @@ static int swmbx_slave_stop(struct i2c_slave_config *config)
 						config);
 
 	LOG_DBG("swmbx: stop");
+
+	/* send swmbx stop message */
+	swmbx_send_stop(data->port);
 
 	data->first_write = true;
 
@@ -169,7 +167,7 @@ static int i2c_swmbx_slave_init(const struct device *dev)
 	}
 
 	data->buffer_size = cfg->buffer_size;
-	data->buffer = cfg->buffer;
+	data->port = cfg->port;
 	data->config.address = cfg->address;
 	data->config.callbacks = &swmbx_callbacks;
 
@@ -180,15 +178,12 @@ static int i2c_swmbx_slave_init(const struct device *dev)
 	static struct i2c_swmbx_slave_data				\
 		i2c_swmbx_slave_##inst##_dev_data;			\
 									\
-	static uint8_t							\
-	i2c_swmbx_slave_##inst##_buffer[(DT_INST_PROP(inst, size))];	\
-									\
 	static const struct i2c_swmbx_slave_config			\
 		i2c_swmbx_slave_##inst##_cfg = {			\
 		.controller_dev_name = DT_INST_BUS_LABEL(inst),		\
 		.address = DT_INST_REG_ADDR(inst),			\
 		.buffer_size = DT_INST_PROP(inst, size),		\
-		.buffer = i2c_swmbx_slave_##inst##_buffer		\
+		.port = DT_INST_PROP(inst, port),		\
 	};								\
 									\
 	DEVICE_DT_INST_DEFINE(inst,					\

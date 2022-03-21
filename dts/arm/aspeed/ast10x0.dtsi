@@ -550,6 +550,13 @@
 			status = "disabled";
 		};
 
+		mbxctrl: swmbxctrl {
+			compatible = "aspeed,swmbx-ctrl";
+			size = <256>;
+			label = "SWMBX";
+			status = "disabled";
+		};
+
 		i2c_gr: i2c-global-regs@7e7b0000 {
 			compatible = "aspeed,i2c-global";
 			#address-cells = <1>;
