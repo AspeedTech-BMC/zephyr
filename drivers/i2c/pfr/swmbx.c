@@ -52,6 +52,9 @@ struct swmbx_ctrl_data {
 	uint8_t mbx_protect[SWMBX_DEV_COUNT][SWMBX_PROTECT_COUNT];
 	struct swmbx_notify notify[SWMBX_DEV_COUNT][SWMBX_NOTIFY_COUNT];
 	struct swmbx_fifo_data fifo[SWMBX_FIFO_COUNT];
+	bool mbx_fifo_execute[SWMBX_DEV_COUNT];
+	uint8_t mbx_fifo_addr[SWMBX_DEV_COUNT];
+	uint8_t mbx_fifo_idx[SWMBX_DEV_COUNT];
 };
 
 struct swmbx_ctrl_config {
@@ -65,6 +68,8 @@ struct swmbx_ctrl_config {
 	(dev)->config)
 #define DEV_DATA(dev)	\
 	((struct swmbx_ctrl_data *const)(dev)->data)
+
+uint32_t *swmbx_info = (uint32_t *)(SWMBX_INFO_BASE);
 
 /* internal api for pfr swmbx control */
 int check_swmbx_fifo(struct swmbx_ctrl_data *data, uint8_t addr, uint8_t *index)
@@ -140,6 +145,153 @@ int peak_fifo_read(struct swmbx_ctrl_data *data, uint8_t fifo_idx, uint8_t *val)
 	return 0;
 }
 /* internal api define end */
+
+/* external API for swmbx slave message exchange */
+void swmbx_send_start(uint8_t port, uint8_t addr)
+{
+	/* check invlaid condition */
+	if (port > SWMBX_DEV_COUNT) {
+		LOG_DBG("swmbx: send start: invlaid port %d", port);
+		return;
+	}
+
+	struct swmbx_ctrl_data *data = (struct swmbx_ctrl_data *)(*swmbx_info);
+	uint8_t fifo_index = 0x0;
+
+	LOG_DBG("swmbx: send start: swmbx data 0x%x", (uint32_t)data);
+	LOG_DBG("swmbx: send start: addr 0x%x", addr);
+
+	/* check swmbx fifo status */
+	data->mbx_fifo_execute[port] = check_swmbx_fifo(data, addr, &fifo_index);
+
+	/* fill the fifo executed index */
+	if (data->mbx_fifo_execute[port]) {
+		data->mbx_fifo_addr[port] = addr;
+		data->mbx_fifo_idx[port] = fifo_index;
+	}
+}
+
+void swmbx_send_msg(uint8_t port, uint8_t addr, uint8_t *val)
+{
+	/* check invlaid condition */
+	if (port > SWMBX_DEV_COUNT) {
+		LOG_DBG("swmbx: send msg: invlaid port %d", port);
+		return;
+	}
+
+	struct swmbx_ctrl_data *data = (struct swmbx_ctrl_data *)(*swmbx_info);
+	bool mbx_write_data = false;
+
+	LOG_DBG("swmbx: send msg: addr 0x%x val 0x%x", addr, *val);
+
+	/* check the FIFO is executed or not */
+	if ((data->mbx_fifo_execute[port]) && (data->mbx_en & SWMBX_FIFO)) {
+		uint8_t fifo_addr = data->mbx_fifo_addr[port];
+		uint8_t fifo_index = data->mbx_fifo_idx[port];
+
+		/* append value into fifo */
+		if (append_fifo_write(data, fifo_index, *val)) {
+			/* issue semaphore when fifo full */
+			k_sem_give(data->fifo[fifo_index].sem_fifo);
+			LOG_DBG("fifo: fifo full at %d group", fifo_index);
+			return;
+		}
+
+		/* check fifo notify start*/
+		if ((data->mbx_en & SWMBX_NOTIFY) &&
+		(data->fifo[fifo_index].notify_flag & SWMBX_FIFO_NOTIFY_START) &&
+		(!data->fifo[fifo_index].notify_start)) {
+			if (data->notify[port][fifo_addr].enable) {
+				k_sem_give(data->notify[port][fifo_addr].sem_notify);
+				data->fifo[fifo_index].notify_start = true;
+			}
+		}
+
+		if (!data->fifo[fifo_index].fifo_write)
+			data->fifo[fifo_index].fifo_write = true;
+	} else {
+		/* check write protect behavior */
+		if ((!data->mbx_protect[port][addr]) ||
+		!(data->mbx_en & SWMBX_PROTECT)) {
+			mbx_write_data = true;
+		} else {
+			mbx_write_data = false;
+		}
+
+		/* check notify behavior */
+		if (data->mbx_en & SWMBX_NOTIFY) {
+			if (data->notify[port][addr].enable) {
+				k_sem_give(data->notify[port][addr].sem_notify);
+			}
+		}
+
+		/* update value into common mbx buffer */
+		if (mbx_write_data)
+			data->buffer[addr] = *val;
+	}
+}
+
+void swmbx_get_msg(uint8_t port, uint8_t addr, uint8_t *val)
+{
+	/* check invlaid condition */
+	if (port > SWMBX_DEV_COUNT) {
+		LOG_DBG("swmbx: send msg: invlaid port %d", port);
+		return;
+	}
+
+	struct swmbx_ctrl_data *data = (struct swmbx_ctrl_data *)(*swmbx_info);
+
+	LOG_DBG("swmbx: get msg: data 0x%x", (uint32_t)data);
+
+	/* check the FIFO is executed or not */
+	if ((data->mbx_fifo_execute[port]) && (data->mbx_en & SWMBX_FIFO)) {
+		uint8_t fifo_index = data->mbx_fifo_idx[port];
+
+		/* peak value from fifo */
+		if (peak_fifo_read(data, fifo_index, val)) {
+			/* issue semaphore when fifo empty */
+			k_sem_give(data->fifo[fifo_index].sem_fifo);
+			LOG_DBG("fifo: fifo empty at %d group", fifo_index);
+			return;
+		}
+	} else {
+		*val = data->buffer[addr];
+	}
+	LOG_DBG("swmbx: get msg: addr 0x%x val 0x%x", addr, *val);
+}
+
+void swmbx_send_stop(uint8_t port)
+{
+	/* check invlaid condition */
+	if (port > SWMBX_DEV_COUNT) {
+		LOG_DBG("swmbx: send start: invlaid port %d", port);
+		return;
+	}
+
+	struct swmbx_ctrl_data *data = (struct swmbx_ctrl_data *)(*swmbx_info);
+
+	/* check fifo notify end*/
+	if (data->mbx_fifo_execute[port]) {
+		uint8_t fifo_addr = data->mbx_fifo_addr[port];
+		uint8_t fifo_index = data->mbx_fifo_idx[port];
+
+		if ((data->mbx_en & SWMBX_NOTIFY) &&
+		(data->fifo[fifo_index].notify_flag & SWMBX_FIFO_NOTIFY_STOP) &&
+		(data->fifo[fifo_index].fifo_write)) {
+			if (data->notify[port][fifo_addr].enable) {
+				k_sem_give(data->notify[port][fifo_addr].sem_notify);
+			}
+		}
+
+		data->fifo[fifo_index].notify_start = false;
+		data->fifo[fifo_index].fifo_write = false;
+		data->mbx_fifo_execute[port] = false;
+		data->mbx_fifo_addr[port] = 0x0;
+		data->mbx_fifo_idx[port] = 0x0;
+	}
+}
+
+/* end external API for swmbx slave message exchange */
 
 /* external API for swmbx access */
 int swmbx_write(const struct device *dev, uint8_t fifo, uint8_t addr, uint8_t *val)
@@ -429,6 +581,15 @@ static int swmbx_ctrl_init(const struct device *dev)
 		data->fifo[i].buffer = NULL;
 		data->fifo[i].sem_fifo = NULL;
 	}
+
+	for (i = 0; i < SWMBX_DEV_COUNT; i++) {
+		data->mbx_fifo_execute[i] = false;
+		data->mbx_fifo_addr[i] = 0x0;
+		data->mbx_fifo_idx[i] = 0x0;
+	}
+
+	/* keep the data info */
+	*swmbx_info = (uint32_t)(data);
 
 	return 0;
 }
