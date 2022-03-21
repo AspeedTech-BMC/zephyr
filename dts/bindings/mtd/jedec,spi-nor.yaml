@@ -49,3 +49,10 @@ properties:
   write-block-size:
     type: int
     required: false
+
+  re-init-support:
+    type: boolean
+    required: false
+    description: |
+      User can re-probe SPI flash at any time after
+      booting up to system.

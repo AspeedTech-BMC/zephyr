@@ -140,5 +140,6 @@ struct spi_nor_op_info {
 };
 
 int spi_nor_config_4byte_mode(const struct device *dev, bool en4b);
+int spi_nor_re_init(const struct device *dev);
 
 #endif /*__SPI_NOR_H__*/

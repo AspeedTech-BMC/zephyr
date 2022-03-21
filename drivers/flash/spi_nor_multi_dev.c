@@ -97,6 +97,7 @@ struct spi_nor_data {
 	struct flash_parameters flash_nor_parameter;
 
 	bool init_4b_mode_once;
+	bool re_init_support;
 };
 
 #define SPI_NOR_PROT_NUM 8
@@ -1395,18 +1396,21 @@ static void spi_nor_info_init_params(
  */
 static int spi_nor_configure(const struct device *dev)
 {
+	int ret = 0;
 	struct spi_nor_data *data = dev->data;
 	const struct spi_nor_config *cfg = dev->config;
 	int rc;
 
 	data->spi = device_get_binding(data->dev_name);
 	if (!data->spi) {
-		return -EINVAL;
+		ret = -EINVAL;
+		goto end;
 	}
 
 	/* now the spi bus is configured, we can verify SPI
 	 * connectivity by reading the JEDEC ID.
 	 */
+	memset(data->jedec_id, 0x0, SPI_NOR_MAX_ID_LEN);
 	if (cfg->jedec_id[0] != 0) {
 		LOG_WRN("Using pseudo flash node info %02x %02x %02x",
 			cfg->jedec_id[0], cfg->jedec_id[1], cfg->jedec_id[2]);
@@ -1415,7 +1419,8 @@ static int spi_nor_configure(const struct device *dev)
 		rc = spi_nor_read_jedec_id(dev, data->jedec_id);
 		if (rc != 0) {
 			LOG_ERR("JEDEC ID read failed: %d", rc);
-			return -ENODEV;
+			ret = -ENODEV;
+			goto end;
 		}
 	}
 
@@ -1436,7 +1441,8 @@ static int spi_nor_configure(const struct device *dev)
 
 		if (rc != 0) {
 			LOG_ERR("BP clear failed: %d\n", rc);
-			return -ENODEV;
+			ret = -ENODEV;
+			goto end;
 		}
 
 		release_device(dev);
@@ -1448,26 +1454,32 @@ static int spi_nor_configure(const struct device *dev)
 		rc = spi_nor_process_sfdp(dev);
 		if (rc != 0) {
 			LOG_ERR("[%d]SFDP read failed: %d", __LINE__, rc);
-			return -ENODEV;
+			ret = -ENODEV;
+			goto end;
 		}
 	}
 
 	rc = sfdp_post_fixup(dev);
-	if (rc != 0)
-		return -ENODEV;
+	if (rc != 0) {
+		ret = -ENODEV;
+		goto end;
+	}
 
 	rc = setup_pages_layout(dev);
 	if (rc != 0) {
 		LOG_ERR("layout setup failed: %d", rc);
-		return -ENODEV;
+		ret = -ENODEV;
+		goto end;
 	}
 
 	data->flash_nor_parameter.flash_size = dev_flash_size(dev);
 
 	if (data->flash_size > 0x1000000 && !data->flag_access_32bit) {
 		rc = spi_nor_config_4byte_mode(dev, true);
-		if (rc != 0)
-			return -ENODEV;
+		if (rc != 0) {
+			ret = -ENODEV;
+			goto end;
+		}
 	}
 
 	const struct spi_driver_api *api =
@@ -1481,8 +1493,10 @@ static int spi_nor_configure(const struct device *dev)
 
 		rc = api->spi_nor_op->read_init(data->spi,
 				&data->spi_cfg, read_op_info);
-		if (rc != 0)
-			return -ENODEV;
+		if (rc != 0) {
+			ret = -ENODEV;
+			goto end;
+		}
 	}
 
 	if (api->spi_nor_op && api->spi_nor_op->write_init) {
@@ -1493,8 +1507,10 @@ static int spi_nor_configure(const struct device *dev)
 
 		rc = api->spi_nor_op->write_init(data->spi,
 				&data->spi_cfg, write_op_info);
-		if (rc != 0)
-			return -ENODEV;
+		if (rc != 0) {
+			ret = -ENODEV;
+			goto end;
+		}
 	}
 
 	LOG_DBG("%s: %d MB flash", dev->name, dev_flash_size(dev) >> 20);
@@ -1505,7 +1521,18 @@ static int spi_nor_configure(const struct device *dev)
 		data->cmd_info.read_opcode, data->cmd_info.read_dummy,
 		data->cmd_info.pp_opcode, data->cmd_info.se_opcode, data->sector_size / 1024);
 
-	return 0;
+end:
+	if (ret != 0 && data->re_init_support) {
+		ret = 0;
+		data->re_init_support = false;
+	}
+
+	return ret;
+}
+
+int spi_nor_re_init(const struct device *dev)
+{
+	return spi_nor_configure(dev);
 }
 
 /**
@@ -1578,6 +1605,7 @@ static const struct flash_driver_api spi_nor_api = {
 			.flash_size = 0,	\
 		},	\
 		.init_4b_mode_once = false,	\
+		.re_init_support = DT_PROP(DT_INST(n, DT_DRV_COMPAT), re_init_support),	\
 	};	\
 		\
 	DEVICE_DT_INST_DEFINE(n, &spi_nor_init, NULL,	\
