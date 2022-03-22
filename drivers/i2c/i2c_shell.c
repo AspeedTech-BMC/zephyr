@@ -967,10 +967,11 @@ uint8_t EEPROM_PASS_TBL[] = {0, 0, 0, 1, 1, 4, 4, 5};
 static int cmd_i2c_pfr_demo(const struct shell *shell,
 			      size_t argc, char **argv)
 {
-	const struct device *pfr_flt_dev = NULL;
-	int ret = 0, i = 0;
+	int ret = 0;
 
 #ifdef CONFIG_I2C_PFR_FILTER
+	const struct device *pfr_flt_dev = NULL;
+	int i = 0;
 	/* initial flt */
 	pfr_flt_dev = device_get_binding("I2C_FILTER_0");
 	if (!pfr_flt_dev) {
