@@ -158,7 +158,8 @@ void swmbx_send_start(uint8_t port, uint8_t addr)
 	uint8_t fifo_index = 0x0;
 
 	LOG_DBG("swmbx: send start: swmbx data 0x%x", (uint32_t)data);
-	LOG_DBG("swmbx: send start: addr 0x%x", addr);
+	LOG_DBG("swmbx: send start: addr 0x%x @ port 0x%x", addr, port);
+	LOG_DBG("swmbx: mbx_en 0x%x", data->mbx_en);
 
 	/* check swmbx fifo status */
 	data->mbx_fifo_execute[port] = check_swmbx_fifo(data, addr, &fifo_index);
@@ -240,8 +241,6 @@ void swmbx_get_msg(uint8_t port, uint8_t addr, uint8_t *val)
 
 	struct swmbx_ctrl_data *data = (struct swmbx_ctrl_data *)(*swmbx_info);
 
-	LOG_DBG("swmbx: get msg: data 0x%x", (uint32_t)data);
-
 	/* check the FIFO is executed or not */
 	if ((data->mbx_fifo_execute[port]) && (data->mbx_en & SWMBX_FIFO)) {
 		uint8_t fifo_index = data->mbx_fifo_idx[port];
@@ -268,6 +267,8 @@ void swmbx_send_stop(uint8_t port)
 	}
 
 	struct swmbx_ctrl_data *data = (struct swmbx_ctrl_data *)(*swmbx_info);
+
+	LOG_DBG("swmbx: send stop: @ port 0x%x", port);
 
 	/* check fifo notify end*/
 	if (data->mbx_fifo_execute[port]) {
@@ -408,7 +409,7 @@ uint32_t *bitmap, uint8_t start_idx, uint8_t num)
 			if (bitmap_val & 0x1) {
 				data->mbx_protect[port][value+j] = true;
 			} else {
-				data->mbx_protect[port][value+j] = true;
+				data->mbx_protect[port][value+j] = false;
 			}
 			bitmap_val = bitmap_val >> 1;
 		}
