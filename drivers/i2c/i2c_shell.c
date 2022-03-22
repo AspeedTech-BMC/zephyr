@@ -324,6 +324,55 @@ static int cmd_i2c_read(const struct shell *shell, size_t argc, char **argv)
 	return 0;
 }
 
+#ifdef CONFIG_PFR_SW_MAILBOX
+static int cmd_i2c_sw_mbx(const struct shell *shell,
+			      size_t argc, char **argv)
+{
+	int ret = 0;
+	const struct device *swmbx_ctrl;
+	uint32_t protect0_bit[] = {0xffff0000, 0x55555555, 0x0, 0x0,
+	0x0, 0x0, 0x0, 0x0};
+	uint32_t protect1_bit[] = {0x0000ffff, 0xaaaaaaaa, 0x0, 0x0,
+	0x0, 0x0, 0x0, 0x0};
+
+	/* swmbx ctrl for 0 /1 devices with write protect */
+	swmbx_ctrl = device_get_binding("SWMBX");
+	if (!swmbx_ctrl) {
+		shell_error(shell, "xx I2C: SWMBX Controller not be found.");
+		return -ENODEV;
+	}
+
+	if (swmbx_ctrl) {
+		/* apply function enable */
+		ret = swmbx_enable_behavior(swmbx_ctrl,
+			(SWMBX_PROTECT), true);
+		if (ret) {
+			shell_error(shell, "xx I2C: Enable SWMBX function failed.");
+			return -ENODEV;
+		}
+
+		/* swmbx protect usage */
+		ret = swmbx_apply_protect(swmbx_ctrl, 0x0, protect0_bit, 0, 7);
+		if (ret) {
+			shell_error(shell, "xx I2C: Apply SWMBX protect bitmap 0 fail.");
+			return -ENODEV;
+		}
+
+		ret = swmbx_apply_protect(swmbx_ctrl, 0x1, protect1_bit, 0, 7);
+		if (ret) {
+			shell_error(shell, "xx I2C: Apply SWMBX protect bitmap 1 fail.");
+			return -ENODEV;
+		}
+
+	}
+
+	return ret;
+}
+
+
+
+#endif
+
 #ifdef CONFIG_I2C_PFR_SNOOP
 static int cmd_sp_en(const struct shell *shell,
 			      size_t argc, char **argv)
@@ -1205,6 +1254,11 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_i2c_cmds,
 				SHELL_CMD_ARG(pfr_demo, &dsub_device_name,
 					  "pfr demo default",
 					   cmd_i2c_pfr_demo, 0, 0),
+#endif
+#ifdef CONFIG_I2C_SWMBX_SLAVE
+				SHELL_CMD_ARG(slave_swmbx, &dsub_device_name,
+					  "Apply sw mbx slave",
+					   cmd_i2c_sw_mbx, 0, 0),
 #endif
 #ifdef CONFIG_I2C_PFR_SNOOP
 				SHELL_CMD_ARG(sp_en, &dsub_device_name,
