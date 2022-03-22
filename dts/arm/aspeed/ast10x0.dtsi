@@ -550,7 +550,7 @@
 			status = "disabled";
 		};
 
-		mbxctrl: swmbxctrl {
+		mbxctrl: swmbx-ctrl {
 			compatible = "aspeed,swmbx-ctrl";
 			size = <256>;
 			label = "SWMBX";

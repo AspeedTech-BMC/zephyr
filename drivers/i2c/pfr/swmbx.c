@@ -45,11 +45,10 @@ struct swmbx_fifo_data {
 };
 
 struct swmbx_ctrl_data {
-	const struct device *swmbx_controller;
 	uint32_t buffer_size;
 	uint8_t *buffer;
 	uint8_t mbx_en;
-	uint8_t mbx_protect[SWMBX_DEV_COUNT][SWMBX_PROTECT_COUNT];
+	bool mbx_protect[SWMBX_DEV_COUNT][SWMBX_PROTECT_COUNT];
 	struct swmbx_notify notify[SWMBX_DEV_COUNT][SWMBX_NOTIFY_COUNT];
 	struct swmbx_fifo_data fifo[SWMBX_FIFO_COUNT];
 	bool mbx_fifo_execute[SWMBX_DEV_COUNT];
@@ -393,14 +392,27 @@ uint32_t *bitmap, uint8_t start_idx, uint8_t num)
 {
 	/* check invlaid condition */
 	if ((dev == NULL) || (bitmap == NULL) ||
-	(start_idx + num) > (SWMBX_PROTECT_COUNT) ||
+	(start_idx + num) > (SWMBX_PROTECT_BITMAP) ||
 	(port > SWMBX_DEV_COUNT))
 		return -EINVAL;
 
 	struct swmbx_ctrl_data *data = dev->data;
+	uint8_t i, j, value;
+	uint32_t bitmap_val;
 
-	for (uint8_t i = start_idx; i < (start_idx + num); i++)
-		data->mbx_protect[port][i] = bitmap[i];
+	for (i = start_idx; i < (start_idx + num); i++) {
+		bitmap_val = bitmap[i];
+		value = i << 0x5;
+
+		for (j = 0; j < 0x20; j++) {
+			if (bitmap_val & 0x1) {
+				data->mbx_protect[port][value+j] = true;
+			} else {
+				data->mbx_protect[port][value+j] = true;
+			}
+			bitmap_val = bitmap_val >> 1;
+		}
+	}
 
 	return 0;
 }
@@ -414,21 +426,11 @@ uint8_t addr, uint8_t enable)
 		return -EINVAL;
 
 	struct swmbx_ctrl_data *data = dev->data;
-	uint8_t index, bit;
-	uint32_t value;
-
-	/* calculte bitmap position */
-	index = addr / 0x20;
-	bit = addr % 0x20;
-
-	value = data->mbx_protect[port][index];
 
 	if (enable)
-		value |= (0x1 << bit);
+		data->mbx_protect[port][addr] = true;
 	else
-		value = value & ~(0x1 << bit);
-
-	data->mbx_protect[port][index] = value;
+		data->mbx_protect[port][addr] = false;
 
 	return 0;
 }
@@ -556,21 +558,13 @@ static int swmbx_ctrl_init(const struct device *dev)
 	const struct swmbx_ctrl_config *cfg = DEV_CFG(dev);
 	uint32_t i, j;
 
-	data->swmbx_controller =
-		device_get_binding(cfg->controller_dev_name);
-	if (!data->swmbx_controller) {
-		LOG_ERR("swmbx controller not found: %s",
-			    cfg->controller_dev_name);
-		return -EINVAL;
-	}
-
 	data->buffer = (uint8_t *)(SWMBX_BUF_BASE);
 	data->buffer_size = cfg->buffer_size;
 
 	/* clear data structure */
-	for (j = 0; j < SWMBX_PROTECT_COUNT; j++) {
-		for (i = 0; i < SWMBX_DEV_COUNT; i++) {
-			data->mbx_protect[i][j] = 0;
+	for (i = 0; i < SWMBX_DEV_COUNT; i++) {
+		for (j = 0; j < SWMBX_NOTIFY_COUNT; j++) {
+			data->mbx_protect[i][j] = false;
 			data->notify[i][j].enable = 0;
 			data->notify[i][j].sem_notify = NULL;
 		}
@@ -610,7 +604,7 @@ static int swmbx_ctrl_init(const struct device *dev)
 			    &swmbx_ctrl_##inst##_dev_data,	\
 			    &swmbx_ctrl_##inst##_cfg,		\
 			    POST_KERNEL,				\
-			    CONFIG_I2C_SLAVE_INIT_PRIORITY,		\
+			    CONFIG_KERNEL_INIT_PRIORITY_DEVICE,		\
 			    NULL);
 
 DT_INST_FOREACH_STATUS_OKAY(SWMBX_INIT)
