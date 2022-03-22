@@ -325,11 +325,55 @@ static int cmd_i2c_read(const struct shell *shell, size_t argc, char **argv)
 }
 
 #ifdef CONFIG_PFR_SW_MAILBOX
+#define thread_fifo_size 256
+#define THREAD_DELAY 100
+static struct k_thread zipmb_n_t;
+struct k_sem sem_0_0, sem_0_40, sem_0_50;
+struct k_sem sem_1_31, sem_1_41, sem_1_FF;
+
+K_THREAD_STACK_DEFINE(i2c_thread_n_s, thread_fifo_size);
+
+/* i2c thread demo for swmbx notify */
+void swmbx_notify(void *a, void *b, void *c)
+{
+	LOG_INF("swmbx: swmbx_notify successful.");
+
+	while (1) {
+		if (k_sem_take(&sem_0_0, K_MSEC(50)) == 0) {
+			LOG_INF("swmbx: SEM_0_0 is taken!!");
+		}
+
+		if (k_sem_take(&sem_0_40, K_MSEC(50)) == 0) {
+			LOG_INF("swmbx: SEM_0_40 is taken!!");
+		}
+
+		if (k_sem_take(&sem_0_50, K_MSEC(50)) == 0) {
+			LOG_INF("swmbx: SEM_0_50 is taken!!");
+		}
+
+		if (k_sem_take(&sem_1_31, K_MSEC(50)) == 0) {
+			LOG_INF("swmbx: SEM_1_31 is taken!!");
+		}
+
+		if (k_sem_take(&sem_1_41, K_MSEC(50)) == 0) {
+			LOG_INF("swmbx: SEM_1_41 is taken!!");
+		}
+
+		if (k_sem_take(&sem_1_FF, K_MSEC(50)) == 0) {
+			LOG_INF("swmbx: SEM_1_FF is taken!!");
+		}
+
+		k_sleep(K_MSEC(THREAD_DELAY));
+	}
+}
+
+
 static int cmd_i2c_sw_mbx(const struct shell *shell,
 			      size_t argc, char **argv)
 {
 	int ret = 0;
 	const struct device *swmbx_ctrl;
+	k_tid_t pidn;
 	uint32_t protect0_bit[] = {0xffff0000, 0x55555555, 0x0, 0x0,
 	0x0, 0x0, 0x0, 0x0};
 	uint32_t protect1_bit[] = {0x0000ffff, 0xaaaaaaaa, 0x0, 0x0,
@@ -345,7 +389,7 @@ static int cmd_i2c_sw_mbx(const struct shell *shell,
 	if (swmbx_ctrl) {
 		/* apply function enable */
 		ret = swmbx_enable_behavior(swmbx_ctrl,
-			(SWMBX_PROTECT), true);
+			(SWMBX_PROTECT | SWMBX_NOTIFY), true);
 		if (ret) {
 			shell_error(shell, "xx I2C: Enable SWMBX function failed.");
 			return -ENODEV;
@@ -369,6 +413,37 @@ static int cmd_i2c_sw_mbx(const struct shell *shell,
 
 		ret = swmbx_update_protect(swmbx_ctrl, 0x1, 0x45, true);
 		ret = swmbx_update_protect(swmbx_ctrl, 0x1, 0x46, true);
+
+		/* swmbx notify usage */
+		k_sem_init(&sem_0_0, 0, 1);
+		k_sem_init(&sem_0_40, 0, 1);
+		k_sem_init(&sem_0_50, 0, 1);
+		k_sem_init(&sem_1_31, 0, 1);
+		k_sem_init(&sem_1_41, 0, 1);
+		k_sem_init(&sem_1_FF, 0, 1);
+
+		ret = swmbx_update_notify(swmbx_ctrl, 0x0, &sem_0_0,
+		0x0, true);
+		ret = swmbx_update_notify(swmbx_ctrl, 0x0, &sem_0_40,
+		0x40, true);
+		ret = swmbx_update_notify(swmbx_ctrl, 0x0, &sem_0_50,
+		0x50, true);
+		ret = swmbx_update_notify(swmbx_ctrl, 0x1, &sem_1_31,
+		0x31, true);
+		ret = swmbx_update_notify(swmbx_ctrl, 0x1, &sem_1_41,
+		0x41, true);
+		ret = swmbx_update_notify(swmbx_ctrl, 0x1, &sem_1_FF,
+		0xFF, true);
+
+		if (IS_ENABLED(CONFIG_MULTITHREADING)) {
+			pidn = k_thread_create(&zipmb_n_t,
+						  i2c_thread_n_s,
+						  thread_fifo_size,
+						  (k_thread_entry_t) swmbx_notify,
+						  NULL, NULL, NULL,
+						  -1,
+						  0, K_NO_WAIT);
+		}
 	}
 
 	return ret;
