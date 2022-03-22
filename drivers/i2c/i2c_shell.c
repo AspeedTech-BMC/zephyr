@@ -364,6 +364,11 @@ static int cmd_i2c_sw_mbx(const struct shell *shell,
 			return -ENODEV;
 		}
 
+		ret = swmbx_update_protect(swmbx_ctrl, 0x0, 0x40, true);
+		ret = swmbx_update_protect(swmbx_ctrl, 0x0, 0x41, true);
+
+		ret = swmbx_update_protect(swmbx_ctrl, 0x1, 0x45, true);
+		ret = swmbx_update_protect(swmbx_ctrl, 0x1, 0x46, true);
 	}
 
 	return ret;
