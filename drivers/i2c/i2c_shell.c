@@ -328,10 +328,13 @@ static int cmd_i2c_read(const struct shell *shell, size_t argc, char **argv)
 #define thread_fifo_size 256
 #define THREAD_DELAY 100
 static struct k_thread zipmb_n_t;
+static struct k_thread zipmb_f_t;
 struct k_sem sem_0_0, sem_0_40, sem_0_50;
 struct k_sem sem_1_31, sem_1_41, sem_1_FF;
+struct k_sem sem_fifo_50, sem_fifo_31;
 
 K_THREAD_STACK_DEFINE(i2c_thread_n_s, thread_fifo_size);
+K_THREAD_STACK_DEFINE(i2c_thread_f_s, thread_fifo_size);
 
 /* i2c thread demo for swmbx notify */
 void swmbx_notify(void *a, void *b, void *c)
@@ -367,13 +370,30 @@ void swmbx_notify(void *a, void *b, void *c)
 	}
 }
 
+/* i2c thread demo for swmbx fifo */
+void swmbx_fifo(void *a, void *b, void *c)
+{
+	LOG_INF("swmbx: swmbx_fifo successful.");
+
+	while (1) {
+		if (k_sem_take(&sem_fifo_50, K_MSEC(50)) == 0) {
+			LOG_INF("swmbx: SEM_FIFO_50 is taken!!");
+		}
+
+		if (k_sem_take(&sem_fifo_31, K_MSEC(50)) == 0) {
+			LOG_INF("swmbx: SEM_FIFO_31 is taken!!");
+		}
+
+		k_sleep(K_MSEC(THREAD_DELAY));
+	}
+}
 
 static int cmd_i2c_sw_mbx(const struct shell *shell,
 			      size_t argc, char **argv)
 {
 	int ret = 0;
 	const struct device *swmbx_ctrl;
-	k_tid_t pidn;
+	k_tid_t pidn, pidf;
 	uint32_t protect0_bit[] = {0xffff0000, 0x55555555, 0x0, 0x0,
 	0x0, 0x0, 0x0, 0x0};
 	uint32_t protect1_bit[] = {0x0000ffff, 0xaaaaaaaa, 0x0, 0x0,
@@ -389,7 +409,7 @@ static int cmd_i2c_sw_mbx(const struct shell *shell,
 	if (swmbx_ctrl) {
 		/* apply function enable */
 		ret = swmbx_enable_behavior(swmbx_ctrl,
-			(SWMBX_PROTECT | SWMBX_NOTIFY), true);
+			(SWMBX_PROTECT | SWMBX_NOTIFY | SWMBX_FIFO), true);
 		if (ret) {
 			shell_error(shell, "xx I2C: Enable SWMBX function failed.");
 			return -ENODEV;
@@ -440,6 +460,34 @@ static int cmd_i2c_sw_mbx(const struct shell *shell,
 						  i2c_thread_n_s,
 						  thread_fifo_size,
 						  (k_thread_entry_t) swmbx_notify,
+						  NULL, NULL, NULL,
+						  -1,
+						  0, K_NO_WAIT);
+		}
+
+		/* turn on fifo */
+		k_sem_init(&sem_fifo_50, 0, 1);
+		k_sem_init(&sem_fifo_31, 0, 1);
+
+		ret = swmbx_update_fifo(swmbx_ctrl, &sem_fifo_50,
+		0, 0x50, 0x5, SWMBX_FIFO_NOTIFY_STOP, true);
+		if (ret) {
+			shell_error(shell, "xx I2C: Apply fifo 50 fail.");
+			return -ENODEV;
+		}
+
+		ret = swmbx_update_fifo(swmbx_ctrl, &sem_fifo_31,
+		1, 0x31, 0x5, SWMBX_FIFO_NOTIFY_STOP, true);
+		if (ret) {
+			shell_error(shell, "xx I2C: Apply fifo 31 fail.");
+			return -ENODEV;
+		}
+
+		if (IS_ENABLED(CONFIG_MULTITHREADING)) {
+			pidf = k_thread_create(&zipmb_f_t,
+						  i2c_thread_f_s,
+						  thread_fifo_size,
+						  (k_thread_entry_t) swmbx_fifo,
 						  NULL, NULL, NULL,
 						  -1,
 						  0, K_NO_WAIT);
