@@ -497,7 +497,89 @@ static int cmd_i2c_sw_mbx(const struct shell *shell,
 	return ret;
 }
 
+static int cmd_i2c_sw_mbx_r(const struct shell *shell,
+			      size_t argc, char **argv)
+{
+	const struct device *swmbx_ctrl;
+	int ret = 0;
+	uint8_t fifo;
+	uint8_t addr;
+	uint8_t val;
 
+	/* swmbx ctrl for 0 /1 devices with write protect */
+	swmbx_ctrl = device_get_binding("SWMBX");
+	if (!swmbx_ctrl) {
+		shell_error(shell, "xx I2C: SWMBX Controller not be found.");
+		return -ENODEV;
+	}
+
+	fifo = strtol(argv[1], NULL, 16);
+	addr = strtol(argv[2], NULL, 16);
+
+	ret =  swmbx_read(swmbx_ctrl, fifo, addr, &val);
+	if (!ret) {
+		shell_hexdump(shell, &val, 1);
+	} else {
+		shell_error(shell, "xx I2C: SWMBX read failed.");
+		return -ENODEV;
+	}
+
+	return 0;
+}
+
+static int cmd_i2c_sw_mbx_w(const struct shell *shell,
+			      size_t argc, char **argv)
+{
+	const struct device *swmbx_ctrl;
+	int ret = 0;
+	uint8_t fifo;
+	uint8_t addr;
+	uint8_t val;
+
+	/* swmbx ctrl for 0 /1 devices with write protect */
+	swmbx_ctrl = device_get_binding("SWMBX");
+	if (!swmbx_ctrl) {
+		shell_error(shell, "xx I2C: SWMBX Controller not be found.");
+		return -ENODEV;
+	}
+
+	fifo = strtol(argv[1], NULL, 16);
+	addr = strtol(argv[2], NULL, 16);
+	val = strtol(argv[3], NULL, 16);
+
+	ret = swmbx_write(swmbx_ctrl, fifo, addr, &val);
+	if (ret) {
+		shell_error(shell, "xx I2C: SWMBX write failed.");
+		return -ENODEV;
+	}
+
+	return 0;
+}
+
+static int cmd_i2c_sw_mbx_flush(const struct shell *shell,
+			      size_t argc, char **argv)
+{
+	const struct device *swmbx_ctrl;
+	int ret = 0;
+	uint8_t index;
+
+	swmbx_ctrl = device_get_binding("SWMBX");
+	if (!swmbx_ctrl) {
+		shell_error(shell, "xx I2C: SWMBX Controller not be found.");
+		return -ENODEV;
+	}
+
+	index = strtol(argv[1], NULL, 16);
+
+	ret = swmbx_flush_fifo(swmbx_ctrl, index);
+	if (ret) {
+		shell_error(shell, "xx I2C: flush address 0x%x is not found.",
+				index);
+		return -ENODEV;
+	}
+
+	return 0;
+}
 
 #endif
 
@@ -1385,8 +1467,17 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_i2c_cmds,
 #endif
 #ifdef CONFIG_I2C_SWMBX_SLAVE
 				SHELL_CMD_ARG(slave_swmbx, &dsub_device_name,
-					  "Apply sw mbx slave",
-					   cmd_i2c_sw_mbx, 0, 0),
+					"Apply sw mbx slave",
+					cmd_i2c_sw_mbx, 0, 0),
+				SHELL_CMD_ARG(slave_swmbx_r, &dsub_device_name,
+					"Read sw mbx slave",
+					cmd_i2c_sw_mbx_r, 3, 3),
+				SHELL_CMD_ARG(slave_swmbx_w, &dsub_device_name,
+					"Write sw mbx slave",
+					cmd_i2c_sw_mbx_w, 4, 4),
+				SHELL_CMD_ARG(slave_swmbx_flush, &dsub_device_name,
+					"Flush sw mbx slave",
+					cmd_i2c_sw_mbx_flush, 2, 2),
 #endif
 #ifdef CONFIG_I2C_PFR_SNOOP
 				SHELL_CMD_ARG(sp_en, &dsub_device_name,
