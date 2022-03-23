@@ -10,7 +10,7 @@
 #include <errno.h>
 #include <drivers/i2c.h>
 #include <string.h>
-#include <drivers/i2c/slave/swmbx.h>
+#include <drivers/i2c/pfr/swmbx.h>
 
 #define LOG_LEVEL CONFIG_I2C_LOG_LEVEL
 #include <logging/log.h>

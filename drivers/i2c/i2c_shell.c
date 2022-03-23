@@ -9,7 +9,7 @@
 #include <drivers/i2c.h>
 #include <drivers/i2c/slave/eeprom.h>
 #include <drivers/i2c/slave/ipmb.h>
-#include <drivers/i2c/slave/swmbx.h>
+#include <drivers/i2c/pfr/swmbx.h>
 #include <drivers/i2c/pfr/i2c_snoop.h>
 #include <drivers/i2c/pfr/i2c_filter.h>
 #include <drivers/i2c/pfr/i2c_mailbox.h>
