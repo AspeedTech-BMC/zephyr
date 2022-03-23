@@ -21,6 +21,8 @@ config I2C_SLAVE_INIT_PRIORITY
 
 	source "drivers/i2c/slave/Kconfig.eeprom"
 	source "drivers/i2c/slave/Kconfig.ipmb"
+if PFR_SW_MAILBOX
 	source "drivers/i2c/slave/Kconfig.swmbx"
+endif # PFR_SW_MAILBOX
 
 endif # I2C_SLAVE
