@@ -21,14 +21,16 @@ config HASH_SHELL
 config RSA_SHELL
 	bool "Enable RSA Shell"
 	default y
+	depends on RSA_ASPEED
 	depends on SHELL
 	help
 	  Enable RSA Shell for testing.
 
 config ECDSA_SHELL
-	bool "Enable mbedtls ECDSA sample code"
+	bool "Enable ECDSA sample code"
 	default y
 	depends on MBEDTLS
+	depends on ECDSA_ASPEED
 	depends on SHELL
 	help
 	  Enable mbedtls ECDSA sample code.

@@ -22,3 +22,9 @@ config RSA_ASPEED
 	help
 	  This option enables the RSA driver for ASPEED SoCs.
 
+config ECDSA_ASPEED
+	bool "ASPEED ECDSA engine driver"
+	depends on SOC_FAMILY_ASPEED
+	select RSA_ASPEED
+	help
+	  This option enables the RSA driver for ASPEED SoCs.
