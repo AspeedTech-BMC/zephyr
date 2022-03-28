@@ -23,7 +23,7 @@ struct swmbx_fifo {
 	uint8_t value;
 };
 
-struct swmbx_notify {
+struct swmbx_node {
 	struct k_sem *sem_notify;
 	uint8_t enable;
 };
@@ -48,8 +48,7 @@ struct swmbx_ctrl_data {
 	uint32_t buffer_size;
 	uint8_t *buffer;
 	uint8_t mbx_en;
-	bool mbx_protect[SWMBX_DEV_COUNT][SWMBX_PROTECT_COUNT];
-	struct swmbx_notify notify[SWMBX_DEV_COUNT][SWMBX_NOTIFY_COUNT];
+	struct swmbx_node node[SWMBX_DEV_COUNT][SWMBX_NODE_COUNT];
 	struct swmbx_fifo_data fifo[SWMBX_FIFO_COUNT];
 	bool mbx_fifo_execute[SWMBX_DEV_COUNT];
 	uint8_t mbx_fifo_addr[SWMBX_DEV_COUNT];
@@ -201,8 +200,8 @@ void swmbx_send_msg(uint8_t port, uint8_t addr, uint8_t *val)
 		if ((data->mbx_en & SWMBX_NOTIFY) &&
 		(data->fifo[fifo_index].notify_flag & SWMBX_FIFO_NOTIFY_START) &&
 		(!data->fifo[fifo_index].notify_start)) {
-			if (data->notify[port][fifo_addr].enable) {
-				k_sem_give(data->notify[port][fifo_addr].sem_notify);
+			if ((data->node[port][fifo_addr].enable & SWMBX_NOTIFY)) {
+				k_sem_give(data->node[port][fifo_addr].sem_notify);
 				data->fifo[fifo_index].notify_start = true;
 			}
 		}
@@ -211,17 +210,15 @@ void swmbx_send_msg(uint8_t port, uint8_t addr, uint8_t *val)
 			data->fifo[fifo_index].fifo_write = true;
 	} else {
 		/* check write protect behavior */
-		if ((!data->mbx_protect[port][addr]) ||
+		if (!(data->node[port][addr].enable & SWMBX_PROTECT) ||
 		!(data->mbx_en & SWMBX_PROTECT)) {
 			mbx_write_data = true;
-		} else {
-			mbx_write_data = false;
 		}
 
 		/* check notify behavior */
 		if (data->mbx_en & SWMBX_NOTIFY) {
-			if (data->notify[port][addr].enable) {
-				k_sem_give(data->notify[port][addr].sem_notify);
+			if ((data->node[port][addr].enable & SWMBX_NOTIFY)) {
+				k_sem_give(data->node[port][addr].sem_notify);
 			}
 		}
 
@@ -278,8 +275,8 @@ void swmbx_send_stop(uint8_t port)
 		if ((data->mbx_en & SWMBX_NOTIFY) &&
 		(data->fifo[fifo_index].notify_flag & SWMBX_FIFO_NOTIFY_STOP) &&
 		(data->fifo[fifo_index].fifo_write)) {
-			if (data->notify[port][fifo_addr].enable) {
-				k_sem_give(data->notify[port][fifo_addr].sem_notify);
+			if ((data->node[port][fifo_addr].enable & SWMBX_NOTIFY)) {
+				k_sem_give(data->node[port][fifo_addr].sem_notify);
 			}
 		}
 
@@ -407,9 +404,9 @@ uint32_t *bitmap, uint8_t start_idx, uint8_t num)
 
 		for (j = 0; j < 0x20; j++) {
 			if (bitmap_val & 0x1) {
-				data->mbx_protect[port][value+j] = true;
+				data->node[port][value+j].enable |= SWMBX_PROTECT;
 			} else {
-				data->mbx_protect[port][value+j] = false;
+				data->node[port][value+j].enable &= ~SWMBX_PROTECT;
 			}
 			bitmap_val = bitmap_val >> 1;
 		}
@@ -429,9 +426,9 @@ uint8_t addr, uint8_t enable)
 	struct swmbx_ctrl_data *data = dev->data;
 
 	if (enable)
-		data->mbx_protect[port][addr] = true;
+		data->node[port][addr].enable |= SWMBX_PROTECT;
 	else
-		data->mbx_protect[port][addr] = false;
+		data->node[port][addr].enable &= ~SWMBX_PROTECT;
 
 	return 0;
 }
@@ -450,12 +447,15 @@ struct k_sem *sem, uint8_t addr, uint8_t enable)
 		if (sem == NULL)
 			return -EINVAL;
 
-		data->notify[port][addr].sem_notify = sem;
+		data->node[port][addr].sem_notify = sem;
 	} else {
-		data->notify[port][addr].sem_notify = NULL;
+		data->node[port][addr].sem_notify = NULL;
 	}
 
-	data->notify[port][addr].enable = enable;
+	if (enable)
+		data->node[port][addr].enable |= SWMBX_NOTIFY;
+	else
+		data->node[port][addr].enable &= ~SWMBX_NOTIFY;
 
 	return 0;
 }
@@ -564,15 +564,13 @@ static int swmbx_ctrl_init(const struct device *dev)
 
 	/* clear data structure */
 	for (i = 0; i < SWMBX_DEV_COUNT; i++) {
-		for (j = 0; j < SWMBX_NOTIFY_COUNT; j++) {
-			data->mbx_protect[i][j] = false;
-			data->notify[i][j].enable = 0;
-			data->notify[i][j].sem_notify = NULL;
+		for (j = 0; j < SWMBX_NODE_COUNT; j++) {
+			data->node[i][j].enable = false;
+			data->node[i][j].sem_notify = NULL;
 		}
 	}
 
 	for (i = 0; i < SWMBX_FIFO_COUNT; i++) {
-		data->fifo[i].enable = 0;
 		data->fifo[i].buffer = NULL;
 		data->fifo[i].sem_fifo = NULL;
 	}
