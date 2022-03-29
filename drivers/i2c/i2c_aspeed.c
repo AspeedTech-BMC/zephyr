@@ -234,8 +234,8 @@ LOG_MODULE_REGISTER(i2c_aspeed);
 #define AST_I2C_GET_RX_DMA_LEN(x)	((x >> 16) & 0x1fff)
 
 /* new for i2c snoop */
-#define AST_I2CS_SNOOP_DMA_WPT		0x50
-#define AST_I2CS_SNOOP_DMA_RPT		0x58
+#define I2C_TIMEOUT_CLK			0x2
+#define I2C_TIMEOUT_COUNT		0x8 /* i2c timeout setting (wait about 35ms) */
 /***************************************************************************/
 /* Use platform_data instead of module parameters */
 /* Fast Mode = 400 kHz, Standard = 100 kHz */
@@ -553,6 +553,9 @@ static uint32_t i2c_aspeed_select_clock(const struct device *dev)
 
 		/*Divisor : Base Clock : tCKHighMin : tCK High : tCK Low*/
 		ac_timing = ((scl_high-1) << 20) | (scl_high << 16) | (scl_low << 12) | (div);
+		/* Select time out timer */
+		ac_timing |= AST_I2CC_toutBaseCLK(I2C_TIMEOUT_CLK);
+		ac_timing |= AST_I2CC_tTIMEOUT(I2C_TIMEOUT_COUNT);
 		LOG_DBG("ac_timing %x", ac_timing);
 	} else {
 		for (i = 0; i < ARRAY_SIZE(aspeed_old_i2c_timing_table); i++) {
@@ -698,7 +701,7 @@ static int i2c_aspeed_configure(const struct device *dev,
 		sys_write32(0xffff, i2c_base + AST_I2CS_IER);
 	} else {
 		/*Set interrupt generation of I2C slave controller*/
-		sys_write32(AST_I2CS_PKT_DONE, i2c_base + AST_I2CS_IER);
+		sys_write32((AST_I2CS_PKT_DONE | AST_I2CS_INACTIVE_TO), i2c_base + AST_I2CS_IER);
 	}
 #endif
 	return 0;
@@ -1671,6 +1674,31 @@ int aspeed_i2c_slave_irq(const struct device *dev)
 
 	if (AST_I2CS_ADDR_MASK & sts) {
 		sts &= ~AST_I2CS_ADDR_MASK;
+	}
+
+	if (AST_I2CS_INACTIVE_TO & sts) {
+		struct i2c_aspeed_config *i2c_config = DEV_CFG(dev);
+		uint32_t cmd = AST_I2CS_ACTIVE_ALL | AST_I2CS_PKT_MODE_EN;
+
+		/*Turn off slave mode.*/
+		sys_write32(~AST_I2CC_SLAVE_EN & sys_read32(i2c_base + AST_I2CC_FUN_CTRL)
+		, i2c_base + AST_I2CC_FUN_CTRL);
+
+		/*Set slave mode.*/
+		if (i2c_config->mode == DMA_MODE) {
+			cmd |= AST_I2CS_RX_DMA_EN;
+		} else if (i2c_config->mode == BUFF_MODE) {
+			cmd |= AST_I2CS_RX_BUFF_EN;
+		} else {
+			cmd &= ~AST_I2CS_PKT_MODE_EN;
+		}
+
+		/*Turn on slave mode and apply slave type*/
+		sys_write32(AST_I2CC_SLAVE_EN | sys_read32(i2c_base + AST_I2CC_FUN_CTRL)
+		, i2c_base + AST_I2CC_FUN_CTRL);
+		sys_write32(cmd, i2c_base + AST_I2CS_CMD_STS);
+
+		return 1;
 	}
 
 	if (AST_I2CS_PKT_DONE & sts)
