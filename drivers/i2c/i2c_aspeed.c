@@ -1317,6 +1317,7 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 		aspeed_i2c_trigger_package_cmd(i2c_base, config->mode);
 		break;
 	case AST_I2CS_RX_DONE | AST_I2CS_STOP:
+	case AST_I2CS_RX_DONE | AST_I2CS_Wait_RX_DMA: /* wait for last package received data done */
 	case AST_I2CS_RX_DONE | AST_I2CS_Wait_RX_DMA | AST_I2CS_STOP:
 	case AST_I2CS_RX_DONE_NAK | AST_I2CS_RX_DONE | AST_I2CS_STOP:
 	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE | AST_I2CS_STOP:
