@@ -399,7 +399,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_spim_addr,
 
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_spim_config,
 	SHELL_CMD_ARG(enable, NULL, "\"enable\"", spi_monitor_enabled, 1, 0),
-	SHELL_CMD_ARG(disable, NULL, "\"enable\"", spi_monitor_disabled, 1, 0),
+	SHELL_CMD_ARG(disable, NULL, "\"disable\"", spi_monitor_disabled, 1, 0),
 	SHELL_CMD_ARG(extmux, NULL, "<0/1> for clear/set", external_mux_config, 2, 0),
 	SHELL_CMD_ARG(passthrough, NULL, "<multi/single> <0/1> for clear/set",
 		passthrough_mode_config, 3, 0),
