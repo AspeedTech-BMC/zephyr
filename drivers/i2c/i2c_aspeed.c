@@ -733,8 +733,6 @@ static void aspeed_new_i2c_do_start(const struct device *dev)
 		cmd |= AST_I2CM_RX_CMD;
 		if (config->mode == DMA_MODE) {
 			/*dma mode*/
-			cmd |= AST_I2CM_RX_DMA_EN;
-
 			if (msg->flags & I2C_MSG_RECV_LEN) {
 				LOG_DBG("smbus read\n");
 				xfer_len = 1;
@@ -749,11 +747,14 @@ static void aspeed_new_i2c_do_start(const struct device *dev)
 					}
 				}
 			}
-			sys_write32(AST_I2CM_SET_RX_DMA_LEN(xfer_len - 1), i2c_base + AST_I2CM_DMA_LEN);
-			sys_write32((uint32_t)msg->buf, i2c_base + AST_I2CM_RX_DMA);
+
+			if (xfer_len) {
+				cmd |= AST_I2CM_RX_DMA_EN | AST_I2CM_RX_CMD;
+				sys_write32(AST_I2CM_SET_RX_DMA_LEN(xfer_len - 1), i2c_base + AST_I2CM_DMA_LEN);
+				sys_write32((uint32_t)msg->buf, i2c_base + AST_I2CM_RX_DMA);
+			}
 		} else if (config->mode == BUFF_MODE) {
 			/*buff mode*/
-			cmd |= AST_I2CM_RX_BUFF_EN;
 			if (msg->flags & I2C_MSG_RECV_LEN) {
 				LOG_DBG("smbus read\n");
 				xfer_len = 1;
@@ -768,10 +769,13 @@ static void aspeed_new_i2c_do_start(const struct device *dev)
 					}
 				}
 			}
-			sys_write32(AST_I2CC_SET_RX_BUF_LEN(xfer_len), i2c_base + AST_I2CC_BUFF_CTRL);
+
+			if (xfer_len) {
+				cmd |= AST_I2CM_RX_BUFF_EN | AST_I2CM_RX_CMD;
+				sys_write32(AST_I2CC_SET_RX_BUF_LEN(xfer_len), i2c_base + AST_I2CC_BUFF_CTRL);
+			}
 		} else {
 			/*byte mode*/
-			xfer_len = 1;
 			if (msg->flags & I2C_MSG_RECV_LEN) {
 				LOG_DBG("smbus read\n");
 			} else {
@@ -779,6 +783,13 @@ static void aspeed_new_i2c_do_start(const struct device *dev)
 					LOG_DBG("last stop\n");
 					cmd |= AST_I2CM_RX_CMD_LAST | AST_I2CM_STOP_CMD;
 				}
+			}
+
+			if (msg->len) {
+				cmd |= AST_I2CM_RX_CMD;
+				xfer_len = 1;
+			} else {
+				xfer_len = 0;
 			}
 		}
 	} else {
