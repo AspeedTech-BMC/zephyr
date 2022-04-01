@@ -834,6 +834,13 @@
 				label = "MBOX";
 				status = "disabled";
 			};
+
+			pcc: pcc {
+				compatible = "aspeed,pcc";
+				interrupts = <INTR_PCC AST10X0_IRQ_DEFAULT_PRIORITY>;
+				label = "PCC";
+				status = "disabled";
+			};
 		};
 
 		fmc: spi@7e620000 {
