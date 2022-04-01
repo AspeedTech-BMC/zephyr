@@ -37,3 +37,11 @@ config ABR_FLOW_CTRL_ASPEED
 	  This option enables the ABR related flow control,
 	  including disable FMC_WDT2 and reset ABR indicator.
 
+config PCC_ASPEED
+	bool "ASPEED LPC PCC driver"
+	depends on SOC_FAMILY_ASPEED
+	help
+	  This option enables the PCC driver for ASPEED SoCs.
+	  Note that PCC is not suitable for use with snooping
+	  over eSPI.
+	  Say y if you wish to use LPC PCC on ASPEED MCU.
