@@ -369,8 +369,10 @@ union i3c_ext_termn_timing_s {
 union i3c_ibi_payload_length_s {
 	volatile uint32_t value;
 	struct {
-		volatile uint32_t ibi_size : 16;		/* bit[15:0] */
-		volatile uint32_t max_ibi_size : 16;		/* bit[31:16] */
+		volatile uint32_t max_ibi_size : 8;		/* bit[7:0] */
+		volatile uint32_t reserved0 : 8;		/* bit[15:8] */
+		volatile uint32_t ibi_size : 8;			/* bit[23:16] */
+		volatile uint32_t reserved1 : 8;		/* bit[31:24] */
 	} fields;
 }; /* offset 0xec */
 
