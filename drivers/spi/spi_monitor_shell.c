@@ -309,9 +309,9 @@ static int external_mux_config(const struct shell *shell, size_t argc, char *arg
 	flag = strtoul(argv[1], &endptr, 16);
 
 	if (flag == 0)
-		spim_ext_mux_config(spim_device, SPIM_MASTER_MODE);
+		spim_ext_mux_config(spim_device, 0);
 	else
-		spim_ext_mux_config(spim_device, SPIM_MONITOR_MODE);
+		spim_ext_mux_config(spim_device, 1);
 
 	return 0;
 }

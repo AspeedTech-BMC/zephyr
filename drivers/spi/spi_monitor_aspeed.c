@@ -169,6 +169,7 @@ struct aspeed_spim_config {
 	uint32_t irq_num;
 	uint32_t irq_priority;
 	uint32_t ctrl_idx;
+	uint32_t ext_mux_sel_default;
 	bool extra_clk_en;
 	const struct device *parent;
 	const struct device *flash_dev;
@@ -314,15 +315,17 @@ void spim_passthrough_config(const struct device *dev,
 }
 
 void spim_ext_mux_config(const struct device *dev,
-	enum spim_ext_mux_mode mode)
+	enum spim_ext_mux_sel mux_sel)
 {
 	const struct aspeed_spim_config *config = dev->config;
 
-	if (mode == SPIM_MONITOR_MODE) {
+	if (mux_sel == SPIM_EXT_MUX_SEL_1) {
 		spim_scu_ctrl_set(config->parent, BIT(config->ctrl_idx - 1) << 12,
 					BIT(config->ctrl_idx - 1) << 12);
-	} else {
+	} else if (mux_sel == SPIM_EXT_MUX_SEL_0) {
 		spim_scu_ctrl_clear(config->parent, BIT(config->ctrl_idx - 1) << 12);
+	} else {
+		LOG_ERR("wrong ext mux selection (%d)", mux_sel);
 	}
 }
 
@@ -1228,7 +1231,7 @@ static int aspeed_spi_monitor_init(const struct device *dev)
 	/* always enable internal passthrough configuration */
 	spim_scu_passthrough_mode(dev, 0, true);
 	/* always keep at master mode during booting up stage */
-	spim_ext_mux_config(dev, SPIM_MASTER_MODE);
+	spim_ext_mux_config(dev, config->ext_mux_sel_default);
 
 	if (config->extra_clk_en)
 		spim_block_mode_config(dev, SPIM_BLOCK_EXTRA_CLK);
@@ -1274,6 +1277,7 @@ static int aspeed_spi_monitor_common_init(const struct device *dev)
 		.extra_clk_en = DT_PROP(node_id, extra_clk),	\
 		.parent = DEVICE_DT_GET(DT_PARENT(node_id)),	\
 		.flash_dev = DEVICE_DT_GET(DT_PHANDLE(node_id, flash_device)),	\
+		.ext_mux_sel_default = DT_PROP_OR(node_id, ext_mux_sel, 0),	\
 },
 
 #define ASPEED_SPIM_DEV_DATA(node_id) {	\

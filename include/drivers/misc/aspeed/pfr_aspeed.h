@@ -67,9 +67,9 @@ enum spim_passthrough_mode {
 	SPIM_MULTI_PASSTHROUGH,
 };
 
-enum spim_ext_mux_mode {
-	SPIM_MASTER_MODE,
-	SPIM_MONITOR_MODE,
+enum spim_ext_mux_sel {
+	SPIM_EXT_MUX_SEL_0,
+	SPIM_EXT_MUX_SEL_1,
 };
 
 enum spim_block_mode {
@@ -78,11 +78,12 @@ enum spim_block_mode {
 };
 
 void pfr_bmc_rst_enable_ctrl(bool enable);
+void pfr_pch_rst_enable_ctrl(bool enable);
 void spim_rst_flash(const struct device *dev, uint32_t rst_duration_ms);
 void spim_scu_ctrl_set(const struct device *dev, uint32_t mask, uint32_t val);
 void spim_scu_ctrl_clear(const struct device *dev, uint32_t clear_bits);
 void spim_ext_mux_config(const struct device *dev,
-	enum spim_ext_mux_mode mode);
+	enum spim_ext_mux_sel mux_sel);
 void spim_passthrough_config(const struct device *dev,
 	enum spim_passthrough_mode mode, bool passthrough_en);
 void spim_spi_ctrl_detour_enable(const struct device *dev,

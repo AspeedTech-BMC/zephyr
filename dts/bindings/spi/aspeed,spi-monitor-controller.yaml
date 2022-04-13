@@ -89,3 +89,10 @@ child-binding:
       type: phandle
       required: true
       description: flash device controlled by the SPI monitor.
+
+    ext-mux-sel:
+      type: int
+      required: false
+      description: |
+        External MUX selection default value which is configured
+        during probe stage.
