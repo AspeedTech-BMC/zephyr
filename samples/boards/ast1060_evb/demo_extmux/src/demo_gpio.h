@@ -12,8 +12,12 @@
 #include <sys/util.h>
 
 #if DT_NODE_HAS_STATUS(DT_INST(0, demo_gpio_basic_api), okay)
-#define GPIOO3_DEV_NAME DT_GPIO_LABEL_BY_IDX(DT_INST(0, demo_gpio_basic_api), in_gpios, 0)
-#define GPIOO3_PIN_IN DT_GPIO_PIN_BY_IDX(DT_INST(0, demo_gpio_basic_api), in_gpios, 0)
+#define BMC_RSTIND_GPIO_DEV_NAME \
+			DT_GPIO_LABEL_BY_IDX(DT_INST(0, demo_gpio_basic_api), \
+			bmc_rst_ind_in_gpios, 0)
+#define BMC_RSTIND_GPIO_PIN_IN \
+			DT_GPIO_PIN_BY_IDX(DT_INST(0, demo_gpio_basic_api), \
+			bmc_rst_ind_in_gpios, 0)
 #else
 #error Unsupported board
 #endif

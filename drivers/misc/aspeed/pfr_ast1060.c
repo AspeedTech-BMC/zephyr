@@ -24,7 +24,8 @@ void pfr_bmc_rst_enable_ctrl(bool enable)
 {
 	int ret;
 	const struct gpio_dt_spec gpio_m5 =
-		GPIO_DT_SPEC_GET_BY_IDX(DT_INST(0, demo_gpio_basic_api), out_gpios, 0);
+		GPIO_DT_SPEC_GET_BY_IDX(DT_INST(0, demo_gpio_basic_api),
+						bmc_srst_ctrl_out_gpios, 0);
 
 	if (enable)
 		gpio_pin_set(gpio_m5.port, gpio_m5.pin, 0);

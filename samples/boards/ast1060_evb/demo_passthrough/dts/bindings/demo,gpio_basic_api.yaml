@@ -12,18 +12,12 @@ description: |
 compatible: "demo,gpio_basic_api"
 
 properties:
-    out-gpios:
+    bmc-srst-ctrl-out-gpios:
         type: phandle-array
         required: false
-        description: |
-          Identity of a GPIO that will be configured as an output.  This
-          must be on the same device as in-gpios, and physically
-          connected to in-gpios.
+        description: Control BMC SRST# signal.
 
-    in-gpios:
+    bmc-rst-ind-in-gpios:
         type: phandle-array
         required: false
-        description: |
-          Identity of a GPIO that will be configured as an input.  This
-          must be on the same device as out-gpios,and physically
-          connected to out-gpios.
+        description: Detect or monitor BMC reset indicator.
