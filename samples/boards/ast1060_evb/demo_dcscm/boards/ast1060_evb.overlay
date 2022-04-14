@@ -43,6 +43,14 @@
 #endif
 	};
 
+	swmbx0: swmbx0@60 {
+		compatible = "aspeed,swmbx-dev";
+		reg = <0x60>;
+		label = "SWMBX_SLAVE_0";
+		size = <256>;
+		port = <0>;
+		status = "okay";
+	};
 };
 
 &i2c1 {
@@ -72,6 +80,14 @@
 #endif
 	};
 
+	swmbx1: swmbx1@61 {
+		compatible = "aspeed,swmbx-dev";
+		reg = <0x61>;
+		label = "SWMBX_SLAVE_1";
+		size = <256>;
+		port = <0>;
+		status = "okay";
+	};
 };
 
 &i2c2 {
@@ -101,6 +117,14 @@
 #endif
 	};
 
+	swmbx2: swmbx2@62 {
+		compatible = "aspeed,swmbx-dev";
+		reg = <0x62>;
+		label = "SWMBX_SLAVE_2";
+		size = <256>;
+		port = <0>;
+		status = "okay";
+	};
 };
 
 &i2c3 {
