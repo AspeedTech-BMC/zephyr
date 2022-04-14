@@ -16,7 +16,7 @@ void demo_spim_irq_init(void);
 void demo_wdt(void);
 void aspeed_dcscm_rst_demo(struct k_work *item);
 void rst_ind_gpio_event_register(void);
-void ast1060_i2c_demo_flt(void);
+void aspeed_dcscm_i2c_flt_demo(void);
 
 void main(void)
 {
@@ -36,7 +36,7 @@ void main(void)
 	aspeed_dcscm_rst_demo(NULL);
 
 #if CONFIG_I2C_PFR_FILTER
-	ast1060_i2c_demo_flt();
+	aspeed_dcscm_i2c_flt_demo();
 #endif
 	/* the following demo part should be allocated
 	 * at the final step of main function.
