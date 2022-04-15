@@ -17,6 +17,7 @@ void demo_wdt(void);
 void aspeed_dcscm_rst_demo(struct k_work *item);
 void rst_ind_gpio_event_register(void);
 void aspeed_dcscm_i2c_flt_demo(void);
+void aspeed_dcscm_swmbx_demo(void);
 
 void main(void)
 {
@@ -38,6 +39,11 @@ void main(void)
 #if CONFIG_I2C_PFR_FILTER
 	aspeed_dcscm_i2c_flt_demo();
 #endif
+
+#if CONFIG_PFR_SW_MAILBOX
+	aspeed_dcscm_swmbx_demo();
+#endif
+
 	/* the following demo part should be allocated
 	 * at the final step of main function.
 	 */

@@ -16,6 +16,10 @@
 	status = "okay";
 };
 
+&mbxctrl {
+	status = "okay";
+};
+
 &i2c0 {
 	status = "okay";
 	pinctrl-0 = <&pinctrl_i2c0_default>;
@@ -48,7 +52,7 @@
 		reg = <0x60>;
 		label = "SWMBX_SLAVE_0";
 		size = <256>;
-		port = <0>;
+		port = <1>;
 		status = "okay";
 	};
 };
@@ -85,7 +89,7 @@
 		reg = <0x61>;
 		label = "SWMBX_SLAVE_1";
 		size = <256>;
-		port = <0>;
+		port = <1>;
 		status = "okay";
 	};
 };
