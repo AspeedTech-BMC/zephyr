@@ -16,7 +16,7 @@ static void rst_ind_callback(const struct device *dev,
 		       struct gpio_callback *gpio_cb, uint32_t pins)
 {
 	/* reset BMC and PCH first */
-	pfr_bmc_rst_enable_ctrl(true);
+	pfr_bmc_srst_enable_ctrl(true);
 	pfr_pch_rst_enable_ctrl(true);
 
 	k_work_submit(&rst_work);

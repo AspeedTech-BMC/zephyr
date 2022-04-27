@@ -7,4 +7,10 @@ config WDT_DEMO_ASPEED
 	help
 	  Enable ASPEED WDT demo behaviors.
 
+config ASPEED_DC_SCM
+	default y
+	bool "ASPEED DC-SCM board"
+	help
+	  Enable ASPEED DC-SCM board basic settings.
+
 source "Kconfig.zephyr"

@@ -946,7 +946,7 @@ static int aspeed_spi_decode_range_reinit(const struct device *dev,
 
 	/* prepare new decode sz array */
 	if (total_decode_range - decode_sz_arr[ctx->config->slave]
-		+ flash_sz < ASPEED_SPI_SZ_256M) {
+		+ flash_sz <= ASPEED_SPI_SZ_256M) {
 		decode_sz_arr[ctx->config->slave] = flash_sz;
 	} else {
 		/* do nothing, otherwise, decode range will be larger than 256MB */

@@ -64,6 +64,6 @@ void ast1060_rst_demo_ext_mux(struct k_work *item)
 		spim_passthrough_config(spim_dev, SPIM_SINGLE_PASSTHROUGH, true);
 	}
 
-	pfr_bmc_rst_enable_ctrl(false);
+	pfr_bmc_srst_enable_ctrl(false);
 	ARG_UNUSED(item);
 }

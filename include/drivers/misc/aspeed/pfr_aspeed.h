@@ -77,7 +77,8 @@ enum spim_block_mode {
 	SPIM_BLOCK_EXTRA_CLK
 };
 
-void pfr_bmc_rst_enable_ctrl(bool enable);
+void pfr_bmc_srst_enable_ctrl(bool enable);
+void pfr_bmc_extrst_enable_ctrl(bool enable);
 void pfr_pch_rst_enable_ctrl(bool enable);
 void spim_rst_flash(const struct device *dev, uint32_t rst_duration_ms);
 void spim_scu_ctrl_set(const struct device *dev, uint32_t mask, uint32_t val);

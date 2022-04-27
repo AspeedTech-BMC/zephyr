@@ -27,7 +27,7 @@ void main(void)
 	disable_abr_wdt();
 
 	/* reset BMC first */
-	pfr_bmc_rst_enable_ctrl(true);
+	pfr_bmc_srst_enable_ctrl(true);
 
 	rst_gpio_event_register();
 

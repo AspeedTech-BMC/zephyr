@@ -24,9 +24,14 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
 static uint8_t op_arr[SPI_FLASH_TEST_SIZE] NON_CACHED_BSS_ALIGN16;
 
-static char *flash_devices[6] = {
+/* Change to 2 before solving board problem.
+ * GPIOE2 group cannot work well.
+ */
+#define HOST_SPI_MONITOR_NUM 2
+
+static char *flash_devices[HOST_SPI_MONITOR_NUM] = {
 	"spi1_cs0",
-	"spi2_cs0",
+	/* "spi2_cs0", remove before solving board problem */
 	"spi2_cs1",
 };
 
@@ -52,7 +57,7 @@ int demo_spi_host_read(void)
 
 	op_buf = (uint8_t *)op_arr;
 
-	for (i = 0; i < 3; i++) {
+	for (i = 0; i < HOST_SPI_MONITOR_NUM; i++) {
 		flash_dev = device_get_binding(flash_devices[i]);
 		if (!flash_dev) {
 			LOG_ERR("No device named %s.", flash_devices[i]);

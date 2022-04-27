@@ -23,6 +23,11 @@ extern char __bss_nc_end__[];
 /* SCU registers */
 #define JTAG_PINMUX_REG 0x41c
 
+/* GPIO_I_L*/
+#define GPIO_I_L_DAT_VAL_REG   0x7e780070
+#define GPIO_I_L_DIR_REG       0x7e780074
+#define GPIO_I_L_DAT_READ_REG  0x7e7800c8
+
 /* secure boot header : provide image size to bootROM for SPI boot */
 struct sb_header {
 	uint32_t key_location;
@@ -58,6 +63,18 @@ void z_platform_init(void)
 	if (CONFIG_SRAM_NC_SIZE > 0) {
 		(void)memset(__bss_nc_start__, 0, __bss_nc_end__ - __bss_nc_start__);
 	}
+
+#if defined(CONFIG_ASPEED_DC_SCM)
+	sys_write32(sys_read32(GPIO_I_L_DIR_REG) | BIT(26) | BIT(27),
+				GPIO_I_L_DIR_REG);
+	sys_write32((sys_read32(GPIO_I_L_DAT_READ_REG) | BIT(26) | BIT(27)),
+				GPIO_I_L_DAT_VAL_REG);
+
+	if ((sys_read32(GPIO_I_L_DAT_READ_REG) & (BIT(26) | BIT(27))) !=
+	    (BIT(26) | BIT(27))) {
+	    printk("Fail to enable flash power\n");
+	}
+#endif
 }
 
 #if defined(CONFIG_WDT_ASPEED)

@@ -4,9 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+
 #include <zephyr.h>
 #include <sys/printk.h>
 #include <drivers/misc/aspeed/pfr_aspeed.h>
+#include <drivers/gpio.h>
 
 #define HOST_SPI_MONITOR_NUM 3
 
@@ -43,7 +45,7 @@ void aspeed_dcscm_rst_demo(struct k_work *item)
 		return;
 
 	/* set up monitor mode for all SPI monitors */
-	for (i = 0; i < 3; i++) {
+	for (i = 0; i < HOST_SPI_MONITOR_NUM; i++) {
 		spim_dev = device_get_binding(spim_devs[i]);
 		if (!spim_dev) {
 			printk("demo_err: cannot get device, %s.\n", spim_devs[i]);
@@ -54,7 +56,8 @@ void aspeed_dcscm_rst_demo(struct k_work *item)
 		spim_ext_mux_config(spim_dev, 0);
 	}
 
-	pfr_bmc_rst_enable_ctrl(false);
+	pfr_bmc_srst_enable_ctrl(false);
+	pfr_bmc_extrst_enable_ctrl(false);
 	pfr_pch_rst_enable_ctrl(false);
 	ARG_UNUSED(item);
 }

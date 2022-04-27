@@ -25,11 +25,11 @@ static int bmc_rst_demo(const struct shell *shell, size_t argc, char *argv[])
 	}
 
 	/* SRST# */
-	pfr_bmc_rst_enable_ctrl(true);
+	pfr_bmc_srst_enable_ctrl(true);
 
 	spim_rst_flash(spim_dev1, 500);
 
-	pfr_bmc_rst_enable_ctrl(false);
+	pfr_bmc_srst_enable_ctrl(false);
 
 	return 0;
 }

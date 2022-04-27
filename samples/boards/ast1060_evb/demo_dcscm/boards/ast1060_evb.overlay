@@ -2,12 +2,15 @@
 	resources {
 		compatible = "demo,gpio_basic_api";
 		bmc-srst-ctrl-out-gpios = <&gpio0_m_p 5 0>; /* GPIOM5 */
+		bmc-extrst-ctrl-out-gpios = <&gpio0_e_h 26 0>; /* GPIOH5 */
 		bmc-rst-ind-in-gpios = <&gpio0_m_p 19 0>; /* GPIO_O3 */
 		bmc-cpu1-mux-sel-out-gpios = <&gpio0_a_d 26 0>; /* GPIO_D2 */
 		bic-rst-ind-in-gpios = <&gpio0_a_d 16 0>; /* GPIO_C0 */
 		pch-rst-ctrl-out-gpios = <&gpio0_m_p 2 0>; /* GPIO_M2 */
 		cpu0-rst-ind-in-gpios = <&gpio0_q_t 26 0>; /* GPIO_T2 */
 		cpu1-rst-ind-in-gpios = <&gpio0_q_t 28 0>; /* GPIO_T4 */
+		cpu0-flash-pwr-out-gpios = <&gpio0_i_l 26 0>; /* GPIO_L2 */
+		cpu1-flash-pwr-out-gpios = <&gpio0_i_l 27 0>; /* GPIO_L3 */
 	};
 };
 
@@ -307,7 +310,7 @@
 	log-ram-size = <0x200>;
 	pinctrl-0 = <&pinctrl_spim3_cs &pinctrl_spim3_in_default &pinctrl_spim3_out_default
 				&pinctrl_spim3_qspi_in_default &pinctrl_spim3_qspi_out_default
-				&pinctrl_spim3_rst_out>;
+				&pinctrl_spim3_muxsel &pinctrl_spim3_rst_out>;
 
 	flash-device = <&spi2_cs0>;
 	ext-mux-sel = <1>;
@@ -319,7 +322,7 @@
 	log-ram-size = <0x200>;
 	pinctrl-0 = <&pinctrl_spim4_cs &pinctrl_spim4_in_default &pinctrl_spim4_out_default
 				&pinctrl_spim4_qspi_in_default &pinctrl_spim4_qspi_out_default
-				&pinctrl_spim4_rst_out>;
+				&pinctrl_spim4_muxsel &pinctrl_spim4_rst_out>;
 
 	flash-device = <&spi2_cs1>;
 	ext-mux-sel = <1>;

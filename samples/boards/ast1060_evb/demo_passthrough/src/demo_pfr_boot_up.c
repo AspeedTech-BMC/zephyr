@@ -29,7 +29,7 @@ void ast1060_rst_demo_passthrough(struct k_work *item)
 	}
 
 	/* reset BMC and flash */
-	pfr_bmc_rst_enable_ctrl(true);
+	pfr_bmc_srst_enable_ctrl(true);
 	spim_rst_flash(spim_dev, 500);
 
 	/* disable passthrough mode for SPI monitors */
@@ -59,7 +59,7 @@ void ast1060_rst_demo_passthrough(struct k_work *item)
 		spim_passthrough_config(spim_dev, SPIM_SINGLE_PASSTHROUGH, true);
 	}
 
-	pfr_bmc_rst_enable_ctrl(false);
+	pfr_bmc_srst_enable_ctrl(false);
 
 }
 
