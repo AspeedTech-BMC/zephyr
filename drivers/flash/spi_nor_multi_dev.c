@@ -1298,6 +1298,14 @@ static int sfdp_post_fixup(const struct device *dev)
 				ret = winbond_w25q80dv_fixup(dev);
 		}
 		break;
+	case SPI_NOR_MFR_ID_MXIC:
+		if (SPI_NOR_GET_JESDID(data->jedec_id) == 0x2016) {
+			ret = spi_nor_sr1_bit6_config(dev);
+			if (ret != 0)
+				LOG_ERR("[%s]Fail to set QE bit", dev->name);
+		}
+
+		break;
 	default:
 		/* do nothing */
 		break;
