@@ -5,7 +5,6 @@
 		bmc-extrst-ctrl-out-gpios = <&gpio0_e_h 26 0>; /* GPIO_H2 */
 		bmc-rst-ind-in-gpios = <&gpio0_m_p 19 0>; /* GPIO_O3 */
 		bmc-cpu1-mux-sel-out-gpios = <&gpio0_a_d 26 0>; /* GPIO_D2 */
-		bic-fwspick-out-gpios = <&gpio0_a_d 19 0>; /* GPIO_C3 */
 		bic-rst-ind-in-gpios = <&gpio0_a_d 16 0>; /* GPIO_C0 */
 		pch-rst-ctrl-out-gpios = <&gpio0_m_p 2 0>; /* GPIO_M2 */
 		cpu0-rst-ind-in-gpios = <&gpio0_q_t 26 0>; /* GPIO_T2 */
@@ -13,12 +12,6 @@
 		cpu0-flash-pwr-out-gpios = <&gpio0_i_l 26 0>; /* GPIO_L2 */
 		cpu1-flash-pwr-out-gpios = <&gpio0_i_l 27 0>; /* GPIO_L3 */
 	};
-};
-
-&uart1 {
-	clock-frequency = <1846153>;
-	current-speed = <115200>;
-	status = "okay";
 };
 
 &i2cfilter {

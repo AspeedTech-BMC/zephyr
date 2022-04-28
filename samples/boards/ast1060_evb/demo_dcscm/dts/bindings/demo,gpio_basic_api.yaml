@@ -22,13 +22,6 @@ properties:
         required: false
         description: Control BMC EXTRST# signal.
 
-    bic-fwspick-out-gpios:
-        type: phandle-array
-        required: false
-        description:
-          Control BIC FWSPICK signal for enabling
-          boot from UART feature.
-
     bmc-rst-ind-in-gpios:
         type: phandle-array
         required: false

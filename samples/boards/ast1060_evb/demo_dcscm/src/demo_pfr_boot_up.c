@@ -5,7 +5,6 @@
  */
 
 #include <zephyr.h>
-#include <stdlib.h>
 #include <sys/printk.h>
 #include <drivers/misc/aspeed/pfr_aspeed.h>
 #include <drivers/gpio.h>
@@ -13,7 +12,6 @@
 #define HOST_SPI_MONITOR_NUM 3
 
 int demo_spi_host_read(void);
-int ast1030_img_xfer(void);
 
 void aspeed_dcscm_rst_demo(struct k_work *item)
 {
@@ -58,11 +56,8 @@ void aspeed_dcscm_rst_demo(struct k_work *item)
 		spim_ext_mux_config(spim_dev, 0);
 	}
 
-	ret = ast1030_img_xfer();
-	if (ret != 0) {
-		printk("demo_err: fail to transfer binary to ast1030.\n");
-		return;
-	}
+	pfr_bmc_srst_enable_ctrl(false);
+	pfr_bmc_extrst_enable_ctrl(false);
 
 	pfr_pch_rst_enable_ctrl(false);
 	ARG_UNUSED(item);

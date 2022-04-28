@@ -81,23 +81,3 @@ void pfr_pch_rst_enable_ctrl(bool enable)
 }
 #endif
 
-#if DT_NODE_HAS_PROP(DT_INST(0, demo_gpio_basic_api), bic_fwspick_out_gpios)
-void ast1030_fwspi_ck_ctrl(uint8_t val)
-{
-	int ret;
-	const struct gpio_dt_spec gpio_c3 =
-		GPIO_DT_SPEC_GET_BY_IDX(DT_INST(0, demo_gpio_basic_api),
-						bic_fwspick_out_gpios, 0);
-
-	if (val == 1)
-		gpio_pin_set(gpio_c3.port, gpio_c3.pin, 1);
-	else
-		gpio_pin_set(gpio_c3.port, gpio_c3.pin, 0);
-
-	ret = gpio_pin_configure_dt(&gpio_c3, GPIO_OUTPUT);
-	if (ret)
-		return;
-
-	k_busy_wait(1000); /* 1ms */
-}
-#endif
