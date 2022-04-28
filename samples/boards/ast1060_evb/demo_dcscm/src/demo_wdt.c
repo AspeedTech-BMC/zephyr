@@ -106,7 +106,7 @@ static void demo_wdt_background_thread(void)
 	}
 
 	wdt_config.window.min = 0U;
-	wdt_config.window.max = 5000; /* 5s */
+	wdt_config.window.max = 20000; /* 20s */
 	wdt_config.callback = NULL;
 	ret = wdt_install_timeout(wdt2_dev, &wdt_config);
 	if (ret != 0) {
