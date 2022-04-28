@@ -69,7 +69,7 @@ int ast1030_img_xfer(void)
 
 	binary_size = ((uint32_t *)binary_buffer)[0] + 4;
 
-	printk("bin_xfer: uart boot binary size = %x\n", binary_size);
+	printk("bin_xfer: uart boot binary size = %d\n", binary_size);
 
 	printk("release BMC reset...\n");
 	ast1030_fwspi_ck_ctrl(1);
