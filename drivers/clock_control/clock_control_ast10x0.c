@@ -89,6 +89,9 @@ static int aspeed_clock_control_get_rate(const struct device *dev,
 	case ASPEED_CLK_GATE_UART2CLK:
 	case ASPEED_CLK_GATE_UART3CLK:
 	case ASPEED_CLK_GATE_UART4CLK:
+		reg = sys_read32(0x7e789098);
+		reg &= ~(BIT(clk_id - ASPEED_CLK_GATE_UART1CLK + 4));
+		sys_write32(reg, 0x7e789098);
 	case ASPEED_CLK_UART5:
 	case ASPEED_CLK_GATE_UART6CLK:
 	case ASPEED_CLK_GATE_UART7CLK:
