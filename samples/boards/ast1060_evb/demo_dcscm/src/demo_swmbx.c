@@ -13,8 +13,8 @@
 #define SWMBX_DELAY 100
 static struct k_thread zswmbx_n_t;
 static struct k_thread zswmbx_f_t;
-struct k_sem sem_0_0E, sem_0_0F;
-struct k_sem sem_1_0E, sem_1_0F;
+struct k_sem sem_0_05, sem_0_45;
+struct k_sem sem_1_35, sem_1_45;
 struct k_sem sem_fifo_0E, sem_fifo_0F;
 
 K_THREAD_STACK_DEFINE(swmbx_thread_n_s, swmbx_thread_size);
@@ -27,20 +27,20 @@ void dcscm_swmbx_notify(void *a, void *b, void *c)
 	printk("dcscm swmbx_notify successful.");
 
 	while (1) {
-		if (k_sem_take(&sem_0_0E, K_MSEC(50)) == 0) {
-			printk("dcscm : SEM_0_0E is taken!!");
+		if (k_sem_take(&sem_0_05, K_MSEC(50)) == 0) {
+			printk("dcscm : SEM_0_05 is taken!!");
 		}
 
-		if (k_sem_take(&sem_0_0F, K_MSEC(50)) == 0) {
-			printk("dcscm : SEM_0_0F is taken!!");
+		if (k_sem_take(&sem_0_45, K_MSEC(50)) == 0) {
+			printk("dcscm : SEM_0_45 is taken!!");
 		}
 
-		if (k_sem_take(&sem_1_0E, K_MSEC(50)) == 0) {
-			printk("dcscm : SEM_1_0E is taken!!");
+		if (k_sem_take(&sem_1_35, K_MSEC(50)) == 0) {
+			printk("dcscm : SEM_1_35 is taken!!");
 		}
 
-		if (k_sem_take(&sem_1_0F, K_MSEC(50)) == 0) {
-			printk("dcscm : SEM_1_0F is taken!!");
+		if (k_sem_take(&sem_1_45, K_MSEC(50)) == 0) {
+			printk("dcscm : SEM_1_45 is taken!!");
 		}
 
 		k_sleep(K_MSEC(SWMBX_DELAY));
@@ -93,19 +93,19 @@ void aspeed_dcscm_swmbx_demo(void)
 		}
 
 		/* swmbx notify usage */
-		k_sem_init(&sem_0_0E, 0, 1);
-		k_sem_init(&sem_0_0F, 0, 1);
-		k_sem_init(&sem_1_0E, 0, 1);
-		k_sem_init(&sem_1_0F, 0, 1);
+		k_sem_init(&sem_0_05, 0, 1);
+		k_sem_init(&sem_0_45, 0, 1);
+		k_sem_init(&sem_1_35, 0, 1);
+		k_sem_init(&sem_1_45, 0, 1);
 
-		ret = swmbx_update_notify(swmbx_ctrl, 0x0, &sem_0_0E,
+		ret = swmbx_update_notify(swmbx_ctrl, 0x0, &sem_0_05,
 		0x0, true);
-		ret = swmbx_update_notify(swmbx_ctrl, 0x0, &sem_0_0F,
+		ret = swmbx_update_notify(swmbx_ctrl, 0x0, &sem_0_45,
 		0x40, true);
-		ret = swmbx_update_notify(swmbx_ctrl, 0x1, &sem_1_0E,
-		0x31, true);
-		ret = swmbx_update_notify(swmbx_ctrl, 0x1, &sem_1_0F,
-		0x41, true);
+		ret = swmbx_update_notify(swmbx_ctrl, 0x1, &sem_1_35,
+		0x30, true);
+		ret = swmbx_update_notify(swmbx_ctrl, 0x1, &sem_1_45,
+		0x40, true);
 
 		/* create thread to receive mbx notify */
 		if (IS_ENABLED(CONFIG_MULTITHREADING)) {
@@ -148,7 +148,7 @@ void aspeed_dcscm_swmbx_demo(void)
 		}
 	}
 
-	/* register swmbx device 0/1*/
+	/* register swmbx device 0 (bmc ast2600)/2 (cpu0)*/
 	dev = device_get_binding("SWMBX_SLAVE_0");
 	if (!dev) {
 		printk("I2C: SWMBX Slave 0 not be found.");
@@ -156,9 +156,9 @@ void aspeed_dcscm_swmbx_demo(void)
 	}
 	i2c_slave_driver_register(dev);
 
-	dev = device_get_binding("SWMBX_SLAVE_1");
+	dev = device_get_binding("SWMBX_SLAVE_2");
 	if (!dev) {
-		printk("I2C: SWMBX Slave 1 not be found.");
+		printk("I2C: SWMBX Slave 2 not be found.");
 		return;
 	}
 	i2c_slave_driver_register(dev);
