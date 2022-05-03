@@ -24,23 +24,23 @@ K_THREAD_STACK_DEFINE(swmbx_thread_f_s, swmbx_thread_size);
 void dcscm_swmbx_notify(void *a, void *b, void *c)
 {
 #if CONFIG_PFR_SW_MAILBOX
-	printk("dcscm swmbx_notify successful.");
+	printk("dcscm swmbx_notify successful.\n");
 
 	while (1) {
 		if (k_sem_take(&sem_0_05, K_MSEC(50)) == 0) {
-			printk("dcscm : SEM_0_05 is taken!!");
+			printk("dcscm : SEM_0_05 is taken!!\n");
 		}
 
 		if (k_sem_take(&sem_0_45, K_MSEC(50)) == 0) {
-			printk("dcscm : SEM_0_45 is taken!!");
+			printk("dcscm : SEM_0_45 is taken!!\n");
 		}
 
 		if (k_sem_take(&sem_1_35, K_MSEC(50)) == 0) {
-			printk("dcscm : SEM_1_35 is taken!!");
+			printk("dcscm : SEM_1_35 is taken!!\n");
 		}
 
 		if (k_sem_take(&sem_1_45, K_MSEC(50)) == 0) {
-			printk("dcscm : SEM_1_45 is taken!!");
+			printk("dcscm : SEM_1_45 is taken!!\n");
 		}
 
 		k_sleep(K_MSEC(SWMBX_DELAY));
@@ -52,15 +52,15 @@ void dcscm_swmbx_notify(void *a, void *b, void *c)
 void dcscm_swmbx_fifo(void *a, void *b, void *c)
 {
 #if CONFIG_PFR_SW_MAILBOX
-	printk("dcscm swmbx: swmbx_fifo successful.");
+	printk("dcscm swmbx: swmbx_fifo successful.\n");
 
 	while (1) {
 		if (k_sem_take(&sem_fifo_0E, K_MSEC(50)) == 0) {
-			printk("dcscm : SEM_FIFO_0E is taken!!");
+			printk("dcscm : SEM_FIFO_0E is taken!!\n");
 		}
 
 		if (k_sem_take(&sem_fifo_0F, K_MSEC(50)) == 0) {
-			printk("dcscm : SEM_FIFO_0F is taken!!");
+			printk("dcscm : SEM_FIFO_0F is taken!!\n");
 		}
 
 		k_sleep(K_MSEC(SWMBX_DELAY));
@@ -79,7 +79,7 @@ void aspeed_dcscm_swmbx_demo(void)
 	/* swmbx ctrl devices binding*/
 	swmbx_ctrl = device_get_binding("SWMBX");
 	if (!swmbx_ctrl) {
-		printk("I2C: SWMBX Controller not be found.");
+		printk("I2C: SWMBX Controller not be found.\n");
 		return;
 	}
 
@@ -88,7 +88,7 @@ void aspeed_dcscm_swmbx_demo(void)
 		ret = swmbx_enable_behavior(swmbx_ctrl,
 			(SWMBX_NOTIFY | SWMBX_FIFO), true);
 		if (ret) {
-			printk("I2C: Enable SWMBX function failed.");
+			printk("I2C: Enable SWMBX function failed.\n");
 			return;
 		}
 
@@ -125,14 +125,14 @@ void aspeed_dcscm_swmbx_demo(void)
 		ret = swmbx_update_fifo(swmbx_ctrl, &sem_fifo_0E,
 		0, 0x0e, 0x8, SWMBX_FIFO_NOTIFY_STOP, true);
 		if (ret) {
-			printk("I2C: Apply fifo 0e fail.");
+			printk("I2C: Apply fifo 0e fail.\n");
 			return;
 		}
 
 		ret = swmbx_update_fifo(swmbx_ctrl, &sem_fifo_0F,
 		1, 0x0f, 0x8, SWMBX_FIFO_NOTIFY_STOP, true);
 		if (ret) {
-			printk("I2C: Apply fifo 0f fail.");
+			printk("I2C: Apply fifo 0f fail.\n");
 			return;
 		}
 
@@ -151,17 +151,16 @@ void aspeed_dcscm_swmbx_demo(void)
 	/* register swmbx device 0 (bmc ast2600)/2 (cpu0)*/
 	dev = device_get_binding("SWMBX_SLAVE_0");
 	if (!dev) {
-		printk("I2C: SWMBX Slave 0 not be found.");
+		printk("I2C: SWMBX Slave 0 not be found.\n");
 		return;
 	}
 	i2c_slave_driver_register(dev);
 
 	dev = device_get_binding("SWMBX_SLAVE_2");
 	if (!dev) {
-		printk("I2C: SWMBX Slave 2 not be found.");
+		printk("I2C: SWMBX Slave 2 not be found.\n");
 		return;
 	}
 	i2c_slave_driver_register(dev);
-
 #endif
 }
