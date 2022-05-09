@@ -54,12 +54,12 @@ struct i2c_global_config {
  * base clk:3040000, val:0x1f, scl: 97.85Khz, tbuf: 5.28us
  * base clk:3000000, val:0x20, scl: 98.04Khz, tbuf: 5.44us
  * base clk:2900000, val:0x21, scl: 98.61Khz, tbuf: 5.6us
- * base clk:2800000, val:0x22, scl: 99.21Khz, tbuf: 5.75us
+ * base clk:2800000, val:0x22, scl: 99.21Khz, tbuf: 5.75us (default)
  */
 static uint32_t base_freq[BASE_CLK_COUNT] = {
 	20000000,	/* 20M */
 	10000000,	/* 10M */
-	3250000,	/* 3.25M */
+	2800000,	/* 2.8M */
 	1000000,	/* 1M */
 };
 
