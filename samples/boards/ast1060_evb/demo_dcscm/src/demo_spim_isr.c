@@ -54,6 +54,19 @@ static void spim_log_parser(const struct device *dev, uint32_t idx, uint32_t log
 	}
 }
 
+void demo_rst_log_ptr(const struct device *dev)
+{
+	uint32_t ctrl_idx = spim_get_ctrl_idx(dev);
+
+	if (IS_ENABLED(CONFIG_MULTITHREADING))
+		k_sem_take(&sem_demo_log_op, K_FOREVER);
+
+	log_ctrls[ctrl_idx - 1].pre_off = 0;
+
+	if (IS_ENABLED(CONFIG_MULTITHREADING))
+		k_sem_give(&sem_demo_log_op);
+}
+
 static void demo_spim_log_work(struct k_work *item)
 {
 	uint32_t i;

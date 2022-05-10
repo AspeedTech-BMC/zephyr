@@ -123,6 +123,8 @@ void spim_lock_common(const struct device *dev);
 
 void spim_monitor_enable(const struct device *dev, bool enable);
 
+void aspeed_spi_monitor_sw_rst(const struct device *dev);
+
 struct spim_log_info {
 	mem_addr_t log_ram_addr;
 	uint32_t log_max_sz;

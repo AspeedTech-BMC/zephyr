@@ -9,6 +9,7 @@
 #include <drivers/misc/aspeed/pfr_aspeed.h>
 
 int demo_spi_host_read(void);
+void demo_rst_log_ptr(const struct device *dev);
 
 void ast1060_rst_demo_ext_mux(struct k_work *item)
 {
@@ -50,6 +51,9 @@ void ast1060_rst_demo_ext_mux(struct k_work *item)
 	if (ret)
 		return;
 
+	aspeed_spi_monitor_sw_rst(spim_dev1);
+	demo_rst_log_ptr(spim_dev1);
+
 	/* config spim1 as SPI monitor */
 	spim_ext_mux_config(spim_dev1, 1);
 
@@ -61,6 +65,8 @@ void ast1060_rst_demo_ext_mux(struct k_work *item)
 			return;
 		}
 
+		aspeed_spi_monitor_sw_rst(spim_dev);
+		demo_rst_log_ptr(spim_dev);
 		spim_passthrough_config(spim_dev, SPIM_SINGLE_PASSTHROUGH, true);
 	}
 

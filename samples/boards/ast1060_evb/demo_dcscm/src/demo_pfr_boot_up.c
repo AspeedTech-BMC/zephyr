@@ -12,6 +12,7 @@
 #define HOST_SPI_MONITOR_NUM 3
 
 int demo_spi_host_read(void);
+void demo_rst_log_ptr(const struct device *dev);
 
 void aspeed_dcscm_rst_demo(struct k_work *item)
 {
@@ -52,7 +53,10 @@ void aspeed_dcscm_rst_demo(struct k_work *item)
 			return;
 		}
 
-		/* config spim1 as SPI monitor */
+		aspeed_spi_monitor_sw_rst(spim_dev);
+		demo_rst_log_ptr(spim_dev);
+
+		/* config spim as SPI monitor */
 		spim_ext_mux_config(spim_dev, 0);
 	}
 

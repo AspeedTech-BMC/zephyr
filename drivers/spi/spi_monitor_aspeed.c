@@ -96,7 +96,8 @@ static uint8_t spim_log_arr[SPIM_LOG_RAM_TOTAL_SIZE] NON_CACHED_BSS_ALIGN16;
 #define SPIM_ALLOW_CMD_BASE     (0x0080)
 #define SPIM_ADDR_PRIV_TABLE_BASE    (0x0100)
 
-#define SPIM_BLOCK_CMD_EXTRA_CLK	BIT(7)
+#define SPIM_BLOCK_CMD_EXTRA_CLK    BIT(7)
+#define SPIM_SW_RST                 BIT(15)
 
 /* allow command table */
 #define SPIM_CMD_TABLE_NUM              32
@@ -1217,6 +1218,25 @@ static int spim_abnormal_log_init(const struct device *dev)
 
 end:
 	return ret;
+}
+
+void aspeed_spi_monitor_sw_rst(const struct device *dev)
+{
+	const struct aspeed_spim_config *config = dev->config;
+	uint32_t reg_val;
+
+	acquire_spim_device(dev);
+
+	reg_val = sys_read32(config->ctrl_base + SPIM_CTRL);
+	reg_val |= SPIM_SW_RST;
+	sys_write32(reg_val, config->ctrl_base + SPIM_CTRL);
+
+	k_usleep(5);
+
+	reg_val &= ~(SPIM_SW_RST);
+	sys_write32(reg_val, config->ctrl_base + SPIM_CTRL);
+
+	release_spim_device(dev);
 }
 
 static int aspeed_spi_monitor_init(const struct device *dev)
