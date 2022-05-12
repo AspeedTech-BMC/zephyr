@@ -18,4 +18,6 @@
 #define TO_PHY_ADDR(addr)	(PHY_SRAM_ADDR + (uint32_t)(addr))
 #define TO_VIR_ADDR(addr)	((uint32_t)(addr) - PHY_SRAM_ADDR)
 
+void aspeed_soc_show_chip_id(void);
+
 #endif /* ZEPHYR_SOC_ARM_ASPEED_AST26XX_SOC_H_*/
