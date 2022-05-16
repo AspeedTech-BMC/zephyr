@@ -198,14 +198,14 @@ int cache_data_range(void *addr, size_t size, int op)
 
 	ARG_UNUSED(op);
 
-	/* enter critical section */
-	if (!k_is_in_isr())
-		key = irq_lock();
-
 	if (((uint32_t)addr < CACHED_SRAM_ADDR) ||
 	    ((uint32_t)addr > CACHED_SRAM_END)) {
 		return 0;
 	}
+
+	/* enter critical section */
+	if (!k_is_in_isr())
+		key = irq_lock();
 
 	n = get_n_cacheline((uint32_t)addr, size, &aligned_addr);
 
