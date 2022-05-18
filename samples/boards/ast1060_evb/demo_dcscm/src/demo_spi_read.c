@@ -24,16 +24,13 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
 static uint8_t op_arr[SPI_FLASH_TEST_SIZE] NON_CACHED_BSS_ALIGN16;
 
-/* Change to 4 before solving board problem.
- * GPIOE2 group cannot work well.
- */
-#define HOST_SPI_MONITOR_NUM 4
+#define HOST_SPI_MONITOR_NUM 5
 
 static char *flash_devices[HOST_SPI_MONITOR_NUM] = {
 	"fmc_cs0",
 	"fmc_cs1",
 	"spi1_cs0",
-	/* "spi2_cs0", remove before solving board problem */
+	"spi2_cs0",
 	"spi2_cs1",
 };
 
