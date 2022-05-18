@@ -80,6 +80,8 @@ struct cmd_table_info cmds_array[] = {
 		.cmd_table_val = CMD_TABLE_VALUE(1, 0, 1, 0, 1, 8, 0, 3, 1, CMD_SFDP)},
 	{.cmd = CMD_RDID,
 		.cmd_table_val = CMD_TABLE_VALUE(1, 0, 1, 0, 1, 0, 0, 0, 0, CMD_RDID)},
+	{.cmd = CMD_RDFSR,
+		.cmd_table_val = CMD_TABLE_VALUE(1, 0, 1, 0, 1, 0, 0, 0, 0, CMD_RDFSR)},
 };
 
 static uint8_t spim_log_arr[SPIM_LOG_RAM_TOTAL_SIZE] NON_CACHED_BSS_ALIGN16;
