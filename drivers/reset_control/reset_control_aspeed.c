@@ -34,6 +34,8 @@ static int aspeed_reset_control_deassert(const struct device *dev,
 
 	sys_write32(BIT(GET_RST_BIT(rst_id)),
 		    scu_base + GET_DEASSERT_OFFSET(rst_id));
+	/* Add dummy read to ensure reset clear is finished */
+	sys_read32(scu_base + GET_DEASSERT_OFFSET(rst_id));
 	LOG_DBG("Deassert offset:0x%08x bit:%d", GET_DEASSERT_OFFSET(rst_id),
 		GET_RST_BIT(rst_id));
 	return 0;
