@@ -102,11 +102,9 @@ static int i2c_global_init(const struct device *dev)
 
 	const struct device *reset_dev = device_get_binding(ASPEED_RST_CTRL_NAME);
 
-	/* i2c controller reset / de-reset (delay is necessary) */
+	/* i2c controller reset / de-reset */
 	reset_control_assert(reset_dev, DEV_CFG(dev)->rst_id);
-	k_msleep(1);
 	reset_control_deassert(reset_dev, DEV_CFG(dev)->rst_id);
-	k_msleep(1);
 
 	/* set i2c global setting */
 	sys_write32(I2CG_SET, i2c_global_base + ASPEED_I2CG_CONTROL);
