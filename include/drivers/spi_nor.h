@@ -141,5 +141,8 @@ struct spi_nor_op_info {
 
 int spi_nor_config_4byte_mode(const struct device *dev, bool en4b);
 int spi_nor_re_init(const struct device *dev);
+int spi_nor_erase_by_cmd(const struct device *dev, off_t addr,
+			 size_t size, uint8_t cmd);
+int spi_nor_get_erase_sz(const struct device *dev, uint8_t cmd);
 
 #endif /*__SPI_NOR_H__*/

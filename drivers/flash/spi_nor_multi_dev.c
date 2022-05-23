@@ -302,6 +302,42 @@ static inline void spi_nor_assign_se_cmd(
 	data->cmd_info.se_mode = mode;
 }
 
+static uint8_t spi_nor_covert_to_4b_erase(uint8_t cmd)
+{
+	int i;
+	static const uint8_t erase_cmd[3][2] = {
+		{SPI_NOR_CMD_SE, SPI_NOR_CMD_SE_4B},
+		{SPI_NOR_CMD_BE_32K, SPI_NOR_CMD_BE_32K_4B},
+		{SPI_NOR_CMD_BE, SPI_NOR_CMD_BE_4B},
+	};
+
+	for (i = 0; i < 3; i++) {
+		if (cmd == erase_cmd[i][1] || cmd == erase_cmd[i][0])
+			return erase_cmd[i][1];
+	}
+
+	return 0;
+}
+
+int spi_nor_get_erase_sz(const struct device *dev, uint8_t cmd)
+{
+	struct spi_nor_data *data = dev->data;
+	int i;
+
+	if (data->jedec_4bai_support) {
+		cmd = spi_nor_covert_to_4b_erase(cmd);
+		if (cmd == 0)
+			return -EINVAL;
+	}
+
+	for (i = 0; i < JESD216_NUM_ERASE_TYPES; i++) {
+		if (data->erase_types[i].cmd == cmd)
+			return BIT(data->erase_types[i].exp);
+	}
+
+	return -EINVAL;
+}
+
 static int spi_nor_op_exec(const struct device *dev,
 	struct spi_nor_op_info op_info)
 {
@@ -876,6 +912,84 @@ static int spi_nor_erase(const struct device *dev, off_t addr, size_t size)
 			addr += data->sector_size;
 			size -= data->sector_size;
 		}
+		spi_nor_wait_until_ready(dev);
+	}
+
+	int ret2 = spi_nor_write_protection_set(dev, true);
+
+	if (!ret) {
+		ret = ret2;
+	}
+
+	release_device(dev);
+
+	return ret;
+}
+
+/*
+ * User can a assign specific command for current sector erase process.
+ * SPI_NOR_CMD_SE     (cmd: 20h) => 4KB
+ * SPI_NOR_CMD_BE_32K (cmd: 52h) => 32KB
+ * SPI_NOR_CMD_BE     (cmd: D8h) => 64KB
+ */
+int spi_nor_erase_by_cmd(const struct device *dev, off_t addr,
+			 size_t size, uint8_t cmd)
+{
+	const size_t flash_size = dev_flash_size(dev);
+	int ret = 0;
+	struct spi_nor_data *data = dev->data;
+	struct spi_nor_cmd_info cmd_info = data->cmd_info;
+	struct spi_nor_op_info op_info =
+		SPI_NOR_OP_INFO(cmd_info.se_mode, cmd_info.se_opcode,
+				addr, data->flag_access_32bit ? 4 : 3, 0,
+				NULL, 0, SPI_NOR_DATA_DIRECT_OUT);
+	int sector_sz;
+
+	if (data->jedec_4bai_support) {
+		cmd = spi_nor_covert_to_4b_erase(cmd);
+		if (cmd == 0)
+			return -EINVAL;
+	}
+
+	sector_sz = spi_nor_get_erase_sz(dev, cmd);
+	if (sector_sz <= 0)
+		return -EINVAL;
+
+	/* erase area must be subregion of device */
+	if ((addr < 0) || ((size + addr) > flash_size)) {
+		return -ENODEV;
+	}
+
+	/* address and size must be sector-aligned */
+	if ((addr % sector_sz) != 0 || (size % sector_sz) != 0) {
+		return -EINVAL;
+	}
+
+#if CONFIG_SPI_NOR_ADDR_MODE_FALLBACK_DISABLED
+	if (data->init_4b_mode_once && !data->flag_access_32bit) {
+		ret = spi_nor_config_4byte_mode(dev, true);
+		if (ret != 0)
+			return ret;
+
+		op_info.addr_len = 4;
+	}
+#endif
+
+	acquire_device(dev);
+	ret = spi_nor_write_protection_set(dev, false);
+
+	while ((size > 0) && (ret == 0)) {
+		ret = spi_nor_wren(dev);
+		if (ret != 0)
+			break;
+
+		op_info.opcode = cmd;
+		op_info.addr = addr;
+
+		spi_nor_op_exec(dev, op_info);
+		addr += sector_sz;
+		size -= sector_sz;
+
 		spi_nor_wait_until_ready(dev);
 	}
 
