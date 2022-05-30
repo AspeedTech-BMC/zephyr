@@ -244,6 +244,13 @@ uint8_t clr_idx, uint8_t clr_tbl)
 		I2C_W_R(0x0, (data->filter_dev_base+AST_I2C_F_MAP1));
 		I2C_W_R(0x0, (data->filter_dev_base+AST_I2C_F_MAP2));
 		I2C_W_R(0x0, (data->filter_dev_base+AST_I2C_F_MAP3));
+
+		/* clear index buffer in the data structure */
+		uint8_t i;
+
+		for (i = 0; i < AST_I2C_F_REMAP_SIZE; i++) {
+			data->filter_idx[i] = 0;
+		}
 	}
 
 	/* clear white list table */
