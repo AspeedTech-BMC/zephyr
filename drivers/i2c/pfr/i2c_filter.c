@@ -250,6 +250,19 @@ uint8_t clr_idx, uint8_t clr_tbl)
 	if (clr_tbl) {
 		I2C_W_R(0, (data->filter_dev_base+AST_I2C_F_BUF));
 		data->filter_en = 0x0;
+
+		/* clear white list table value */
+		struct ast_i2c_f_tbl *dev_wl_tbl = &(filter_tbl[(cfg->index)]);
+		struct ast_i2c_f_bitmap *bmp_buf = &(dev_wl_tbl->filter_tbl[0]);
+		uint8_t i, j;
+
+		/* clear bitmap table */
+		for (j = 0; j < AST_I2C_F_REMAP_SIZE; j++) {
+			for (i = 0; i < AST_I2C_F_ELEMENT_SIZE; i++) {
+				bmp_buf->element[i] = 0x0;
+			}
+			bmp_buf++;
+		}
 	}
 
 	/* apply filter setting */
