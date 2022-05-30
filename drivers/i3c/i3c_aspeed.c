@@ -1153,6 +1153,7 @@ int i3c_aspeed_master_enable_ibi(struct i3c_dev_desc *i3cdev)
 	struct i3c_register_s *i3c_register = obj->config->base;
 	struct i3c_aspeed_dev_priv *priv = DESC_PRIV(i3cdev);
 	union i3c_dev_addr_tbl_s dat;
+	union i3c_intr_s intr_reg;
 	uint32_t dat_addr, sir_reject;
 	int ret;
 	int pos = 0;
@@ -1187,6 +1188,14 @@ int i3c_aspeed_master_enable_ibi(struct i3c_dev_desc *i3cdev)
 					     CONFIG_I3C_ASPEED_MAX_IBI_PAYLOAD - 1);
 		__ASSERT(!ret, "failed to send SETMRL\n");
 	}
+
+	intr_reg.value = i3c_register->intr_status_en.value;
+	intr_reg.fields.ibi_thld = 1;
+	i3c_register->intr_status_en.value = intr_reg.value;
+
+	intr_reg.value = i3c_register->intr_signal_en.value;
+	intr_reg.fields.ibi_thld = 1;
+	i3c_register->intr_signal_en.value = intr_reg.value;
 
 	return i3c_master_send_enec(i3cdev->master_dev, i3cdev->info.dynamic_addr, I3C_CCC_EVT_SIR);
 }
@@ -1411,8 +1420,6 @@ static int i3c_aspeed_init(const struct device *dev)
 	intr_reg.value = 0;
 	intr_reg.fields.xfr_error = 1;
 	intr_reg.fields.resp_q_ready = 1;
-	/* for main master mode */
-	intr_reg.fields.ibi_thld = 1;
 
 	/* for slave mode */
 	intr_reg.fields.ibi_update = 1;
