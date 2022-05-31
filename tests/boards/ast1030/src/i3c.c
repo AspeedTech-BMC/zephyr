@@ -132,6 +132,11 @@ static void test_i3c_ci(int count)
 	ast_zassert_equal(I3C_PID_VENDOR_ID(slave.info.pid), I3C_PID_VENDOR_ID_ASPEED,
 			  "incorrect vendor ID %llx", slave.info.pid);
 
+	ret = i3c_master_send_getbcr(master, slave.info.dynamic_addr, &slave.info.bcr);
+	ast_zassert_equal(ret, 0, "failed to send GETBCR");
+	ast_zassert_equal(slave.info.bcr & I3C_BCR_IBI_PAYLOAD, I3C_BCR_IBI_PAYLOAD,
+			  "incorrect BCR %x", slave.info.bcr);
+
 	ret = i3c_master_request_ibi(&slave, &i3c_ibi_def_callbacks);
 	ast_zassert_equal(ret, 0, "failed to request sir");
 	ret = i3c_master_enable_ibi(&slave);
