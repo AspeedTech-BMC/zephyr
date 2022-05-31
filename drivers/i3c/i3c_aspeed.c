@@ -1169,7 +1169,8 @@ int i3c_aspeed_master_enable_ibi(struct i3c_dev_desc *i3cdev)
 
 	dat_addr = (uint32_t)obj->config->base + obj->hw_dat.fields.start_addr + (pos << 2);
 	dat.value = sys_read32(dat_addr);
-	dat.fields.ibi_with_data = 1;
+	if (i3cdev->info.bcr & I3C_BCR_IBI_PAYLOAD)
+		dat.fields.ibi_with_data = 1;
 	dat.fields.sir_reject = 0;
 	sys_write32(dat.value, dat_addr);
 
