@@ -303,6 +303,9 @@ static void i3c_loopback_test(void)
 	ret = i3c_master_send_getpid(master, slave.info.dynamic_addr, &slave.info.pid);
 	printk("slave pid = %llx\n", slave.info.pid);
 
+	ret = i3c_master_send_getbcr(master, slave.info.dynamic_addr, &slave.info.bcr);
+	printk("slave bcr = %x\n", slave.info.bcr);
+
 	printk("bus init done\n");
 
 	for (i = 0; i < 16; i++) {
