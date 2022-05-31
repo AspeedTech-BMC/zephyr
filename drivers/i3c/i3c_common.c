@@ -108,6 +108,27 @@ int i3c_master_send_getpid(const struct device *master, uint8_t addr, uint64_t *
 	return 0;
 }
 
+int i3c_master_send_getbcr(const struct device *master, uint8_t addr, uint8_t *bcr)
+{
+	struct i3c_ccc_cmd ccc;
+	int ret;
+
+	ccc.addr = addr;
+	ccc.payload.length = 1;
+	ccc.payload.data = bcr;
+
+	ccc.rnw = 1;
+	ccc.id = I3C_CCC_GETBCR;
+	ccc.ret = 0;
+
+	ret = i3c_master_send_ccc(master, &ccc);
+	if (ret) {
+		return ret;
+	}
+
+	return 0;
+}
+
 /**
  * @brief data read for the JESD compliant devices
  * @param slave the JESD compliant device

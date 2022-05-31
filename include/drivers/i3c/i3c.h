@@ -84,6 +84,8 @@ struct i3c_device_info {
 #define I3C_PID_VENDOR_ID(x)            ((x) >> 33)
 #define I3C_PID_VENDOR_ID_ASPEED        0x03f6
 
+#define I3C_BCR_IBI_PAYLOAD		BIT(2)
+
 /**
  * @brief descriptor of the i3c device attached to the bus
  * @param master_dev the master device which hosts the bus
@@ -192,6 +194,7 @@ int i3c_master_send_aasa(const struct device *master);
 int i3c_master_send_setmrl(const struct device *master, uint8_t addr, uint16_t mrl,
 			   uint8_t ibi_payload_size);
 int i3c_master_send_getpid(const struct device *master, uint8_t addr, uint64_t *pid);
+int i3c_master_send_getbcr(const struct device *master, uint8_t addr, uint8_t *bcr);
 
 #define i3c_master_attach_device	i3c_aspeed_master_attach_device
 #define i3c_master_detach_device	i3c_aspeed_master_detach_device
