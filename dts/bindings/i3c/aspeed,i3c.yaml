@@ -20,3 +20,7 @@ properties:
     required: true
     type: int
     description: Instance ID of the device
+  ibi-append-pec:
+    required: false
+    type: boolean
+    description: Append PEC byte to the IBI data.  Enable this option in slave mode if the master device is AST2600 or AST1030A0.
