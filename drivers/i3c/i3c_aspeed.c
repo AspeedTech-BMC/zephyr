@@ -434,7 +434,7 @@ struct i3c_register_s {
 	uint32_t reserved5[2];					/* 0xc4 ~ 0xc8 */
 	union i3c_ext_termn_timing_s ext_termn_timing;		/* 0xcc */
 	uint32_t reservedˊ[7];					/* 0xd0 ~ 0xe8 */
-	union i3c_ibi_payload_length_s ibi_payload_config;			/* 0xec */
+	union i3c_ibi_payload_length_s ibi_payload_config;	/* 0xec */
 };
 
 struct i3c_aspeed_config {
@@ -447,6 +447,7 @@ struct i3c_aspeed_config {
 	int secondary;
 	int assigned_addr;
 	int inst_id;
+	int ibi_append_pec;
 };
 
 struct i3c_aspeed_cmd {
@@ -483,7 +484,7 @@ struct i3c_aspeed_obj {
 	struct i3c_aspeed_xfer *curr_xfer;
 	struct {
 		uint32_t ibi_status_correct : 1;
-		uint32_t ibi_flexible_length : 1;
+		uint32_t ibi_pec_force_enable : 1;
 		uint32_t reserved : 30;
 	} hw_feature;
 
@@ -839,13 +840,14 @@ static void i3c_aspeed_init_hw_feature(struct i3c_aspeed_obj *obj)
 	}
 
 	/*
-	 * if AST10x0-A1, the IBI size is flexible.
-	 * The others need to be configured by the master device through SETMRL CCC
+	 * if AST10x0-A0 and AST2600, the I3C controller will get stuck if
+	 * received IBI data with length (4n + 1) bytes.  This bug can be worked
+	 * arround if IBI PEC is enabled.
 	 */
 	if (rev_id == 0x8001) {
-		obj->hw_feature.ibi_flexible_length = 1;
+		obj->hw_feature.ibi_pec_force_enable = 0;
 	} else {
-		obj->hw_feature.ibi_flexible_length = 0;
+		obj->hw_feature.ibi_pec_force_enable = 1;
 		__ASSERT((CONFIG_I3C_ASPEED_MAX_IBI_PAYLOAD & 0x3) != 1,
 			 "the max IBI payload size shall not be (4n + 1)\n");
 	}
@@ -1171,6 +1173,8 @@ int i3c_aspeed_master_enable_ibi(struct i3c_dev_desc *i3cdev)
 	dat.value = sys_read32(dat_addr);
 	if (i3cdev->info.bcr & I3C_BCR_IBI_PAYLOAD)
 		dat.fields.ibi_with_data = 1;
+	if (obj->hw_feature.ibi_pec_force_enable)
+		dat.fields.ibi_pec_en = 1;
 	dat.fields.sir_reject = 0;
 	sys_write32(dat.value, dat_addr);
 
@@ -1218,8 +1222,7 @@ int i3c_aspeed_slave_send_sir(const struct device *dev, uint8_t mdb, uint8_t *da
 	struct i3c_aspeed_obj *obj = DEV_DATA(dev);
 	struct i3c_register_s *i3c_register = config->base;
 	union i3c_intr_s events;
-	uint8_t *buf = NULL;
-	bool append_pec = false;
+	union i3c_device_cmd_queue_port_s cmd;
 
 	if (i3c_register->slave_event_ctrl.fields.sir_allowed == 0) {
 		LOG_ERR("SIR is not enabled by the main master\n");
@@ -1231,52 +1234,33 @@ int i3c_aspeed_slave_send_sir(const struct device *dev, uint8_t mdb, uint8_t *da
 	events.fields.ibi_update = 1;
 	events.fields.resp_q_ready = 1;
 
-	i3c_register->device_ctrl.fields.slave_mdb = mdb;
+	if (IS_MDB_PENDING_READ_NOTIFY(mdb)) {
+		uint32_t dummy = 0;
 
-	/*
-	 * If no additional bytes are to be sent, the total IBI data length is 1 (MDB only).
-	 * This will hit the bug of (4n + 1) IBI data length issue on AST2600 series and AST1030A0
-	 * SOCs.  Append the PEC to make the total IBI data length be 2 for workaround.
-	 */
-	if (!data || !nbytes) {
-		append_pec = true;
-		goto wr_fifo_done;
-	}
+		__ASSERT(data, "pending read data not exist\n");
+		__ASSERT(nbytes, "length of pending read data must be greater than zero\n");
 
-	if (obj->hw_feature.ibi_flexible_length) {
-		/*
-		 * Workaround for AST1030A1:
-		 * reg 0xec[23:16] is wired to reg 0x00[23:16] by mistake.  This will cause the IBI
-		 * transfer size varies with the MDB value.
-		 *
-		 * case 1: IBI size == MDB value: no issue
-		 * case 2: IBI size < MDB value: the actual transfer size is rounded up by 4
-		 *         ---> actual IBI transfer size = ((IBI size + 3) >> 2) << 2
-		 * case 3: IBI size > MDB value: unable to handle this case
-		 *
-		 * Regarding to case 2, when the IBI FIFO is read done, a transfer error status will
-		 * be set because the actual IBI size does not match the size set in 0xec[23:16]. So
-		 * check xfr_error bit additionally.
-		 */
-		__ASSERT(nbytes <= mdb, "hw limitation: IBI size must be less than the MDB");
-		if (mdb != nbytes) {
-			events.fields.xfr_error = 1;
-		}
+		i3c_register->device_ctrl.fields.slave_mdb = mdb;
+
+		i3c_aspeed_wr_tx_fifo(obj, (uint8_t *)&dummy, 4);
+		cmd.slave_data_cmd.cmd_attr = COMMAND_PORT_SLAVE_DATA_CMD;
+		cmd.slave_data_cmd.dl = 1;
+		i3c_register->cmd_queue_port.value = cmd.value;
 
 		i3c_aspeed_wr_tx_fifo(obj, data, nbytes);
-		i3c_register->ibi_payload_config.fields.ibi_size = nbytes;
+		cmd.slave_data_cmd.cmd_attr = COMMAND_PORT_SLAVE_DATA_CMD;
+		cmd.slave_data_cmd.dl = nbytes;
+		i3c_register->cmd_queue_port.value = cmd.value;
 	} else {
-		__ASSERT(nbytes < CONFIG_I3C_ASPEED_MAX_IBI_PAYLOAD - 1, "data size too large\n");
+		i3c_register->device_ctrl.fields.slave_mdb = data[0];
 
-		buf = k_calloc(CONFIG_I3C_ASPEED_MAX_IBI_PAYLOAD - 1, sizeof(uint8_t));
-		__ASSERT(buf, "failed to allocate sir data buffer\n");
-
-		memcpy(buf, data, nbytes);
-		i3c_aspeed_wr_tx_fifo(obj, buf, CONFIG_I3C_ASPEED_MAX_IBI_PAYLOAD - 1);
+		i3c_aspeed_wr_tx_fifo(obj, data, nbytes);
+		cmd.slave_data_cmd.cmd_attr = COMMAND_PORT_SLAVE_DATA_CMD;
+		cmd.slave_data_cmd.dl = nbytes;
+		i3c_register->cmd_queue_port.value = cmd.value;
 	}
 
-wr_fifo_done:
-	if (append_pec) {
+	if (config->ibi_append_pec) {
 		i3c_register->device_ctrl.fields.slave_pec_en = 1;
 	}
 
@@ -1284,12 +1268,8 @@ wr_fifo_done:
 	i3c_register->i3c_slave_intr_req.fields.sir = 1;
 	osEventFlagsWait(obj->event_id, events.value, osFlagsWaitAll, osWaitForever);
 
-	if (append_pec) {
+	if (config->ibi_append_pec) {
 		i3c_register->device_ctrl.fields.slave_pec_en = 0;
-	}
-
-	if (buf) {
-		k_free(buf);
 	}
 
 	return 0;
@@ -1476,6 +1456,7 @@ static int i3c_aspeed_init(const struct device *dev)
 		.secondary = DT_INST_PROP_OR(n, secondary, 0),                                     \
 		.assigned_addr = DT_INST_PROP_OR(n, assigned_address, 0),                          \
 		.inst_id = DT_INST_PROP_OR(n, instance_id, 0),                                     \
+		.ibi_append_pec = DT_INST_PROP_OR(n, ibi_append_pec, 0),                           \
 	};                                                                                         \
 												   \
 	static struct i3c_aspeed_obj i3c_aspeed_obj##n;                                            \
