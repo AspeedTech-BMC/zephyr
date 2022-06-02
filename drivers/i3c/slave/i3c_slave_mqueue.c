@@ -98,13 +98,28 @@ int i3c_slave_mqueue_read(const struct device *dev, uint8_t *dest, int budget)
 	return ret;
 }
 
-
 int i3c_slave_mqueue_write(const struct device *dev, uint8_t *src, int size)
 {
 	struct i3c_slave_mqueue_config *config = DEV_CFG(dev);
 	struct i3c_slave_mqueue_obj *obj = DEV_DATA(dev);
+	struct i3c_ibi_payload ibi;
 
-	return i3c_slave_send_sir(obj->i3c_controller, config->mdb, src, size);
+	if (IS_MDB_PENDING_READ_NOTIFY(config->mdb)) {
+		struct i3c_slave_payload read_data;
+		uint32_t ibi_data = config->mdb;
+
+		ibi.buf = (uint8_t *)&ibi_data;
+		ibi.size = 1;
+		read_data.buf = src;
+		read_data.size = size;
+
+		return i3c_slave_send_pending_read_notify(obj->i3c_controller,
+							  &ibi, &read_data);
+	} else {
+		ibi.buf = src;
+		ibi.size = size;
+		return i3c_slave_send_sir(obj->i3c_controller, &ibi);
+	}
 }
 
 static void i3c_slave_mqueue_init(const struct device *dev)

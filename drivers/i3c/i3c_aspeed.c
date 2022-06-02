@@ -1216,13 +1216,44 @@ int i3c_aspeed_slave_register(const struct device *dev, struct i3c_slave_setup *
 	return 0;
 }
 
-int i3c_aspeed_slave_send_sir(const struct device *dev, uint8_t mdb, uint8_t *data, int nbytes)
+int i3c_aspeed_slave_prep_read_data(const struct device *dev, uint8_t *data, int nbytes, bool wait)
+{
+	struct i3c_aspeed_obj *obj = DEV_DATA(dev);
+	struct i3c_aspeed_config *config = DEV_CFG(dev);
+	struct i3c_register_s *i3c_register = config->base;
+	union i3c_device_cmd_queue_port_s cmd;
+
+	osEventFlagsClear(obj->event_id, ~osFlagsError);
+
+	i3c_register->queue_thld_ctrl.fields.resp_q_thld = 1 - 1;
+	i3c_aspeed_wr_tx_fifo(obj, data, nbytes);
+
+	cmd.slave_data_cmd.cmd_attr = COMMAND_PORT_SLAVE_DATA_CMD;
+	cmd.slave_data_cmd.dl = nbytes;
+	i3c_register->cmd_queue_port.value = cmd.value;
+
+	if (wait) {
+		i3c_aspeed_slave_wait_data_consume(dev);
+	}
+
+	return 0;
+}
+
+int i3c_aspeed_slave_send_pending_read_notify(const struct device *dev,
+					      struct i3c_ibi_payload *ibi,
+					      struct i3c_slave_payload *read_data)
 {
 	struct i3c_aspeed_config *config = DEV_CFG(dev);
 	struct i3c_aspeed_obj *obj = DEV_DATA(dev);
 	struct i3c_register_s *i3c_register = config->base;
 	union i3c_intr_s events;
-	union i3c_device_cmd_queue_port_s cmd;
+
+	__ASSERT_NO_MSG(ibi);
+	__ASSERT_NO_MSG(ibi->buf);
+	__ASSERT_NO_MSG(ibi->size);
+	__ASSERT_NO_MSG(read_data);
+	__ASSERT_NO_MSG(read_data->buf);
+	__ASSERT_NO_MSG(read_data->size);
 
 	if (i3c_register->slave_event_ctrl.fields.sir_allowed == 0) {
 		LOG_ERR("SIR is not enabled by the main master\n");
@@ -1232,35 +1263,48 @@ int i3c_aspeed_slave_send_sir(const struct device *dev, uint8_t mdb, uint8_t *da
 	osEventFlagsClear(obj->event_id, ~osFlagsError);
 	events.value = 0;
 	events.fields.ibi_update = 1;
-	events.fields.resp_q_ready = 1;
 
-	if (IS_MDB_PENDING_READ_NOTIFY(mdb)) {
-		uint32_t dummy = 0;
+	i3c_register->device_ctrl.fields.slave_mdb = ibi->buf[0];
+	i3c_aspeed_slave_prep_read_data(dev, ibi->buf, ibi->size, false);
+	i3c_aspeed_slave_prep_read_data(dev, read_data->buf, read_data->size, false);
 
-		__ASSERT(data, "pending read data not exist\n");
-		__ASSERT(nbytes, "length of pending read data must be greater than zero\n");
-
-		i3c_register->device_ctrl.fields.slave_mdb = mdb;
-		i3c_register->queue_thld_ctrl.fields.resp_q_thld = 1 - 1;
-
-		i3c_aspeed_wr_tx_fifo(obj, (uint8_t *)&dummy, 4);
-		cmd.slave_data_cmd.cmd_attr = COMMAND_PORT_SLAVE_DATA_CMD;
-		cmd.slave_data_cmd.dl = 1;
-		i3c_register->cmd_queue_port.value = cmd.value;
-
-		i3c_aspeed_wr_tx_fifo(obj, data, nbytes);
-		cmd.slave_data_cmd.cmd_attr = COMMAND_PORT_SLAVE_DATA_CMD;
-		cmd.slave_data_cmd.dl = nbytes;
-		i3c_register->cmd_queue_port.value = cmd.value;
-	} else {
-		i3c_register->device_ctrl.fields.slave_mdb = data[0];
-		i3c_register->queue_thld_ctrl.fields.resp_q_thld = 1 - 1;
-
-		i3c_aspeed_wr_tx_fifo(obj, data, nbytes);
-		cmd.slave_data_cmd.cmd_attr = COMMAND_PORT_SLAVE_DATA_CMD;
-		cmd.slave_data_cmd.dl = nbytes;
-		i3c_register->cmd_queue_port.value = cmd.value;
+	if (config->ibi_append_pec) {
+		i3c_register->device_ctrl.fields.slave_pec_en = 1;
 	}
+
+	/* trigger the hw and wait done */
+	i3c_register->i3c_slave_intr_req.fields.sir = 1;
+	osEventFlagsWait(obj->event_id, events.value, osFlagsWaitAll, osWaitForever);
+
+	if (config->ibi_append_pec) {
+		i3c_register->device_ctrl.fields.slave_pec_en = 0;
+	}
+
+	return 0;
+}
+
+int i3c_aspeed_slave_send_sir(const struct device *dev, struct i3c_ibi_payload *payload)
+{
+	struct i3c_aspeed_config *config = DEV_CFG(dev);
+	struct i3c_aspeed_obj *obj = DEV_DATA(dev);
+	struct i3c_register_s *i3c_register = config->base;
+	union i3c_intr_s events;
+
+	__ASSERT_NO_MSG(payload);
+	__ASSERT_NO_MSG(payload->buf);
+	__ASSERT_NO_MSG(payload->size);
+
+	if (i3c_register->slave_event_ctrl.fields.sir_allowed == 0) {
+		LOG_ERR("SIR is not enabled by the main master\n");
+		return -EACCES;
+	}
+
+	osEventFlagsClear(obj->event_id, ~osFlagsError);
+	events.value = 0;
+	events.fields.ibi_update = 1;
+
+	i3c_register->device_ctrl.fields.slave_mdb = payload->buf[0];
+	i3c_aspeed_slave_prep_read_data(dev, payload->buf, payload->size, false);
 
 	if (config->ibi_append_pec) {
 		i3c_register->device_ctrl.fields.slave_pec_en = 1;
@@ -1285,29 +1329,6 @@ int i3c_aspeed_slave_wait_data_consume(const struct device *dev)
 	events.value = 0;
 	events.fields.resp_q_ready = 1;
 	osEventFlagsWait(obj->event_id, events.value, osFlagsWaitAny, osWaitForever);
-
-	return 0;
-}
-
-int i3c_aspeed_slave_prep_read_data(const struct device *dev, uint8_t *data, int nbytes, bool wait)
-{
-	struct i3c_aspeed_obj *obj = DEV_DATA(dev);
-	struct i3c_aspeed_config *config = DEV_CFG(dev);
-	struct i3c_register_s *i3c_register = config->base;
-	union i3c_device_cmd_queue_port_s cmd;
-
-	osEventFlagsClear(obj->event_id, ~osFlagsError);
-
-	i3c_register->queue_thld_ctrl.fields.resp_q_thld = 1 - 1;
-	i3c_aspeed_wr_tx_fifo(obj, data, nbytes);
-
-	cmd.slave_data_cmd.cmd_attr = COMMAND_PORT_SLAVE_DATA_CMD;
-	cmd.slave_data_cmd.dl = nbytes;
-	i3c_register->cmd_queue_port.value = cmd.value;
-
-	if (wait) {
-		i3c_aspeed_slave_wait_data_consume(dev);
-	}
 
 	return 0;
 }
