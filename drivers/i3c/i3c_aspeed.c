@@ -1241,6 +1241,7 @@ int i3c_aspeed_slave_send_sir(const struct device *dev, uint8_t mdb, uint8_t *da
 		__ASSERT(nbytes, "length of pending read data must be greater than zero\n");
 
 		i3c_register->device_ctrl.fields.slave_mdb = mdb;
+		i3c_register->queue_thld_ctrl.fields.resp_q_thld = 1 - 1;
 
 		i3c_aspeed_wr_tx_fifo(obj, (uint8_t *)&dummy, 4);
 		cmd.slave_data_cmd.cmd_attr = COMMAND_PORT_SLAVE_DATA_CMD;
@@ -1253,6 +1254,7 @@ int i3c_aspeed_slave_send_sir(const struct device *dev, uint8_t mdb, uint8_t *da
 		i3c_register->cmd_queue_port.value = cmd.value;
 	} else {
 		i3c_register->device_ctrl.fields.slave_mdb = data[0];
+		i3c_register->queue_thld_ctrl.fields.resp_q_thld = 1 - 1;
 
 		i3c_aspeed_wr_tx_fifo(obj, data, nbytes);
 		cmd.slave_data_cmd.cmd_attr = COMMAND_PORT_SLAVE_DATA_CMD;
