@@ -904,6 +904,7 @@ static int aspeed_spi_nor_transceive(const struct device *dev,
 			aspeed_spi_nor_transceive_user(dev, spi_cfg, op_info);
 		}
 	} else if (op_info.data_direct == SPI_NOR_DATA_DIRECT_OUT) {
+#ifdef CONFIG_SPI_DMA_WRITE_SUPPORT_ASPEED
 		if (op_info.data_len > SPI_DMA_TRIGGER_LEN &&
 		    (op_info.addr % 4) == 0 &&
 		    ((uint32_t)(&((uint8_t *)op_info.buf)[0]) % 4) == 0) {
@@ -911,6 +912,9 @@ static int aspeed_spi_nor_transceive(const struct device *dev,
 		} else {
 			aspeed_spi_nor_transceive_user(dev, spi_cfg, op_info);
 		}
+#else
+		aspeed_spi_nor_transceive_user(dev, spi_cfg, op_info);
+#endif
 	}
 #else
 	aspeed_spi_nor_transceive_user(dev, spi_cfg, op_info);

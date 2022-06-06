@@ -17,3 +17,10 @@ config SPI_DMA_SUPPORT_ASPEED
 	  Enable ASPEED SPI DMA. Notice, both
 	  flash start addrss and ram start address
 	  MUST be 4-byte aligned.
+
+config SPI_DMA_WRITE_SUPPORT_ASPEED
+	depends on SPI_ASPEED && SPI_DMA_SUPPORT_ASPEED
+	bool "Enable ASPEED SPI write DMA"
+	default n
+	help
+	  Enable ASPEED SPI write DMA.
