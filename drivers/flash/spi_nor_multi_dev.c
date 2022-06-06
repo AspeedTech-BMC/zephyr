@@ -680,7 +680,7 @@ static int spi_nor_cf1_bit1_config(const struct device *dev)
 }
 
 #define SPI_NOR_QE_NO_NEED        0x0 /* Micron, Gigadevice */
-#define SPI_NOR_QE_NOT_SUPPORTED  0x7
+#define SPI_NOR_QE_NOT_SUPPORTED  0x7 /* GigaDevice */
 #define SPI_NOR_QE_SR1_BIT6       0x2 /* MXIC, ISSI */
 #define SPI_NOR_QE_SR2_BIT1       0x4 /* Winbond */
 #define SPI_NOR_QE_CF1_BIT1       0x5 /* Cypress */
@@ -694,6 +694,7 @@ static int spi_nor_qe_config(const struct device *dev, uint32_t qer)
 
 	switch (qer) {
 	case SPI_NOR_QE_NO_NEED:
+	case SPI_NOR_QE_NOT_SUPPORTED:
 		break;
 	case SPI_NOR_QE_SR1_BIT6:
 		ret = spi_nor_sr1_bit6_config(dev);
@@ -704,7 +705,6 @@ static int spi_nor_qe_config(const struct device *dev, uint32_t qer)
 	case SPI_NOR_QE_CF1_BIT1:
 		ret = spi_nor_cf1_bit1_config(dev);
 		break;
-	case SPI_NOR_QE_NOT_SUPPORTED:
 	default:
 		LOG_INF("Disable QSPI bit");
 		data->cap_mask &= ~SPI_NOR_QUAD_CAP_MASK;
