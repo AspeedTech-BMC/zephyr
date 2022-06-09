@@ -727,6 +727,23 @@ static int winbond_w25q80dv_fixup(const struct device *dev)
 		 * Thus, force to set QE bit here.
 		 */
 		ret = spi_nor_sr2_bit1_config(dev);
+	} else if (data->cap_mask & SPI_NOR_MODE_1_1_2_CAP) {
+		spi_nor_assign_read_cmd(data, JESD216_MODE_112, SPI_NOR_CMD_READ_1_1_2, 8);
+	}
+
+	return ret;
+}
+
+static int mxic_mx25v8035f_fixup(const struct device *dev)
+{
+	int ret = 0;
+	struct spi_nor_data *data = dev->data;
+
+	if (data->cap_mask & SPI_NOR_MODE_1_1_4_CAP) {
+		spi_nor_assign_read_cmd(data, JESD216_MODE_114, SPI_NOR_CMD_READ_1_1_4, 8);
+		ret = spi_nor_sr1_bit6_config(dev);
+	} else if (data->cap_mask & SPI_NOR_MODE_1_1_2_CAP) {
+		spi_nor_assign_read_cmd(data, JESD216_MODE_112, SPI_NOR_CMD_READ_1_1_2, 8);
 	}
 
 	return ret;
@@ -1408,15 +1425,28 @@ static int sfdp_post_fixup(const struct device *dev)
 	switch (data->jedec_id[0]) {
 	case SPI_NOR_MFR_ID_WINBOND:
 		if (SPI_NOR_GET_JESDID(data->jedec_id) == 0x4014) {
-			if (cfg->broken_sfdp)
+			if (cfg->broken_sfdp) {
 				ret = winbond_w25q80dv_fixup(dev);
+				if (ret != 0)
+					goto end;
+			}
 		}
 		break;
 	case SPI_NOR_MFR_ID_MXIC:
 		if (SPI_NOR_GET_JESDID(data->jedec_id) == 0x2016) {
 			ret = spi_nor_sr1_bit6_config(dev);
-			if (ret != 0)
+			if (ret != 0) {
 				LOG_ERR("[%s]Fail to set QE bit", dev->name);
+				goto end;
+			}
+		}
+
+		if (SPI_NOR_GET_JESDID(data->jedec_id) == 0x2314) {
+			if (cfg->broken_sfdp) {
+				ret = mxic_mx25v8035f_fixup(dev);
+				if (ret != 0)
+					goto end;
+			}
 		}
 
 		break;
@@ -1425,6 +1455,7 @@ static int sfdp_post_fixup(const struct device *dev)
 		break;
 	}
 
+end:
 	return ret;
 }
 
