@@ -993,7 +993,7 @@ int i3c_aspeed_master_priv_xfer(struct i3c_dev_desc *i3cdev, struct i3c_priv_xfe
 	struct i3c_aspeed_obj *obj = DEV_DATA(i3cdev->master_dev);
 	struct i3c_aspeed_dev_priv *priv = DESC_PRIV(i3cdev);
 	struct i3c_aspeed_xfer xfer;
-	struct i3c_aspeed_cmd *cmds;
+	struct i3c_aspeed_cmd *cmds, *cmd;
 	union i3c_device_cmd_queue_port_s cmd_hi, cmd_lo;
 	int pos = 0;
 	int i, ret;
@@ -1015,7 +1015,7 @@ int i3c_aspeed_master_priv_xfer(struct i3c_dev_desc *i3cdev, struct i3c_priv_xfe
 	xfer.ret = 0;
 
 	for (i = 0; i < nxfers; i++) {
-		struct i3c_aspeed_cmd *cmd = &xfer.cmds[i];
+		cmd = &xfer.cmds[i];
 
 		cmd_hi.value = 0;
 		cmd_hi.xfer_arg.cmd_attr = COMMAND_PORT_XFER_ARG;
@@ -1049,6 +1049,15 @@ int i3c_aspeed_master_priv_xfer(struct i3c_dev_desc *i3cdev, struct i3c_priv_xfe
 
 	/* wait done, xfer.ret will be changed in ISR */
 	k_sem_take(&xfer.sem, I3C_ASPEED_XFER_TIMEOUT);
+
+	/* report actual read length */
+	for (i = 0; i < nxfers; i++) {
+		cmd = &xfer.cmds[i];
+
+		if (xfers[i].rnw) {
+			xfers[i].len = cmd->rx_length;
+		}
+	}
 
 	ret = xfer.ret;
 	k_free(cmds);
