@@ -651,7 +651,8 @@ static int usb_aspeed_init(const struct device *dev)
 	k_thread_name_set(&usbd_work_queue.thread, "usbdworkq");
 	k_work_init(&dev_data.usb_work, usbd_work_handler);
 
-	sys_write32(ISR_SUSPEND_RESUME |
+	sys_write32(ISR_EP_ACK_STALL |
+		    ISR_SUSPEND_RESUME |
 		    ISR_BUS_SUSPEND |
 		    ISR_BUS_RESET |
 		    ISR_EP0_IN_ACK_STALL |
@@ -1042,7 +1043,7 @@ int usb_dc_ep_halt(const uint8_t ep)
 int usb_dc_ep_enable(const uint8_t ep)
 {
 	uint8_t ep_num = USB_EP_GET_IDX(ep);
-	uint32_t ep_reg;
+	uint32_t ep_reg, val;
 
 	LOG_DBG("enable ep[0x%x]", ep);
 
@@ -1070,7 +1071,9 @@ int usb_dc_ep_enable(const uint8_t ep)
 	}
 
 	/* enable interrupts */
-	sys_write32(ep_num, dev_data.base + ASPEED_USB_EP_ACK_IER);
+	val = sys_read32(dev_data.base + ASPEED_USB_EP_ACK_IER);
+	val |= BIT(ep_num - 1);
+	sys_write32(val, dev_data.base + ASPEED_USB_EP_ACK_IER);
 
 	return 0;
 }
