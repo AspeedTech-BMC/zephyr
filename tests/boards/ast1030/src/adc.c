@@ -123,8 +123,8 @@ void test_adc_battery_mode(const uint16_t *golden_value, float tolerance)
 }
 
 static const uint16_t ci_golden_value[16] = {
-	620, 1202, 1800, 620, 1145, 1873, 1126, 3000,
-	620, 1202, 1800, 620, 1145, 1873, 1126, 3000,
+	605, 1190, 1812, 605, 1006, 1812, 1006, 3022,
+	605, 1190, 1812, 605, 1006, 1812, 1006, 3022,
 };
 
 static const uint16_t ft_golden_value[16] = {
