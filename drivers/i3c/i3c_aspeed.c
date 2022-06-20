@@ -427,7 +427,7 @@ struct i3c_register_s {
 	union i3c_slave_intr_req_s i3c_slave_intr_req;		/* 0x8c */
 	uint32_t reserved4[8];					/* 0x90 ~ 0xac */
 	union i3c_device_ctrl_extend_s device_ctrl_ext;		/* 0xb0 */
-	union i3c_scl_timing_s op_timing;			/* 0xb4 */
+	union i3c_scl_timing_s od_timing;			/* 0xb4 */
 	union i3c_scl_timing_s pp_timing;			/* 0xb8 */
 	union i2c_scl_timing_s fm_timing;			/* 0xbc */
 	union i2c_scl_timing_s fmp_timing;			/* 0xc0 */
@@ -782,7 +782,7 @@ static void i3c_aspeed_init_clock(struct i3c_aspeed_obj *obj)
 	/* Configure I2C FM mode timing parameters */
 	period = DIV_ROUND_UP(i3cclk, 400000);
 
-	/* 40-60 of the clock duty configuration to meet JESD300-5 timing constrain */
+	/* 40-60 of the clock duty configuration to meet JESD403-1A timing constrain */
 	lcnt = DIV_ROUND_UP(period * 6, 10);
 	hcnt = period - lcnt;
 
@@ -801,13 +801,13 @@ static void i3c_aspeed_init_clock(struct i3c_aspeed_obj *obj)
 	i2c_scl.fields.hcnt = hcnt;
 	i3c_register->fmp_timing.value = i2c_scl.value;
 
-	/* Configure I3C OP mode timing parameters */
+	/* Configure I3C OD mode timing parameters */
 	lcnt = lcnt > 255 ? 255 : lcnt;
 	hcnt = period - lcnt;
 	i3c_scl.value = 0;
 	i3c_scl.fields.hcnt = hcnt;
 	i3c_scl.fields.lcnt = lcnt;
-	i3c_register->op_timing.value = i3c_scl.value;
+	i3c_register->od_timing.value = i3c_scl.value;
 
 	/* Configure PP mode timing parameters */
 	period = DIV_ROUND_UP(i3cclk, config->i3c_scl_hz);
