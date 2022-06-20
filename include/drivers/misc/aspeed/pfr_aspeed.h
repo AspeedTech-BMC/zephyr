@@ -23,6 +23,7 @@
 #define CMD_EN4B            0xB7
 #define CMD_EX4B            0xE9
 #define CMD_RDFSR           0x70
+#define CMD_VSR_WREN        0x50
 
 /* read commands */
 #define CMD_READ_1_1_1_3B   0x03
