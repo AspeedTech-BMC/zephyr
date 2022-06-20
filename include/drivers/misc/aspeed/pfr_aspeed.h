@@ -31,6 +31,8 @@
 #define CMD_FREAD_1_1_1_4B  0x0C
 #define CMD_READ_1_1_2_3B   0x3B
 #define CMD_READ_1_1_2_4B   0x3C
+#define CMD_READ_1_2_2_3B   0xBB
+#define CMD_READ_1_2_2_4B   0xBC
 #define CMD_READ_1_1_4_3B   0x6B
 #define CMD_READ_1_1_4_4B   0x6C
 
