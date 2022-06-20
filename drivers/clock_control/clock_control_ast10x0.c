@@ -14,7 +14,12 @@
 #include <logging/log.h>
 LOG_MODULE_REGISTER(clock_control_aspeed);
 
+#define HPLL_FREQ			1000000000U
 #define CLK_SELECTION_REG4		0x310
+#define   I3C_CLK_SRC_SEL		BIT(31)
+#define     I3C_CLK_SRC_HPLL		0
+#define     I3C_CLK_SRC_480M		1
+#define   I3C_CLK_DIV_SEL		GENMASK(30, 28)
 #define CLK_SELECTION_REG5		0x314
 
 struct clock_aspeed_config {
@@ -24,6 +29,8 @@ struct clock_aspeed_config {
 #define DEV_CFG(dev)				   \
 	((const struct clock_aspeed_config *const) \
 	 (dev)->config)
+
+static int aspeed_clock_i3c_div_tbl[8] = {2, 2, 3, 4, 5, 6, 7, 8};
 
 static int aspeed_clock_control_on(const struct device *dev,
 				   clock_control_subsys_t sub_system)
@@ -69,7 +76,8 @@ static int aspeed_clock_control_get_rate(const struct device *dev,
 					 clock_control_subsys_t sub_system, uint32_t *rate)
 {
 	uint32_t clk_id = (uint32_t) sub_system;
-	uint32_t reg;
+	uint32_t reg, src;
+	int index, div;
 
 	switch (clk_id) {
 	case ASPEED_CLK_GATE_I3C0CLK:
@@ -77,8 +85,15 @@ static int aspeed_clock_control_get_rate(const struct device *dev,
 	case ASPEED_CLK_GATE_I3C2CLK:
 	case ASPEED_CLK_GATE_I3C3CLK:
 		reg = sys_read32(DEV_CFG(dev)->base + CLK_SELECTION_REG4);
-		__ASSERT((reg & BIT(31)) == 0, "Not support I3C clock from 480M yet\n");
-		/* fall through */
+		if (FIELD_GET(I3C_CLK_SRC_SEL, reg) == I3C_CLK_SRC_HPLL) {
+			src = HPLL_FREQ;
+		} else {
+			src = 480000000;
+		}
+		index = FIELD_GET(I3C_CLK_DIV_SEL, reg);
+		div = aspeed_clock_i3c_div_tbl[index];
+		*rate = src / div;
+		break;
 	case ASPEED_CLK_HCLK:
 		*rate = 200000000;
 		break;
