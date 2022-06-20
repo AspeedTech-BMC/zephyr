@@ -45,59 +45,29 @@ struct i2c_global_config {
 	((struct i2c_global_config *) \
 	 (dev)->config)
 
-#define BASE_CLK_COUNT	4
-
+#define I2CG_DIV_CTRL 0x62220803
 /*
- * 100khz base clk3 table
- * base clk:3250000, val:0x1d, scl:100.8Khz, tbuf:4.96us
- * base clk:3125000, val:0x1e, scl:97.66Khz, tbuf:5.12us
- * base clk:3040000, val:0x1f, scl: 97.85Khz, tbuf: 5.28us
- * base clk:3000000, val:0x20, scl: 98.04Khz, tbuf: 5.44us
- * base clk:2900000, val:0x21, scl: 98.61Khz, tbuf: 5.6us
- * base clk:2800000, val:0x22, scl: 99.21Khz, tbuf: 5.75us (default)
+ * APB clk : 50Mhz
+ * div  : scl       : baseclk [APB/((div/2) + 1)] : tBuf [1/bclk * 16]
+ * I2CG10[31:24] base clk4 for i2c auto recovery timeout counter (0x62)
+ * I2CG10[23:16] base clk3 for Standard-mode (100Khz) min tBuf 4.7us
+ * 0x1d : 100.8Khz  : 3.225Mhz                    : 4.96us
+ * 0x1e : 97.66Khz  : 3.125Mhz                    : 5.12us
+ * 0x1f : 97.85Khz  : 3.03Mhz                     : 5.28us
+ * 0x20 : 98.04Khz  : 2.94Mhz                     : 5.44us
+ * 0x21 : 98.61Khz  : 2.857Mhz                    : 5.6us
+ * 0x22 : 99.21Khz  : 2.77Mhz                     : 5.76us (default)
+ * I2CG10[15:8] base clk2 for Fast-mode (400Khz) min tBuf 1.3us
+ * 0x08 : 400Khz    : 10Mhz                       : 1.6us
+ * I2CG10[7:0] base clk1 for Fast-mode Plus (1Mhz) min tBuf 0.5us
+ * 0x03 : 1Mhz      : 20Mhz                       : 0.8us
  */
-static uint32_t base_freq[BASE_CLK_COUNT] = {
-	20000000,	/* 20M */
-	10000000,	/* 10M */
-	2800000,	/* 2.8M */
-	1000000,	/* 1M */
-};
-
-/* I2C controller driver registration */
-static uint32_t i2c_get_new_clk_divider(uint32_t base_clk)
-{
-	uint32_t i, j, base_freq_loop, clk_divider = 0;
-
-	/* calculate clock divider */
-	for (i = 0; i < BASE_CLK_COUNT; i++) {
-		for (j = 0; j < 0xff ; j++) {
-			/*
-			 * j maps to div:
-			 * 0x00: div 1
-			 * 0x01: div 1.5
-			 * 0x02: div 2
-			 * 0x03: div 2.5
-			 * 0x04: div 3
-			 * ...
-			 * 0xFE: div 128
-			 * 0xFF: div 128.5
-			 */
-			base_freq_loop = base_clk * 2 / (j + 2);
-			if (base_freq_loop <= base_freq[i])
-				break;
-		}
-		LOG_DBG("i2c divider %d : 0x%x\n", i, j);
-		clk_divider |= (j << (i << 3));
-	}
-	return clk_divider;
-}
 
 /* I2C controller driver registration */
 static int i2c_global_init(const struct device *dev)
 {
 	struct i2c_global_config *config = DEV_CFG(dev);
 	uint32_t i2c_global_base = config->base;
-	uint32_t clk_divider = 0;
 	uint32_t *base = (uint32_t *)ASPEED_I2C_SRAM_BASE;
 
 	const struct device *reset_dev = device_get_binding(ASPEED_RST_CTRL_NAME);
@@ -108,14 +78,8 @@ static int i2c_global_init(const struct device *dev)
 
 	/* set i2c global setting */
 	sys_write32(I2CG_SET, i2c_global_base + ASPEED_I2CG_CONTROL);
-
 	/* calculate divider */
-	clock_control_get_rate(config->clock_dev, config->clk_id, &config->clk_src);
-	LOG_DBG("i2c global clk src %d\n", config->clk_src);
-
-	clk_divider = i2c_get_new_clk_divider(config->clk_src);
-	LOG_DBG("i2c clk divider %x\n", clk_divider);
-	sys_write32(clk_divider, i2c_global_base + ASPEED_I2CG_NEW_CLK_DIV);
+	sys_write32(I2CG_DIV_CTRL, i2c_global_base + ASPEED_I2CG_NEW_CLK_DIV);
 
 	/* initial i2c sram region */
 	for (int i = 0; i < ASPEED_I2C_SRAM_SIZE; i++)
