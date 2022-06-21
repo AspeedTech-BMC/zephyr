@@ -12,15 +12,43 @@ properties:
     required: false
     type: boolean
     description: Initialized as a secondary master / slave device
+
   assigned-address:
     required: true
     type: int
     description: Dynamic address when playing the role as the main master
+
   instance-id:
     required: true
     type: int
     description: Instance ID of the device
+
   ibi-append-pec:
     required: false
     type: boolean
     description: Append PEC byte to the IBI data.  Enable this option in slave mode if the master device is AST2600 or AST1030A0.
+
+  i3c-pp-scl-hi-period-ns:
+    required: false
+    type: int
+    description: I3C push-pull mode SCL high period in nanosecond
+
+  i3c-pp-scl-lo-period-ns:
+    required: false
+    type: int
+    description: I3C push-pull mode SCL low period in nanosecond
+
+  i3c-od-scl-hi-period-ns:
+    required: false
+    type: int
+    description: I3C open-drain mode SCL high period in nanosecond
+
+  i3c-od-scl-lo-period-ns:
+    required: false
+    type: int
+    description: I3C open-drain mode SCL low period in nanosecond
+
+  sda-tx-hold-ns:
+    required: false
+    type: int
+    description: The hold time of the SDA with respect to the SCL edge. The unit is in nanosecond.
