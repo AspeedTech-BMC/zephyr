@@ -20,9 +20,22 @@ LOG_MODULE_REGISTER(i3c);
 
 #include <portability/cmsis_os2.h>
 
-#define I3C_ASPEED_CCC_TIMEOUT	K_MSEC(10)
-#define I3C_ASPEED_XFER_TIMEOUT	K_MSEC(10)
-#define I3C_ASPEED_SIR_TIMEOUT	K_MSEC(10)
+#define I3C_ASPEED_CCC_TIMEOUT		K_MSEC(10)
+#define I3C_ASPEED_XFER_TIMEOUT		K_MSEC(10)
+#define I3C_ASPEED_SIR_TIMEOUT		K_MSEC(10)
+
+#define I3C_BUS_I2C_STD_TLOW_MIN_NS	4700
+#define I3C_BUS_I2C_STD_THIGH_MIN_NS	4000
+#define I3C_BUS_I2C_STD_TR_MAX_NS	1000
+#define I3C_BUS_I2C_STD_TF_MAX_NS	300
+#define I3C_BUS_I2C_FM_TLOW_MIN_NS	1300
+#define I3C_BUS_I2C_FM_THIGH_MIN_NS	600
+#define I3C_BUS_I2C_FM_TR_MAX_NS	300
+#define I3C_BUS_I2C_FM_TF_MAX_NS	300
+#define I3C_BUS_I2C_FMP_TLOW_MIN_NS	500
+#define I3C_BUS_I2C_FMP_THIGH_MIN_NS	260
+#define I3C_BUS_I2C_FMP_TR_MAX_NS	120
+#define I3C_BUS_I2C_FMP_TF_MAX_NS	120
 
 union i3c_device_ctrl_s {
 	volatile uint32_t value;
@@ -366,6 +379,23 @@ union i3c_ext_termn_timing_s {
 	} fields;
 }; /* offset 0xcc */
 
+union sda_hold_switch_dly_timing_s {
+	volatile uint32_t value;
+	struct {
+		volatile uint32_t reserved0 : 16;		/* bit[15:0] */
+		volatile uint32_t sda_tx_hold : 3;		/* bit[18:16] */
+		volatile uint32_t reserved1 : 13;		/* bit[31:19] */
+	} fields;
+}; /* offset 0xd0 */
+
+union bus_free_timing_s {
+	volatile uint32_t value;
+	struct {
+		volatile uint32_t i3c_mst_free : 16;		/* bit[15:0] */
+		volatile uint32_t i3c_ibi_free : 16;		/* bit[31:16] */
+	} fields;
+}; /* offset 0xd4 */
+
 union i3c_ibi_payload_length_s {
 	volatile uint32_t value;
 	struct {
@@ -433,7 +463,9 @@ struct i3c_register_s {
 	union i2c_scl_timing_s fmp_timing;			/* 0xc0 */
 	uint32_t reserved5[2];					/* 0xc4 ~ 0xc8 */
 	union i3c_ext_termn_timing_s ext_termn_timing;		/* 0xcc */
-	uint32_t reservedˊ[7];					/* 0xd0 ~ 0xe8 */
+	union sda_hold_switch_dly_timing_s sda_hold_switch_dly_timing; /* 0xd0 */
+	union bus_free_timing_s bus_free_timing;		/* 0xd4 */
+	uint32_t reserved[5];					/* 0xd8 ~ 0xe8 */
 	union i3c_ibi_payload_length_s ibi_payload_config;	/* 0xec */
 };
 
@@ -448,6 +480,11 @@ struct i3c_aspeed_config {
 	int assigned_addr;
 	int inst_id;
 	int ibi_append_pec;
+	int sda_tx_hold_ns;
+	int i3c_pp_scl_hi_period_ns;
+	int i3c_pp_scl_lo_period_ns;
+	int i3c_od_scl_hi_period_ns;
+	int i3c_od_scl_lo_period_ns;
 };
 
 struct i3c_aspeed_cmd {
@@ -766,25 +803,52 @@ static void i3c_aspeed_isr(const struct device *dev)
 	i3c_register->intr_status.value = status.value;
 }
 
+static void calc_i2c_clk(int fscl, int *period_hi, int *period_lo)
+{
+	int hi_min, lo_min;
+	int margin;
+	int period = DIV_ROUND_UP(1000000000, fscl);
+
+	if (fscl <= 100000) {
+		lo_min = DIV_ROUND_UP(I3C_BUS_I2C_STD_TLOW_MIN_NS + I3C_BUS_I2C_STD_TF_MAX_NS, period);
+		hi_min = DIV_ROUND_UP(I3C_BUS_I2C_STD_THIGH_MIN_NS + I3C_BUS_I2C_STD_TR_MAX_NS, period);
+	} else if (fscl <= 400000) {
+		lo_min = DIV_ROUND_UP(I3C_BUS_I2C_FM_TLOW_MIN_NS + I3C_BUS_I2C_FM_TF_MAX_NS, period);
+		hi_min = DIV_ROUND_UP(I3C_BUS_I2C_FM_THIGH_MIN_NS + I3C_BUS_I2C_FM_TR_MAX_NS, period);
+	} else {
+		lo_min = DIV_ROUND_UP(I3C_BUS_I2C_FMP_TLOW_MIN_NS + I3C_BUS_I2C_FMP_TF_MAX_NS, period);
+		hi_min = DIV_ROUND_UP(I3C_BUS_I2C_FMP_THIGH_MIN_NS + I3C_BUS_I2C_FMP_TR_MAX_NS, period);
+	}
+
+	margin = (period - lo_min - hi_min) >> 1;
+	*period_lo = lo_min + margin;
+	*period_hi = MAX(period - *period_lo, hi_min);
+}
+
 static void i3c_aspeed_init_clock(struct i3c_aspeed_obj *obj)
 {
 	struct i3c_aspeed_config *config = obj->config;
 	struct i3c_register_s *i3c_register = config->base;
 	union i3c_scl_timing_s i3c_scl;
 	union i2c_scl_timing_s i2c_scl;
-	int i3cclk, period, hcnt, lcnt;
+	union bus_free_timing_s bus_free;
+	union sda_hold_switch_dly_timing_s sda_hold;
+	int core_rate, core_period, hcnt, lcnt, scl_timing;
+	int lo_ns, hi_ns;
 
-	clock_control_get_rate(config->clock_dev, config->clock_id, &i3cclk);
-	LOG_DBG("i3cclk %d hz\n", i3cclk);
+	clock_control_get_rate(config->clock_dev, config->clock_id, &core_rate);
+	core_period = DIV_ROUND_UP(1000000000, core_rate);
 
+	LOG_INF("core_rate %d hz (%d ns)\n", core_rate, core_period);
 	LOG_INF("i2c-scl = %d, i3c-scl = %d\n", config->i2c_scl_hz, config->i3c_scl_hz);
 
-	/* Configure I2C FM mode timing parameters */
-	period = DIV_ROUND_UP(i3cclk, 400000);
-
-	/* 40-60 of the clock duty configuration to meet JESD403-1A timing constrain */
-	lcnt = DIV_ROUND_UP(period * 6, 10);
-	hcnt = period - lcnt;
+	if (config->i2c_scl_hz) {
+		calc_i2c_clk(config->i2c_scl_hz, &hi_ns, &lo_ns);
+	} else {
+		calc_i2c_clk(400000, &hi_ns, &lo_ns);
+	}
+	hcnt = DIV_ROUND_UP(hi_ns, core_period);
+	lcnt = DIV_ROUND_UP(lo_ns, core_period);
 
 	i2c_scl.value = 0;
 	i2c_scl.fields.lcnt = lcnt;
@@ -792,9 +856,9 @@ static void i3c_aspeed_init_clock(struct i3c_aspeed_obj *obj)
 	i3c_register->fm_timing.value = i2c_scl.value;
 
 	/* Configure I2C FM+ mode timing parameters */
-	period = DIV_ROUND_UP(i3cclk, 1000000);
-	lcnt = DIV_ROUND_UP(period * 6, 10);
-	hcnt = period - lcnt;
+	calc_i2c_clk(1000000, &hi_ns, &lo_ns);
+	hcnt = DIV_ROUND_UP(hi_ns, core_period);
+	lcnt = DIV_ROUND_UP(lo_ns, core_period);
 
 	i2c_scl.value = 0;
 	i2c_scl.fields.lcnt = lcnt;
@@ -802,17 +866,28 @@ static void i3c_aspeed_init_clock(struct i3c_aspeed_obj *obj)
 	i3c_register->fmp_timing.value = i2c_scl.value;
 
 	/* Configure I3C OD mode timing parameters */
-	lcnt = lcnt > 255 ? 255 : lcnt;
-	hcnt = period - lcnt;
+	if (config->i3c_od_scl_hi_period_ns && config->i3c_od_scl_lo_period_ns) {
+		lcnt = DIV_ROUND_UP(config->i3c_od_scl_lo_period_ns, core_period);
+		hcnt = DIV_ROUND_UP(config->i3c_od_scl_hi_period_ns, core_period);
+	} else {
+		/* use FMP timing if OD periods are not specified in DT */
+		lcnt = lcnt > 0xff ? 0xff : lcnt;
+		hcnt = hcnt > 0xff ? 0xff : hcnt;
+	}
 	i3c_scl.value = 0;
 	i3c_scl.fields.hcnt = hcnt;
 	i3c_scl.fields.lcnt = lcnt;
 	i3c_register->od_timing.value = i3c_scl.value;
 
 	/* Configure PP mode timing parameters */
-	period = DIV_ROUND_UP(i3cclk, config->i3c_scl_hz);
-	hcnt = period >> 1;
-	lcnt = period - hcnt;
+	if (config->i3c_pp_scl_hi_period_ns && config->i3c_pp_scl_lo_period_ns) {
+		lcnt = DIV_ROUND_UP(config->i3c_pp_scl_lo_period_ns, core_period);
+		hcnt = DIV_ROUND_UP(config->i3c_pp_scl_hi_period_ns, core_period);
+	} else {
+		scl_timing = DIV_ROUND_UP(core_rate, config->i3c_scl_hz);
+		hcnt = scl_timing >> 1;
+		lcnt = scl_timing - hcnt;
+	}
 
 	i3c_scl.fields.hcnt = hcnt;
 	i3c_scl.fields.lcnt = lcnt;
@@ -820,6 +895,19 @@ static void i3c_aspeed_init_clock(struct i3c_aspeed_obj *obj)
 
 	/* Configure extra termination timing */
 	i3c_register->ext_termn_timing.fields.lcnt = DEFAULT_EXT_TERMN_LCNT;
+
+	/* Configure bus free condition */
+	bus_free.fields.i3c_ibi_free = 0xffff;
+	bus_free.fields.i3c_mst_free = i3c_register->od_timing.fields.lcnt;
+	i3c_register->bus_free_timing.value = bus_free.value;
+
+	/* Configure SDA TX hold time */
+	if (config->sda_tx_hold_ns) {
+		sda_hold.fields.sda_tx_hold = DIV_ROUND_UP(config->sda_tx_hold_ns, core_period);
+	} else {
+		sda_hold.fields.sda_tx_hold = 1;
+	}
+	i3c_register->sda_hold_switch_dly_timing.value = sda_hold.value;
 }
 
 static void i3c_aspeed_init_hw_feature(struct i3c_aspeed_obj *obj)
@@ -1489,6 +1577,11 @@ static int i3c_aspeed_init(const struct device *dev)
 		.assigned_addr = DT_INST_PROP_OR(n, assigned_address, 0),                          \
 		.inst_id = DT_INST_PROP_OR(n, instance_id, 0),                                     \
 		.ibi_append_pec = DT_INST_PROP_OR(n, ibi_append_pec, 0),                           \
+		.sda_tx_hold_ns = DT_INST_PROP_OR(n, sda_tx_hold_ns, 0),                           \
+		.i3c_pp_scl_hi_period_ns = DT_INST_PROP_OR(n, i3c_pp_scl_hi_period_ns, 0),         \
+		.i3c_pp_scl_lo_period_ns = DT_INST_PROP_OR(n, i3c_pp_scl_lo_period_ns, 0),         \
+		.i3c_od_scl_hi_period_ns = DT_INST_PROP_OR(n, i3c_od_scl_hi_period_ns, 0),         \
+		.i3c_od_scl_lo_period_ns = DT_INST_PROP_OR(n, i3c_od_scl_lo_period_ns, 0),         \
 	};                                                                                         \
 												   \
 	static struct i3c_aspeed_obj i3c_aspeed_obj##n;                                            \
