@@ -113,8 +113,7 @@ int i3c_slave_mqueue_write(const struct device *dev, uint8_t *src, int size)
 		read_data.buf = src;
 		read_data.size = size;
 
-		return i3c_slave_send_pending_read_notify(obj->i3c_controller,
-							  &ibi, &read_data);
+		return i3c_slave_put_read_data(obj->i3c_controller, &read_data, &ibi);
 	} else {
 		ibi.buf = src;
 		ibi.size = size;

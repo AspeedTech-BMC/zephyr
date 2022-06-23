@@ -160,33 +160,27 @@ int i3c_aspeed_slave_register(const struct device *dev, struct i3c_slave_setup *
 /**
  * @brief slave device sends SIR (IBI) with data
  *
- * @param dev the slave device
+ * @param dev the I3C controller in slave mode
  * @param payload pointer to IBI payload structure
  * @return int 0 = success
  */
 int i3c_aspeed_slave_send_sir(const struct device *dev, struct i3c_ibi_payload *payload);
 
 /**
- * @brief slave device sends pending read notification
+ * @brief slave device prepares the data for master private read transfer
  *
- * @param dev the slave device
- * @param ibi pointer to the ibi payload structure
- * @param data pointer to the read data structure
+ * @param dev the I3C controller in slave mode
+ * @param data pointer to the data structure to be read
+ * @param ibi_notify pointer to the IBI notification structure (optional)
  * @return int 0 = success
- */
-int i3c_aspeed_slave_send_pending_read_notify(const struct device *dev,
-					      struct i3c_ibi_payload *ibi,
-					      struct i3c_slave_payload *read_data);
-/**
- * @brief slave devices prepares the data for master private read transfer
  *
- * @param dev the slave device
- * @param data the data to be read
- * @param nbytes number of bytes of the data
- * @param wait true if you want to wait for data consumed
- * @return int 0 = success
+ * This function puts the pending read data to the TX FIFO.  If @ibi_notify is
+ * specified, a slave interrupt with the IBI payload will be issued to notify
+ * the master device that there is a pending read data.  The master device shall
+ * issue a private read transfer to read the data back.
  */
-int i3c_aspeed_slave_prep_read_data(const struct device *dev, uint8_t *data, int nbytes, bool wait);
+int i3c_aspeed_slave_put_read_data(const struct device *dev, struct i3c_slave_payload *data,
+				   struct i3c_ibi_payload *ibi_notify);
 
 /**
  * @brief slave device waits for the private read data be consumed
@@ -213,8 +207,7 @@ int i3c_master_send_getbcr(const struct device *master, uint8_t addr, uint8_t *b
 #define i3c_master_enable_ibi		i3c_aspeed_master_enable_ibi
 #define i3c_slave_register		i3c_aspeed_slave_register
 #define i3c_slave_send_sir		i3c_aspeed_slave_send_sir
-#define i3c_slave_send_pending_read_notify i3c_aspeed_slave_send_pending_read_notify
-#define i3c_slave_prep_read_data	i3c_aspeed_slave_prep_read_data
+#define i3c_slave_put_read_data		i3c_aspeed_slave_put_read_data
 #define i3c_slave_wait_data_consume	i3c_aspeed_slave_wait_data_consume
 
 int i3c_jesd403_read(struct i3c_dev_desc *slave, uint8_t *addr, int addr_size, uint8_t *data,
