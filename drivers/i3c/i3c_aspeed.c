@@ -514,7 +514,6 @@ struct i3c_aspeed_dev_priv {
 };
 
 struct i3c_aspeed_obj {
-	int init;
 	const struct device *dev;
 	struct i3c_aspeed_config *config;
 	struct k_spinlock lock;
@@ -743,34 +742,17 @@ static void i3c_aspeed_master_rx_ibi(struct i3c_aspeed_obj *obj)
 	}
 }
 
-static void i3c_aspeed_isr(const struct device *dev)
+static void i3c_aspeed_slave_event(const struct device *dev, union i3c_intr_s status)
 {
 	struct i3c_aspeed_config *config = DEV_CFG(dev);
-	struct i3c_aspeed_obj *obj = DEV_DATA(dev);
 	struct i3c_register_s *i3c_register = config->base;
-	union i3c_intr_s status;
+	uint32_t cm_tfr_sts = i3c_register->present_state.fields.cm_tfr_sts;
 
-	status.value = i3c_register->intr_status.value;
-	if (config->secondary && status.fields.dyn_addr_assign) {
-		LOG_DBG("slave received DA assignment\n");
+	if (status.fields.dyn_addr_assign) {
+		LOG_DBG("dynamic address assigned\n");
 	}
-
-	if (status.fields.resp_q_ready) {
-		if (config->secondary) {
-			i3c_aspeed_slave_rx_data(obj);
-		} else {
-			i3c_aspeed_end_xfer(obj);
-		}
-	}
-
-	if (status.fields.ibi_thld) {
-		i3c_aspeed_master_rx_ibi(obj);
-	}
-
 
 	if (status.fields.ccc_update) {
-		uint32_t cm_tfr_sts = i3c_register->present_state.fields.cm_tfr_sts;
-
 		if (cm_tfr_sts == CM_TFR_STS_SLAVE_HALT) {
 			LOG_DBG("slave halt resume\n");
 			i3c_register->device_ctrl.fields.resume = 1;
@@ -784,20 +766,45 @@ static void i3c_aspeed_isr(const struct device *dev)
 			LOG_DBG("master sets MWL %d\n", i3c_register->slave_max_len.fields.mwl);
 		}
 
+		if (i3c_register->slave_event_ctrl.fields.sir_allowed) {
+			LOG_DBG("master allows slave sending sir\n");
+		}
+
 		/* W1C the slave events */
 		i3c_register->slave_event_ctrl.value = i3c_register->slave_event_ctrl.value;
 	}
+}
+
+static void i3c_aspeed_isr(const struct device *dev)
+{
+	struct i3c_aspeed_config *config = DEV_CFG(dev);
+	struct i3c_aspeed_obj *obj = DEV_DATA(dev);
+	struct i3c_register_s *i3c_register = config->base;
+	union i3c_intr_s status;
+
+	status.value = i3c_register->intr_status.value;
+	if (config->secondary) {
+		if (status.fields.resp_q_ready) {
+			i3c_aspeed_slave_rx_data(obj);
+		}
+
+		i3c_aspeed_slave_event(dev, status);
+
+		osEventFlagsSet(obj->event_id, status.value);
+
+	} else {
+		if (status.fields.resp_q_ready) {
+			i3c_aspeed_end_xfer(obj);
+		}
+
+		if (status.fields.ibi_thld) {
+			i3c_aspeed_master_rx_ibi(obj);
+		}
+	}
+
 
 	if (status.fields.xfr_error) {
 		i3c_register->device_ctrl.fields.resume = 1;
-	}
-
-	if (config->secondary && status.fields.dyn_addr_assign) {
-		LOG_DBG("dynamic address assigned\n");
-	}
-
-	if (config->secondary) {
-		osEventFlagsSet(obj->event_id, status.value);
 	}
 
 	i3c_register->intr_status.value = status.value;
