@@ -103,6 +103,19 @@ int i3c_slave_mqueue_write(const struct device *dev, uint8_t *src, int size)
 	struct i3c_slave_mqueue_config *config = DEV_CFG(dev);
 	struct i3c_slave_mqueue_obj *obj = DEV_DATA(dev);
 	struct i3c_ibi_payload ibi;
+	uint32_t event_en;
+	int ret;
+	uint8_t dynamic_addr;
+
+	ret = i3c_slave_get_dynamic_addr(obj->i3c_controller, &dynamic_addr);
+	if (ret) {
+		return -ENOTCONN;
+	}
+
+	ret = i3c_slave_get_event_enabling(obj->i3c_controller, &event_en);
+	if (ret || !(event_en & I3C_SLAVE_EVENT_SIR)) {
+		return -EACCES;
+	}
 
 	if (IS_MDB_PENDING_READ_NOTIFY(config->mdb)) {
 		struct i3c_slave_payload read_data;
