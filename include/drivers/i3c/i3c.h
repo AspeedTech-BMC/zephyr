@@ -218,6 +218,7 @@ int i3c_aspeed_slave_wait_data_consume(const struct device *dev);
 
 /* common API */
 int i3c_master_send_enec(const struct device *master, uint8_t addr, uint8_t evt);
+int i3c_master_send_disec(const struct device *master, uint8_t addr, uint8_t evt);
 int i3c_master_send_rstdaa(const struct device *master);
 int i3c_master_send_aasa(const struct device *master);
 int i3c_master_send_setmrl(const struct device *master, uint8_t addr, uint16_t mrl,

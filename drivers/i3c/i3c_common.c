@@ -10,13 +10,14 @@
 #include <device.h>
 #include <drivers/i3c/i3c.h>
 
-int i3c_master_send_enec(const struct device *master, uint8_t addr, uint8_t evt)
+static int i3c_master_send_enec_disec(const struct device *master, uint8_t addr, bool enable,
+				      uint8_t evt)
 {
 	struct i3c_ccc_cmd ccc;
 	uint8_t event = evt;
 
 	ccc.addr = addr;
-	ccc.id = I3C_CCC_ENEC;
+	ccc.id = (enable == true) ? I3C_CCC_ENEC : I3C_CCC_DISEC;
 	if (addr != I3C_BROADCAST_ADDR) {
 		ccc.id |= I3C_CCC_DIRECT;
 	}
@@ -26,6 +27,16 @@ int i3c_master_send_enec(const struct device *master, uint8_t addr, uint8_t evt)
 	ccc.ret = 0;
 
 	return i3c_master_send_ccc(master, &ccc);
+}
+
+int i3c_master_send_enec(const struct device *master, uint8_t addr, uint8_t evt)
+{
+	return i3c_master_send_enec_disec(master, addr, true, evt);
+}
+
+int i3c_master_send_disec(const struct device *master, uint8_t addr, uint8_t evt)
+{
+	return i3c_master_send_enec_disec(master, addr, false, evt);
 }
 
 int i3c_master_send_rstdaa(const struct device *master)
