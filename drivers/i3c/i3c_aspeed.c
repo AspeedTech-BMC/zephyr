@@ -1429,6 +1429,41 @@ int i3c_aspeed_slave_wait_data_consume(const struct device *dev)
 	return 0;
 }
 
+int i3c_aspeed_slave_get_dynamic_addr(const struct device *dev, uint8_t *dynamic_addr)
+{
+	struct i3c_aspeed_config *config = DEV_CFG(dev);
+	struct i3c_register_s *i3c_register = config->base;
+
+	if (!i3c_register->device_addr.fields.dynamic_addr_valid) {
+		return -1;
+	}
+
+	*dynamic_addr = i3c_register->device_addr.fields.dynamic_addr;
+
+	return 0;
+}
+
+int i3c_aspeed_slave_get_event_enabling(const struct device *dev, uint32_t *event_en)
+{
+	struct i3c_aspeed_config *config = DEV_CFG(dev);
+	struct i3c_register_s *i3c_register = config->base;
+
+	*event_en = 0;
+	if (i3c_register->slave_event_ctrl.fields.sir_allowed) {
+		*event_en |= I3C_SLAVE_EVENT_SIR;
+	}
+
+	if (i3c_register->slave_event_ctrl.fields.mr_allowed) {
+		*event_en |= I3C_SLAVE_EVENT_MR;
+	}
+
+	if (i3c_register->slave_event_ctrl.fields.hj_allowed) {
+		*event_en |= I3C_SLAVE_EVENT_HJ;
+	}
+
+	return 0;
+}
+
 int i3c_aspeed_master_send_ccc(const struct device *dev, struct i3c_ccc_cmd *ccc)
 {
 	struct i3c_aspeed_obj *obj = DEV_DATA(dev);

@@ -131,6 +131,11 @@ struct i3c_slave_payload {
 	void *buf;
 };
 
+/* slave events */
+#define I3C_SLAVE_EVENT_SIR		BIT(0)
+#define I3C_SLAVE_EVENT_MR		BIT(1)
+#define I3C_SLAVE_EVENT_HJ		BIT(2)
+
 /**
  * @brief slave callback function structure
  * @param write_requested callback function to return a memory block for receiving data sent from
@@ -157,6 +162,27 @@ int i3c_aspeed_master_priv_xfer(struct i3c_dev_desc *i3cdev, struct i3c_priv_xfe
 int i3c_aspeed_master_request_ibi(struct i3c_dev_desc *i3cdev, struct i3c_ibi_callbacks *cb);
 int i3c_aspeed_master_enable_ibi(struct i3c_dev_desc *i3cdev);
 int i3c_aspeed_slave_register(const struct device *dev, struct i3c_slave_setup *slave_data);
+
+/**
+ * @brief get the assigned dynamic address of the i3c controller
+ * @param dev the I3C controller in slave mode
+ * @param dynamic_addr pointer to the dynamic address variable
+ * @return -1 if dynamic address is not assigned
+ * @return 0 if dynamic address is assigned.  The value is passed to `dynamic_addr`
+ */
+int i3c_aspeed_slave_get_dynamic_addr(const struct device *dev, uint8_t *dynamic_addr);
+
+/**
+ * @brief get the event enabling status
+ * @param dev the I3C controller in slave mode
+ * @param event_en pointer to the event enabling mask, see `I3C_SLAVE_EVENT_*`.
+ * @return 0 if success
+ *
+ * This function gets the status of the event enabling from the slave controller.
+ * The bits set in `event_en` means the corresponding slave events are enabled.
+ */
+int i3c_aspeed_slave_get_event_enabling(const struct device *dev, uint32_t *event_en);
+
 /**
  * @brief slave device sends SIR (IBI) with data
  *
@@ -209,6 +235,8 @@ int i3c_master_send_getbcr(const struct device *master, uint8_t addr, uint8_t *b
 #define i3c_slave_send_sir		i3c_aspeed_slave_send_sir
 #define i3c_slave_put_read_data		i3c_aspeed_slave_put_read_data
 #define i3c_slave_wait_data_consume	i3c_aspeed_slave_wait_data_consume
+#define i3c_slave_get_dynamic_addr	i3c_aspeed_slave_get_dynamic_addr
+#define i3c_slave_get_event_enabling	i3c_aspeed_slave_get_event_enabling
 
 int i3c_jesd403_read(struct i3c_dev_desc *slave, uint8_t *addr, int addr_size, uint8_t *data,
 		     int data_size);
