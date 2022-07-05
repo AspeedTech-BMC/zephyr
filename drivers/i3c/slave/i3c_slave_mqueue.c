@@ -177,6 +177,9 @@ static void i3c_slave_mqueue_init(const struct device *dev)
 	i3c_slave_register(obj->i3c_controller, &slave_data);
 }
 
+BUILD_ASSERT(CONFIG_I3C_SLAVE_INIT_PRIORITY > CONFIG_KERNEL_INIT_PRIORITY_DEVICE,
+	     "I3C controller must be initialized prior to target device initialization");
+
 #define I3C_SLAVE_MQUEUE_INIT(n)                                                                   \
 	static int i3c_slave_mqueue_config_func_##n(const struct device *dev);                     \
 	static const struct i3c_slave_mqueue_config i3c_slave_mqueue_config_##n = {                \
