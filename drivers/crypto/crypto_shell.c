@@ -207,18 +207,88 @@ out:
 	cipher_free_session(dev, &ini);
 }
 
-static void aes_test(const struct device *dev, enum cipher_mode mode)
+void aes_cbc_vault(const struct device *dev)
+{
+	uint8_t *ptext = (uint8_t *)aes256cbc_tv[0].ptext;
+	uint8_t *iv = (uint8_t *)aes256cbc_tv[0].iv;
+	unsigned int len = aes256cbc_tv[0].len;
+	uint8_t key_id = 1;
+	uint8_t encrypted[80] = {0};
+	uint8_t decrypted[64] = {0};
+	struct cipher_ctx ini;
+	struct cipher_pkt encrypt, decrypt;
+
+	ini.keylen = 32;
+	ini.key.handle = &key_id;
+	ini.flags = CAP_OPAQUE_KEY_HNDL | CAP_SYNC_OPS | CAP_SEPARATE_IO_BUFS;
+	encrypt.in_buf = ptext;
+	encrypt.in_len = len;
+	encrypt.out_buf_max = sizeof(encrypted);
+	encrypt.out_buf = encrypted;
+
+	decrypt.in_buf = encrypt.out_buf;
+	decrypt.in_len = sizeof(encrypted);
+	decrypt.out_buf = decrypted;
+	decrypt.out_buf_max = sizeof(decrypted);
+
+	if (cipher_begin_session(dev, &ini, CRYPTO_CIPHER_ALGO_AES,
+							 CRYPTO_CIPHER_MODE_CBC,
+							 CRYPTO_CIPHER_OP_ENCRYPT)) {
+		return;
+	}
+	if (cipher_cbc_op(&ini, &encrypt, iv)) {
+		LOG_ERR("CBC mode ENCRYPT - Failed");
+		goto out;
+	}
+	LOG_INF("Output length (encryption): %d", encrypt.out_len);
+	/* First 16 byte is IV, which is default behavior of Zephyr
+	 * crypto API.
+	 */
+	cipher_free_session(dev, &ini);
+
+	if (cipher_begin_session(dev, &ini, CRYPTO_CIPHER_ALGO_AES,
+							 CRYPTO_CIPHER_MODE_CBC,
+							 CRYPTO_CIPHER_OP_DECRYPT)) {
+		return;
+	}
+
+	/* TinyCrypt keeps IV at the start of encrypted buffer */
+	if (cipher_cbc_op(&ini, &decrypt, encrypted)) {
+		LOG_ERR("CBC mode DECRYPT - Failed");
+		goto out;
+	}
+
+	LOG_INF("Output length (decryption): %d", decrypt.out_len);
+
+	if (memcmp(decrypt.out_buf, ptext, len)) {
+		LOG_ERR("CBC mode DECRYPT - Mismatch between plaintext and "
+				"decrypted cipher text");
+		print_buffer_comparison(ptext, decrypt.out_buf,
+								len);
+		goto out;
+	}
+
+	LOG_INF("CBC mode ENCRYPT and DECRYPT - Match");
+out:
+	cipher_free_session(dev, &ini);
+}
+
+static void aes_test(const struct device *dev, enum cipher_mode mode, int vault_key)
 {
 	switch (mode) {
 	case CRYPTO_CIPHER_MODE_CBC:
-		aes_cbc(dev);
+		if (vault_key)
+			aes_cbc_vault(dev);
+		else
+			aes_cbc(dev);
 		break;
 	default:
 		LOG_ERR("Incompatible mode");
 	}
 }
 
-static void _crypto_test(const struct shell *shell, enum cipher_algo algo, enum cipher_mode mode)
+static void _crypto_test(const struct shell *shell, enum cipher_algo algo,
+						 enum cipher_mode mode, int vault)
 {
 	const struct device *dev = device_get_binding(CRYPTO_DRV_NAME);
 
@@ -229,7 +299,7 @@ static void _crypto_test(const struct shell *shell, enum cipher_algo algo, enum 
 
 	switch (algo) {
 	case CRYPTO_CIPHER_ALGO_AES:
-		aes_test(dev, mode);
+		aes_test(dev, mode, vault);
 		break;
 	default:
 		LOG_ERR("Incompatible algo");
@@ -239,11 +309,18 @@ static void _crypto_test(const struct shell *shell, enum cipher_algo algo, enum 
 static void aes256_cbc(const struct shell *shell, size_t argc, char **argv)
 {
 	shell_print(shell, "aes256_cbc");
-	_crypto_test(shell, CRYPTO_CIPHER_ALGO_AES, CRYPTO_CIPHER_MODE_CBC);
+	_crypto_test(shell, CRYPTO_CIPHER_ALGO_AES, CRYPTO_CIPHER_MODE_CBC, 0);
+}
+
+static void aes256_cbc_vault(const struct shell *shell, size_t argc, char **argv)
+{
+	shell_print(shell, "aes256_cbc vault key 1");
+	_crypto_test(shell, CRYPTO_CIPHER_ALGO_AES, CRYPTO_CIPHER_MODE_CBC, 1);
 }
 
 SHELL_STATIC_SUBCMD_SET_CREATE(crypto_cmds,
 							   SHELL_CMD_ARG(aes256_cbc, NULL, "", aes256_cbc, 1, 0),
+							   SHELL_CMD_ARG(aes256_cbc_vault, NULL, "", aes256_cbc_vault, 1, 0),
 							   SHELL_SUBCMD_SET_END);
 
 SHELL_CMD_REGISTER(crypto, &crypto_cmds, "Crypto shell commands", NULL);
