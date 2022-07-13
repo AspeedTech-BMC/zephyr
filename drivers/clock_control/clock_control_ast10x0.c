@@ -20,6 +20,24 @@ LOG_MODULE_REGISTER(clock_control_aspeed);
 #define     I3C_CLK_SRC_HPLL		0
 #define     I3C_CLK_SRC_480M		1
 #define   I3C_CLK_DIV_SEL		GENMASK(30, 28)
+#define   PCLK_DIV_SEL			GENMASK(11, 8)
+#define     PCLK_DIV_2			0b0000
+#define     PCLK_DIV_4			0b0001
+#define     PCLK_DIV_6			0b0010
+#define     PCLK_DIV_8			0b0011
+#define     PCLK_DIV_10			0b0100
+#define     PCLK_DIV_12			0b0101
+#define     PCLK_DIV_14			0b0110
+#define     PCLK_DIV_16			0b0111
+#define     PCLK_DIV_18			0b1000
+#define     PCLK_DIV_20			0b1001
+#define     PCLK_DIV_22			0b1010
+#define     PCLK_DIV_24			0b1011
+#define     PCLK_DIV_26			0b1100
+#define     PCLK_DIV_28			0b1101
+#define     PCLK_DIV_30			0b1110
+#define     PCLK_DIV_32			0b1111
+#define     PCLK_DIV_REG_TO_INT(dr)	((dr + 1) << 1)	/* register to integer */
 #define CLK_SELECTION_REG5		0x314
 
 struct clock_aspeed_config {
@@ -98,7 +116,10 @@ static int aspeed_clock_control_get_rate(const struct device *dev,
 		*rate = 200000000;
 		break;
 	case ASPEED_CLK_PCLK:
-		*rate = 50000000;
+		src = HPLL_FREQ;
+		reg = sys_read32(DEV_CFG(dev)->base + CLK_SELECTION_REG4);
+		div = PCLK_DIV_REG_TO_INT(FIELD_GET(PCLK_DIV_SEL, reg));
+		*rate = src / div;
 		break;
 	case ASPEED_CLK_GATE_UART1CLK:
 	case ASPEED_CLK_GATE_UART2CLK:
