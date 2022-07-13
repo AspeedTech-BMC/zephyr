@@ -14,8 +14,8 @@
  * from dynamic memory allocation.
  */
 
-#ifndef ZEPHYR_DRIVERS_CRYPTO_HASH_ASPEED_PRIV_H_
-#define ZEPHYR_DRIVERS_CRYPTO_HASH_ASPEED_PRIV_H_
+#ifndef ZEPHYR_DRIVERS_CRYPTO_ASPEED_PRIV_H_
+#define ZEPHYR_DRIVERS_CRYPTO_ASPEED_PRIV_H_
 
 #include <kernel.h>
 
@@ -24,19 +24,16 @@ struct aspeed_sg {
 	uint32_t addr;
 };
 
-struct aspeed_hash_ctx {
-	struct aspeed_sg sg[2]; /* Must be 8 byte aligned */
-	uint8_t digest[64]; /* Must be 8 byte aligned */
-	uint32_t method;
-	uint32_t block_size;
-	uint64_t digcnt[2]; /* total length */
-	uint32_t bufcnt;
-	uint8_t buffer[256];
+struct aspeed_crypto_ctx {
+	uint8_t ctx[64];
+	struct aspeed_sg src_sg;
+	struct aspeed_sg dst_sg;
+	uint32_t cmd;
 };
 
-struct aspeed_hash_drv_state {
-	struct aspeed_hash_ctx data;
+struct aspeed_crypto_drv_state {
+	struct aspeed_crypto_ctx data;
 	bool in_use;
 };
 
-#endif  /* ZEPHYR_DRIVERS_CRYPTO_HASH_ASPEED_PRIV_H_ */
+#endif  /* ZEPHYR_DRIVERS_CRYPTO_ASPEED_PRIV_H_ */

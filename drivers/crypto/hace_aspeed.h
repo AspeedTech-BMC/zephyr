@@ -10,6 +10,57 @@
 #include <stdint.h>
 #include <soc.h>
 
+/* Crypto control registers*/
+#define ASPEED_HACE_SRC					0x00
+#define ASPEED_HACE_DEST				0x04
+#define ASPEED_HACE_CONTEXT				0x08	/* 8 byte aligned*/
+#define ASPEED_HACE_DATA_LEN			0x0C
+#define ASPEED_HACE_CMD					0x10
+#define  HACE_CMD_AES_KEY_FROM_OTP		BIT(24)	/*G6*/
+#define  HACE_CMD_MBUS_REQ_SYNC_EN		BIT(20)	/*G6*/
+#define  HACE_CMD_DES_SG_CTRL			BIT(19)	/*G6*/
+#define  HACE_CMD_SRC_SG_CTRL			BIT(18)	/*G6*/
+#define  HACE_CMD_SINGLE_DES			0
+#define  HACE_CMD_TRIPLE_DES			BIT(17)
+#define  HACE_CMD_AES_SELECT			0
+#define  HACE_CMD_DES_SELECT			BIT(16)
+#define  HACE_CMD_CTR_IV_AES_128		0		/*G6*/
+#define  HACE_CMD_AES_KEY_HW_EXP		BIT(13)	/*G6*/
+#define  HACE_CMD_ISR_EN				BIT(12)
+#define  HACE_CMD_DECRYPT				(0)
+#define  HACE_CMD_ENCRYPT				BIT(7)
+#define  HACE_CMD_ECB					(0)
+#define  HACE_CMD_CBC					(0x1 << 4)
+#define  HACE_CMD_CFB					(0x2 << 4)
+#define  HACE_CMD_OFB					(0x3 << 4)
+#define  HACE_CMD_CTR					(0x4 << 4)
+#define  HACE_CMD_AES128				(0)
+#define  HACE_CMD_AES192				(0x1 << 2)
+#define  HACE_CMD_AES256				(0x2 << 2)
+
+#define ASPEED_HACE_STS					0x1C
+#define  HACE_CRYPTO_ISR				BIT(12)
+#define  HACE_HASH_ISR					BIT(9)
+#define  HACE_CRYPTO_BUSY				BIT(1)
+#define  HACE_HASH_BUSY					BIT(0)
+
+#define ASPEED_HACE_HASH_SRC			0x20
+#define ASPEED_HACE_HASH_DIGEST_BUFF	0x24
+#define ASPEED_HACE_HASH_KEY_BUFF		0x28	/* 64 byte aligned,g6 16 byte aligned */
+#define ASPEED_HACE_HASH_DATA_LEN		0x2C
+#define  HACE_SG_LAST					BIT(31)
+#define ASPEED_HACE_HASH_CMD			0x30
+#define  HACE_SHA_BE_EN					BIT(3)
+#define  HACE_MD5_LE_EN					BIT(2)
+#define  HACE_ALGO_MD5					0
+#define  HACE_ALGO_SHA1					BIT(5)
+#define  HACE_ALGO_SHA224				BIT(6)
+#define  HACE_ALGO_SHA256				(BIT(4) | BIT(6))
+#define  HACE_ALGO_SHA512				(BIT(5) | BIT(6))
+#define  HACE_ALGO_SHA384				(BIT(5) | BIT(6) | BIT(10))
+#define  HASH_CMD_ACC_MODE				(0x2 << 7)
+#define  HACE_SG_EN						BIT(18)
+
 union crypto_data_src_s {
 	volatile uint32_t value;
 }; /* 00000000 */
@@ -131,8 +182,18 @@ struct hace_register_s {
 
 struct aspeed_hace_engine {
 	struct hace_register_s *base; /* Hash and crypto engine base address */
+	uintptr_t sbase; /* Hash and crypto engine base address */
+	int busy_flag;
 };
 
 extern struct aspeed_hace_engine hace_eng;
+
+#define SELECT_VAL_KEY_1() do { \
+	sys_write32(sys_read32(hace_eng.sbase + 0xc) & ~(BIT(0)), hace_eng.sbase + 0xc); \
+} while (false)
+
+#define SELECT_VAL_KEY_2() do { \
+	sys_write32(sys_read32(hace_eng.sbase + 0xc) & BIT(0), hace_eng.sbase + 0xc); \
+} while (false)
 
 #endif  /* ZEPHYR_DRIVERS_CRYPTO_HACE_ASPEED_H_ */

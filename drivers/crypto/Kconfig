@@ -18,6 +18,14 @@ config HASH_SHELL
 	help
 	  Enable Hash Shell for testing.
 
+config CRYPTO_SHELL
+	bool "Enable CRYPTO Shell"
+	default y
+	depends on CRYPTO_ASPEED
+	depends on SHELL
+	help
+	  Enable RSA Shell for testing.
+
 config RSA_SHELL
 	bool "Enable RSA Shell"
 	default y

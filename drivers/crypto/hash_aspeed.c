@@ -14,7 +14,7 @@
 #include "hace_aspeed.h"
 #include "hash_aspeed_priv.h"
 
-LOG_MODULE_REGISTER(hash_aspeed, CONFIG_CRYPTO_LOG_LEVEL);
+LOG_MODULE_DECLARE(hace_global, CONFIG_CRYPTO_LOG_LEVEL);
 
 static const uint32_t sha256_iv[8] = {
 	0x67e6096aUL, 0x85ae67bbUL, 0x72f36e3cUL, 0x3af54fa5UL,
@@ -83,7 +83,6 @@ static int hash_trigger(struct aspeed_hash_ctx *data, int hash_len)
 		LOG_ERR("HACE error: engine busy\n");
 		return -EBUSY;
 	}
-
 	/* Clear pending completion status */
 	hace_register->hace_sts.value = HACE_HASH_ISR;
 

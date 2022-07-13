@@ -20,6 +20,7 @@ LOG_MODULE_REGISTER(hace_global);
 /* Device config */
 struct hace_config {
 	uintptr_t base; /* Hash and crypto engine base address */
+	uintptr_t sbase; /* Secure Boot engine base address */
 	const struct device *clock_dev;
 	const clock_control_subsys_t clk_id;
 	const reset_control_subsys_t rst_id;
@@ -49,7 +50,8 @@ static int hace_init(const struct device *dev)
 }
 
 static const struct hace_config hace_aspeed_config = {
-	.base = DT_REG_ADDR(DT_NODELABEL(hace)),
+	.base = DT_REG_ADDR_BY_IDX(DT_NODELABEL(hace), 0),
+	.sbase = DT_REG_ADDR_BY_IDX(DT_NODELABEL(hace), 1),
 	.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(0)),
 	.clk_id = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(0, clk_id),
 	.rst_id = (reset_control_subsys_t)DT_INST_RESETS_CELL(0, rst_id),

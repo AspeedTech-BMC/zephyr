@@ -1084,7 +1084,8 @@
 			compatible = "aspeed,hace";
 			#address-cells = <1>;
 			#size-cells = <1>;
-			reg = <0x7e6d0000 0x200>;
+			reg = <0x7e6d0000 0x200
+				   0x7e6f2800 0x10>;
 			clocks = <&sysclk ASPEED_CLK_GATE_YCLK>;
 			resets = <&sysrst ASPEED_RESET_HACE>;
 		};
