@@ -96,6 +96,8 @@ static void i3c_imx3112_test(void)
 		}
 	}
 
+	ret = i3c_master_send_sethid(master);
+	__ASSERT(!ret, "SETHID failed\n");
 	ret = i3c_master_send_aasa(master);
 	__ASSERT(!ret, "SETAASA failed\n");
 
@@ -192,6 +194,8 @@ static void i3c_imx3102_test(void)
 		}
 	}
 
+	ret = i3c_master_send_sethid(master[1]);
+	__ASSERT_NO_MSG(!ret);
 	ret = i3c_master_send_aasa(master[1]);
 	__ASSERT_NO_MSG(!ret);
 
