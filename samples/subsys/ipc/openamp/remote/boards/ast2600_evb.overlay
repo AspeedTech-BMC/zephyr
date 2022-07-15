@@ -1,0 +1,15 @@
+/ {
+	chosen {
+		zephyr,ipc = &ipc;
+		zephyr,ipc_shm = &shared_ram;
+	};
+
+	shared_ram: memory@3000000 {
+		compatible = "mmio-sram";
+		reg = <0x3000000 DT_SIZE_K(128)>;
+	};
+};
+
+&ipc {
+	status = "okay";
+};
