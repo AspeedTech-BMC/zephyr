@@ -112,6 +112,13 @@ config IPM_INTEL_ADSP
 	help
 	  Driver for the Host-DSP Mailbox Communication channel.
 
+config IPM_ASPEED_AST2600
+	bool "IPM AST2600 driver"
+	select DYNAMIC_INTERRUPTS
+	help
+	  Driver for the PSP-SSP Communication, based on Aspeed
+	  AST2600 IPC peripheral HW.
+
 module = IPM
 module-str = ipm
 source "subsys/logging/Kconfig.template.log_config"
