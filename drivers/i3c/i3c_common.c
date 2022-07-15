@@ -54,6 +54,21 @@ int i3c_master_send_rstdaa(const struct device *master)
 	return i3c_master_send_ccc(master, &ccc);
 }
 
+int i3c_master_send_sethid(const struct device *master)
+{
+	struct i3c_ccc_cmd ccc;
+	uint8_t hid = 0;
+
+	ccc.addr = I3C_BROADCAST_ADDR;
+	ccc.id = I3C_CCC_SETHID;
+	ccc.payload.length = 1;
+	ccc.payload.data = &hid;
+	ccc.rnw = 0;
+	ccc.ret = 0;
+
+	return i3c_master_send_ccc(master, &ccc);
+}
+
 int i3c_master_send_aasa(const struct device *master)
 {
 	struct i3c_ccc_cmd ccc;

@@ -21,6 +21,7 @@
 /* broadcast only commands */
 #define I3C_CCC_ENTDAA          0x07
 #define I3C_CCC_SETAASA         0x29
+#define I3C_CCC_SETHID		0x61
 
 /* unicast only commands */
 #define I3C_CCC_SETDASA         (0x7 | I3C_CCC_DIRECT)
@@ -220,6 +221,7 @@ int i3c_aspeed_slave_wait_data_consume(const struct device *dev);
 int i3c_master_send_enec(const struct device *master, uint8_t addr, uint8_t evt);
 int i3c_master_send_disec(const struct device *master, uint8_t addr, uint8_t evt);
 int i3c_master_send_rstdaa(const struct device *master);
+int i3c_master_send_sethid(const struct device *master);
 int i3c_master_send_aasa(const struct device *master);
 int i3c_master_send_setmrl(const struct device *master, uint8_t addr, uint16_t mrl,
 			   uint8_t ibi_payload_size);
