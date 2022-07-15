@@ -1467,9 +1467,13 @@ int i3c_aspeed_slave_get_event_enabling(const struct device *dev, uint32_t *even
 int i3c_aspeed_master_send_ccc(const struct device *dev, struct i3c_ccc_cmd *ccc)
 {
 	struct i3c_aspeed_obj *obj = DEV_DATA(dev);
+	struct i3c_aspeed_config *config = DEV_CFG(dev);
+	struct i3c_register_s *i3c_register = config->base;
 	struct i3c_aspeed_xfer xfer;
 	struct i3c_aspeed_cmd cmd;
 	union i3c_device_cmd_queue_port_s cmd_hi, cmd_lo;
+	uint32_t pp_timing = i3c_register->pp_timing.value;
+	uint32_t od_timing = i3c_register->od_timing.value;
 	int pos = 0;
 	int ret;
 
@@ -1478,6 +1482,10 @@ int i3c_aspeed_master_send_ccc(const struct device *dev, struct i3c_ccc_cmd *ccc
 		if (pos < 0) {
 			return pos;
 		}
+	}
+
+	if (ccc->id == I3C_CCC_SETHID) {
+		i3c_register->pp_timing.value = od_timing;
 	}
 
 	xfer.ncmds = 1;
@@ -1518,6 +1526,10 @@ int i3c_aspeed_master_send_ccc(const struct device *dev, struct i3c_ccc_cmd *ccc
 	k_sem_take(&xfer.sem, I3C_ASPEED_CCC_TIMEOUT);
 
 	ret = xfer.ret;
+
+	if (ccc->id == I3C_CCC_SETHID) {
+		i3c_register->pp_timing.value = pp_timing;
+	}
 
 	return ret;
 }
