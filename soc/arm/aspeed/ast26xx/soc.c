@@ -47,13 +47,6 @@ void z_platform_init(void)
 {
 	cache_instr_enable();
 
-#ifdef CONFIG_BOARD_AST2605_EVB
-	uint32_t base = DT_REG_ADDR(DT_NODELABEL(syscon));
-
-	/* de-assert Cortex-A7 Primary service processor reset */
-	sys_write32(CORTEX_A7_RESET, base + HW_STRAP_CLR);
-#endif
-
 	if (CONFIG_SRAM_NC_SIZE > 0) {
 		(void)memset(__bss_nc_start__, 0, __bss_nc_end__ - __bss_nc_start__);
 	}

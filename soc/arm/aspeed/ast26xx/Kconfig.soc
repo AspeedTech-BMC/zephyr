@@ -9,7 +9,4 @@ choice
 config SOC_AST2600
 	bool "AST2600"
 
-config SOC_AST2605
-	bool "AST2605"
-
 endchoice
