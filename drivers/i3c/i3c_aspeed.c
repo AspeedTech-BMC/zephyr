@@ -1429,6 +1429,21 @@ int i3c_aspeed_slave_wait_data_consume(const struct device *dev)
 	return 0;
 }
 
+int i3c_aspeed_slave_set_static_addr(const struct device *dev, uint8_t static_addr)
+{
+	struct i3c_aspeed_config *config = DEV_CFG(dev);
+	struct i3c_register_s *i3c_register = config->base;
+	union i3c_device_addr_s device_addr;
+
+	config->assigned_addr = static_addr;
+
+	device_addr.value = i3c_register->device_addr.value;
+	device_addr.fields.static_addr = static_addr;
+	i3c_register->device_addr.value = device_addr.value;
+
+	return 0;
+}
+
 int i3c_aspeed_slave_get_dynamic_addr(const struct device *dev, uint8_t *dynamic_addr)
 {
 	struct i3c_aspeed_config *config = DEV_CFG(dev);

@@ -165,6 +165,14 @@ int i3c_aspeed_master_enable_ibi(struct i3c_dev_desc *i3cdev);
 int i3c_aspeed_slave_register(const struct device *dev, struct i3c_slave_setup *slave_data);
 
 /**
+ * @brief set the static address of the i3c controller in slave mode
+ * @param dev the I3C controller in slave mode
+ * @param static_addr the new static address
+ * @return 0 if the static address is set
+ */
+int i3c_aspeed_slave_set_static_addr(const struct device *dev, uint8_t static_addr);
+
+/**
  * @brief get the assigned dynamic address of the i3c controller
  * @param dev the I3C controller in slave mode
  * @param dynamic_addr pointer to the dynamic address variable
@@ -235,6 +243,7 @@ int i3c_master_send_getbcr(const struct device *master, uint8_t addr, uint8_t *b
 #define i3c_master_request_ibi		i3c_aspeed_master_request_ibi
 #define i3c_master_enable_ibi		i3c_aspeed_master_enable_ibi
 #define i3c_slave_register		i3c_aspeed_slave_register
+#define i3c_slave_set_static_addr	i3c_aspeed_slave_set_static_addr
 #define i3c_slave_send_sir		i3c_aspeed_slave_send_sir
 #define i3c_slave_put_read_data		i3c_aspeed_slave_put_read_data
 #define i3c_slave_wait_data_consume	i3c_aspeed_slave_wait_data_consume
