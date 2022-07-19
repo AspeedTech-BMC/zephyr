@@ -16,6 +16,7 @@
 		zephyr,shell-uart = &uart5;
 		zephyr,sram = &sram0;
 		zephyr,flash = &fmc_cs0;
+		zephyr,entropy = &rng;
 	};
 };
 

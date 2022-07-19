@@ -1108,6 +1108,12 @@
 				   0x79000000 0x2400>;
 			label = "ECDSA";
 		};
+
+		rng: hwrng@7e6e2530 {
+			compatible = "aspeed,hwrng";
+			reg = <0x7e6e2530 0x10>;
+			label = "RNG";
+		};
 	};
 };
 
