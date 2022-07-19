@@ -15,3 +15,5 @@ zephyr_library_sources_ifdef(CONFIG_FAKE_ENTROPY_NATIVE_POSIX  fake_entropy_nati
 zephyr_library_sources_ifdef(CONFIG_USERSPACE                  entropy_handlers.c)
 zephyr_library_sources_ifdef(CONFIG_ENTROPY_RV32M1_TRNG        entropy_rv32m1_trng.c)
 zephyr_library_sources_ifdef(CONFIG_ENTROPY_GECKO_TRNG         entropy_gecko_trng.c)
+zephyr_library_sources_ifdef(CONFIG_ENTROPY_ASPEED_TRNG        entropy_aspeed_trng.c)
+zephyr_library_sources_ifdef(CONFIG_RANDOM_SHELL               random_shell.c)
