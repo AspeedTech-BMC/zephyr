@@ -1794,7 +1794,7 @@ static int i2c_aspeed_slave_register(const struct device *dev,
 	uint32_t slave_en = (sys_read32(i2c_base + AST_I2CC_FUN_CTRL)
 		& AST_I2CC_SLAVE_EN);
 
-	/* check slave config exist or has attached ever*/
+	/* check slave config exist or has attached ever */
 	if ((!config) || (data->slave_attached) || slave_en) {
 		return -EINVAL;
 	}
@@ -1803,12 +1803,12 @@ static int i2c_aspeed_slave_register(const struct device *dev,
 
 	LOG_DBG(" [%x]\n", config->address);
 
-	/*Set slave addr.*/
+	/* set slave addr */
 	sys_write32(config->address |
 		    (sys_read32(i2c_base + AST_I2CS_ADDR_CTRL) & ~AST_I2CS_ADDR1_MASK),
 		    i2c_base + AST_I2CS_ADDR_CTRL);
 
-	/*trigger rx buffer*/
+	/* trigger rx buffer */
 	if (i2c_config->mode == DMA_MODE) {
 		cmd |= AST_I2CS_RX_DMA_EN;
 		sys_write32((uint32_t)data->slave_dma_buf, i2c_base + AST_I2CS_RX_DMA);
@@ -1820,10 +1820,12 @@ static int i2c_aspeed_slave_register(const struct device *dev,
 		cmd &= ~AST_I2CS_PKT_MODE_EN;
 	}
 
-	sys_write32(AST_I2CS_AUTO_NAK_EN, i2c_base + AST_I2CS_CMD_STS);
+	/* apply slave device setting */
+	sys_write32(cmd, i2c_base + AST_I2CS_CMD_STS);
+
+	/* enable slave device */
 	sys_write32(AST_I2CC_SLAVE_EN | sys_read32(i2c_base + AST_I2CC_FUN_CTRL)
 	, i2c_base + AST_I2CC_FUN_CTRL);
-	sys_write32(cmd, i2c_base + AST_I2CS_CMD_STS);
 
 	data->slave_attached = true;
 
