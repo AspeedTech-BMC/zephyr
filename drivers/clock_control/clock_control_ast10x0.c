@@ -20,6 +20,7 @@ LOG_MODULE_REGISTER(clock_control_aspeed);
 #define     I3C_CLK_SRC_HPLL		0
 #define     I3C_CLK_SRC_480M		1
 #define   I3C_CLK_DIV_SEL		GENMASK(30, 28)
+#define     I3C_CLK_DIV_REG_TO_INT(x)	((x == 0) ? 2 : (x + 1))
 #define   PCLK_DIV_SEL			GENMASK(11, 8)
 #define     PCLK_DIV_2			0b0000
 #define     PCLK_DIV_4			0b0001
@@ -47,8 +48,6 @@ struct clock_aspeed_config {
 #define DEV_CFG(dev)				   \
 	((const struct clock_aspeed_config *const) \
 	 (dev)->config)
-
-static int aspeed_clock_i3c_div_tbl[8] = {2, 2, 3, 4, 5, 6, 7, 8};
 
 static int aspeed_clock_control_on(const struct device *dev,
 				   clock_control_subsys_t sub_system)
@@ -93,9 +92,8 @@ static int aspeed_clock_control_off(const struct device *dev,
 static int aspeed_clock_control_get_rate(const struct device *dev,
 					 clock_control_subsys_t sub_system, uint32_t *rate)
 {
-	uint32_t clk_id = (uint32_t) sub_system;
-	uint32_t reg, src;
-	int index, div;
+	uint32_t clk_id = (uint32_t)sub_system;
+	uint32_t reg, src, div;
 
 	switch (clk_id) {
 	case ASPEED_CLK_GATE_I3C0CLK:
@@ -108,8 +106,7 @@ static int aspeed_clock_control_get_rate(const struct device *dev,
 		} else {
 			src = 480000000;
 		}
-		index = FIELD_GET(I3C_CLK_DIV_SEL, reg);
-		div = aspeed_clock_i3c_div_tbl[index];
+		div = I3C_CLK_DIV_REG_TO_INT(FIELD_GET(I3C_CLK_DIV_SEL, reg));
 		*rate = src / div;
 		break;
 	case ASPEED_CLK_HCLK:
