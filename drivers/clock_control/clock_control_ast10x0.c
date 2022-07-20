@@ -15,6 +15,11 @@
 LOG_MODULE_REGISTER(clock_control_aspeed);
 
 #define HPLL_FREQ			1000000000U
+#define CLK_STOP_CTRL0_SET		0x80
+#define CLK_STOP_CTRL0_CLEAR		0x84
+#define CLK_STOP_CTRL1_SET		0x90
+#define CLK_STOP_CTRL1_CLEAR		0x94
+
 #define CLK_SELECTION_REG4		0x310
 #define   I3C_CLK_SRC_SEL		BIT(31)
 #define     I3C_CLK_SRC_HPLL		0
@@ -55,7 +60,7 @@ static int aspeed_clock_control_on(const struct device *dev,
 				   clock_control_subsys_t sub_system)
 {
 	uint32_t clk_gate = (uint32_t)sub_system;
-	uint32_t addr = DEV_CFG(dev)->base + 0x84;
+	uint32_t addr = DEV_CFG(dev)->base + CLK_STOP_CTRL0_CLEAR;
 
 	if (clk_gate >= ASPEED_CLK_GRP_2_OFFSET) {
 		return 0;
@@ -63,7 +68,7 @@ static int aspeed_clock_control_on(const struct device *dev,
 
 	if (clk_gate >= ASPEED_CLK_GRP_1_OFFSET) {
 		clk_gate -= ASPEED_CLK_GRP_1_OFFSET;
-		addr += 0x10;
+		addr = DEV_CFG(dev)->base + CLK_STOP_CTRL1_CLEAR;
 	}
 
 	sys_write32(BIT(clk_gate), addr);
@@ -75,7 +80,7 @@ static int aspeed_clock_control_off(const struct device *dev,
 				    clock_control_subsys_t sub_system)
 {
 	uint32_t clk_gate = (uint32_t)sub_system;
-	uint32_t addr = DEV_CFG(dev)->base + 0x80;
+	uint32_t addr = DEV_CFG(dev)->base + CLK_STOP_CTRL0_SET;
 
 	if (clk_gate >= ASPEED_CLK_GRP_2_OFFSET) {
 		return 0;
@@ -83,7 +88,7 @@ static int aspeed_clock_control_off(const struct device *dev,
 
 	if (clk_gate >= ASPEED_CLK_GRP_1_OFFSET) {
 		clk_gate -= ASPEED_CLK_GRP_1_OFFSET;
-		addr += 0x10;
+		addr = DEV_CFG(dev)->base + CLK_STOP_CTRL1_SET;
 	}
 
 	sys_write32(BIT(clk_gate), addr);
