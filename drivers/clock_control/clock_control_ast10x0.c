@@ -147,9 +147,6 @@ static int aspeed_clock_control_get_rate(const struct device *dev,
 	case ASPEED_CLK_GATE_UART13CLK:
 		*rate = 24000000 / 13;
 		break;
-	case ASPEED_CLK_APB1:
-		*rate = 50000000;
-		break;
 	default:
 		LOG_ERR("Missing feature define for %d!", clk_id);
 		break;

@@ -468,7 +468,7 @@
 			compatible = "aspeed,uart";
 			reg = <0x7e787000 0x100>;
 			interrupts = <INTR_VUART1 AST10X0_IRQ_DEFAULT_PRIORITY>;
-			clocks = <&sysclk ASPEED_CLK_APB1>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			virtual = <1>;
 			status = "disabled";
 			label = "VUART_1";
@@ -478,7 +478,7 @@
 			compatible = "aspeed,uart";
 			reg = <0x7e788000 0x100>;
 			interrupts = <INTR_VUART2 AST10X0_IRQ_DEFAULT_PRIORITY>;
-			clocks = <&sysclk ASPEED_CLK_APB1>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			virtual = <1>;
 			status = "disabled";
 			label = "VUART_2";
