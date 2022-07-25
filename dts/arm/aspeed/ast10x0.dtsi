@@ -493,6 +493,7 @@
 		i2cfilter: i2c-filter@7e7b2000 {
 			compatible = "aspeed,i2c-filter";
 			reg = <0x7e7b2000 0x200>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			interrupts = <INTR_I2CFILTER AST10X0_IRQ_DEFAULT_PRIORITY>;
 			status = "disabled";
 			i2cfilter0: i2cfilter0 {

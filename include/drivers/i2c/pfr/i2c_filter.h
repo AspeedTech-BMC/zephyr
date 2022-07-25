@@ -10,9 +10,6 @@
 #define AST_I2C_F_COUNT			5
 #define AST_I2C_F_REMAP_SIZE	16
 #define AST_I2C_F_ELEMENT_SIZE	8
-/* base on the pclk clock frequency */
-#define AST_I2C_F_100_TIMING_VAL	0x01f400fa
-#define AST_I2C_F_400_TIMING_VAL	0x007d003e
 
 /* global define */
 #define AST_I2C_F_G_BASE		0x2000

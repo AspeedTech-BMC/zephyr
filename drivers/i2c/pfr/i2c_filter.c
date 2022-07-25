@@ -13,6 +13,7 @@
 #include <device.h>
 #include <string.h>
 #include <stdlib.h>
+#include <drivers/clock_control.h>
 #include <drivers/i2c/pfr/i2c_filter.h>
 
 #define LOG_LEVEL CONFIG_I2C_LOG_LEVEL
@@ -60,6 +61,8 @@ struct filter_array {
 
 struct ast_i2c_filter_config {
 	uint32_t	filter_g_base;
+	const struct device *clock_dev;
+	const clock_control_subsys_t clk_id;
 	struct filter_array *filter_child;
 	uint32_t filter_child_num;
 	void (*irq_config_func)(const struct device *dev);
@@ -285,7 +288,8 @@ int ast_i2c_filter_init(const struct device *dev)
 	const struct ast_i2c_filter_child_config *cfg = DEV_C_CFG(dev);
 	struct ast_i2c_filter_child_data *data = DEV_C_DATA(dev);
 	const struct ast_i2c_filter_config *gcfg = DEV_CFG(cfg->parent);
-	uint32_t ginten;
+	uint32_t ginten, timeout_count = 0;
+	uint32_t clk_src;
 
 	/* check parameter valid */
 	if (!cfg->filter_dev_name) {
@@ -302,11 +306,17 @@ int ast_i2c_filter_init(const struct device *dev)
 	data->filter_en = 0;
 	I2C_W_R(0, (data->filter_dev_base+AST_I2C_F_CFG));
 
-	if (cfg->clock == 100) {
-		I2C_W_R(AST_I2C_F_100_TIMING_VAL,
-		(data->filter_dev_base+AST_I2C_F_TIMING));
-	} else if (cfg->clock == 400) {
-		I2C_W_R(AST_I2C_F_400_TIMING_VAL,
+	/* calculation timeout term */
+	if (cfg->clock == 100 || cfg->clock == 400) {
+		/* obtain the pclk value */
+		clock_control_get_rate(gcfg->clock_dev, gcfg->clk_id, &clk_src);
+		LOG_DBG("i2c flt pclk : %d MHz", clk_src / 1000000);
+
+		timeout_count = clk_src / (cfg->clock * 2 * 1000);
+		timeout_count |= (timeout_count) << 16;
+		LOG_DBG("i2c timeout tick : %x", timeout_count);
+
+		I2C_W_R(timeout_count,
 		(data->filter_dev_base+AST_I2C_F_TIMING));
 	} else {
 		LOG_ERR("i2c filter bad clock setting");
@@ -402,6 +412,8 @@ struct filter_info {
 		ast_i2c_filter_##inst##_cfg = {		 \
 		.filter_g_base = DT_INST_REG_ADDR(inst),	 \
 		.filter_child = child_filter_##inst,	 \
+		.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(0)),	\
+		.clk_id = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(0, clk_id),	\
 		.filter_child_num = ARRAY_SIZE(child_filter_##inst), \
 		.irq_config_func = ast_i2c_filter_cfg_##inst,	 \
 	};\
