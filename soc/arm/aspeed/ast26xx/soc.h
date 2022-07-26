@@ -15,6 +15,8 @@
 #define __MPU_PRESENT		0U
 
 #define PHY_SRAM_ADDR		(*(volatile uint32_t *)(0x7e6e2a04))
+#define PHY_SRAM_IMEM_LIMIT	(*(volatile uint32_t *)(0x7e6e2a08))
+#define PHY_SRAM_DMEM_LIMIT	(*(volatile uint32_t *)(0x7e6e2a0c))
 #define TO_PHY_ADDR(addr)	(PHY_SRAM_ADDR + (uint32_t)(addr))
 #define TO_VIR_ADDR(addr)	((uint32_t)(addr) - PHY_SRAM_ADDR)
 
