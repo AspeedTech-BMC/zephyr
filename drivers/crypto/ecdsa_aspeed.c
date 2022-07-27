@@ -54,6 +54,7 @@ static int aspeed_ecdsa_verify_trigger(const struct device *dev,
 	SEC_WR(0x1, 0xb4);
 	k_usleep(1000);
 
+	/* secp384r1 */
 	/* Gx */
 	for (i = 0; i < 48; i += 4)
 		SRAM_WR(SEC_RD(ASPEED_ECDSA_PAR_GX + i), 0x2000 + i);
