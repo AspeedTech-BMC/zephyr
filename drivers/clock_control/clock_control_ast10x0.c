@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <soc.h>
 #include <drivers/clock_control.h>
+#include <drivers/hwinfo.h>
 #include <dt-bindings/clock/ast10x0_clock.h>
 
 #define LOG_LEVEL CONFIG_CLOCK_CONTROL_LOG_LEVEL
@@ -157,6 +158,24 @@ static int aspeed_clock_control_get_rate(const struct device *dev,
 
 static int aspeed_clock_control_init(const struct device *dev)
 {
+	uint64_t rev_id;
+	size_t len;
+
+	len = hwinfo_get_device_id((uint8_t *)&rev_id, sizeof(rev_id));
+	if (len < 0) {
+		return 0;
+	}
+
+	if (rev_id == ASPEED_SOC_ID_AST1060A2) {
+		uint32_t base = DEV_CFG(dev)->base;
+		uint32_t reg;
+
+		reg = sys_read32(base + CLK_SELECTION_REG4);
+		reg &= ~PCLK_DIV_SEL;
+		reg |= FIELD_PREP(PCLK_DIV_SEL, PCLK_DIV_32);
+		sys_write32(reg, base + CLK_SELECTION_REG4);
+	}
+
 	return 0;
 }
 

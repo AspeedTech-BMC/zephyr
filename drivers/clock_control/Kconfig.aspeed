@@ -9,6 +9,6 @@ config CLOCK_CONTROL_AST26XX
 
 config CLOCK_CONTROL_AST10X0
 	bool "ASPEED clock control"
-	depends on SOC_SERIES_AST10X0
+	depends on SOC_SERIES_AST10X0 && HWINFO_HAS_DRIVER
 	help
 	  This option enables ASPEED clock control driver.
