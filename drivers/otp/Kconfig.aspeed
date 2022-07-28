@@ -6,5 +6,7 @@
 config OTP_ASPEED
 	bool "ASPEED OTP Utility"
 	depends on SOC_FAMILY_ASPEED
+	select MBEDTLS_MAC_SHA256_ENABLED
+	select MBEDTLS_MAC_SHA512_ENABLED
 	help
 	  This option enables the OTP Utility for ASPEED SoCs.
