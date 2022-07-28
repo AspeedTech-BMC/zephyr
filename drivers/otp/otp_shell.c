@@ -12,7 +12,7 @@
 #include "otp_info_10xx.h"
 #include "sha256.h"
 
-#define OTP_VER					"1.2.1"
+#define OTP_VER					"2.0.0"
 
 #define OTP_PASSWD				0x349fe38a
 #define RETRY					20
@@ -1232,13 +1232,106 @@ static int otp_print_strap_info(const struct shell *shell, int view)
 	return OTP_SUCCESS;
 }
 
-static void _otp_print_key(const struct shell *shell, uint32_t *data)
+static void _otp_print_key(const struct shell *shell, uint32_t header,
+						   uint32_t offset, uint8_t *data)
 {
-	int i, j;
-	int key_id, key_offset, last, key_type, key_length, exp_length;
-	struct otpkey_type key_info;
 	const struct otpkey_type *key_info_array = info_cb.key_info;
+	struct otpkey_type key_info;
+	int key_id, key_offset, key_type, key_length, exp_length;
 	int len = 0;
+	int i;
+
+	key_id = header & 0x7;
+	key_offset = header & 0x1ff8;
+	key_type = (header >> 14) & 0xf;
+	key_length = (header >> 18) & 0x3;
+	exp_length = (header >> 20) & 0xfff;
+
+	shell_printf(shell, "\nKey[%d]:\n", offset);
+	shell_printf(shell, "Header: %x\n", header);
+
+	key_info.value = -1;
+	for (i = 0; i < info_cb.key_info_len; i++) {
+		if (key_type == key_info_array[i].value) {
+			key_info = key_info_array[i];
+			break;
+		}
+	}
+	if (key_info.value == -1)
+		return;
+
+	shell_printf(shell, "Key Type: ");
+	shell_printf(shell, "%s\n", key_info.information);
+
+	if (key_info.key_type == OTP_KEY_TYPE_HMAC) {
+		shell_printf(shell, "HMAC SHA Type: ");
+		switch (key_length) {
+		case 0:
+			shell_printf(shell, "HMAC(SHA224)\n");
+			break;
+		case 1:
+			shell_printf(shell, "HMAC(SHA256)\n");
+			break;
+		case 2:
+			shell_printf(shell, "HMAC(SHA384)\n");
+			break;
+		case 3:
+			shell_printf(shell, "HMAC(SHA512)\n");
+			break;
+		}
+	} else if (key_info.key_type == OTP_KEY_TYPE_RSA_PRIV ||
+			   key_info.key_type == OTP_KEY_TYPE_RSA_PUB) {
+		shell_printf(shell, "RSA SHA Type: ");
+		switch (key_length) {
+		case 0:
+			shell_printf(shell, "RSA1024\n");
+			len = 0x100;
+			break;
+		case 1:
+			shell_printf(shell, "RSA2048\n");
+			len = 0x200;
+			break;
+		case 2:
+			shell_printf(shell, "RSA3072\n");
+			len = 0x300;
+			break;
+		case 3:
+			shell_printf(shell, "RSA4096\n");
+			len = 0x400;
+			break;
+		}
+		shell_printf(shell, "RSA exponent bit length: %d\n", exp_length);
+	}
+	if (key_info.need_id)
+		shell_printf(shell, "Key Number ID: %d\n", key_id);
+	shell_printf(shell, "Key Value:\n");
+	if (key_info.key_type == OTP_KEY_TYPE_HMAC) {
+		buf_print(shell, &data[key_offset], 0x40);
+	} else if (key_info.key_type == OTP_KEY_TYPE_AES) {
+		shell_printf(shell, "AES Key:\n");
+		buf_print(shell, &data[key_offset], 0x20);
+	} else if (key_info.key_type == OTP_KEY_TYPE_VAULT) {
+		shell_printf(shell, "AES Key 1:\n");
+		buf_print(shell, &data[key_offset], 0x20);
+		shell_printf(shell, "AES Key 2:\n");
+		buf_print(shell, &data[key_offset + 0x20], 0x20);
+	} else if (key_info.key_type == OTP_KEY_TYPE_RSA_PRIV) {
+		shell_printf(shell, "RSA mod:\n");
+		buf_print(shell, &data[key_offset], len / 2);
+		shell_printf(shell, "RSA exp:\n");
+		buf_print(shell, &data[key_offset + (len / 2)], len / 2);
+	} else if (key_info.key_type == OTP_KEY_TYPE_RSA_PUB) {
+		shell_printf(shell, "RSA mod:\n");
+		buf_print(shell, &data[key_offset], len / 2);
+		shell_printf(shell, "RSA exp:\n");
+		buf_print(shell, (uint8_t *)"\x01\x00\x01", 3);
+	}
+}
+
+static void otp_print_key(const struct shell *shell, uint32_t *data)
+{
+	int i;
+	int last;
 	uint8_t *byte_buf;
 	int empty;
 
@@ -1258,92 +1351,9 @@ static void _otp_print_key(const struct shell *shell, uint32_t *data)
 		shell_printf(shell, "OTP data header is empty\n");
 		return;
 	}
-
 	for (i = 0; i < 16; i++) {
-		key_id = data[i] & 0x7;
-		key_offset = data[i] & 0x1ff8;
 		last = (data[i] >> 13) & 1;
-		key_type = (data[i] >> 14) & 0xf;
-		key_length = (data[i] >> 18) & 0x3;
-		exp_length = (data[i] >> 20) & 0xfff;
-
-		key_info.value = -1;
-		for (j = 0; j < info_cb.key_info_len; j++) {
-			if (key_type == key_info_array[j].value) {
-				key_info = key_info_array[j];
-				break;
-			}
-		}
-		if (key_info.value == -1)
-			break;
-
-		shell_printf(shell, "\nKey[%d]:\n", i);
-		shell_printf(shell, "Key Type: ");
-		shell_printf(shell, "%s\n", key_info.information);
-
-		if (key_info.key_type == OTP_KEY_TYPE_HMAC) {
-			shell_printf(shell, "HMAC SHA Type: ");
-			switch (key_length) {
-			case 0:
-				shell_printf(shell, "HMAC(SHA224)\n");
-				break;
-			case 1:
-				shell_printf(shell, "HMAC(SHA256)\n");
-				break;
-			case 2:
-				shell_printf(shell, "HMAC(SHA384)\n");
-				break;
-			case 3:
-				shell_printf(shell, "HMAC(SHA512)\n");
-				break;
-			}
-		} else if (key_info.key_type == OTP_KEY_TYPE_RSA_PRIV ||
-				   key_info.key_type == OTP_KEY_TYPE_RSA_PUB) {
-			shell_printf(shell, "RSA SHA Type: ");
-			switch (key_length) {
-			case 0:
-				shell_printf(shell, "RSA1024\n");
-				len = 0x100;
-				break;
-			case 1:
-				shell_printf(shell, "RSA2048\n");
-				len = 0x200;
-				break;
-			case 2:
-				shell_printf(shell, "RSA3072\n");
-				len = 0x300;
-				break;
-			case 3:
-				shell_printf(shell, "RSA4096\n");
-				len = 0x400;
-				break;
-			}
-			shell_printf(shell, "RSA exponent bit length: %d\n", exp_length);
-		}
-		if (key_info.need_id)
-			shell_printf(shell, "Key Number ID: %d\n", key_id);
-		shell_printf(shell, "Key Value:\n");
-		if (key_info.key_type == OTP_KEY_TYPE_HMAC) {
-			buf_print(shell, &byte_buf[key_offset], 0x40);
-		} else if (key_info.key_type == OTP_KEY_TYPE_AES) {
-			shell_printf(shell, "AES Key:\n");
-			buf_print(shell, &byte_buf[key_offset], 0x20);
-		} else if (key_info.key_type == OTP_KEY_TYPE_VAULT) {
-			shell_printf(shell, "AES Key 1:\n");
-			buf_print(shell, &byte_buf[key_offset], 0x20);
-			shell_printf(shell, "AES Key 2:\n");
-			buf_print(shell, &byte_buf[key_offset + 0x20], 0x20);
-		} else if (key_info.key_type == OTP_KEY_TYPE_RSA_PRIV) {
-			shell_printf(shell, "RSA mod:\n");
-			buf_print(shell, &byte_buf[key_offset], len / 2);
-			shell_printf(shell, "RSA exp:\n");
-			buf_print(shell, &byte_buf[key_offset + (len / 2)], len / 2);
-		} else if (key_info.key_type == OTP_KEY_TYPE_RSA_PUB) {
-			shell_printf(shell, "RSA mod:\n");
-			buf_print(shell, &byte_buf[key_offset], len / 2);
-			shell_printf(shell, "RSA exp:\n");
-			buf_print(shell, (uint8_t *)"\x01\x00\x01", 3);
-		}
+		_otp_print_key(shell, data[i], i, byte_buf);
 		if (last)
 			break;
 	}
@@ -1354,20 +1364,21 @@ static int otp_print_data_image(const struct shell *shell, struct otp_image_layo
 	uint32_t *buf;
 
 	buf = (uint32_t *)image_layout->data;
-	_otp_print_key(shell, buf);
+	otp_print_key(shell, buf);
 
 	return OTP_SUCCESS;
 }
 
 static void otp_print_key_info(const struct shell *shell)
 {
-	uint32_t data[2048];
+	uint32_t *data;
 	int i;
 
+	data = malloc(8192);
 	for (i = 0; i < 2048 ; i += 2)
 		otp_read_data(i, &data[i]);
-
-	_otp_print_key(shell, data);
+	otp_print_key(shell, data);
+	free(data);
 }
 
 static int otp_prog_data(const struct shell *shell,
@@ -2231,6 +2242,50 @@ static int otp_retire_key(const struct shell *shell, uint32_t retire_id, int for
 	return OTP_FAILURE;
 }
 
+static int otp_invalid_key(const struct shell *shell, uint32_t header_offset, int force)
+{
+	int i;
+	int ret;
+	uint32_t header_list[16];
+	uint32_t header;
+	uint32_t key_type;
+	uint32_t prog_val;
+
+	for (i = 0; i < 16 ; i += 2)
+		otp_read_data(i, &header_list[i]);
+	header = header_list[header_offset];
+	key_type = (header >> 14) & 0xf;
+	_otp_print_key(shell, header, header_offset, NULL);
+	if (key_type == 0 || key_type == 0xf) {
+		shell_printf(shell, "Key[%d] already invalid\n", header_offset);
+		return OTP_SUCCESS;
+	}
+
+	shell_printf(shell, "Key[%d] will be invalid\n", header_offset);
+	if (force == 0) {
+		shell_printf(shell, "type \"YES\" (no quotes) to continue:\n");
+		if (!confirm_yesno()) {
+			shell_printf(shell, " Aborting\n");
+			return OTP_FAILURE;
+		}
+	}
+
+	if (header_offset % 2)
+		prog_val = 0;
+	else
+		prog_val = 1;
+	for (i = 14; i <= 17; i++) {
+		ret = otp_prog_dc_b(prog_val, header_offset, i);
+		if (ret) {
+			shell_printf(shell,  "OTPDATA0x%x[%d] programming failed\n", header_offset, i);
+			return OTP_FAILURE;
+		}
+	}
+
+	shell_printf(shell, "SUCCESS\n");
+	return OTP_SUCCESS;
+}
+
 static int do_otpread(const struct shell *shell, size_t argc, char **argv)
 {
 	uint32_t offset, count;
@@ -2747,6 +2802,32 @@ end:
 	return ret;
 }
 
+static int do_otpinvalid(const struct shell *shell, size_t argc, char **argv)
+{
+	uint32_t header_offset;
+	int force = 0;
+	int ret;
+
+	if (argc == 3) {
+		if (strcmp(argv[1], "o"))
+			return -EINVAL;
+		force = 1;
+		header_offset = strtoul(argv[2], NULL, 16);
+	} else if (argc == 2) {
+		header_offset = strtoul(argv[1], NULL, 16);
+	} else {
+		return -EINVAL;
+	}
+
+	if (header_offset > 16)
+		return -EINVAL;
+	ret = otp_invalid_key(shell, header_offset, force);
+
+	if (ret)
+		return -EINVAL;
+	return 0;
+}
+
 static int ast_otp_init(const struct shell *shell)
 {
 	struct otp_pro_sts *pro_sts;
@@ -2820,6 +2901,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(otp_cmds,
 							   SHELL_CMD_ARG(update, NULL, "", do_otpupdate, 2, 1),
 							   SHELL_CMD_ARG(rid, NULL, "", do_otprid, 1, 0),
 							   SHELL_CMD_ARG(retire, NULL, "", do_otpretire, 2, 1),
+							   SHELL_CMD_ARG(invalid, NULL, "", do_otpinvalid, 2, 1),
 							   SHELL_SUBCMD_SET_END
 							  );
 
@@ -2839,5 +2921,6 @@ SHELL_CMD_ARG_REGISTER(otp, &otp_cmds,
 					   "otp scuprotect [o] <scu_offset> <bit_offset>\n"
 					   "otp update [o] <revision_id>\n"
 					   "otp retire [o] <key_id>\n"
-					   "otp rid\n",
+					   "otp rid\n"
+					   "otp invalid [o] <header_offset>\n",
 					   NULL, 7, 0);
