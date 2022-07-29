@@ -32,3 +32,8 @@ properties:
       type: boolean
       required: false
       description: enable DMA
+
+    dma-ringbuf-size:
+      type: int
+      required: false
+      description: 4-bytes aligned DMA ringbuffer size
