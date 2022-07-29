@@ -8,6 +8,13 @@
 
 #define SNOOP_CHANNEL_NUM	2
 
-int snoop_aspeed_read(const struct device *dev, uint32_t ch, uint8_t *out, bool blocking);
+/*
+ * callback to handle snoop RX data
+ * @snoop0: pointer to the byte snooped by channel 0, NULL if no data
+ * @snoop1: pointer to the byte snooped by channel 1, NULL if no data
+ */
+typedef void snoop_aspeed_rx_callback_t(const uint8_t *snoop0, const uint8_t *snoop1);
+
+int snoop_aspeed_register_rx_callback(const struct device *dev, snoop_aspeed_rx_callback_t cb);
 
 #endif

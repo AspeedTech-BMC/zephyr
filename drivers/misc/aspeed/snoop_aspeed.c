@@ -38,20 +38,12 @@ LOG_MODULE_REGISTER(snoop_aspeed, CONFIG_LOG_DEFAULT_LEVEL);
 #define	  HICRB_ENSNP1D		BIT(15)
 #define	  HICRB_ENSNP0D		BIT(14)
 
-/* misc. constant */
-#define SNOOP_CHANNEL_NUM	2
-
 static uintptr_t lpc_base;
 #define LPC_RD(reg)             sys_read32(lpc_base + reg)
 #define LPC_WR(val, reg)        sys_write32(val, lpc_base + reg)
 
-struct snoop_aspeed_fifo {
-	intptr_t reserved;
-	uint32_t byte;
-};
-
 struct snoop_aspeed_data {
-	struct k_fifo fifo[SNOOP_CHANNEL_NUM];
+	snoop_aspeed_rx_callback_t *rx_cb;
 };
 
 struct snoop_aspeed_config {
@@ -59,21 +51,16 @@ struct snoop_aspeed_config {
 	uint16_t port[SNOOP_CHANNEL_NUM];
 };
 
-int snoop_aspeed_read(const struct device *dev, uint32_t ch, uint8_t *out, bool blocking)
+int snoop_aspeed_register_rx_callback(const struct device *dev, snoop_aspeed_rx_callback_t cb)
 {
-	struct snoop_aspeed_fifo *node;
 	struct snoop_aspeed_data *data = (struct snoop_aspeed_data *)dev->data;
 
-	if (ch >= SNOOP_CHANNEL_NUM)
-		return -EINVAL;
+	if (data->rx_cb) {
+		LOG_ERR("Snoop RX callback is registered\n");
+		return -EBUSY;
+	}
 
-	node = k_fifo_get(&data->fifo[ch], (blocking) ? K_FOREVER : K_NO_WAIT);
-	if (!node)
-		return -ENODATA;
-
-	*out = (uint8_t)node->byte;
-
-	k_free(node);
+	data->rx_cb = cb;
 
 	return 0;
 }
@@ -81,28 +68,27 @@ int snoop_aspeed_read(const struct device *dev, uint32_t ch, uint8_t *out, bool 
 static void snoop_aspeed_isr(const struct device *dev)
 {
 	uint32_t hicr6, snpwdr;
-	struct snoop_aspeed_fifo *node;
+	uint8_t snoop[SNOOP_CHANNEL_NUM];
+	uint8_t *snoop_ptr[SNOOP_CHANNEL_NUM];
 	struct snoop_aspeed_data *data = (struct snoop_aspeed_data *)dev->data;
 
 	hicr6 = LPC_RD(HICR6);
 	snpwdr = LPC_RD(SNPWDR);
 
+	memset(snoop_ptr, 0, sizeof(snoop_ptr));
+
 	if (hicr6 & HICR6_STR_SNP0W) {
-		node = k_malloc(sizeof(struct snoop_aspeed_fifo));
-		if (node) {
-			node->byte = (snpwdr & SNPWDR_DATA0_MASK) >> SNPWDR_DATA0_SHIFT;
-			k_fifo_put(&data->fifo[0], node);
-		} else
-			LOG_ERR("failed to allocate FIFO0, drop data\n");
+		snoop[0] = (snpwdr & SNPWDR_DATA0_MASK) >> SNPWDR_DATA0_SHIFT;
+		snoop_ptr[0] = &snoop[0];
 	}
 
 	if (hicr6 & HICR6_STR_SNP1W) {
-		node = k_malloc(sizeof(struct snoop_aspeed_fifo));
-		if (node) {
-			node->byte = (snpwdr & SNPWDR_DATA1_MASK) >> SNPWDR_DATA1_SHIFT;
-			k_fifo_put(&data->fifo[1], node);
-		} else
-			LOG_ERR("failed to allocate FIFO1, drop data\n");
+		snoop[1] = (snpwdr & SNPWDR_DATA1_MASK) >> SNPWDR_DATA1_SHIFT;
+		snoop_ptr[1] = &snoop[1];
+	}
+
+	if (data->rx_cb) {
+		data->rx_cb(snoop_ptr[0], snoop_ptr[1]);
 	}
 
 	LPC_WR(hicr6, HICR6);
@@ -143,7 +129,6 @@ static void snoop_aspeed_enable(const struct device *dev, uint32_t ch)
 static int snoop_aspeed_init(const struct device *dev)
 {
 	int i;
-	struct snoop_aspeed_data *data = (struct snoop_aspeed_data *)dev->data;
 	struct snoop_aspeed_config *cfg = (struct snoop_aspeed_config *)dev->config;
 
 	if (!lpc_base)
@@ -160,7 +145,6 @@ static int snoop_aspeed_init(const struct device *dev)
 		if (!cfg->port[i])
 			continue;
 
-		k_fifo_init(&data->fifo[i]);
 		snoop_aspeed_enable(dev, i);
 	}
 
