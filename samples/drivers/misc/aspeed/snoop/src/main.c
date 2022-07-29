@@ -9,11 +9,19 @@
 #include <device.h>
 #include <drivers/misc/aspeed/snoop_aspeed.h>
 
+static void snoop_rx_callback(const uint8_t *snoop0, const uint8_t *snoop1)
+{
+	if (snoop0)
+		printk("snoop ch0: %02x\n", *snoop0);
+
+	if (snoop1)
+		printk("snoop ch1: %02x\n", *snoop1);
+}
+
 void main(void)
 {
-	int i, rc;
+	int rc;
 	const struct device *snoop_dev;
-	uint8_t snoop_data[SNOOP_CHANNEL_NUM];
 
 	snoop_dev = device_get_binding(DT_LABEL(DT_NODELABEL(snoop)));
 	if (!snoop_dev) {
@@ -21,11 +29,14 @@ void main(void)
 		return;
 	}
 
-	while (1) {
-		for (i = 0; i < SNOOP_CHANNEL_NUM; ++i) {
-			rc = snoop_aspeed_read(snoop_dev, i, &snoop_data[i], true);
-			if (rc == 0)
-				printk("snoop[%d] = 0x%02x\n", i, snoop_data[i]);
-		}
+	rc = snoop_aspeed_register_rx_callback(snoop_dev, snoop_rx_callback);
+	if (rc) {
+		printk("Cannot register RX callback\n");
+		return;
 	}
+
+	printk("Incoming Snoop data ...\n");
+
+	while (1)
+		k_msleep(100);
 }
