@@ -9,11 +9,26 @@
 #include <device.h>
 #include <drivers/misc/aspeed/pcc_aspeed.h>
 
+static uint32_t count;
+
+static void pcc_rx_callback(const uint8_t *rb, uint32_t rb_sz, uint32_t st_idx, uint32_t ed_idx)
+{
+	uint32_t i = st_idx;
+
+	do {
+		if (count % 16 == 0)
+			printk("\n");
+
+		printk("%02x ", rb[i]);
+
+		i = (i + 1) % rb_sz;
+		++count;
+	} while (i != ed_idx);
+}
+
 void main(void)
 {
 	int rc;
-	uint32_t count = 0;
-	uint8_t data;
 	const struct device *pcc_dev;
 
 	pcc_dev = device_get_binding(DT_LABEL(DT_NODELABEL(pcc)));
@@ -22,16 +37,14 @@ void main(void)
 		return;
 	}
 
-	printk("Reading PCC data ...\n");
-
-	while (1) {
-		rc = pcc_aspeed_read(pcc_dev, &data, true);
-		if (rc == 0) {
-			printk("%02x ", data);
-			++count;
-		}
-
-		if (count % 16 == 0)
-			printk("\n");
+	rc = pcc_aspeed_register_rx_callback(pcc_dev, pcc_rx_callback);
+	if (rc) {
+		printk("Cannot register RX callback\n");
+		return;
 	}
+
+	printk("Incoming PCC data ... ");
+
+	while (1)
+		k_msleep(100);
 }
