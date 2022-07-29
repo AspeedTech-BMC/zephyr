@@ -17,35 +17,39 @@ LOG_MODULE_REGISTER(pcc_aspeed, CONFIG_LOG_DEFAULT_LEVEL);
 
 /* LPC registers */
 #define PCCR6   0x0c4
+#define   PCCR6_DMA_CUR_ADDR_MASK	GENMASK(27, 0)
+#define   PCCR6_DMA_CUR_ADDR_SHIFT	0
 #define PCCR4   0x0d0
 #define PCCR5   0x0d4
 #define PCCR0   0x130
-#define   PCCR0_EN_DMA_INT    BIT(31)
-#define   PCCR0_EN_DMA_MODE   BIT(14)
-#define   PCCR0_ADDR_SEL_MASK GENMASK(13, 12)
-#define   PCCR0_ADDR_SEL_SHIFT    12
-#define   PCCR0_RX_TRIG_LVL_MASK  GENMASK(10, 8)
-#define   PCCR0_RX_TRIG_LVL_SHIFT 8
-#define   PCCR0_CLR_RX_FIFO   BIT(7)
-#define   PCCR0_MODE_SEL_MASK GENMASK(5, 4)
-#define   PCCR0_MODE_SEL_SHIFT    4
-#define   PCCR0_EN_RX_OVR_INT BIT(3)
-#define   PCCR0_EN_RX_TMOUT_INT   BIT(2)
-#define   PCCR0_EN_RX_AVAIL_INT   BIT(1)
-#define   PCCR0_EN        BIT(0)
+#define   PCCR0_EN_DMA_INT		BIT(31)
+#define   PCCR0_EN_DMA_MODE		BIT(14)
+#define   PCCR0_ADDR_SEL_MASK		GENMASK(13, 12)
+#define   PCCR0_ADDR_SEL_SHIFT		12
+#define   PCCR0_RX_TRIG_LVL_MASK	GENMASK(10, 8)
+#define   PCCR0_RX_TRIG_LVL_SHIFT	8
+#define   PCCR0_CLR_RX_FIFO		BIT(7)
+#define   PCCR0_MODE_SEL_MASK		GENMASK(5, 4)
+#define   PCCR0_MODE_SEL_SHIFT		4
+#define   PCCR0_EN_RX_OVR_INT		BIT(3)
+#define   PCCR0_EN_RX_TMOUT_INT		BIT(2)
+#define   PCCR0_EN_RX_AVAIL_INT		BIT(1)
+#define   PCCR0_EN			BIT(0)
 #define PCCR1   0x134
-#define   PCCR1_DONT_CARE_BITS_MASK   GENMASK(21, 16)
-#define   PCCR1_DONT_CARE_BITS_SHIFT  16
-#define   PCCR1_BASE_ADDR_MASK        GENMASK(15, 0)
-#define   PCCR1_BASE_ADDR_SHIFT       0
+#define   PCCR1_DONT_CARE_BITS_MASK	GENMASK(21, 16)
+#define   PCCR1_DONT_CARE_BITS_SHIFT	16
+#define   PCCR1_BASE_ADDR_MASK		GENMASK(15, 0)
+#define   PCCR1_BASE_ADDR_SHIFT		0
 #define PCCR2   0x138
-#define   PCCR2_DMA_DONE      BIT(4)
-#define   PCCR2_DATA_RDY      PCCR2_DMA_DONE
-#define   PCCR2_RX_OVR_INT    BIT(3)
-#define   PCCR2_RX_TMOUT_INT  BIT(2)
-#define   PCCR2_RX_AVAIL_INT  BIT(1)
+#define   PCCR2_DMA_DONE		BIT(4) /* DMA mode */
+#define   PCCR2_DATA_RDY		BIT(4) /* FIFO mode */
+#define   PCCR2_RX_OVR_INT		BIT(3)
+#define   PCCR2_RX_TMOUT_INT		BIT(2)
+#define   PCCR2_RX_AVAIL_INT		BIT(1)
 #define PCCR3   0x13c
-#define   PCCR3_FIFO_DATA_MASK    GENMASK(7, 0)
+#define   PCCR3_FIFO_DATA_MASK		GENMASK(7, 0)
+
+#define PCC_FIFO_DEPTH	256
 
 static uintptr_t lpc_base;
 #define LPC_RD(reg)             sys_read32(lpc_base + reg)
@@ -83,11 +87,11 @@ struct pcc_aspeed_fifo {
 };
 
 struct pcc_aspeed_data {
-	struct k_fifo fifo;
 	uint8_t *dma_virt;
 	uintptr_t dma_addr;
 	uint32_t dma_size;
 	uint32_t dma_virt_idx;
+	pcc_aspeed_rx_callback_t *rx_cb;
 };
 
 struct pcc_aspeed_config {
@@ -99,22 +103,22 @@ struct pcc_aspeed_config {
 	bool dma_mode;
 };
 
-#define PCC_DMA_SIZE	0x1000
+#if DT_INST_PROP(0, dma_mode)
+static uint8_t pcc_ringbuf[DT_INST_PROP(0, dma_ringbuf_size)] NON_CACHED_BSS_ALIGN16;
+#else
+static uint8_t pcc_ringbuf[PCC_FIFO_DEPTH * 2];
+#endif
 
-static uint8_t pcc_dma_buf[PCC_DMA_SIZE] NON_CACHED_BSS_ALIGN16;
-
-int pcc_aspeed_read(const struct device *dev, uint8_t *out, bool blocking)
+int pcc_aspeed_register_rx_callback(const struct device *dev, pcc_aspeed_rx_callback_t *cb)
 {
-	struct pcc_aspeed_fifo *node;
 	struct pcc_aspeed_data *data = (struct pcc_aspeed_data *)dev->data;
 
-	node = k_fifo_get(&data->fifo, (blocking) ? K_FOREVER : K_NO_WAIT);
-	if (!node)
-		return -ENODATA;
+	if (data->rx_cb) {
+		LOG_ERR("PCC RX callback is registered\n");
+		return -EBUSY;
+	}
 
-	*out = (uint8_t)node->byte;
-
-	k_free(node);
+	data->rx_cb = cb;
 
 	return 0;
 }
@@ -123,60 +127,45 @@ static void pcc_aspeed_isr_dma(const struct device *dev)
 {
 	uint32_t pre_idx, cur_idx;
 	uint32_t reg;
-	struct pcc_aspeed_fifo *node;
 	struct pcc_aspeed_data *data = (struct pcc_aspeed_data *)dev->data;
 
 	reg = LPC_RD(PCCR2);
 	if (!(reg & PCCR2_DMA_DONE))
 		return;
 
-	/* ack DMA IRQ */
 	LPC_WR(reg, PCCR2);
 
-	/* copy DMA buffer to fifo */
 	reg = LPC_RD(PCCR6);
-
-	cur_idx = reg & (data->dma_size - 1);
+	cur_idx = (reg & PCCR6_DMA_CUR_ADDR_MASK) - (data->dma_addr & PCCR6_DMA_CUR_ADDR_MASK);
 	pre_idx = data->dma_virt_idx;
 
-	do {
-		node = k_malloc(sizeof(struct pcc_aspeed_fifo));
-		if (node) {
-			node->byte = data->dma_virt[pre_idx];
-			k_fifo_put(&data->fifo, node);
-		} else
-			LOG_ERR("failed to allocate FIFO, drop data\n");
-
-		pre_idx = (pre_idx + 1) % data->dma_size;
-	} while (pre_idx != cur_idx);
+	if (data->rx_cb)
+		data->rx_cb(data->dma_virt, data->dma_size, pre_idx, cur_idx);
 
 	data->dma_virt_idx = cur_idx;
 }
 
 static void pcc_aspeed_isr_fifo(const struct device *dev)
 {
+	int i = 0;
 	uint32_t reg;
-	struct pcc_aspeed_fifo *node;
 	struct pcc_aspeed_data *data = (struct pcc_aspeed_data *)dev->data;
 
 	reg = LPC_RD(PCCR2);
 
 	if (reg & PCCR2_RX_OVR_INT) {
-		LOG_INF("RX FIFO overrun\n");
+		LOG_WRN("RX FIFO overrun\n");
 		LPC_WR(PCCR2_RX_OVR_INT, PCCR2);
 	}
 
 	if (reg & (PCCR2_RX_TMOUT_INT | PCCR2_RX_AVAIL_INT)) {
 		while (reg & PCCR2_DATA_RDY) {
-			node = k_malloc(sizeof(struct pcc_aspeed_fifo));
-			if (node) {
-				node->byte = LPC_RD(PCCR3) & PCCR3_FIFO_DATA_MASK;
-				k_fifo_put(&data->fifo, node);
-			} else
-				LOG_ERR("failed to allocate FIFO, drop data\n");
-
+			pcc_ringbuf[i++] = (LPC_RD(PCCR3) & PCCR3_FIFO_DATA_MASK);
 			reg = LPC_RD(PCCR2);
 		}
+
+		if (data->rx_cb)
+			data->rx_cb(pcc_ringbuf, sizeof(pcc_ringbuf), 0, i);
 	}
 }
 
@@ -199,13 +188,16 @@ static int pcc_aspeed_init(const struct device *dev)
 	if (!lpc_base)
 		lpc_base = cfg->base;
 
-	k_fifo_init(&data->fifo);
-
 	if (cfg->dma_mode) {
-		data->dma_size = sizeof(pcc_dma_buf);
-		data->dma_virt = pcc_dma_buf;
+		data->dma_size = sizeof(pcc_ringbuf);
+		data->dma_virt = pcc_ringbuf;
 		data->dma_addr = TO_PHY_ADDR(data->dma_virt);
 		data->dma_virt_idx = 0;
+
+		if (data->dma_size % 4) {
+			LOG_ERR("DMA buffer size is not 4 bytes aligned\n");
+			return -EINVAL;
+		}
 	}
 
 	IRQ_CONNECT(DT_INST_IRQN(0),
