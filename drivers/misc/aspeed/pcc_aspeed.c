@@ -81,11 +81,6 @@ enum pcc_aspeed_hbits_select {
 	PCC_HBIT_SEL_89,
 };
 
-struct pcc_aspeed_fifo {
-	intptr_t reserved;
-	uint32_t byte;
-};
-
 struct pcc_aspeed_data {
 	uint8_t *dma_virt;
 	uintptr_t dma_addr;
