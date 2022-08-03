@@ -43,6 +43,13 @@ config ECDSA_SHELL
 	help
 	  Enable mbedtls ECDSA sample code.
 
+config CAVP_SHELL
+	bool "Enable CAVP Shell"
+	default y
+	depends on SHELL
+	help
+	  Enable CAVP Shell for testing.
+
 config CRYPTO_INIT_PRIORITY
 	int "Crypto devices init priority"
 	default 90
