@@ -87,8 +87,7 @@ static inline int hash_query_hwcaps(const struct device *dev)
  * @return 0 on success, negative errno code on fail.
  */
 static inline int hash_begin_session(const struct device *dev,
-									 struct hash_ctx *ctx,
-									 enum hash_algo algo)
+				     struct hash_ctx *ctx, enum hash_algo algo)
 {
 	struct hash_driver_api *api;
 
@@ -109,14 +108,41 @@ static inline int hash_begin_session(const struct device *dev,
  *
  * @return 0 on success, negative errno code on fail.
  */
-static inline int hash_free_session(const struct device *dev,
-									struct hash_ctx *ctx)
+static inline int hash_free_session(const struct device *dev, struct hash_ctx *ctx)
 {
 	struct hash_driver_api *api;
 
 	api = (struct hash_driver_api *) dev->api;
 
 	return api->free_session(dev, ctx);
+}
+
+/**
+ * @brief Perform Hmac set key
+ *
+ * @param  ctx   Pointer to the hash context of this op.
+ * @param  pkt   Structure holding the input/output buffer pointers.
+ *
+ * @return 0 on success, negative errno code on fail.
+ */
+static inline int hash_setkey(struct hash_ctx *ctx, struct hash_pkt *pkt)
+{
+	pkt->ctx = ctx;
+	return ctx->ops.setkey_hndlr(ctx, pkt);
+}
+
+/**
+ * @brief Perform Hmac digest
+ *
+ * @param  ctx   Pointer to the hash context of this op.
+ * @param  pkt   Structure holding the input/output buffer pointers.
+ *
+ * @return 0 on success, negative errno code on fail.
+ */
+static inline int hash_digest_hmac(struct hash_ctx *ctx, struct hash_pkt *pkt)
+{
+	pkt->ctx = ctx;
+	return ctx->ops.digest_hmac_hndlr(ctx, pkt);
 }
 
 /**
@@ -127,8 +153,7 @@ static inline int hash_free_session(const struct device *dev,
  *
  * @return 0 on success, negative errno code on fail.
  */
-static inline int hash_update(struct hash_ctx *ctx,
-							  struct hash_pkt *pkt)
+static inline int hash_update(struct hash_ctx *ctx, struct hash_pkt *pkt)
 {
 	pkt->ctx = ctx;
 	return ctx->ops.update_hndlr(ctx, pkt);
@@ -142,8 +167,7 @@ static inline int hash_update(struct hash_ctx *ctx,
  *
  * @return 0 on success, negative errno code on fail.
  */
-static inline int hash_final(struct hash_ctx *ctx,
-							  struct hash_pkt *pkt)
+static inline int hash_final(struct hash_ctx *ctx, struct hash_pkt *pkt)
 {
 	pkt->ctx = ctx;
 	return ctx->ops.final_hndlr(ctx, pkt);

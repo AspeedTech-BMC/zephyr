@@ -24,12 +24,39 @@
  * @{
  */
 
+/* Hash digest/block size definition */
+#define SHA1_DIGEST_SIZE	20
+#define SHA1_BLOCK_SIZE		64
+#define SHA1_IV_SIZE		32
 
-/** Hash Algorithm. */
+#define SHA224_DIGEST_SIZE      28
+#define SHA224_BLOCK_SIZE       64
+#define SHA224_IV_SIZE		32
+
+#define SHA256_DIGEST_SIZE      32
+#define SHA256_BLOCK_SIZE       64
+#define SHA256_IV_SIZE		32
+
+#define SHA384_DIGEST_SIZE      48
+#define SHA384_BLOCK_SIZE       128
+#define SHA384_IV_SIZE		64
+
+#define SHA512_DIGEST_SIZE      64
+#define SHA512_BLOCK_SIZE       128
+#define SHA512_IV_SIZE		64
+
+#define HMAC_IPAD_VALUE		0x36
+#define HMAC_OPAD_VALUE		0x5c
+
+/* Hash Algorithm. */
 enum hash_algo {
-	HASH_SHA256 = 1,
-	HASH_SHA384 = 2,
-	HASH_SHA512 = 3,
+	HASH_SHA1 = 1,
+	HASH_SHA224,
+	HASH_SHA256,
+	HASH_SHA384,
+	HASH_SHA512,
+	HASH_SHA512_224,
+	HASH_SHA512_256,
 };
 
 /* Forward declarations */
@@ -37,10 +64,14 @@ struct hash_ctx;
 struct hash_pkt;
 
 
+typedef int (*hash_setkey_t)(struct hash_ctx *ctx, struct hash_pkt *pkt);
+typedef int (*hash_digest_hmac_t)(struct hash_ctx *ctx, struct hash_pkt *pkt);
 typedef int (*hash_update_t)(struct hash_ctx *ctx, struct hash_pkt *pkt);
 typedef int (*hash_final_t)(struct hash_ctx *ctx, struct hash_pkt *pkt);
 
 struct hash_ops {
+	hash_update_t setkey_hndlr;
+	hash_update_t digest_hmac_hndlr;
 	hash_update_t update_hndlr;
 	hash_final_t final_hndlr;
 };
@@ -91,6 +122,12 @@ struct hash_ctx {
  * call.
  */
 struct hash_pkt {
+
+	/** Start address of key buffer */
+	uint8_t *key_buf;
+
+	/** Bytes to be operated upon */
+	int key_len;
 
 	/** Start address of input buffer */
 	uint8_t *in_buf;

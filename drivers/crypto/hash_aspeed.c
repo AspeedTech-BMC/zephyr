@@ -16,6 +16,16 @@
 
 LOG_MODULE_DECLARE(hace_global, CONFIG_CRYPTO_LOG_LEVEL);
 
+static const uint32_t sha1_iv[8] = {
+	0x01234567UL, 0x89abcdefUL, 0xfedcba98UL, 0x76543210UL,
+	0xf0e1d2c3UL, 0, 0, 0
+};
+
+static const uint32_t sha224_iv[8] = {
+	0xd89e05c1UL, 0x07d57c36UL, 0x17dd7030UL, 0x39590ef7UL,
+	0x310bc0ffUL, 0x11155868UL, 0xa78ff964UL, 0xa44ffabeUL
+};
+
 static const uint32_t sha256_iv[8] = {
 	0x67e6096aUL, 0x85ae67bbUL, 0x72f36e3cUL, 0x3af54fa5UL,
 	0x7f520e51UL, 0x8c68059bUL, 0xabd9831fUL, 0x19cde05bUL
@@ -35,6 +45,20 @@ static const uint32_t sha512_iv[16] = {
 	0xabd9831fUL, 0x6bbd41fbUL, 0x19cde05bUL, 0x79217e13UL
 };
 
+static const uint32_t sha512_224_iv[16] = {
+	0xC8373D8CUL, 0xA24D5419UL, 0x6699E173UL, 0xD6D4DC89UL,
+	0xAEB7FA1DUL, 0x829CFF32UL, 0x14D59D67UL, 0xCF9F2F58UL,
+	0x692B6D0FUL, 0xA84DD47BUL, 0x736FE377UL, 0x4289C404UL,
+	0xA8859D3FUL, 0xC8361D6AUL, 0xADE61211UL, 0xA192D691UL
+};
+
+static const uint32_t sha512_256_iv[16] = {
+	0x94213122UL, 0x2CF72BFCUL, 0xA35F559FUL, 0xC2644CC8UL,
+	0x6BB89323UL, 0x51B1536FUL, 0x19773896UL, 0xBDEA4059UL,
+	0xE23E2896UL, 0xE3FF8EA8UL, 0x251E5EBEUL, 0x92398653UL,
+	0xFC99012BUL, 0xAAB8852CUL, 0xDC2DB70EUL, 0xA22CC581UL
+};
+
 static struct aspeed_hash_drv_state drv_state NON_CACHED_BSS_ALIGN16;
 
 static int aspeed_hash_wait_completion(int timeout_ms)
@@ -44,13 +68,15 @@ static int aspeed_hash_wait_completion(int timeout_ms)
 	int ret;
 
 	ret = reg_read_poll_timeout(hace_register, hace_sts, hace_sts,
-								hace_sts.fields.hash_int, 1, timeout_ms);
+				    hace_sts.fields.hash_int, 1, timeout_ms);
 	if (ret)
 		LOG_ERR("HACE poll timeout\n");
+
 	return ret;
 }
 
-static void aspeed_ahash_fill_padding(struct aspeed_hash_ctx *ctx, unsigned int remainder)
+static void aspeed_ahash_fill_padding(struct aspeed_hash_ctx *ctx,
+				      unsigned int remainder)
 {
 	unsigned int index, padlen;
 	uint64_t bits[2];
@@ -63,6 +89,7 @@ static void aspeed_ahash_fill_padding(struct aspeed_hash_ctx *ctx, unsigned int 
 		memset(ctx->buffer + ctx->bufcnt + 1, 0, padlen - 1);
 		memcpy(ctx->buffer + ctx->bufcnt + padlen, bits, 8);
 		ctx->bufcnt += padlen + 8;
+
 	} else {
 		bits[1] = sys_cpu_to_be64(ctx->digcnt[0] << 3);
 		bits[0] = sys_cpu_to_be64(ctx->digcnt[1] << 3 | ctx->digcnt[0] >> 61);
@@ -75,7 +102,7 @@ static void aspeed_ahash_fill_padding(struct aspeed_hash_ctx *ctx, unsigned int 
 	}
 }
 
-static int hash_trigger(struct aspeed_hash_ctx *data, int hash_len)
+static int hash_trigger(struct aspeed_hash_ctx *data, int len)
 {
 	struct hace_register_s *hace_register = hace_eng.base;
 
@@ -86,10 +113,15 @@ static int hash_trigger(struct aspeed_hash_ctx *data, int hash_len)
 	/* Clear pending completion status */
 	hace_register->hace_sts.value = HACE_HASH_ISR;
 
-	hace_register->hash_data_src.value = (uint32_t)data->sg;
+	if (data->method & HACE_SG_EN)
+		hace_register->hash_data_src.value = (uint32_t)data->sg;
+	else
+		hace_register->hash_data_src.value = (uint32_t)data->buffer;
+
 	hace_register->hash_dgst_dst.value = (uint32_t)data->digest;
 	hace_register->hash_key_buf.value = (uint32_t)data->digest;
-	hace_register->hash_data_len.value = hash_len;
+
+	hace_register->hash_data_len.value = len;
 	hace_register->hash_cmd_reg.value = data->method;
 
 	return aspeed_hash_wait_completion(3000);
@@ -164,6 +196,139 @@ static int aspeed_hash_final(struct hash_ctx *ctx, struct hash_pkt *pkt)
 	return 0;
 }
 
+static int aspeed_hash_digest_hmac(struct hash_ctx *ctx, struct hash_pkt *pkt)
+{
+	struct aspeed_hash_ctx *data = &drv_state.data;
+	int bs = data->block_size;
+	int ds = ctx->digest_size;
+	int len;
+	int rc;
+
+	/* H(ipad + message) */
+	data->digcnt[0] = bs;
+	data->bufcnt = bs;
+	memcpy(data->buffer, data->hmac_data.ipad, bs);
+
+	len = data->bufcnt + pkt->in_len;
+	if (len > HASH_TMP_BUFF_SIZE) {
+		LOG_ERR("%s: data buffer Out-of-Range, bufcnt:0x%x, in_len:0x%x\n",
+		__func__, data->bufcnt, pkt->in_len);
+		return -EINVAL;
+	}
+
+	memcpy(data->buffer + data->bufcnt, pkt->in_buf, pkt->in_len);
+	data->digcnt[0] += pkt->in_len;
+	data->bufcnt += pkt->in_len;
+
+	aspeed_ahash_fill_padding(data, 0);
+
+	/* Use Initial Vector */
+	memcpy(data->digest, data->iv, data->iv_size);
+
+	/* Direct Access Mode / ACC Mode */
+	data->method &= ~(HACE_SG_EN);
+	rc = hash_trigger(data, data->bufcnt);
+	if (rc) {
+		LOG_ERR("%s: hash 1 failed, rc=%d\n", __func__, rc);
+		goto end;
+	}
+
+	/* H(opad + hash sum 1) */
+	data->digcnt[0] = bs + ds;
+	data->bufcnt = bs + ds;
+
+	memcpy(data->buffer, data->hmac_data.opad, bs);
+	memcpy(data->buffer + bs, data->digest, ds);
+	len = data->bufcnt;
+
+	aspeed_ahash_fill_padding(data, 0);
+
+	/* Use Initial Vector */
+	memcpy(data->digest, data->iv, data->iv_size);
+
+	rc = hash_trigger(data, data->bufcnt);
+	if (rc) {
+		LOG_ERR("%s: hash 2 failed, rc=%d\n", __func__, rc);
+		goto end;
+	}
+
+	memcpy(pkt->out_buf, data->digest, ds);
+
+end:
+	return rc;
+}
+
+static int aspeed_hash_digest(struct hash_ctx *ctx, struct hash_pkt *pkt)
+{
+	struct aspeed_hash_ctx *data = &drv_state.data;
+	int len = pkt->in_len;
+	int rc;
+
+	/* Copy input data into buffer */
+	memcpy(data->buffer, pkt->in_buf, len);
+	data->digcnt[0] = len;
+	data->bufcnt = len;
+
+	/* Use Initial Vector */
+	memcpy(data->digest, data->iv, data->iv_size);
+
+	aspeed_ahash_fill_padding(data, 0);
+
+	/* Direct Access Mode / ACC Mode */
+	data->method &= ~(HACE_SG_EN);
+	rc = hash_trigger(data, data->bufcnt);
+	if (rc) {
+		LOG_ERR("%s: failed, rc=%d\n", __func__, rc);
+		return rc;
+	}
+
+	memcpy(pkt->out_buf, data->digest, ctx->digest_size);
+
+	return 0;
+}
+
+static int aspeed_hash_setkey(struct hash_ctx *ctx, struct hash_pkt *pkt)
+{
+	struct aspeed_hash_ctx *data = &drv_state.data;
+	struct hash_pkt pkt_key;
+	int bs = data->block_size;
+	int ds = ctx->digest_size;
+	int rc;
+
+	if (pkt->key_len > bs) {
+		/* Do H(K) first */
+		pkt_key.in_buf = pkt->key_buf;
+		pkt_key.in_len = pkt->key_len;
+		pkt_key.out_buf = data->hmac_data.key_buff;
+		pkt_key.out_buf_max = pkt->out_buf_max;
+		rc = aspeed_hash_digest(ctx, &pkt_key);
+		if (rc) {
+			printk("aspeed_hash_digest() failed, rc:%d\n", rc);
+			goto end;
+		}
+
+		pkt->key_len = ds;
+
+	} else {
+		memcpy(data->hmac_data.key_buff, pkt->key_buf, pkt->key_len);
+	}
+
+	memset(data->hmac_data.key_buff + pkt->key_len, 0, bs - pkt->key_len);
+
+	memcpy(data->hmac_data.ipad, data->hmac_data.key_buff, bs);
+	memcpy(data->hmac_data.opad, data->hmac_data.key_buff, bs);
+
+	for (int i = 0; i < bs; i++) {
+		data->hmac_data.ipad[i] ^= HMAC_IPAD_VALUE;
+		data->hmac_data.opad[i] ^= HMAC_OPAD_VALUE;
+	}
+
+	rc = 0;
+
+end:
+	return rc;
+}
+
 static int aspeed_hash_init(const struct device *dev)
 {
 	ARG_UNUSED(dev);
@@ -173,8 +338,8 @@ static int aspeed_hash_init(const struct device *dev)
 }
 
 static int aspeed_hash_session_setup(const struct device *dev,
-									 struct hash_ctx *ctx,
-									 enum hash_algo algo)
+				     struct hash_ctx *ctx,
+				     enum hash_algo algo)
 {
 	struct aspeed_hash_ctx *data;
 
@@ -190,30 +355,66 @@ static int aspeed_hash_session_setup(const struct device *dev,
 
 	data->method = HASH_CMD_ACC_MODE | HACE_SHA_BE_EN | HACE_SG_EN;
 	switch (algo) {
+	case HASH_SHA1:
+		ctx->digest_size = SHA1_DIGEST_SIZE;
+		data->block_size = SHA1_BLOCK_SIZE;
+		data->method |= HACE_ALGO_SHA1;
+		data->iv = (uint32_t *)sha1_iv;
+		data->iv_size = SHA1_IV_SIZE;
+		break;
+	case HASH_SHA224:
+		ctx->digest_size = SHA224_DIGEST_SIZE;
+		data->block_size = SHA224_BLOCK_SIZE;
+		data->method |= HACE_ALGO_SHA224;
+		data->iv = (uint32_t *)sha224_iv;
+		data->iv_size = SHA224_IV_SIZE;
+		break;
 	case HASH_SHA256:
-		ctx->digest_size = 32;
-		data->block_size = 64;
+		ctx->digest_size = SHA256_DIGEST_SIZE;
+		data->block_size = SHA256_BLOCK_SIZE;
 		data->method |= HACE_ALGO_SHA256;
-		memcpy(data->digest, sha256_iv, 32);
+		data->iv = (uint32_t *)sha256_iv;
+		data->iv_size = SHA256_IV_SIZE;
 		break;
 	case HASH_SHA384:
-		ctx->digest_size = 48;
-		data->block_size = 128;
+		ctx->digest_size = SHA384_DIGEST_SIZE;
+		data->block_size = SHA384_BLOCK_SIZE;
 		data->method |= HACE_ALGO_SHA384;
-		memcpy(data->digest, sha384_iv, 64);
+		data->iv = (uint32_t *)sha384_iv;
+		data->iv_size = SHA384_IV_SIZE;
 		break;
 	case HASH_SHA512:
-		ctx->digest_size = 64;
-		data->block_size = 128;
+		ctx->digest_size = SHA512_DIGEST_SIZE;
+		data->block_size = SHA512_BLOCK_SIZE;
 		data->method |= HACE_ALGO_SHA512;
-		memcpy(data->digest, sha512_iv, 64);
+		data->iv = (uint32_t *)sha512_iv;
+		data->iv_size = SHA512_IV_SIZE;
+		break;
+	case HASH_SHA512_224:
+		ctx->digest_size = SHA224_DIGEST_SIZE;
+		data->block_size = SHA512_BLOCK_SIZE;
+		data->method |= HACE_ALGO_SHA512_224;
+		data->iv = (uint32_t *)sha512_224_iv;
+		data->iv_size = SHA512_IV_SIZE;
+		break;
+	case HASH_SHA512_256:
+		ctx->digest_size = SHA256_DIGEST_SIZE;
+		data->block_size = SHA512_BLOCK_SIZE;
+		data->method |= HACE_ALGO_SHA512_256;
+		data->iv = (uint32_t *)sha512_256_iv;
+		data->iv_size = SHA512_IV_SIZE;
 		break;
 	default:
 		LOG_ERR("ASPEED HASH Unsupported mode");
 		return -EINVAL;
 	}
+
+	ctx->ops.setkey_hndlr = aspeed_hash_setkey;
+	ctx->ops.digest_hmac_hndlr = aspeed_hash_digest_hmac;
 	ctx->ops.update_hndlr = aspeed_hash_update;
 	ctx->ops.final_hndlr = aspeed_hash_final;
+
+	memcpy(data->digest, data->iv, data->iv_size);
 
 	data->bufcnt = 0;
 	data->digcnt[0] = 0;
@@ -223,12 +424,18 @@ static int aspeed_hash_session_setup(const struct device *dev,
 }
 
 static int aspeed_hash_session_free(const struct device *dev,
-									struct hash_ctx *ctx)
+				    struct hash_ctx *ctx)
 {
+	struct aspeed_hash_ctx *data = &drv_state.data;
+
 	ARG_UNUSED(dev);
 	ARG_UNUSED(ctx);
 
 	drv_state.in_use = false;
+	memset(data->buffer, 0, HASH_TMP_BUFF_SIZE);
+	data->bufcnt = 0;
+	data->digcnt[0] = 0;
+	data->digcnt[1] = 0;
 
 	return 0;
 }
