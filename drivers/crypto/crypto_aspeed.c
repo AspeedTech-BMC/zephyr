@@ -52,9 +52,9 @@ static int crypto_trigger(struct aspeed_crypto_ctx *data)
 	hace_register->crypto_data_len.value = data->src_sg.len;
 	hace_register->crypto_cmd_reg.value = data->cmd;
 
-	LOG_INF("crypto_data_src: %x", &data->src_sg);
-	LOG_INF("crypto_data_dst: %x", &data->dst_sg);
-	LOG_INF("crypto_ctx_base: %x", data->ctx);
+	LOG_INF("crypto_data_src: %x", (uint32_t)&data->src_sg);
+	LOG_INF("crypto_data_dst: %x", (uint32_t)&data->dst_sg);
+	LOG_INF("crypto_ctx_base: %x", (uint32_t)data->ctx);
 	LOG_INF("crypto_data_len: %x", data->src_sg.len);
 	LOG_INF("crypto_cmd_reg:  %x", data->cmd);
 
