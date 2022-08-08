@@ -1316,7 +1316,11 @@ static void _otp_print_key(const struct shell *shell, uint32_t header,
 			break;
 		}
 		shell_printf(shell, "RSA exponent bit length: %d\n", exp_length);
+	} else if (key_info.key_type == OTP_KEY_ECDSA384) {
+		shell_printf(shell, "Curve P-384\n");
+		len = 0x60;
 	}
+
 	if (key_info.need_id)
 		shell_printf(shell, "Key Number ID: %d\n", key_id);
 	shell_printf(shell, "Key Value:\n");
@@ -1340,6 +1344,11 @@ static void _otp_print_key(const struct shell *shell, uint32_t header,
 		buf_print(shell, &data[key_offset], len / 2);
 		shell_printf(shell, "RSA exp:\n");
 		buf_print(shell, (uint8_t *)"\x01\x00\x01", 3);
+	} else if (key_info.key_type == OTP_KEY_ECDSA384) {
+		shell_printf(shell, "Q.x:\n");
+		buf_print(shell, &data[key_offset], len / 2);
+		shell_printf(shell, "Q.y:\n");
+		buf_print(shell, &data[key_offset + 0x30], len / 2);
 	}
 }
 
