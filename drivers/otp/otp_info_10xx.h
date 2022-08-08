@@ -29,6 +29,28 @@ struct scu_info {
 	const char *information;
 };
 
+static const struct scu_info ast1030a0_scu_info[] = {
+	{ 0, 1, "Disable ARM CM4 CPU boot (TXD5)" },
+	{ 1, 2, "Reserved" },
+	{ 3, 1, "Address offset of single chip ABR mode" },
+	{ 4, 13, "Reserved" },
+	{ 17, 1, "Disabl3 ARM JTAG debug" },
+	{ 18, 14, "Reserved" },
+	{ 32, 4, "Reserved" },
+	{ 36, 1, "Disable debug interfaces" },
+	{ 37, 3, "Reserved" },
+	{ 40, 1, "Enable boot from Uart5 by Pin Strap" },
+	{ 41, 2, "Reserved" },
+	{ 43, 1, "Enable boot SPI ABR" },
+	{ 44, 1, "Boot SPI ABR Mode" },
+	{ 45, 3, "Boot SPI flash size" },
+	{ 48, 6, "Reserved" },
+	{ 54, 1, "Enable boot SPI auxiliary control pins" },
+	{ 57, 7, "Reserved" },
+	{ 62, 1, "Enable dedicate GPIO strap pins" },
+	{ 63, 1, "Enable Secure Boot by Pin Strap" }
+};
+
 static const struct otpstrap_info ast1030a0_strap_info[] = {
 	{ 0, 1, 0, "Disable Secure Boot" },
 	{ 0, 1, 1, "Enable Secure Boot" },
@@ -36,8 +58,8 @@ static const struct otpstrap_info ast1030a0_strap_info[] = {
 	{ 3, 1, 0, "Address offset of single chip ABR mode : 1/2" },
 	{ 3, 1, 1, "Address offset of single chip ABR mode : 1/3" },
 	{ 4, 13, OTP_REG_RESERVED, "Reserved" },
-	{ 16, 1, 0, "Enable ARM JTAG debug" },
-	{ 16, 1, 1, "Disable ARM JTAG debug" },
+	{ 17, 1, 0, "Enable ARM JTAG debug" },
+	{ 17, 1, 1, "Disable ARM JTAG debug" },
 	{ 18, 14, OTP_REG_RESERVED, "Reserved" },
 	{ 32, 4, OTP_REG_RESERVED, "Reserved" },
 	{ 36, 1, 0, "Enable debug interfaces" },
