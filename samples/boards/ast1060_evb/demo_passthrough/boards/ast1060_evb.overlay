@@ -217,6 +217,20 @@
 	status = "okay";
 	spi-max-buswidth = <4>;
 	spi-max-frequency = <50000000>;
+
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		boot_partition: partition@0 {
+			label = "image-0";
+			reg = <0x0 0x80000>;
+		};
+		dfu_partition: partition@1 {
+		       label = "image-1";
+		       reg = <0x80000 0x80000>;
+	       };
+	};
 };
 
 &fmc_cs1 {
@@ -323,5 +337,9 @@
 				&pinctrl_spim4_rst_out>;
 
 	flash-device = <&spi2_cs3>;
+	status = "okay";
+};
+
+&udc {
 	status = "okay";
 };
