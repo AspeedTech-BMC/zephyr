@@ -84,9 +84,9 @@ int flash_img_init_id(struct flash_img_context *ctx, uint8_t area_id)
 			ctx->flash_area->fa_size, NULL);
 }
 
-int flash_img_init(struct flash_img_context *ctx)
+int flash_img_init(struct flash_img_context *ctx, uint8_t area_id)
 {
-	return flash_img_init_id(ctx, UPLOAD_FLASH_AREA_ID);
+	return flash_img_init_id(ctx, area_id);
 }
 
 #if defined(CONFIG_IMG_ENABLE_IMAGE_CHECK)

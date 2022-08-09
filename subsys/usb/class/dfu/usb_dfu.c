@@ -342,7 +342,7 @@ static void dfu_reset_counters(void)
 {
 	dfu_data.bytes_sent = 0U;
 	dfu_data.block_nr = 0U;
-	if (flash_img_init(&dfu_data.ctx)) {
+	if (flash_img_init(&dfu_data.ctx, dfu_data.flash_area_id)) {
 		LOG_ERR("flash img init error");
 		dfu_data.state = dfuERROR;
 		dfu_data.status = errUNKNOWN;
@@ -467,14 +467,6 @@ static int dfu_class_handle_req(struct usb_setup_packet *pSetup,
 			LOG_DBG("DFU_DNLOAD start");
 			dfu_reset_counters();
 			k_poll_signal_reset(&dfu_signal);
-
-			if (dfu_data.flash_area_id !=
-			    UPLOAD_FLASH_AREA_ID) {
-				dfu_data.status = errWRITE;
-				dfu_data.state = dfuERROR;
-				LOG_ERR("This area can not be overwritten");
-				break;
-			}
 
 			dfu_data.state = dfuDNBUSY;
 			dfu_data_worker.worker_state = dfuIDLE;

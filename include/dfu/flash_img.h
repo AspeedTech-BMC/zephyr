@@ -50,7 +50,7 @@ int flash_img_init_id(struct flash_img_context *ctx, uint8_t area_id);
  *
  * @return  0 on success, negative errno code on fail
  */
-int flash_img_init(struct flash_img_context *ctx);
+int flash_img_init(struct flash_img_context *ctx, uint8_t area_id);
 
 /**
  * @brief Read number of bytes of the image written to the flash.
