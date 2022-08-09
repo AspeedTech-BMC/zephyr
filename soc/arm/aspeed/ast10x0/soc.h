@@ -29,4 +29,9 @@
 void aspeed_print_sysrst_info(void);
 void aspeed_soc_show_chip_id(void);
 
+int aspeed_otp_read_data(uint32_t offset, uint32_t *buf, uint32_t len);
+int aspeed_otp_read_conf(uint32_t offset, uint32_t *buf, uint32_t len);
+int aspeed_otp_prog_data(uint32_t offset, uint32_t *buf, uint32_t len);
+int aspeed_otp_prog_conf(uint32_t offset, uint32_t *buf, uint32_t len);
+
 #endif /* ZEPHYR_SOC_ARM_ASPEED_AST10X0_SOC_H_*/

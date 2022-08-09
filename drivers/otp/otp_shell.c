@@ -537,13 +537,13 @@ static void otp_prog_dw(uint32_t value, uint32_t ignore, uint32_t prog_address)
 static int otp_prog_verify_2dw(uint32_t *data, uint32_t *buf,
 			       uint32_t *ignore_mask, uint32_t prog_address)
 {
-	int pass;
-	int i;
 	uint32_t data0_masked;
 	uint32_t data1_masked;
 	uint32_t buf0_masked;
 	uint32_t buf1_masked;
 	uint32_t compare[2];
+	int pass;
+	int i;
 
 	data0_masked = data[0]  & ~ignore_mask[0];
 	buf0_masked  = buf[0] & ~ignore_mask[0];
@@ -2983,6 +2983,173 @@ static int ast_otp_init(const struct shell *shell)
 static void ast_otp_finish(void)
 {
 	sys_write32(1, OTP_PROTECT_KEY); /* protect otp controller */
+}
+
+/*
+ * Read OTP data from "offset" with legnth "len", and write it into
+ * "buf" buffer.
+ * @ offset: dw unit
+ * @ buf: output buffer
+ * @ len: dw unit
+ */
+int aspeed_otp_read_data(uint32_t offset, uint32_t *buf, uint32_t len)
+{
+	uint32_t ret[2];
+	int i;
+
+	if (offset + len > 2048 || offset % 4 != 0)
+		return OTP_USAGE;
+
+	sys_write32(OTP_PASSWD, OTP_PROTECT_KEY); /* password */
+
+	otp_soak(0);
+	for (i = offset; i < offset + len; i += 2) {
+		otp_read_data(i, ret);
+		memcpy(buf, ret, 8);
+		buf += 2;
+	}
+
+	ast_otp_finish();
+
+	return OTP_SUCCESS;
+}
+
+/*
+ * Read OTP conf from "offset" with legnth "len", and write it into
+ * "buf" buffer.
+ * @ offset: dw unit
+ * @ buf: output buffer
+ * @ len: dw unit
+ */
+int aspeed_otp_read_conf(uint32_t offset, uint32_t *buf, uint32_t len)
+{
+	uint32_t ret[1];
+	int i;
+
+	if (offset + len > 32)
+		return OTP_USAGE;
+
+	sys_write32(OTP_PASSWD, OTP_PROTECT_KEY); /* password */
+
+	otp_soak(0);
+	for (i = offset; i < offset + len; i++) {
+		otp_read_conf(i, ret);
+		memcpy(buf, ret, 4);
+		buf++;
+	}
+
+	ast_otp_finish();
+
+	return OTP_SUCCESS;
+}
+
+/*
+ * Program OTP data starts from "offset" with "buf" contents
+ * @ offset: dw unit
+ * @ buf: input buffer
+ * @ len: dw unit
+ */
+int aspeed_otp_prog_data(uint32_t offset, uint32_t *buf, uint32_t len)
+{
+	uint32_t ignore_mask[1] = {0};
+	uint32_t *input_buf = buf;
+	uint32_t prog_address;
+	uint32_t compare[1];
+	int pass;
+
+	if (offset + len > 2048 || offset % 4 != 0)
+		return OTP_USAGE;
+
+	sys_write32(OTP_PASSWD, OTP_PROTECT_KEY); /* password */
+
+	for (int i = 0; i < len; i++) {
+		prog_address = offset + i;
+		otp_soak(1);
+		otp_prog_dw(input_buf[0], ignore_mask[0], prog_address);
+
+		pass = 0;
+		for (int j = 0; j < RETRY; j++) {
+			if (verify_dw(prog_address, input_buf, ignore_mask, compare, 1) != 0) {
+				otp_soak(2);
+				if (verify_dw(prog_address, input_buf, ignore_mask, compare, 1) != 0) {
+					otp_soak(1);
+				} else {
+					pass = 1;
+					break;
+				}
+			} else {
+				pass = 1;
+				break;
+			}
+		}
+
+		if (!pass) {
+			otp_soak(0);
+			return OTP_FAILURE;
+		}
+
+		input_buf++;
+	}
+
+	ast_otp_finish();
+
+	return OTP_SUCCESS;
+}
+
+/*
+ * Program OTP conf starts from "offset" with "buf" contents
+ * @ offset: dw unit
+ * @ buf: input buffer
+ * @ len: dw unit
+ */
+int aspeed_otp_prog_conf(uint32_t offset, uint32_t *buf, uint32_t len)
+{
+	uint32_t ignore_mask[1] = {0};
+	uint32_t *input_buf = buf;
+	uint32_t prog_address;
+	uint32_t compare[1];
+	int pass;
+
+	if (offset + len > 32)
+		return OTP_USAGE;
+
+	sys_write32(OTP_PASSWD, OTP_PROTECT_KEY); /* password */
+
+	for (int i = 0; i < len; i++) {
+		prog_address = 0x800 +
+				((offset + i) / 8) * 0x200 +
+				((offset + i) % 8) * 0x2;
+
+		otp_soak(1);
+		otp_prog_dw(input_buf[0], ignore_mask[0], prog_address);
+
+		pass = 0;
+		for (int j = 0; j < RETRY; j++) {
+			if (verify_dw(prog_address, input_buf, ignore_mask, compare, 1) != 0) {
+				otp_soak(2);
+				if (verify_dw(prog_address, input_buf, ignore_mask, compare, 1) != 0) {
+					otp_soak(1);
+				} else {
+					pass = 1;
+					break;
+				}
+			} else {
+				pass = 1;
+				break;
+			}
+		}
+
+		if (!pass) {
+			otp_soak(0);
+			return OTP_FAILURE;
+		}
+
+		input_buf++;
+	}
+
+	ast_otp_finish();
+
+	return OTP_SUCCESS;
 }
 
 #define SHELL_HELP_OTPREAD	\
