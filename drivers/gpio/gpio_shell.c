@@ -201,6 +201,45 @@ static int cmd_gpio_listen(const struct shell *shell,
 	return 0;
 }
 
+#ifdef CONFIG_GPIO_GET_DIRECTION
+static int cmd_gpio_get_dir(const struct shell *shell,
+			size_t argc, char **argv)
+{
+	const struct device *dev;
+	uint8_t index = 0U;
+	gpio_port_pins_t map, input, output;
+	int rc;
+
+	if (argc == args_no.get && isdigit((unsigned char)argv[args_indx.index][0])) {
+		index = (uint8_t)atoi(argv[args_indx.index]);
+		map = 1 << index;
+	} else {
+		shell_error(shell, "Wrong parameters for get");
+		return -EINVAL;
+	}
+
+	dev = device_get_binding(argv[args_indx.port]);
+
+	if (dev != NULL) {
+		index = (uint8_t)atoi(argv[2]);
+		shell_print(shell, "Getting %s pin %d direction",
+			    argv[args_indx.port], index);
+		rc = gpio_port_get_direction(dev, map, &input, &output);
+		if (rc >= 0) {
+			if (input & map)
+				shell_print(shell, "input");
+			else if (output & map)
+				shell_print(shell, "output");
+		} else {
+			shell_error(shell, "Error %d getting direction", rc);
+			return -EIO;
+		}
+	}
+
+	return 0;
+}
+#endif /* CONFIG_GPIO_GET_DIRECTION */
+
 SHELL_STATIC_SUBCMD_SET_CREATE(
 	sub_gpio,
 	SHELL_CMD(conf, NULL, "Configure GPIO: <device> <pin> <in|out|deb>", cmd_gpio_conf),
@@ -208,6 +247,9 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 	SHELL_CMD(set, NULL, "Set GPIO: <device> <pin> <0|1>", cmd_gpio_set),
 	SHELL_CMD(listen, NULL, "Listen GPIO: <device> <pin> <levelH|levelL|edgeH|edgeL|edgeB>",
 		  cmd_gpio_listen),
+#ifdef CONFIG_GPIO_GET_DIRECTION
+	SHELL_CMD(dir, NULL, "Get GPIO direction: <device> <pin>", cmd_gpio_get_dir),
+#endif /* CONFIG_GPIO_GET_DIRECTION */
 	SHELL_SUBCMD_SET_END /* Array terminated. */
 );
 
