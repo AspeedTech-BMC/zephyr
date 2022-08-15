@@ -69,6 +69,16 @@ uint16_t gpio_offset_data[] = {
 	[6] = offsetof(gpio_register_t, group6_data),
 };
 
+uint16_t gpio_offset_dir[] = {
+	[0] = offsetof(gpio_register_t, group0_dir),
+	[1] = offsetof(gpio_register_t, group1_dir),
+	[2] = offsetof(gpio_register_t, group2_dir),
+	[3] = offsetof(gpio_register_t, group3_dir),
+	[4] = offsetof(gpio_register_t, group4_dir),
+	[5] = offsetof(gpio_register_t, group5_dir),
+	[6] = offsetof(gpio_register_t, group6_dir),
+};
+
 uint16_t gpio_offset_write_latch[] = {
 	[0] = offsetof(gpio_register_t, group0_rd_data),
 	[1] = offsetof(gpio_register_t, group1_rd_data),
@@ -417,6 +427,30 @@ static int gpio_aspeed_config(const struct device *dev,
 	return ret;
 }
 
+#ifdef CONFIG_GPIO_GET_DIRECTION
+static int gpio_aspeed_port_get_dir(const struct device *dev, gpio_port_pins_t map,
+				    gpio_port_pins_t *inputs, gpio_port_pins_t *outputs)
+{
+	uint8_t pin_offset = DEV_CFG(dev)->pin_offset;
+	uint32_t group_idx = pin_offset >> 5;
+	const struct gpio_aspeed_config *cfg = DEV_CFG(dev);
+	uint32_t dir_val;
+
+	map &= cfg->common.port_pin_mask;
+	dir_val = sys_read32((uint32_t)DEV_CFG(dev)->base + gpio_offset_dir[group_idx]);
+
+	if (inputs != NULL) {
+		*inputs = (map & (~dir_val));
+	}
+
+	if (outputs != NULL) {
+		*outputs = map & dir_val;
+	}
+
+	return 0;
+}
+#endif /* CONFIG_GPIO_GET_DIRECTION */
+
 /* GPIO driver registration */
 static const struct gpio_driver_api gpio_aspeed_driver = {
 	.pin_configure = gpio_aspeed_config,
@@ -427,6 +461,9 @@ static const struct gpio_driver_api gpio_aspeed_driver = {
 	.port_toggle_bits = gpio_aspeed_port_toggle_bits,
 	.pin_interrupt_configure = gpio_aspeed_pin_interrupt_configure,
 	.manage_callback = gpio_aspeed_manage_callback,
+#ifdef CONFIG_GPIO_GET_DIRECTION
+	.port_get_direction      = gpio_aspeed_port_get_dir,
+#endif /* CONFIG_GPIO_GET_DIRECTION */
 };
 
 static int gpio_aspeed_persist_set(const struct device *dev, gpio_pin_t pin, bool en)
