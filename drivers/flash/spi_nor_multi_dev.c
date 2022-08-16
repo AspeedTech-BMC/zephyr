@@ -570,6 +570,24 @@ static int spi_nor_wrsr(const struct device *dev,
 	return ret;
 }
 
+static int spi_nor_wr_sr_cr(const struct device *dev,
+			uint8_t *sr_cr)
+{
+	int ret;
+	struct spi_nor_op_info op_info =
+			SPI_NOR_OP_INFO(JESD216_MODE_111, SPI_NOR_CMD_WRSR,
+				0, 0, 0, sr_cr, 2, SPI_NOR_DATA_DIRECT_OUT);
+
+	ret = spi_nor_wren(dev);
+
+	if (ret == 0) {
+		ret = spi_nor_op_exec(dev, op_info);
+		spi_nor_wait_until_ready(dev);
+	}
+
+	return ret;
+}
+
 static int spi_nor_wrsr2(const struct device *dev,
 			uint8_t sr)
 {
@@ -679,7 +697,39 @@ static int spi_nor_cf1_bit1_config(const struct device *dev)
 	return 0;
 }
 
+int spi_nor_sr_cr_bit1_config(const struct device *dev)
+{
+	int ret;
+	uint8_t sr_cr[2];
+	uint8_t sr_golden;
+
+	ret = spi_nor_rdsr(dev);
+	if (ret < 0)
+		return ret;
+
+	sr_cr[0] = (uint8_t)ret;
+	sr_cr[1] = BIT(1);
+
+	ret = spi_nor_wr_sr_cr(dev, sr_cr);
+	if (ret)
+		return ret;
+
+	sr_golden = sr_cr[0];
+
+	ret = spi_nor_rdsr(dev);
+	if (ret < 0)
+		return ret;
+
+	if ((uint8_t)ret != sr_golden) {
+		LOG_ERR("Fail to config SR_CR");
+		return -ENOTSUP;
+	}
+
+	return 0;
+}
+
 #define SPI_NOR_QE_NO_NEED        0x0 /* Micron, Gigadevice */
+#define SPI_NOR_QE_SR_CR_BIT1     0x1
 #define SPI_NOR_QE_NOT_SUPPORTED  0x7 /* GigaDevice */
 #define SPI_NOR_QE_SR1_BIT6       0x2 /* MXIC, ISSI */
 #define SPI_NOR_QE_SR2_BIT1       0x4 /* Winbond */
@@ -695,6 +745,9 @@ static int spi_nor_qe_config(const struct device *dev, uint32_t qer)
 	switch (qer) {
 	case SPI_NOR_QE_NO_NEED:
 	case SPI_NOR_QE_NOT_SUPPORTED:
+		break;
+	case SPI_NOR_QE_SR_CR_BIT1:
+		ret = spi_nor_sr_cr_bit1_config(dev);
 		break;
 	case SPI_NOR_QE_SR1_BIT6:
 		ret = spi_nor_sr1_bit6_config(dev);

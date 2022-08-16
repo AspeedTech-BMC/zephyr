@@ -866,8 +866,6 @@
 				spi-max-buswidth = <1>;
 				spi-max-frequency = <25000000>;
 				jedec-id = [];
-				broken-sfdp;
-				size = <DT_SIZE_M(8)>;
 				label = "fmc_cs0";
 				write-block-size = <4096>;
 				status = "disabled";
