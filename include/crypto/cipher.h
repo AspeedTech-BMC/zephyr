@@ -227,9 +227,10 @@ static inline int cipher_block_op(struct cipher_ctx *ctx,
 static inline int cipher_cbc_op(struct cipher_ctx *ctx,
 				struct cipher_pkt *pkt, uint8_t *iv)
 {
-	__ASSERT(ctx->ops.cipher_mode == CRYPTO_CIPHER_MODE_CBC, "CBC mode "
+	/* Comment assert for cbc/cfb/ofb/ctr used. */
+/*	__ASSERT(ctx->ops.cipher_mode == CRYPTO_CIPHER_MODE_CBC, "CBC mode "
 		 "session invoking a different mode handler");
-
+*/
 	pkt->ctx = ctx;
 	return ctx->ops.cbc_crypt_hndlr(ctx, pkt, iv);
 }

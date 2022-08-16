@@ -62,13 +62,14 @@ static int crypto_trigger(struct aspeed_crypto_ctx *data)
 }
 
 static int aspeed_aes_crypt(struct cipher_ctx *ctx, unsigned char *in_buf,
-							int in_len, unsigned char *out_buf, int out_len)
+			    int in_len, unsigned char *out_buf, int out_len)
 {
 	struct aspeed_crypto_ctx *data = &drv_state.data;
 	int ret;
 
 	if (ctx->flags & CAP_RAW_KEY) {
 		memcpy(data->ctx + 16, ctx->key.bit_stream, ctx->keylen);
+
 	} else { /*use secret vault key*/
 		uint8_t key_id = *((uint8_t *)ctx->key.handle);
 
@@ -94,50 +95,98 @@ static int aspeed_aes_crypt(struct cipher_ctx *ctx, unsigned char *in_buf,
 		return ret;
 
 	cache_data_range(out_buf, out_len, K_CACHE_INVD);
+
+	return 0;
+}
+
+static int aspeed_des_crypt(struct cipher_ctx *ctx, unsigned char *in_buf,
+			    int in_len, unsigned char *out_buf, int out_len)
+{
+	struct aspeed_crypto_ctx *data = &drv_state.data;
+	int ret;
+
+	/* Copy DES key to 0x10 offset */
+	memcpy(data->ctx + 16, ctx->key.bit_stream, ctx->keylen);
+
+	data->src_sg.addr = (uint32_t)in_buf;
+	data->dst_sg.addr = (uint32_t)out_buf;
+	data->src_sg.len = in_len | BIT(31);
+	data->dst_sg.len = in_len | BIT(31);
+
+	ret = crypto_trigger(data);
+
+	if (ret)
+		return ret;
+
+	cache_data_range(out_buf, out_len, K_CACHE_INVD);
+
 	return 0;
 }
 
 static int aspeed_aes_crypt_ecb(struct cipher_ctx *ctx, struct cipher_pkt *pkt)
 {
-	pkt->out_len = pkt->in_len + 16;
+	pkt->out_len = pkt->in_len;
+
 	return aspeed_aes_crypt(ctx, pkt->in_buf, pkt->in_len,
-							pkt->out_buf, pkt->out_buf_max);
+				pkt->out_buf, pkt->out_buf_max);
 }
 
 static int aspeed_aes_encrypt_cbc(struct cipher_ctx *ctx, struct cipher_pkt *pkt,
-								  uint8_t *iv)
+				  uint8_t *iv)
 {
 	struct aspeed_crypto_ctx *data = &drv_state.data;
 
 	memcpy(data->ctx, iv, 16);
 	memcpy(pkt->out_buf, iv, 16);
 	pkt->out_len = pkt->in_len + 16;
+
 	return aspeed_aes_crypt(ctx, pkt->in_buf, pkt->in_len,
-							pkt->out_buf + 16, pkt->out_buf_max);
+				pkt->out_buf + 16, pkt->out_buf_max);
 }
 
 static int aspeed_aes_decrypt_cbc(struct cipher_ctx *ctx, struct cipher_pkt *pkt,
-								  uint8_t *iv)
+				  uint8_t *iv)
 {
 	struct aspeed_crypto_ctx *data = &drv_state.data;
 
 	memcpy(data->ctx, iv, 16);
 	pkt->out_len = pkt->in_len - 16;
+
 	return aspeed_aes_crypt(ctx, pkt->in_buf + 16, pkt->in_len - 16,
-							pkt->out_buf, pkt->out_buf_max);
+				pkt->out_buf, pkt->out_buf_max);
 }
 
-static int aspeed_aes_crypt_ctr(struct cipher_ctx *ctx, struct cipher_pkt *pkt,
-								uint8_t *ctr)
+static int aspeed_des_crypt_ecb(struct cipher_ctx *ctx, struct cipher_pkt *pkt)
+{
+	pkt->out_len = pkt->in_len;
+
+	return aspeed_des_crypt(ctx, pkt->in_buf, pkt->in_len,
+				pkt->out_buf, pkt->out_buf_max);
+}
+
+static int aspeed_des_encrypt_cbc(struct cipher_ctx *ctx, struct cipher_pkt *pkt,
+				  uint8_t *iv)
 {
 	struct aspeed_crypto_ctx *data = &drv_state.data;
 
-	memset(data->ctx + 12, 0, 4);
-	memcpy(data->ctx, ctr, 12);
-	pkt->out_len = pkt->in_len;
+	memcpy(data->ctx + 8, iv, 8);
+	memcpy(pkt->out_buf + 8, iv, 8);
+	pkt->out_len = pkt->in_len + 16;
 
-	return aspeed_aes_crypt(ctx, pkt->in_buf, pkt->in_len,
-							pkt->out_buf, pkt->out_buf_max);
+	return aspeed_des_crypt(ctx, pkt->in_buf, pkt->in_len,
+				pkt->out_buf + 16, pkt->out_buf_max);
+}
+
+static int aspeed_des_decrypt_cbc(struct cipher_ctx *ctx, struct cipher_pkt *pkt,
+				  uint8_t *iv)
+{
+	struct aspeed_crypto_ctx *data = &drv_state.data;
+
+	memcpy(data->ctx + 8, iv, 8);
+	pkt->out_len = pkt->in_len - 16;
+
+	return aspeed_des_crypt(ctx, pkt->in_buf + 16, pkt->in_len - 16,
+				pkt->out_buf, pkt->out_buf_max);
 }
 
 static int aspeed_crypto_init(const struct device *dev)
@@ -149,11 +198,13 @@ static int aspeed_crypto_init(const struct device *dev)
 }
 
 static int aspeed_crypto_session_setup(const struct device *dev,
-									   struct cipher_ctx *ctx,
-									   enum cipher_algo algo, enum cipher_mode mode,
-									   enum cipher_op op_type)
+				       struct cipher_ctx *ctx,
+				       enum cipher_algo algo, enum cipher_mode mode,
+				       enum cipher_op op_type)
 {
 	struct aspeed_crypto_ctx *data;
+	cbc_op_t cbc_encrypt_handler = NULL;
+	cbc_op_t cbc_decrypt_handler = NULL;
 
 	ARG_UNUSED(dev);
 	LOG_INF("aspeed_crypto_session_setup");
@@ -169,32 +220,47 @@ static int aspeed_crypto_session_setup(const struct device *dev,
 
 	data = &drv_state.data;
 
-	data->cmd = HACE_CMD_AES_KEY_HW_EXP | HACE_CMD_DES_SG_CTRL |
-				HACE_CMD_SRC_SG_CTRL | HACE_CMD_MBUS_REQ_SYNC_EN;
+	data->cmd = HACE_CMD_DES_SG_CTRL | HACE_CMD_SRC_SG_CTRL |
+			HACE_CMD_MBUS_REQ_SYNC_EN;
 
 	switch (algo) {
 	case CRYPTO_CIPHER_ALGO_AES:
-		data->cmd |= HACE_CMD_AES_SELECT;
+		data->cmd |= HACE_CMD_AES_KEY_HW_EXP | HACE_CMD_AES_SELECT;
+		cbc_encrypt_handler = aspeed_aes_encrypt_cbc;
+		cbc_decrypt_handler = aspeed_aes_decrypt_cbc;
+		break;
+	case CRYPTO_CIPHER_ALGO_DES:
+		data->cmd |= HACE_CMD_DES_SELECT;
+		cbc_encrypt_handler = aspeed_des_encrypt_cbc;
+		cbc_decrypt_handler = aspeed_des_decrypt_cbc;
+		break;
+	case CRYPTO_CIPHER_ALGO_TDES:
+		data->cmd |= HACE_CMD_DES_SELECT | HACE_CMD_TRIPLE_DES;
+		cbc_encrypt_handler = aspeed_des_encrypt_cbc;
+		cbc_decrypt_handler = aspeed_des_decrypt_cbc;
 		break;
 	default:
 		LOG_ERR("unsupported algorithm");
 		return -EINVAL;
 	}
 
-	switch (ctx->keylen) {
-	case 16:
-		data->cmd |= HACE_CMD_AES128;
-		break;
-	case 24:
-		data->cmd |= HACE_CMD_AES192;
-		break;
-	case 32:
-		data->cmd |= HACE_CMD_AES256;
-		break;
-	default:
-		LOG_ERR("unsupported key size");
-		return -EINVAL;
+	if (algo == CRYPTO_CIPHER_ALGO_AES) {
+		switch (ctx->keylen) {
+		case 16:
+			data->cmd |= HACE_CMD_AES128;
+			break;
+		case 24:
+			data->cmd |= HACE_CMD_AES192;
+			break;
+		case 32:
+			data->cmd |= HACE_CMD_AES256;
+			break;
+		default:
+			LOG_ERR("unsupported key size");
+			return -EINVAL;
+		}
 	}
+
 	switch (mode) {
 	case CRYPTO_CIPHER_MODE_ECB:
 		data->cmd |= HACE_CMD_ECB;
@@ -202,25 +268,50 @@ static int aspeed_crypto_session_setup(const struct device *dev,
 			data->cmd |= HACE_CMD_ENCRYPT;
 		else
 			data->cmd |= HACE_CMD_DECRYPT;
-		ctx->ops.block_crypt_hndlr = aspeed_aes_crypt_ecb;
+		if (data->cmd & HACE_CMD_DES_SELECT)
+			ctx->ops.block_crypt_hndlr = aspeed_des_crypt_ecb;
+		else
+			ctx->ops.block_crypt_hndlr = aspeed_aes_crypt_ecb;
 		break;
 	case CRYPTO_CIPHER_MODE_CBC:
 		data->cmd |= HACE_CMD_CBC;
 		if (op_type == CRYPTO_CIPHER_OP_ENCRYPT) {
 			data->cmd |= HACE_CMD_ENCRYPT;
-			ctx->ops.cbc_crypt_hndlr = aspeed_aes_encrypt_cbc;
+			ctx->ops.cbc_crypt_hndlr = cbc_encrypt_handler;
 		} else {
 			data->cmd |= HACE_CMD_DECRYPT;
-			ctx->ops.cbc_crypt_hndlr = aspeed_aes_decrypt_cbc;
+			ctx->ops.cbc_crypt_hndlr = cbc_decrypt_handler;
+		}
+		break;
+	case CRYPTO_CIPHER_MODE_CFB:
+		data->cmd |= HACE_CMD_CFB;
+		if (op_type == CRYPTO_CIPHER_OP_ENCRYPT) {
+			data->cmd |= HACE_CMD_ENCRYPT;
+			ctx->ops.cbc_crypt_hndlr = cbc_encrypt_handler;
+		} else {
+			data->cmd |= HACE_CMD_DECRYPT;
+			ctx->ops.cbc_crypt_hndlr = cbc_decrypt_handler;
+		}
+		break;
+	case CRYPTO_CIPHER_MODE_OFB:
+		data->cmd |= HACE_CMD_OFB;
+		if (op_type == CRYPTO_CIPHER_OP_ENCRYPT) {
+			data->cmd |= HACE_CMD_ENCRYPT;
+			ctx->ops.cbc_crypt_hndlr = cbc_encrypt_handler;
+		} else {
+			data->cmd |= HACE_CMD_DECRYPT;
+			ctx->ops.cbc_crypt_hndlr = cbc_decrypt_handler;
 		}
 		break;
 	case CRYPTO_CIPHER_MODE_CTR:
 		data->cmd |= HACE_CMD_CTR;
-		if (op_type == CRYPTO_CIPHER_OP_ENCRYPT)
+		if (op_type == CRYPTO_CIPHER_OP_ENCRYPT) {
 			data->cmd |= HACE_CMD_ENCRYPT;
-		else
+			ctx->ops.cbc_crypt_hndlr = cbc_encrypt_handler;
+		} else {
 			data->cmd |= HACE_CMD_DECRYPT;
-		ctx->ops.ctr_crypt_hndlr = aspeed_aes_crypt_ctr;
+			ctx->ops.cbc_crypt_hndlr = cbc_decrypt_handler;
+		}
 		break;
 	default:
 		LOG_ERR("unsupported mode");
@@ -234,8 +325,7 @@ static int aspeed_crypto_session_setup(const struct device *dev,
 	return 0;
 }
 
-static int aspeed_crypto_session_free(const struct device *dev,
-									  struct cipher_ctx *ctx)
+static int aspeed_crypto_session_free(const struct device *dev, struct cipher_ctx *ctx)
 {
 	ARG_UNUSED(dev);
 	ARG_UNUSED(ctx);
