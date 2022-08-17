@@ -733,10 +733,6 @@ static void aspeed_new_i2c_do_start(const struct device *dev)
 		cmd |= AST_I2CM_RX_CMD;
 		if (config->mode == DMA_MODE) {
 			/*dma mode*/
-			if (msg->flags & I2C_MSG_RECV_LEN) {
-				LOG_DBG("smbus read\n");
-				xfer_len = 1;
-			} else {
 				if (msg->len > ASPEED_I2C_DMA_SIZE) {
 					xfer_len = ASPEED_I2C_DMA_SIZE;
 				} else {
@@ -746,7 +742,6 @@ static void aspeed_new_i2c_do_start(const struct device *dev)
 						cmd |= AST_I2CM_RX_CMD_LAST | AST_I2CM_STOP_CMD;
 					}
 				}
-			}
 
 			if (xfer_len) {
 				cmd |= AST_I2CM_RX_DMA_EN | AST_I2CM_RX_CMD;
@@ -755,18 +750,13 @@ static void aspeed_new_i2c_do_start(const struct device *dev)
 			}
 		} else if (config->mode == BUFF_MODE) {
 			/*buff mode*/
-			if (msg->flags & I2C_MSG_RECV_LEN) {
-				LOG_DBG("smbus read\n");
-				xfer_len = 1;
+			if (msg->len > config->buf_size) {
+				xfer_len = config->buf_size;
 			} else {
-				if (msg->len > config->buf_size) {
-					xfer_len = config->buf_size;
-				} else {
-					xfer_len = msg->len;
-					if (data->msgs_index + 1 == data->msgs_count) {
-						LOG_DBG("last stop\n");
-						cmd |= AST_I2CM_RX_CMD_LAST | AST_I2CM_STOP_CMD;
-					}
+				xfer_len = msg->len;
+				if (data->msgs_index + 1 == data->msgs_count) {
+					LOG_DBG("last stop\n");
+					cmd |= AST_I2CM_RX_CMD_LAST | AST_I2CM_STOP_CMD;
 				}
 			}
 
@@ -776,13 +766,9 @@ static void aspeed_new_i2c_do_start(const struct device *dev)
 			}
 		} else {
 			/*byte mode*/
-			if (msg->flags & I2C_MSG_RECV_LEN) {
-				LOG_DBG("smbus read\n");
-			} else {
-				if ((data->msgs_index + 1 == data->msgs_count) && (msg->len == 1)) {
-					LOG_DBG("last stop\n");
-					cmd |= AST_I2CM_RX_CMD_LAST | AST_I2CM_STOP_CMD;
-				}
+			if ((data->msgs_index + 1 == data->msgs_count) && (msg->len == 1)) {
+				LOG_DBG("last stop\n");
+				cmd |= AST_I2CM_RX_CMD_LAST | AST_I2CM_STOP_CMD;
 			}
 
 			if (msg->len) {
@@ -1084,10 +1070,7 @@ void do_i2cm_rx(const struct device *dev)
 		AST_I2CC_GET_RX_BUFF(sys_read32(i2c_base + AST_I2CC_STS_AND_BUFF));
 	}
 
-	if (msg->flags & I2C_MSG_RECV_LEN) {
-		LOG_DBG("smbus first len = %x\n", msg->buf[0]);
-		msg->flags &= ~I2C_MSG_RECV_LEN;
-	}
+	/*update transfer length*/
 	data->master_xfer_cnt += xfer_len;
 	LOG_DBG("master_xfer_cnt [%d/%d]\n", data->master_xfer_cnt, msg->len);
 
