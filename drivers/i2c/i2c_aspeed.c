@@ -1221,19 +1221,21 @@ int aspeed_i2c_master_irq(const struct device *dev)
 			k_sem_give(&data->sync_sem);
 			break;
 		case AST_I2CM_TX_ACK:
+		case AST_I2CM_TX_ACK | AST_I2CM_NORMAL_STOP:
 #ifdef CONFIG_I2C_SLAVE
-			/* Workaround for master/slave package mode enable rx done stuck issue
-			 * When master go for first read (RX_DONE), slave mode will also effect
-			 * Then controller will send nack, not operate anymore.
-			 */
-			if (sys_read32(i2c_base + AST_I2CS_CMD_STS) & AST_I2CS_PKT_MODE_EN) {
-				uint32_t slave_cmd = sys_read32(i2c_base + AST_I2CS_CMD_STS);
+			if (sts == AST_I2CM_TX_ACK) {
+				/* Workaround for master/slave package mode enable rx done stuck issue
+				 * When master go for first read (RX_DONE), slave mode will also effect
+				 * Then controller will send nack, not operate anymore.
+				 */
+				if (sys_read32(i2c_base + AST_I2CS_CMD_STS) & AST_I2CS_PKT_MODE_EN) {
+					uint32_t slave_cmd = sys_read32(i2c_base + AST_I2CS_CMD_STS);
 
-				sys_write32(0, i2c_base + AST_I2CS_CMD_STS);
-				sys_write32(slave_cmd, i2c_base + AST_I2CS_CMD_STS);
+					sys_write32(0, i2c_base + AST_I2CS_CMD_STS);
+					sys_write32(slave_cmd, i2c_base + AST_I2CS_CMD_STS);
+				}
 			}
 #endif
-		case AST_I2CM_TX_ACK | AST_I2CM_NORMAL_STOP:
 			LOG_DBG("M : I2CM_TX_ACK | I2CM_N_S = %x\n", sts);
 			do_i2cm_tx(dev);
 			break;
@@ -1628,13 +1630,16 @@ void aspeed_i2c_slave_byte_irq(const struct device *dev, uint32_t i2c_base, uint
 		sys_write32(byte_data, i2c_base + AST_I2CC_STS_AND_BUFF);
 		break;
 	case AST_I2CS_STOP:
+	case AST_I2CS_STOP | AST_I2CS_TX_NAK:
+		LOG_DBG("S : P\n");
 		if (slave_cb->stop) {
 			slave_cb->stop(data->slave_cfg);
 		}
-	case AST_I2CS_STOP | AST_I2CS_TX_NAK:
-		LOG_DBG("S : P\n");
-		/* clear record slave address */
-		data->slave_addr_last = 0x0;
+
+		if (sts & AST_I2CS_TX_NAK) {
+			/* clear record slave address */
+			data->slave_addr_last = 0x0;
+		}
 		break;
 	default:
 		LOG_DBG("TODO no pkt_done intr ~~~ ***** sts %x\n", sts);
