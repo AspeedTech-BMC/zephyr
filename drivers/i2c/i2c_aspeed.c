@@ -1284,8 +1284,8 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 	struct i2c_aspeed_data *data = DEV_DATA(dev);
 	const struct i2c_slave_callbacks *slave_cb = data->slave_cfg->callbacks;
 	uint32_t cmd = 0;
-	uint32_t i, slave_rx_len;
-	uint8_t byte_data, value;
+	uint32_t i, slave_rx_len = 0;
+	uint8_t byte_data = 0, value = 0;
 
 	/* clear irq first */
 	sys_write32(AST_I2CS_PKT_DONE, i2c_base + AST_I2CS_ISR);
