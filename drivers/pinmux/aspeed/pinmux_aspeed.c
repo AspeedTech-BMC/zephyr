@@ -121,7 +121,7 @@ static int pinmux_aspeed_get(const struct device *dev, uint32_t pin,
 			     uint32_t *func)
 {
 	ARG_UNUSED(dev);
-	if (pin >= MAX_PIN_ID || pin < 0) {
+	if (pin >= MAX_PIN_ID) {
 		return -EINVAL;
 	}
 	*func = aspeed_pin_desc_table[pin];
@@ -263,7 +263,7 @@ static int aspeed_pinctrl_fn_group_request(const struct device *dev, uint32_t fu
 	int sig_number;
 	int sig_idx;
 	uint16_t sig_id;
-	int ret;
+	int ret = 0;
 
 	fun_desc = aspeed_fun_desc_table[fun_id];
 	if (fun_desc == NULL) {
@@ -276,7 +276,7 @@ static int aspeed_pinctrl_fn_group_request(const struct device *dev, uint32_t fu
 		sig_desc = aspeed_sig_desc_table[sig_id];
 		ret |= pinmux_aspeed_set(dev, sig_desc->pin, sig_id);
 	}
-	return 0;
+	return ret;
 }
 
 static int pinmux_aspeed_init(const struct device *dev)
