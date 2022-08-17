@@ -238,7 +238,7 @@ end:
 
 static int lock_addr_priv_table(const struct shell *shell, size_t argc, char *argv[])
 {
-	int ret;
+	int ret = 0;
 
 	if (spim_device == NULL) {
 		shell_error(shell, "Please set the device first.");
