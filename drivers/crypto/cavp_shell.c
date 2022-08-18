@@ -4,8 +4,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#if !defined(MBEDTLS_CONFIG_FILE)
+#include "mbedtls/config.h"
+#else
+#include MBEDTLS_CONFIG_FILE
+#endif
+
 #include <crypto/hash.h>
 #include <crypto/cipher.h>
+#include <crypto/rsa.h>
 #include <device.h>
 #include <drivers/uart.h>
 #include <shell/shell.h>
@@ -14,6 +21,12 @@
 #include <soc.h>
 #include <sys/ring_buffer.h>
 #include <usb/usb_device.h>
+
+#include "mbedtls/rsa.h"
+#include "mbedtls/md.h"
+#include "mbedtls/sha1.h"
+#include "mbedtls/sha256.h"
+#include "mbedtls/sha512.h"
 
 #ifdef CONFIG_CRYPTO_ASPEED
 #define HASH_DRV_NAME		CONFIG_CRYPTO_ASPEED_HASH_DRV_NAME
@@ -44,6 +57,20 @@ static uint8_t inputbuf_hex[RX_BUFF_SIZE] NON_CACHED_BSS;
 static uint8_t inputbuf[RX_BUFF_SIZE/2] NON_CACHED_BSS;
 
 uint32_t crypto_cap_flags;
+
+static void print_buffer(const struct shell *shell, uint8_t *buf, size_t size)
+{
+#if DEBUG
+	for (int i = 0; i < size; i++) {
+		if (i % 8 == 0)
+			shell_fprintf(shell, SHELL_NORMAL, "\n");
+		shell_fprintf(shell, SHELL_NORMAL, "%02x", buf[i]);
+	}
+	shell_print(shell, "\n");
+#else
+	shell_print(shell, "Skip");
+#endif
+}
 
 static void data_handle(void)
 {
@@ -704,6 +731,197 @@ static int tdes_ofb_test(const struct shell *shell, size_t argc, char **argv)
 			CRYPTO_CIPHER_MODE_OFB);
 }
 
+static int rsa_test(const struct shell *shell, size_t argc, char **argv,
+		    enum rsa_ssa ssa)
+{
+	uint32_t n_size, e_size, msg_size, sign_size;
+	uint8_t *n_buf, *e_buf, *msg_buf, *sign_buf;
+	uint8_t mdsum[64] = {0};
+	mbedtls_md_type_t md_alg;
+	mbedtls_rsa_context rsa;
+	mbedtls_mpi K;
+	int offset;
+	int ret;
+
+	mbedtls_mpi_init(&K);
+	if (ssa == RSA_PKCS1_V15)
+		mbedtls_rsa_init(&rsa, MBEDTLS_RSA_PKCS_V15, 0);
+	else if (ssa == RSA_PKCS1_V21)
+		mbedtls_rsa_init(&rsa, MBEDTLS_RSA_PKCS_V21, 0);
+
+	/* hash algo */
+	shell_print(shell, "%s: hash: %s", __func__, argv[0]);
+	if (!strcmp(argv[0], "sha1")) {
+		md_alg = MBEDTLS_MD_SHA1;
+	} else if (!strcmp(argv[0], "sha224")) {
+		md_alg = MBEDTLS_MD_SHA224;
+	} else if (!strcmp(argv[0], "sha256")) {
+		md_alg = MBEDTLS_MD_SHA256;
+	} else if (!strcmp(argv[0], "sha384")) {
+		md_alg = MBEDTLS_MD_SHA384;
+	} else if (!strcmp(argv[0], "sha512")) {
+		md_alg = MBEDTLS_MD_SHA512;
+	} else {
+		shell_print(shell, "%s: hash %s is not supported", __func__, argv[0]);
+		return -EINVAL;
+	}
+
+	shell_print(shell, "%s: md_alg: %d", __func__, (int)md_alg);
+	argc--;
+	argv++;
+
+	/* key n */
+	n_size = strtol(argv[0], NULL, 10);	/* bits */
+	n_buf = inputbuf;
+	offset = n_size/8;
+
+	shell_print(shell, "%s: Print n:", __func__);
+	print_buffer(shell, n_buf, n_size/8);
+
+	MBEDTLS_MPI_CHK(mbedtls_mpi_read_binary(&K, n_buf, n_size/8));
+	MBEDTLS_MPI_CHK(mbedtls_rsa_import(&rsa, &K, NULL, NULL, NULL, NULL));
+
+	argc--;
+	argv++;
+
+	/* key e */
+	e_size = strtol(argv[0], NULL, 10);	/* bits */
+	e_buf = inputbuf + offset;
+	offset += e_size/8;
+
+	shell_print(shell, "%s: Print e:", __func__);
+	print_buffer(shell, e_buf, e_size/8);
+
+	MBEDTLS_MPI_CHK(mbedtls_mpi_read_binary(&K, e_buf, e_size/8));
+	MBEDTLS_MPI_CHK(mbedtls_rsa_import(&rsa, NULL, NULL, NULL, NULL, &K));
+
+	argc--;
+	argv++;
+
+	/* msg */
+	msg_size = strtol(argv[0], NULL, 10);	/* bits */
+	msg_buf = inputbuf + offset;
+	offset += msg_size/8;
+
+	shell_print(shell, "%s: Print msg:", __func__);
+	print_buffer(shell, msg_buf, msg_size/8);
+
+	argc--;
+	argv++;
+
+	/* signature */
+	sign_size = strtol(argv[0], NULL, 10);	/* bits */
+	sign_buf = inputbuf + offset;
+	offset += sign_size/8;
+
+	shell_print(shell, "%s: Print signature:", __func__);
+	print_buffer(shell, sign_buf, sign_size/8);
+
+	argc--;
+	argv++;
+
+	MBEDTLS_MPI_CHK(mbedtls_rsa_complete(&rsa));
+
+	if (recv_len != offset) {
+		shell_print(shell, "Input data is not match. recv:%d bytes, offset:%d bytes",
+			    recv_len, offset);
+		recv_len = 0;
+		return -EINVAL;
+	}
+
+	recv_len = 0;
+
+	if (mbedtls_rsa_check_pubkey(&rsa)) {
+		shell_print(shell, "%s: Check RSA key failed", __func__);
+		return -EINVAL;
+	}
+
+	/* Calculate message digest */
+	switch (md_alg) {
+	case MBEDTLS_MD_SHA1:
+		if (mbedtls_sha1_ret(msg_buf, msg_size/8, mdsum) != 0) {
+			shell_print(shell, "%s: SHA1 failed", __func__);
+			return -EINVAL;
+		}
+		break;
+	case MBEDTLS_MD_SHA224:
+		if (mbedtls_sha256_ret(msg_buf, msg_size/8, mdsum, 1) != 0) {
+			shell_print(shell, "%s: SHA224 failed", __func__);
+			return -EINVAL;
+		}
+		break;
+	case MBEDTLS_MD_SHA256:
+		if (mbedtls_sha256_ret(msg_buf, msg_size/8, mdsum, 0) != 0) {
+			shell_print(shell, "%s: SHA256 failed", __func__);
+			return -EINVAL;
+		}
+		break;
+	case MBEDTLS_MD_SHA384:
+		if (mbedtls_sha512_ret(msg_buf, msg_size/8, mdsum, 1) != 0) {
+			shell_print(shell, "%s: SHA384 failed", __func__);
+			return -EINVAL;
+		}
+		break;
+	case MBEDTLS_MD_SHA512:
+		if (mbedtls_sha512_ret(msg_buf, msg_size/8, mdsum, 0) != 0) {
+			shell_print(shell, "%s: SHA512 failed", __func__);
+			return -EINVAL;
+		}
+		break;
+	default:
+		shell_print(shell, "%s: md %d is not supported", __func__, md_alg);
+		return -EINVAL;
+	}
+
+	shell_print(shell, "%s: Print mdsum:", __func__);
+	print_buffer(shell, mdsum, 64);
+
+	/* Do RSA pkcs1 verification */
+	ret = mbedtls_rsa_pkcs1_verify(&rsa, NULL, NULL, MBEDTLS_RSA_PUBLIC,
+				       md_alg, 0, mdsum, sign_buf);
+	if (ret) {
+		shell_print(shell, "%s: RSA SigVer ssa %d failed !", __func__, (int)ssa);
+	} else {
+		shell_print(shell, "%s: RSA SigVer ssa %d PASS !", __func__, (int)ssa);
+	}
+
+	shell_print(shell, "Output:%d", ret);
+
+cleanup:
+	mbedtls_mpi_free(&K);
+	mbedtls_rsa_free(&rsa);
+
+	return 0;
+}
+
+static int rsa_pkcs1_test(const struct shell *shell, size_t argc, char **argv)
+{
+	shell_print(shell, "%s", __func__);
+	if (argc != 6) {
+		shell_print(shell, "%s: Wrong parameters, argc %d", __func__, argc);
+		return -EINVAL;
+	}
+
+	argc--;
+	argv++;
+
+	return rsa_test(shell, argc, argv, RSA_PKCS1_V15);
+}
+
+static int rsa_pss_test(const struct shell *shell, size_t argc, char **argv)
+{
+	shell_print(shell, "%s", __func__);
+	if (argc != 6) {
+		shell_print(shell, "%s: Wrong parameters, argc %d", __func__, argc);
+		return -EINVAL;
+	}
+
+	argc--;
+	argv++;
+
+	return rsa_test(shell, argc, argv, RSA_PKCS1_V21);
+}
+
 static int cavp_init(const struct shell *shell, size_t argc, char **argv)
 {
 	int ret;
@@ -714,6 +932,7 @@ static int cavp_init(const struct shell *shell, size_t argc, char **argv)
 }
 
 SHELL_STATIC_SUBCMD_SET_CREATE(cavp_cmds,
+	/* hash */
 	SHELL_CMD_ARG(sha1, NULL, "", sha1_test, 1, 2),
 	SHELL_CMD_ARG(sha224, NULL, "", sha224_test, 1, 2),
 	SHELL_CMD_ARG(sha256, NULL, "", sha256_test, 1, 2),
@@ -729,6 +948,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(cavp_cmds,
 	SHELL_CMD_ARG(hmac-sha512_224, NULL, "", hmac_sha512_224_test, 1, 5),
 	SHELL_CMD_ARG(hmac-sha512_256, NULL, "", hmac_sha512_256_test, 1, 5),
 
+	/* aes */
 	SHELL_CMD_ARG(aes-ecb, NULL, "", aes_ecb_test, 5, 5),
 	SHELL_CMD_ARG(aes-cbc, NULL, "", aes_cbc_test, 5, 5),
 	SHELL_CMD_ARG(aes-cfb, NULL, "", aes_cfb_test, 5, 5),
@@ -738,6 +958,10 @@ SHELL_STATIC_SUBCMD_SET_CREATE(cavp_cmds,
 	SHELL_CMD_ARG(tdes-cbc, NULL, "", tdes_cbc_test, 5, 5),
 	SHELL_CMD_ARG(tdes-cfb, NULL, "", tdes_cfb_test, 5, 5),
 	SHELL_CMD_ARG(tdes-ofb, NULL, "", tdes_ofb_test, 5, 5),
+
+	/* rsa */
+	SHELL_CMD_ARG(rsa-pkcs1, NULL, "", rsa_pkcs1_test, 6, 6),
+	SHELL_CMD_ARG(rsa-pss, NULL, "", rsa_pss_test, 6, 6),
 
 	SHELL_CMD(init, NULL, "", cavp_init),
 	SHELL_SUBCMD_SET_END);

@@ -24,6 +24,12 @@
  * @{
  */
 
+/* RSA padding */
+enum rsa_ssa {
+	RSA_PKCS1_V15 = 1,
+	RSA_PKCS1_V21,		/* RSA-PSS */
+};
+
 /* Forward declarations */
 struct rsa_ctx;
 struct rsa_pkt;
