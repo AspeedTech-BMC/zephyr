@@ -45,7 +45,6 @@ config ECDSA_SHELL
 
 config CAVP_SHELL
 	bool "Enable CAVP Shell"
-	default y
 	depends on SHELL
 	help
 	  Enable CAVP Shell for testing.
