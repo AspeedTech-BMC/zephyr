@@ -1393,6 +1393,7 @@ int i3c_aspeed_slave_send_sir(const struct device *dev, struct i3c_ibi_payload *
 	osEventFlagsClear(obj->event_id, ~osFlagsError);
 	events.value = 0;
 	events.fields.ibi_update = 1;
+	events.fields.resp_q_ready = 1;
 
 	i3c_register->queue_thld_ctrl.fields.resp_q_thld = 1 - 1;
 	i3c_register->device_ctrl.fields.slave_mdb = payload->buf[0];
