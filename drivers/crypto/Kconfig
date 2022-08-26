@@ -13,14 +13,13 @@ if CRYPTO
 
 config HASH_SHELL
 	bool "Enable Hash Shell"
-	default y
+	depends on CRYPTO_ASPEED
 	depends on SHELL
 	help
 	  Enable Hash Shell for testing.
 
 config CRYPTO_SHELL
 	bool "Enable CRYPTO Shell"
-	default y
 	depends on CRYPTO_ASPEED
 	depends on SHELL
 	help
@@ -28,7 +27,6 @@ config CRYPTO_SHELL
 
 config RSA_SHELL
 	bool "Enable RSA Shell"
-	default y
 	depends on RSA_ASPEED
 	depends on SHELL
 	help
@@ -36,15 +34,18 @@ config RSA_SHELL
 
 config ECDSA_SHELL
 	bool "Enable ECDSA sample code"
-	default y
-	depends on MBEDTLS
 	depends on ECDSA_ASPEED
+	depends on MBEDTLS
 	depends on SHELL
 	help
 	  Enable mbedtls ECDSA sample code.
 
 config CAVP_SHELL
 	bool "Enable CAVP Shell"
+	depends on CRYPTO_ASPEED
+	depends on RSA_ASPEED
+	depends on ECDSA_ASPEED
+	depends on MBEDTLS
 	depends on SHELL
 	help
 	  Enable CAVP Shell for testing.

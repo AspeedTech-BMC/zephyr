@@ -75,18 +75,18 @@ static void dump_pubkey(const struct shell *shell, const char *title, mbedtls_ec
 	unsigned char buf[300];
 	size_t len;
 
-	if (mbedtls_ecp_point_write_binary(&key->grp, &key->Q,
+	if (mbedtls_ecp_point_write_binary(&key->MBEDTLS_PRIVATE(grp), &key->MBEDTLS_PRIVATE(Q),
 									   MBEDTLS_ECP_PF_UNCOMPRESSED, &len, buf, sizeof(buf)) != 0) {
 		shell_fprintf(shell, SHELL_NORMAL, "internal error\n");
 		return;
 	}
 	dump_buf(shell, title, buf, len);
 
-	mbedtls_mpi_write_binary(&key->Q.X, buf, 48);
+	mbedtls_mpi_write_binary(&key->MBEDTLS_PRIVATE(Q).MBEDTLS_PRIVATE(X), buf, 48);
 	dump_buf(shell, "  + Qx: ", buf, 48);
-	mbedtls_mpi_write_binary(&key->Q.Y, buf, 48);
+	mbedtls_mpi_write_binary(&key->MBEDTLS_PRIVATE(Q).MBEDTLS_PRIVATE(Y), buf, 48);
 	dump_buf(shell, "  + Qy: ", buf, 48);
-	mbedtls_mpi_write_binary(&key->Q.Z, buf, 48);
+	mbedtls_mpi_write_binary(&key->MBEDTLS_PRIVATE(Q).MBEDTLS_PRIVATE(Z), buf, 48);
 	dump_buf(shell, "  + Qz: ", buf, 48);
 
 }
@@ -104,14 +104,16 @@ static int mbedtls_ecdsa_test(const struct shell *shell, int argc, char *argv[])
 		mbedtls_ecdsa_init(&ctx_verify);
 		mbedtls_mpi_init(&r);
 		mbedtls_mpi_init(&s);
-		mbedtls_mpi_read_binary(&ctx_verify.Q.X, secp384r1[i].Qx, 48);
-		mbedtls_mpi_read_binary(&ctx_verify.Q.Y, secp384r1[i].Qy, 48);
-		mbedtls_mpi_read_binary(&ctx_verify.Q.Z, &z, 1);
+		mbedtls_mpi_read_binary(&ctx_verify.MBEDTLS_PRIVATE(Q).MBEDTLS_PRIVATE(X),
+					secp384r1[i].Qx, 48);
+		mbedtls_mpi_read_binary(&ctx_verify.MBEDTLS_PRIVATE(Q).MBEDTLS_PRIVATE(Y),
+					secp384r1[i].Qy, 48);
+		mbedtls_mpi_read_binary(&ctx_verify.MBEDTLS_PRIVATE(Q).MBEDTLS_PRIVATE(Z), &z, 1);
 		mbedtls_mpi_read_binary(&r, secp384r1[i].r, 48);
 		mbedtls_mpi_read_binary(&s, secp384r1[i].s, 48);
 
 		shell_fprintf(shell, SHELL_NORMAL, " start load curve\n");
-		mbedtls_ecp_group_load(&ctx_verify.grp, MBEDTLS_ECP_DP_SECP384R1);
+		mbedtls_ecp_group_load(&ctx_verify.MBEDTLS_PRIVATE(grp), MBEDTLS_ECP_DP_SECP384R1);
 		shell_fprintf(shell, SHELL_NORMAL, " start verify\n");
 		dump_pubkey(shell, "  + Public key: ", &ctx_verify);
 		shell_fprintf(shell, SHELL_NORMAL, " signature\n");
@@ -119,8 +121,8 @@ static int mbedtls_ecdsa_test(const struct shell *shell, int argc, char *argv[])
 		dump_buf(shell, "  + s: ", secp384r1[i].s, 48);
 		memcpy(hash, secp384r1[i].m, secp384r1[i].m_size);
 
-		ret = mbedtls_ecdsa_verify(&ctx_verify.grp, hash, secp384r1[i].m_size,
-								   &ctx_verify.Q, &r, &s);
+		ret = mbedtls_ecdsa_verify(&ctx_verify.MBEDTLS_PRIVATE(grp), hash, secp384r1[i].m_size,
+								   &ctx_verify.MBEDTLS_PRIVATE(Q), &r, &s);
 		if (ret != 0) {
 			shell_fprintf(shell, SHELL_NORMAL, " failed! mbedtls_ecdsa_verify returned %d\n", ret);
 		} else {

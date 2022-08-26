@@ -286,12 +286,12 @@ static int get_rid_num(uint32_t *rid)
 
 static void sb_sha256(uint8_t *src, uint32_t len, uint8_t *digest_ret)
 {
-	mbedtls_sha256_ret(src, len, digest_ret, 0);
+	mbedtls_sha256(src, len, digest_ret, 0);
 }
 
 static void sb_sha384(uint8_t *src, uint32_t len, uint8_t *digest_ret)
 {
-	mbedtls_sha512_ret(src, len, digest_ret, 1);
+	mbedtls_sha512(src, len, digest_ret, 1);
 }
 
 static uint32_t chip_version(void)
