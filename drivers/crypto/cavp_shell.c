@@ -740,14 +740,12 @@ static int rsa_test(const struct shell *shell, size_t argc, char **argv,
 	mbedtls_md_type_t md_alg;
 	mbedtls_rsa_context rsa;
 	mbedtls_mpi K;
+	int hashlen = 0;
 	int offset;
 	int ret;
 
 	mbedtls_mpi_init(&K);
-	if (ssa == RSA_PKCS1_V15)
-		mbedtls_rsa_init(&rsa, MBEDTLS_RSA_PKCS_V15, 0);
-	else if (ssa == RSA_PKCS1_V21)
-		mbedtls_rsa_init(&rsa, MBEDTLS_RSA_PKCS_V21, 0);
+	mbedtls_rsa_init(&rsa);
 
 	/* hash algo */
 	shell_print(shell, "%s: hash: %s", __func__, argv[0]);
@@ -765,6 +763,12 @@ static int rsa_test(const struct shell *shell, size_t argc, char **argv,
 		shell_print(shell, "%s: hash %s is not supported", __func__, argv[0]);
 		return -EINVAL;
 	}
+
+	/* set padding */
+	if (ssa == RSA_PKCS1_V15)
+		mbedtls_rsa_set_padding(&rsa, MBEDTLS_RSA_PKCS_V15, md_alg);
+	else if (ssa == RSA_PKCS1_V21)
+		mbedtls_rsa_set_padding(&rsa, MBEDTLS_RSA_PKCS_V21, md_alg);
 
 	shell_print(shell, "%s: md_alg: %d", __func__, (int)md_alg);
 	argc--;
@@ -839,34 +843,39 @@ static int rsa_test(const struct shell *shell, size_t argc, char **argv,
 	/* Calculate message digest */
 	switch (md_alg) {
 	case MBEDTLS_MD_SHA1:
-		if (mbedtls_sha1_ret(msg_buf, msg_size/8, mdsum) != 0) {
+		if (mbedtls_sha1(msg_buf, msg_size/8, mdsum) != 0) {
 			shell_print(shell, "%s: SHA1 failed", __func__);
 			return -EINVAL;
 		}
+		hashlen = 20;
 		break;
 	case MBEDTLS_MD_SHA224:
-		if (mbedtls_sha256_ret(msg_buf, msg_size/8, mdsum, 1) != 0) {
+		if (mbedtls_sha256(msg_buf, msg_size/8, mdsum, 1) != 0) {
 			shell_print(shell, "%s: SHA224 failed", __func__);
 			return -EINVAL;
 		}
+		hashlen = 28;
 		break;
 	case MBEDTLS_MD_SHA256:
-		if (mbedtls_sha256_ret(msg_buf, msg_size/8, mdsum, 0) != 0) {
+		if (mbedtls_sha256(msg_buf, msg_size/8, mdsum, 0) != 0) {
 			shell_print(shell, "%s: SHA256 failed", __func__);
 			return -EINVAL;
 		}
+		hashlen = 32;
 		break;
 	case MBEDTLS_MD_SHA384:
-		if (mbedtls_sha512_ret(msg_buf, msg_size/8, mdsum, 1) != 0) {
+		if (mbedtls_sha512(msg_buf, msg_size/8, mdsum, 1) != 0) {
 			shell_print(shell, "%s: SHA384 failed", __func__);
 			return -EINVAL;
 		}
+		hashlen = 48;
 		break;
 	case MBEDTLS_MD_SHA512:
-		if (mbedtls_sha512_ret(msg_buf, msg_size/8, mdsum, 0) != 0) {
+		if (mbedtls_sha512(msg_buf, msg_size/8, mdsum, 0) != 0) {
 			shell_print(shell, "%s: SHA512 failed", __func__);
 			return -EINVAL;
 		}
+		hashlen = 64;
 		break;
 	default:
 		shell_print(shell, "%s: md %d is not supported", __func__, md_alg);
@@ -877,8 +886,8 @@ static int rsa_test(const struct shell *shell, size_t argc, char **argv,
 	print_buffer(shell, mdsum, 64);
 
 	/* Do RSA pkcs1 verification */
-	ret = mbedtls_rsa_pkcs1_verify(&rsa, NULL, NULL, MBEDTLS_RSA_PUBLIC,
-				       md_alg, 0, mdsum, sign_buf);
+	ret = mbedtls_rsa_pkcs1_verify(&rsa, md_alg, hashlen,
+				       mdsum, sign_buf);
 	if (ret) {
 		shell_print(shell, "%s: RSA SigVer ssa %d failed !", __func__, (int)ssa);
 	} else {
