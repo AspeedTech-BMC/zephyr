@@ -8,10 +8,10 @@
 
 /* ipmb define*/
 #define IPMB_REQUEST_LEN	0x7
-#define IPMB_TOTAL_LEN		0x100
+#define LIST_SIZE sizeof(sys_snode_t)
+#define IPMB_TOTAL_LEN		0x100 + LIST_SIZE
 
 #define GET_ADDR(addr)	((addr << 1) & 0xff)
-#define LIST_SIZE sizeof(sys_snode_t)
 #define IPMB_MSG_DATA_LEN (IPMB_TOTAL_LEN - IPMB_REQUEST_LEN - LIST_SIZE - 1)
 
 struct ipmb_msg {
