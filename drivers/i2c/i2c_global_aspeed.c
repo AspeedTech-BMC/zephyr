@@ -5,7 +5,7 @@
  */
 
 #define DT_DRV_COMPAT aspeed_i2c_global
-
+#include <drivers/hwinfo.h>
 #include <drivers/clock_control.h>
 #include <drivers/reset_control.h>
 #include <drivers/i2c.h>
@@ -31,6 +31,8 @@ LOG_MODULE_REGISTER(i2c_global);
 #define I2CG_SET	(CLK_NEW_MODE |\
 			REG_NEW_MODE |\
 			ISSUE_NAK_EMPTY)
+
+#define AST2600ID 0x05000000
 
 /* Device config */
 struct i2c_global_config {
@@ -67,23 +69,30 @@ struct i2c_global_config {
 static int i2c_global_init(const struct device *dev)
 {
 	struct i2c_global_config *config = DEV_CFG(dev);
+	uint64_t rev_id;
+	size_t len;
 	uint32_t i2c_global_base = config->base;
 	uint32_t *base = (uint32_t *)ASPEED_I2C_SRAM_BASE;
 
 	const struct device *reset_dev = device_get_binding(ASPEED_RST_CTRL_NAME);
 
-	/* i2c controller reset / de-reset */
-	reset_control_assert(reset_dev, DEV_CFG(dev)->rst_id);
-	reset_control_deassert(reset_dev, DEV_CFG(dev)->rst_id);
+	/* check chip id*/
+	len = hwinfo_get_device_id((uint8_t *)&rev_id, sizeof(rev_id));
 
-	/* set i2c global setting */
-	sys_write32(I2CG_SET, i2c_global_base + ASPEED_I2CG_CONTROL);
-	/* calculate divider */
-	sys_write32(I2CG_DIV_CTRL, i2c_global_base + ASPEED_I2CG_NEW_CLK_DIV);
+	if (((uint32_t)rev_id & 0xFF000000) != AST2600ID) {
+		/* i2c controller reset / de-reset */
+		reset_control_assert(reset_dev, DEV_CFG(dev)->rst_id);
+		reset_control_deassert(reset_dev, DEV_CFG(dev)->rst_id);
 
-	/* initial i2c sram region */
-	for (int i = 0; i < ASPEED_I2C_SRAM_SIZE; i++)
-		*(base + i) = 0;
+		/* set i2c global setting */
+		sys_write32(I2CG_SET, i2c_global_base + ASPEED_I2CG_CONTROL);
+		/* calculate divider */
+		sys_write32(I2CG_DIV_CTRL, i2c_global_base + ASPEED_I2CG_NEW_CLK_DIV);
+
+		/* initial i2c sram region */
+		for (int i = 0; i < ASPEED_I2C_SRAM_SIZE; i++)
+			*(base + i) = 0;
+	}
 
 	return 0;
 }

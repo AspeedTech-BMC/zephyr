@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 #define DT_DRV_COMPAT aspeed_i2c
-
+#include <drivers/hwinfo.h>
 #include <drivers/clock_control.h>
 #include "soc.h"
 
@@ -232,6 +232,8 @@ LOG_MODULE_REGISTER(i2c_aspeed);
 
 #define AST_I2C_GET_TX_DMA_LEN(x)	(x & 0x1fff)
 #define AST_I2C_GET_RX_DMA_LEN(x)	((x >> 16) & 0x1fff)
+
+#define AST2600ID 0x05000000
 
 /* new for i2c snoop */
 #define I2C_TIMEOUT_CLK			0x2
@@ -746,7 +748,7 @@ static void aspeed_new_i2c_do_start(const struct device *dev)
 			if (xfer_len) {
 				cmd |= AST_I2CM_RX_DMA_EN | AST_I2CM_RX_CMD;
 				sys_write32(AST_I2CM_SET_RX_DMA_LEN(xfer_len - 1), i2c_base + AST_I2CM_DMA_LEN);
-				sys_write32((uint32_t)msg->buf, i2c_base + AST_I2CM_RX_DMA);
+				sys_write32(TO_PHY_ADDR(msg->buf), i2c_base + AST_I2CM_RX_DMA);
 			}
 		} else if (config->mode == BUFF_MODE) {
 			/*buff mode*/
@@ -794,7 +796,7 @@ static void aspeed_new_i2c_do_start(const struct device *dev)
 			if (xfer_len) {
 				cmd |= AST_I2CM_TX_DMA_EN | AST_I2CM_TX_CMD;
 				sys_write32(AST_I2CM_SET_TX_DMA_LEN(xfer_len - 1), i2c_base + AST_I2CM_DMA_LEN);
-				sys_write32((uint32_t)msg->buf, i2c_base + AST_I2CM_TX_DMA);
+				sys_write32(TO_PHY_ADDR(msg->buf), i2c_base + AST_I2CM_TX_DMA);
 			}
 		} else if (config->mode == BUFF_MODE) {
 			uint8_t wbuf[4];
@@ -899,8 +901,8 @@ static int i2c_aspeed_transfer(const struct device *dev, struct i2c_msg *msgs,
 			if (ctrl & AST_I2CC_SLAVE_EN) {
 				if (config->mode == DMA_MODE) {
 					cmd |= AST_I2CS_RX_DMA_EN;
-					sys_write32((uint32_t)data->slave_dma_buf, i2c_base + AST_I2CS_RX_DMA);
-					sys_write32((uint32_t)data->slave_dma_buf, i2c_base + AST_I2CS_TX_DMA);
+					sys_write32(TO_PHY_ADDR(data->slave_dma_buf), i2c_base + AST_I2CS_RX_DMA);
+					sys_write32(TO_PHY_ADDR(data->slave_dma_buf), i2c_base + AST_I2CS_TX_DMA);
 					sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE)
 					, i2c_base + AST_I2CS_DMA_LEN);
 				} else if (config->mode == BUFF_MODE) {
@@ -998,7 +1000,7 @@ void do_i2cm_tx(const struct device *dev)
 		, i2c_base + AST_I2CM_DMA_LEN);
 		LOG_DBG("next tx xfer_len: %d, offset %d\n"
 		, xfer_len, data->master_xfer_cnt);
-		sys_write32((uint32_t)(data->msgs->buf + data->master_xfer_cnt)
+		sys_write32((TO_PHY_ADDR(data->msgs->buf) + data->master_xfer_cnt)
 		, i2c_base + AST_I2CM_TX_DMA);
 	} else if (config->mode == BUFF_MODE) {
 		uint8_t wbuf[4];
@@ -1108,7 +1110,7 @@ void do_i2cm_rx(const struct device *dev)
 			, i2c_base + AST_I2CM_DMA_LEN);
 			LOG_DBG("TODO check addr dma addr %x\n"
 			, (uint32_t)msg->buf);
-			sys_write32((uint32_t) (msg->buf + data->master_xfer_cnt)
+			sys_write32((TO_PHY_ADDR(msg->buf) + data->master_xfer_cnt)
 			, i2c_base + AST_I2CM_RX_DMA);
 		} else if (config->mode == BUFF_MODE) {
 			cmd |= AST_I2CM_RX_BUFF_EN;
@@ -1421,7 +1423,7 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 			LOG_DBG("tx [%02x]", data->slave_dma_buf[0]);
 
 			sys_write32(0, i2c_base + AST_I2CS_DMA_LEN_STS);
-			sys_write32((uint32_t)data->slave_dma_buf
+			sys_write32(TO_PHY_ADDR(data->slave_dma_buf)
 			, i2c_base + AST_I2CS_TX_DMA);
 			sys_write32(AST_I2CS_SET_TX_DMA_LEN(1)
 			, i2c_base + AST_I2CS_DMA_LEN);
@@ -1735,10 +1737,12 @@ static int i2c_aspeed_init(const struct device *dev)
 	struct i2c_aspeed_config *config = DEV_CFG(dev);
 	struct i2c_aspeed_data *data = DEV_DATA(dev);
 	uint32_t i2c_base = DEV_BASE(dev);
-	uint32_t i2c_count = ((i2c_base & 0xFFFF) / 0x80) - 1;
+	uint32_t i2c_count = ((i2c_base & 0xFFF) / 0x80) - 1;
 	uint32_t i2c_base_offset = I2C_BUF_BASE + (i2c_count * 0x20);
 	uint32_t bitrate_cfg;
 	int error;
+	uint64_t rev_id;
+	size_t len;
 
 	k_sem_init(&data->sync_sem, 0, UINT_MAX);
 
@@ -1760,9 +1764,15 @@ static int i2c_aspeed_init(const struct device *dev)
 	/* byte mode check re-start */
 	data->slave_addr_last = 0xFF;
 
-	clock_control_get_rate(config->clock_dev, config->clk_id, &config->clk_src);
-	LOG_DBG("clk src %d, div mode %d, multi-master %d, xfer mode %d\n",
-		config->clk_src, config->clk_div_mode, config->multi_master, config->mode);
+	/* check chip id*/
+	len = hwinfo_get_device_id((uint8_t *)&rev_id, sizeof(rev_id));
+	if (((uint32_t)rev_id & 0xFF000000) == AST2600ID) {
+		config->clk_src = 100000000;
+	} else {
+		clock_control_get_rate(config->clock_dev, config->clk_id, &config->clk_src);
+		LOG_DBG("clk src %d, div mode %d, multi-master %d, xfer mode %d\n",
+			config->clk_src, config->clk_div_mode, config->multi_master, config->mode);
+	}
 
 	bitrate_cfg = i2c_map_dt_bitrate(config->bitrate);
 
@@ -1804,7 +1814,7 @@ static int i2c_aspeed_slave_register(const struct device *dev,
 	/* trigger rx buffer */
 	if (i2c_config->mode == DMA_MODE) {
 		cmd |= AST_I2CS_RX_DMA_EN;
-		sys_write32((uint32_t)data->slave_dma_buf, i2c_base + AST_I2CS_RX_DMA);
+		sys_write32(TO_PHY_ADDR(data->slave_dma_buf), i2c_base + AST_I2CS_RX_DMA);
 		sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE), i2c_base + AST_I2CS_DMA_LEN);
 	} else if (i2c_config->mode == BUFF_MODE) {
 		cmd |= AST_I2CS_RX_BUFF_EN;
