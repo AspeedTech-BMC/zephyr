@@ -15,6 +15,7 @@
 #include <init.h>
 #include <sys/sys_io.h>
 #include <logging/log.h>
+#include <sys/crc.h>
 #define LOG_LEVEL CONFIG_I3C_LOG_LEVEL
 LOG_MODULE_REGISTER(i3c);
 
@@ -480,6 +481,7 @@ struct i3c_aspeed_config {
 	int assigned_addr;
 	int inst_id;
 	int ibi_append_pec;
+	int priv_xfer_pec;
 	int sda_tx_hold_ns;
 	int i3c_pp_scl_hi_period_ns;
 	int i3c_pp_scl_lo_period_ns;
@@ -541,6 +543,44 @@ struct i3c_aspeed_obj {
 #define DEV_DATA(dev)			((struct i3c_aspeed_obj *)(dev)->data)
 #define DESC_PRIV(desc)			((struct i3c_aspeed_dev_priv *)(desc)->priv_data)
 
+static uint8_t *pec_append(const struct device *dev, uint8_t *ptr, uint8_t len)
+{
+	struct i3c_aspeed_config *config = DEV_CFG(dev);
+	struct i3c_register_s *i3c_register = config->base;
+	uint8_t *xfer_buf;
+	uint8_t pec_v;
+	uint8_t addr_rnw;
+
+	addr_rnw = i3c_register->device_addr.fields.dynamic_addr << 1 | 0x1;
+	xfer_buf = k_malloc(len + 1);
+	memcpy(xfer_buf, ptr, len);
+
+	pec_v = crc8_ccitt(0, &addr_rnw, 1);
+	pec_v = crc8_ccitt(pec_v, xfer_buf, len);
+	LOG_DBG("pec = %x", pec_v);
+	xfer_buf[len] = pec_v;
+
+	return xfer_buf;
+}
+
+static int pec_valid(const struct device *dev, uint8_t *ptr, uint8_t len)
+{
+	struct i3c_aspeed_config *config = DEV_CFG(dev);
+	struct i3c_register_s *i3c_register = config->base;
+	uint8_t pec_v;
+	uint8_t addr_rnw;
+
+	if (len == 0 || ptr == NULL)
+		return -EINVAL;
+
+	addr_rnw = i3c_register->device_addr.fields.dynamic_addr << 1;
+
+	pec_v = crc8_ccitt(0, &addr_rnw, 1);
+	pec_v = crc8_ccitt(pec_v, ptr, len - 1);
+	LOG_DBG("pec = %x %x", pec_v, ptr[len - 1]);
+	return (pec_v == ptr[len - 1]) ? 0 : -EIO;
+}
+
 static int i3c_aspeed_get_pos(struct i3c_aspeed_obj *obj, uint8_t addr)
 {
 	int pos;
@@ -560,6 +600,7 @@ static void i3c_aspeed_rd_rx_fifo(struct i3c_aspeed_obj *obj, uint8_t *bytes, in
 	struct i3c_register_s *i3c_register = obj->config->base;
 	uint32_t *dst = (uint32_t *)bytes;
 	int nwords = nbytes >> 2;
+	int ret;
 	int i;
 
 	for (i = 0; i < nwords; i++) {
@@ -571,6 +612,13 @@ static void i3c_aspeed_rd_rx_fifo(struct i3c_aspeed_obj *obj, uint8_t *bytes, in
 
 		tmp = i3c_register->rx_tx_data_port;
 		memcpy(bytes + (nbytes & ~0x3), &tmp, nbytes & 3);
+	}
+	if (obj->config->priv_xfer_pec) {
+		ret = pec_valid(obj->dev, bytes, nbytes);
+		if (ret) {
+			LOG_ERR("PEC error\n");
+			memset(bytes, 0, nbytes);
+		}
 	}
 }
 
@@ -1328,6 +1376,7 @@ int i3c_aspeed_slave_put_read_data(const struct device *dev, struct i3c_slave_pa
 	struct i3c_register_s *i3c_register = config->base;
 	union i3c_intr_s events;
 	union i3c_device_cmd_queue_port_s cmd;
+	uint8_t *xfer_buf;
 
 	__ASSERT_NO_MSG(data);
 	__ASSERT_NO_MSG(data->buf);
@@ -1357,9 +1406,16 @@ int i3c_aspeed_slave_put_read_data(const struct device *dev, struct i3c_slave_pa
 		}
 	}
 
-	i3c_aspeed_wr_tx_fifo(obj, data->buf, data->size);
+	if (config->priv_xfer_pec) {
+		xfer_buf = pec_append(dev, data->buf, data->size);
+		i3c_aspeed_wr_tx_fifo(obj, xfer_buf, data->size + 1);
+		cmd.slave_data_cmd.dl = data->size + 1;
+		k_free(xfer_buf);
+	} else {
+		i3c_aspeed_wr_tx_fifo(obj, data->buf, data->size);
+		cmd.slave_data_cmd.dl = data->size;
+	}
 	cmd.slave_data_cmd.cmd_attr = COMMAND_PORT_SLAVE_DATA_CMD;
-	cmd.slave_data_cmd.dl = data->size;
 	i3c_register->cmd_queue_port.value = cmd.value;
 
 	if (ibi_notify) {
@@ -1640,6 +1696,7 @@ static int i3c_aspeed_init(const struct device *dev)
 		.assigned_addr = DT_INST_PROP_OR(n, assigned_address, 0),                          \
 		.inst_id = DT_INST_PROP_OR(n, instance_id, 0),                                     \
 		.ibi_append_pec = DT_INST_PROP_OR(n, ibi_append_pec, 0),                           \
+		.priv_xfer_pec = DT_INST_PROP_OR(n, priv_xfer_pec, 0),                             \
 		.sda_tx_hold_ns = DT_INST_PROP_OR(n, sda_tx_hold_ns, 0),                           \
 		.i3c_pp_scl_hi_period_ns = DT_INST_PROP_OR(n, i3c_pp_scl_hi_period_ns, 0),         \
 		.i3c_pp_scl_lo_period_ns = DT_INST_PROP_OR(n, i3c_pp_scl_lo_period_ns, 0),         \

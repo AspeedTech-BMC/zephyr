@@ -28,6 +28,14 @@ properties:
     type: boolean
     description: Append PEC byte to the IBI data.  Enable this option in slave mode if the master device is AST2600 or AST1030A0.
 
+  priv-xfer-pec:
+    required: false
+    type: boolean
+    description: |
+      Enable this option in slave mode if the i3c want to communicate with data that have PEC.
+      The PEC will auto append to the tail of the data when doing private transfer and verify
+      the PEC when receiving the data from master.
+
   i3c-pp-scl-hi-period-ns:
     required: false
     type: int
