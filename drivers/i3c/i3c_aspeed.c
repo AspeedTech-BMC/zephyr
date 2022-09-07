@@ -144,6 +144,8 @@ union i3c_device_resp_queue_port_s {
 		volatile uint32_t err_status : 4;		/* bit[31:28] */
 	} fields;
 }; /* offset 0x10 */
+#define SLAVE_TID_MASTER_WRITE_DATA 0x8
+#define SLAVE_TID_DEFSLV_WRITE_DATA 0xF
 
 union i3c_ibi_queue_status_s {
 	volatile uint32_t value;
@@ -686,7 +688,8 @@ static void i3c_aspeed_slave_rx_data(struct i3c_aspeed_obj *obj)
 		struct i3c_slave_payload *payload;
 
 		resp.value = i3c_register->resp_queue_port.value;
-		if (resp.fields.data_length && !resp.fields.err_status) {
+		if (resp.fields.data_length && !resp.fields.err_status &&
+		    resp.fields.tid == SLAVE_TID_MASTER_WRITE_DATA) {
 			if (cb->write_requested) {
 				payload = cb->write_requested(obj->slave_data.dev);
 				payload->size = resp.fields.data_length;
