@@ -80,7 +80,7 @@
 			compatible = "aspeed,gpio";
 			reg = <0x7e780000 0x400>;
 			interrupts = <72 AST10X0_IRQ_DEFAULT_PRIORITY>;
-			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			clocks = <&sysclk ASPEED_CLK_APB2>;
 			gpio0_a_d: gpio0_a_d {
 				#gpio-cells = <2>;
 				gpio-controller;
@@ -163,7 +163,7 @@
 			compatible = "aspeed,sgpiom";
 			reg = <0x7e780500 0x100>;
 			interrupts = <51 AST10X0_IRQ_DEFAULT_PRIORITY>;
-			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			clocks = <&sysclk ASPEED_CLK_APB2>;
 			pinctrl-0 = <&pinctrl_sgpiom0_default>;
 			ngpios = <128>;
 			status = "disabled";
@@ -212,7 +212,7 @@
 			compatible = "aspeed,sgpiom";
 			reg = <0x7e780600 0x100>;
 			interrupts = <70 AST10X0_IRQ_DEFAULT_PRIORITY>;
-			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			clocks = <&sysclk ASPEED_CLK_APB2>;
 			pinctrl-0 = <&pinctrl_sgpiom1_default>;
 			ngpios = <80>;
 			status = "disabled";
@@ -268,7 +268,7 @@
 		    #address-cells = <1>;
 		    #size-cells = <0>;
 		    reg = <0x7e78a000 0x20>;
-		    clocks = <&sysclk ASPEED_CLK_PCLK>;
+		    clocks = <&sysclk ASPEED_CLK_APB2>;
 		    resets = <&sysrst ASPEED_RESET_I2C>;
 		    label = "I2C_GLOBAL";
 		};
@@ -280,7 +280,7 @@
 		    #size-cells = <0>;
 		    reg = <0x7e78a080 0x80>;
 		    interrupts = <INTR_I2C0 AST10X0_IRQ_DEFAULT_PRIORITY>;
-		    clocks = <&sysclk ASPEED_CLK_PCLK>;
+		    clocks = <&sysclk ASPEED_CLK_APB2>;
 		    status = "disabled";
 		    label = "I2C_0";
 		};
@@ -292,7 +292,7 @@
 		    #size-cells = <0>;
 		    reg = <0x7e78a100 0x80>;
 		    interrupts = <INTR_I2C1 AST10X0_IRQ_DEFAULT_PRIORITY>;
-		    clocks = <&sysclk ASPEED_CLK_PCLK>;
+		    clocks = <&sysclk ASPEED_CLK_APB2>;
 		    status = "disabled";
 		    label = "I2C_1";
 		};
@@ -304,7 +304,7 @@
 		    #size-cells = <0>;
 		    reg = <0x7e78a180 0x80>;
 		    interrupts = <INTR_I2C2 AST10X0_IRQ_DEFAULT_PRIORITY>;
-		    clocks = <&sysclk ASPEED_CLK_PCLK>;
+		    clocks = <&sysclk ASPEED_CLK_APB2>;
 		    status = "disabled";
 		    label = "I2C_2";
 		};
@@ -316,7 +316,7 @@
 		    #size-cells = <0>;
 		    reg = <0x7e78a200 0x80>;
 		    interrupts = <INTR_I2C3 AST10X0_IRQ_DEFAULT_PRIORITY>;
-		    clocks = <&sysclk ASPEED_CLK_PCLK>;
+		    clocks = <&sysclk ASPEED_CLK_APB2>;
 		    status = "disabled";
 		    label = "I2C_3";
 		};
@@ -328,7 +328,7 @@
 		    #size-cells = <0>;
 		    reg = <0x7e78a280 0x80>;
 		    interrupts = <INTR_I2C4 AST10X0_IRQ_DEFAULT_PRIORITY>;
-		    clocks = <&sysclk ASPEED_CLK_PCLK>;
+		    clocks = <&sysclk ASPEED_CLK_APB2>;
 		    status = "disabled";
 		    label = "I2C_4";
 		};
@@ -340,7 +340,7 @@
 		    #size-cells = <0>;
 		    reg = <0x7e78a300 0x80>;
 		    interrupts = <INTR_I2C5 AST10X0_IRQ_DEFAULT_PRIORITY>;
-		    clocks = <&sysclk ASPEED_CLK_PCLK>;
+		    clocks = <&sysclk ASPEED_CLK_APB2>;
 		    status = "disabled";
 		    label = "I2C_5";
 		};
@@ -352,7 +352,7 @@
 		    #size-cells = <0>;
 		    reg = <0x7e78a380 0x80>;
 		    interrupts = <INTR_I2C6 AST10X0_IRQ_DEFAULT_PRIORITY>;
-		    clocks = <&sysclk ASPEED_CLK_PCLK>;
+		    clocks = <&sysclk ASPEED_CLK_APB2>;
 		    status = "disabled";
 		    label = "I2C_6";
 		};
@@ -364,7 +364,7 @@
 		    #size-cells = <0>;
 		    reg = <0x7e78a400 0x80>;
 		    interrupts = <INTR_I2C7 AST10X0_IRQ_DEFAULT_PRIORITY>;
-		    clocks = <&sysclk ASPEED_CLK_PCLK>;
+		    clocks = <&sysclk ASPEED_CLK_APB2>;
 		    status = "disabled";
 		    label = "I2C_7";
 		};
@@ -376,7 +376,7 @@
 		    #size-cells = <0>;
 		    reg = <0x7e78a480 0x80>;
 		    interrupts = <INTR_I2C8 AST10X0_IRQ_DEFAULT_PRIORITY>;
-		    clocks = <&sysclk ASPEED_CLK_PCLK>;
+		    clocks = <&sysclk ASPEED_CLK_APB2>;
 		    status = "disabled";
 		    label = "I2C_8";
 		};
@@ -388,7 +388,7 @@
 		    #size-cells = <0>;
 		    reg = <0x7e78a500 0x80>;
 		    interrupts = <INTR_I2C9 AST10X0_IRQ_DEFAULT_PRIORITY>;
-		    clocks = <&sysclk ASPEED_CLK_PCLK>;
+		    clocks = <&sysclk ASPEED_CLK_APB2>;
 		    status = "disabled";
 		    label = "I2C_9";
 		};
@@ -400,7 +400,7 @@
 		    #size-cells = <0>;
 		    reg = <0x7e78a580 0x80>;
 		    interrupts = <INTR_I2C10 AST10X0_IRQ_DEFAULT_PRIORITY>;
-		    clocks = <&sysclk ASPEED_CLK_PCLK>;
+		    clocks = <&sysclk ASPEED_CLK_APB2>;
 		    status = "disabled";
 		    label = "I2C_10";
 		};
@@ -412,7 +412,7 @@
 		    #size-cells = <0>;
 		    reg = <0x7e78a600 0x80>;
 		    interrupts = <INTR_I2C11 AST10X0_IRQ_DEFAULT_PRIORITY>;
-		    clocks = <&sysclk ASPEED_CLK_PCLK>;
+		    clocks = <&sysclk ASPEED_CLK_APB2>;
 		    status = "disabled";
 		    label = "I2C_11";
 		};
@@ -424,7 +424,7 @@
 		    #size-cells = <0>;
 		    reg = <0x7e78a680 0x80>;
 		    interrupts = <INTR_I2C12 AST10X0_IRQ_DEFAULT_PRIORITY>;
-		    clocks = <&sysclk ASPEED_CLK_PCLK>;
+		    clocks = <&sysclk ASPEED_CLK_APB2>;
 		    status = "disabled";
 		    label = "I2C_12";
 		};
@@ -436,7 +436,7 @@
 		    #size-cells = <0>;
 		    reg = <0x7e78a700 0x80>;
 		    interrupts = <INTR_I2C13 AST10X0_IRQ_DEFAULT_PRIORITY>;
-		    clocks = <&sysclk ASPEED_CLK_PCLK>;
+		    clocks = <&sysclk ASPEED_CLK_APB2>;
 		    status = "disabled";
 		    label = "I2C_13";
 		};
@@ -448,7 +448,7 @@
 		    #size-cells = <0>;
 		    reg = <0x7e78a780 0x80>;
 		    interrupts = <INTR_I2C14 AST10X0_IRQ_DEFAULT_PRIORITY>;
-		    clocks = <&sysclk ASPEED_CLK_PCLK>;
+		    clocks = <&sysclk ASPEED_CLK_APB2>;
 		    status = "disabled";
 		    label = "I2C_14";
 		};
@@ -460,7 +460,7 @@
 		    #size-cells = <0>;
 		    reg = <0x7e78a800 0x80>;
 		    interrupts = <INTR_I2C15 AST10X0_IRQ_DEFAULT_PRIORITY>;
-		    clocks = <&sysclk ASPEED_CLK_PCLK>;
+		    clocks = <&sysclk ASPEED_CLK_APB2>;
 		    status = "disabled";
 		    label = "I2C_15";
 		};
