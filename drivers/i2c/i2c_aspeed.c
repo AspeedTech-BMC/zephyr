@@ -1766,13 +1766,9 @@ static int i2c_aspeed_init(const struct device *dev)
 
 	/* check chip id*/
 	len = hwinfo_get_device_id((uint8_t *)&rev_id, sizeof(rev_id));
-	if (((uint32_t)rev_id & 0xFF000000) == AST2600ID) {
-		config->clk_src = 100000000;
-	} else {
-		clock_control_get_rate(config->clock_dev, config->clk_id, &config->clk_src);
-		LOG_DBG("clk src %d, div mode %d, multi-master %d, xfer mode %d\n",
-			config->clk_src, config->clk_div_mode, config->multi_master, config->mode);
-	}
+	clock_control_get_rate(config->clock_dev, config->clk_id, &config->clk_src);
+	LOG_DBG("clk src %d, div mode %d, multi-master %d, xfer mode %d\n",
+		config->clk_src, config->clk_div_mode, config->multi_master, config->mode);
 
 	bitrate_cfg = i2c_map_dt_bitrate(config->bitrate);
 
