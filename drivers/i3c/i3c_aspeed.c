@@ -305,7 +305,7 @@ union i3c_slave_pid_hi_s {
 union i3c_slave_pid_lo_s {
 	volatile uint32_t value;
 	struct {
-		volatile uint32_t dcr : 12;			/* bit[11:0] */
+		volatile uint32_t extra_info : 12;		/* bit[11:0] */
 		volatile uint32_t inst_id : 4;			/* bit[15:12] */
 		volatile uint32_t part_id : 16;			/* bit[31:16] */
 	} fields;
@@ -479,6 +479,7 @@ struct i3c_aspeed_config {
 	const clock_control_subsys_t clock_id;
 	uint32_t i3c_scl_hz;
 	uint32_t i2c_scl_hz;
+	uint16_t pid_extra_info;
 	int secondary;
 	int assigned_addr;
 	int inst_id;
@@ -1014,6 +1015,7 @@ static void i3c_aspeed_init_pid(struct i3c_aspeed_obj *obj)
 	i3c_register->slave_pid_hi.value = slave_pid_hi.value;
 
 	slave_pid_lo.value = 0;
+	slave_pid_lo.fields.extra_info = config->pid_extra_info;
 	slave_pid_lo.fields.part_id = rev_id;
 	slave_pid_lo.fields.inst_id = config->inst_id;
 	i3c_register->slave_pid_lo.value = slave_pid_lo.value;
@@ -1505,6 +1507,17 @@ int i3c_aspeed_slave_set_static_addr(const struct device *dev, uint8_t static_ad
 	return 0;
 }
 
+void i3c_aspeed_set_pid_extra_info(const struct device *dev, uint16_t extra_info)
+{
+	struct i3c_aspeed_config *config = DEV_CFG(dev);
+	struct i3c_register_s *i3c_register = config->base;
+	union i3c_slave_pid_lo_s slave_pid_lo;
+
+	slave_pid_lo.value = i3c_register->slave_pid_lo.value;
+	slave_pid_lo.fields.extra_info = extra_info;
+	i3c_register->slave_pid_lo.value = slave_pid_lo.value;
+}
+
 int i3c_aspeed_slave_get_dynamic_addr(const struct device *dev, uint8_t *dynamic_addr)
 {
 	struct i3c_aspeed_config *config = DEV_CFG(dev);
@@ -1701,6 +1714,7 @@ static int i3c_aspeed_init(const struct device *dev)
 		.ibi_append_pec = DT_INST_PROP_OR(n, ibi_append_pec, 0),                           \
 		.priv_xfer_pec = DT_INST_PROP_OR(n, priv_xfer_pec, 0),                             \
 		.sda_tx_hold_ns = DT_INST_PROP_OR(n, sda_tx_hold_ns, 0),                           \
+		.pid_extra_info = DT_INST_PROP_OR(n, pid_extra_info, 0),                           \
 		.i3c_pp_scl_hi_period_ns = DT_INST_PROP_OR(n, i3c_pp_scl_hi_period_ns, 0),         \
 		.i3c_pp_scl_lo_period_ns = DT_INST_PROP_OR(n, i3c_pp_scl_lo_period_ns, 0),         \
 		.i3c_od_scl_hi_period_ns = DT_INST_PROP_OR(n, i3c_od_scl_hi_period_ns, 0),         \

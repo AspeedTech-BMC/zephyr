@@ -249,6 +249,7 @@ int i3c_master_send_getbcr(const struct device *master, uint8_t addr, uint8_t *b
 #define i3c_slave_wait_data_consume	i3c_aspeed_slave_wait_data_consume
 #define i3c_slave_get_dynamic_addr	i3c_aspeed_slave_get_dynamic_addr
 #define i3c_slave_get_event_enabling	i3c_aspeed_slave_get_event_enabling
+#define i3c_set_pid_extra_info		i3c_aspeed_set_pid_extra_info
 
 int i3c_jesd403_read(struct i3c_dev_desc *slave, uint8_t *addr, int addr_size, uint8_t *data,
 		     int data_size);
