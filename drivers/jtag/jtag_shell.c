@@ -13,6 +13,8 @@
 #include <drivers/jtag.h>
 #include <stdlib.h>
 
+#define JTAG_DEVICE_PREFIX              "JTAG"
+
 static uint8_t tdi_buffer[512];
 
 static int cmd_ir_scan(const struct shell *shell, size_t argc, char **argv)
@@ -22,14 +24,14 @@ static int cmd_ir_scan(const struct shell *shell, size_t argc, char **argv)
 	uint32_t value;
 	int err, index;
 
-	dev = device_get_binding(argv[1]);
+	dev = device_get_binding(argv[-1]);
 	if (!dev) {
 		shell_error(shell, "JTAG device not found");
 		return -EINVAL;
 	}
 
-	bit_len = strtoul(argv[2], NULL, 0);
-	value = strtoul(argv[3], NULL, 16);
+	bit_len = strtoul(argv[1], NULL, 0);
+	value = strtoul(argv[2], NULL, 16);
 
 	err = jtag_ir_scan(dev, bit_len, (uint8_t *)&value, tdi_buffer,
 			   TAP_IDLE);
@@ -51,14 +53,14 @@ static int cmd_dr_scan(const struct shell *shell, size_t argc, char **argv)
 	uint32_t value;
 	int err, index;
 
-	dev = device_get_binding(argv[1]);
+	dev = device_get_binding(argv[-1]);
 	if (!dev) {
 		shell_error(shell, "JTAG device not found");
 		return -EINVAL;
 	}
 
-	bit_len = strtoul(argv[2], NULL, 0);
-	value = strtoul(argv[3], NULL, 16);
+	bit_len = strtoul(argv[1], NULL, 0);
+	value = strtoul(argv[2], NULL, 16);
 
 	err = jtag_dr_scan(dev, bit_len, (uint8_t *)&value, tdi_buffer,
 			   TAP_IDLE);
@@ -79,13 +81,13 @@ static int cmd_frequency(const struct shell *shell, size_t argc, char **argv)
 	uint32_t freq;
 	int err;
 
-	dev = device_get_binding(argv[1]);
+	dev = device_get_binding(argv[-1]);
 	if (!dev) {
 		shell_error(shell, "JTAG device not found");
 		return -EINVAL;
 	}
 
-	freq = strtoul(argv[2], NULL, 0);
+	freq = strtoul(argv[1], NULL, 0);
 
 	err = jtag_freq_set(dev, freq);
 	if (err) {
@@ -104,19 +106,17 @@ static int cmd_frequency(const struct shell *shell, size_t argc, char **argv)
 	return 0;
 }
 
-static int cmd_tap_state(const struct shell *shell, size_t argc, char **argv)
+static int cmd_tap_state(const struct shell *shell, size_t argc, char **argv, void *data)
 {
 	const struct device *dev;
-	enum tap_state state;
+	enum tap_state state = (enum tap_state) data;
 	int err;
 
-	dev = device_get_binding(argv[1]);
+	dev = device_get_binding(argv[-2]);
 	if (!dev) {
 		shell_error(shell, "JTAG device not found");
 		return -EINVAL;
 	}
-
-	state = strtoul(argv[2], NULL, 0);
 
 	err = jtag_tap_set(dev, state);
 	if (err) {
@@ -128,21 +128,19 @@ static int cmd_tap_state(const struct shell *shell, size_t argc, char **argv)
 	return 0;
 }
 
-static int cmd_sw_xfer(const struct shell *shell, size_t argc, char **argv)
+static int cmd_sw_xfer(const struct shell *shell, size_t argc, char **argv, void *data)
 {
 	const struct device *dev;
-	enum jtag_pin pin;
+	enum jtag_pin pin = (enum jtag_pin) data;
 	uint8_t value;
 	int err;
 
-	dev = device_get_binding(argv[1]);
+	dev = device_get_binding(argv[-3]);
 	if (!dev) {
 		shell_error(shell, "JTAG device not found");
 		return -EINVAL;
 	}
-
-	pin = strtoul(argv[2], NULL, 0);
-	value = strtoul(argv[3], NULL, 0);
+	value = strcmp("high", argv[-1]) ? 0 : 1;
 
 	err = jtag_sw_xfer(dev, pin, value);
 	if (err) {
@@ -150,24 +148,63 @@ static int cmd_sw_xfer(const struct shell *shell, size_t argc, char **argv)
 			    pin, value, err);
 		return err;
 	}
-	jtag_tdo_get(dev, &value);
-	shell_print(shell, "%d", value);
 
 	return 0;
 }
 
+SHELL_SUBCMD_DICT_SET_CREATE(sub_tap_cmds, cmd_tap_state,
+	(DREXIT2, TAP_DREXIT2),
+	(DREXIT1, TAP_DREXIT1),
+	(DRSHIFT, TAP_DRSHIFT),
+	(DRPAUSE, TAP_DRPAUSE),
+	(IRSELECT, TAP_IRSELECT),
+	(DRUPDATE, TAP_DRUPDATE),
+	(DRCAPTURE, TAP_DRCAPTURE),
+	(DRSELECT, TAP_DRSELECT),
+	(IREXIT2, TAP_IREXIT2),
+	(IREXIT1, TAP_IREXIT1),
+	(IRSHIFT, TAP_IRSHIFT),
+	(IRPAUSE, TAP_IRPAUSE),
+	(IDLE, TAP_IDLE),
+	(IRUPDATE, TAP_IRUPDATE),
+	(IRCAPTURE, TAP_IRCAPTURE),
+	(RESET, TAP_RESET)
+);
+
+SHELL_SUBCMD_DICT_SET_CREATE(sub_pin_cmds, cmd_sw_xfer,
+	(TDI, JTAG_TDI),
+	(TCK, JTAG_TCK),
+	(TMS, JTAG_TMS),
+	(TRST, JTAG_TRST)
+);
+
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_action_cmds,
+	SHELL_CMD(high, &sub_pin_cmds, "<pin>", NULL),
+	SHELL_CMD(low, &sub_pin_cmds, "<pin>", NULL),
+	SHELL_SUBCMD_SET_END
+);
+
 SHELL_STATIC_SUBCMD_SET_CREATE(
-	jtag_cmds,
-	SHELL_CMD_ARG(frequency, NULL, "<device> <frequency>", cmd_frequency, 3,
+	sub_jtag_cmds,
+	SHELL_CMD_ARG(frequency, NULL, "<frequency>", cmd_frequency, 2,
 		      0),
-	SHELL_CMD_ARG(ir_scan, NULL, "<device> <len> <value>", cmd_ir_scan, 4,
+	SHELL_CMD_ARG(ir_scan, NULL, "<len> <value>", cmd_ir_scan, 3,
 		      0),
-	SHELL_CMD_ARG(dr_scan, NULL, "<device> <len> <value>", cmd_dr_scan, 4,
+	SHELL_CMD_ARG(dr_scan, NULL, "<len> <value>", cmd_dr_scan, 3,
 		      0),
-	SHELL_CMD_ARG(tap_set, NULL, "<device> <tap_state>", cmd_tap_state, 3,
-		      0),
-	SHELL_CMD_ARG(sw_xfer, NULL, "<device> <pin> <value>", cmd_sw_xfer, 4,
-		      0),
+	SHELL_CMD(tap_set, &sub_tap_cmds, "<tap_state>", NULL),
+	SHELL_CMD(sw_xfer, &sub_action_cmds, "<high/low> <pin>", NULL),
 	SHELL_SUBCMD_SET_END);
 
-SHELL_CMD_REGISTER(jtag, &jtag_cmds, "JTAG shell commands", NULL);
+static void cmd_jtag_dev_get(size_t idx, struct shell_static_entry *entry)
+{
+	const struct device *dev = shell_device_lookup(idx, JTAG_DEVICE_PREFIX);
+
+	entry->syntax = (dev != NULL) ? dev->name : NULL;
+	entry->handler = NULL;
+	entry->help = "Select JTAG device for subcommand.\n";
+	entry->subcmd = &sub_jtag_cmds;
+}
+SHELL_DYNAMIC_CMD_CREATE(sub_jtag_dev, cmd_jtag_dev_get);
+
+SHELL_CMD_REGISTER(jtag, &sub_jtag_dev, "JTAG shell commands", NULL);
