@@ -263,6 +263,11 @@ static int jtag_aspeed_sw_xfer(const struct device *dev, enum jtag_pin pin,
 	struct jtag_register_s *jtag_register = config->base;
 	union software_mode_and_status_s software_mode_and_status;
 
+	if (pin == JTAG_TRST) {
+		LOG_DBG("JTAG_TRST = %d\t", value);
+		jtag_register->engine_control_1.fields.control_of_trstn = value;
+		return 0;
+	}
 	software_mode_and_status.value =
 		jtag_register->software_mode_and_status.value;
 	software_mode_and_status.fields.software_mode_enable = 1;
@@ -282,7 +287,6 @@ static int jtag_aspeed_sw_xfer(const struct device *dev, enum jtag_pin pin,
 		software_mode_and_status.fields.software_tms = value;
 		break;
 	case JTAG_ENABLE:
-	case JTAG_TRST:
 	default:
 		return -EINVAL;
 	}
