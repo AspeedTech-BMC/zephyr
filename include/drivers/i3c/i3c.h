@@ -229,9 +229,9 @@ int i3c_aspeed_slave_wait_data_consume(const struct device *dev);
  * @brief set the pid extra info of the i3c controller
  * @param dev the I3C controller
  * @param extra_info the extra info of the pid bits[11:0]
- * @return
+ * @return int 0 = success
  */
-void i3c_aspeed_set_pid_extra_info(const struct device *dev, uint16_t extra_info);
+int i3c_aspeed_set_pid_extra_info(const struct device *dev, uint16_t extra_info);
 
 /* common API */
 int i3c_master_send_enec(const struct device *master, uint8_t addr, uint8_t evt);

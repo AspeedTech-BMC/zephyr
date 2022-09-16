@@ -1507,15 +1507,20 @@ int i3c_aspeed_slave_set_static_addr(const struct device *dev, uint8_t static_ad
 	return 0;
 }
 
-void i3c_aspeed_set_pid_extra_info(const struct device *dev, uint16_t extra_info)
+int i3c_aspeed_set_pid_extra_info(const struct device *dev, uint16_t extra_info)
 {
 	struct i3c_aspeed_config *config = DEV_CFG(dev);
 	struct i3c_register_s *i3c_register = config->base;
 	union i3c_slave_pid_lo_s slave_pid_lo;
 
+	if (extra_info > GENMASK(11, 0))
+		return -EINVAL;
+
 	slave_pid_lo.value = i3c_register->slave_pid_lo.value;
 	slave_pid_lo.fields.extra_info = extra_info;
 	i3c_register->slave_pid_lo.value = slave_pid_lo.value;
+
+	return 0;
 }
 
 int i3c_aspeed_slave_get_dynamic_addr(const struct device *dev, uint8_t *dynamic_addr)
