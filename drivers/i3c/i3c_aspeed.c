@@ -763,6 +763,11 @@ static void i3c_aspeed_master_rx_ibi(struct i3c_aspeed_obj *obj)
 		}
 
 		pos = i3c_aspeed_get_pos(obj, ibi_status.id >> 1);
+		if (pos < 0) {
+			LOG_ERR("unregistered IBI source: 0x%x\n", ibi_status.id >> 1);
+			i3c_register->reset_ctrl.fields.ibi_queue_reset = 1;
+			continue;
+		}
 
 		i3cdev = obj->dev_descs[pos];
 		priv = DESC_PRIV(i3cdev);
