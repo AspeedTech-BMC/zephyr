@@ -158,6 +158,7 @@ static int cmd_send_ccc(const struct shell *shell, size_t argc, char **argv)
 	}
 
 	ccc.rnw = 0;
+	ccc.id = 0;
 
 	while ((c = shell_getopt(shell, argc - 1, &argv[1], "ha:i:w:r:")) != -1) {
 		state = shell_getopt_state_get(shell);
@@ -196,6 +197,11 @@ static int cmd_send_ccc(const struct shell *shell, size_t argc, char **argv)
 		default:
 			break;
 		}
+	}
+
+	if (ccc.id == 0) {
+		shell_print(shell, "CCC ID not assigned\n");
+		return SHELL_CMD_HELP_PRINTED;
 	}
 
 	ccc.ret = 0;
