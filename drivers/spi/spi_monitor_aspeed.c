@@ -202,6 +202,11 @@ struct priv_reg_info {
 	uint32_t end_bit_off;
 };
 
+struct aspeed_spim_cs_pd_info {
+	uint32_t off;
+	uint32_t bit;
+};
+
 static void acquire_spim_device(const struct device *dev)
 {
 	if (IS_ENABLED(CONFIG_MULTITHREADING)) {
@@ -252,6 +257,38 @@ void spim_scu_ctrl_set(const struct device *dev, uint32_t mask, uint32_t val)
 	reg_val |= val;
 	sys_write32(reg_val, spim_scu_ctrl);
 
+	k_spin_unlock(&data->scu_lock, key);
+}
+
+/*
+ * SPI_M1: GPIOA6, SCU610[6]
+ * SPI_M2: GPIOC4, SCU610[20]
+ * SPI_M3: GPIOE2, SCU614[2] (dummy, cannot be disabled)
+ * SPI_M4: GPIOG0, SCU614[16]
+ */
+void spim_disable_cs_internal_pd(const struct device *dev, uint32_t idx)
+{
+	const struct aspeed_spim_common_config *config = dev->config;
+	struct aspeed_spim_common_data *const data = dev->data;
+	mm_reg_t spim_scu_ctrl = config->scu_base;
+	uint32_t reg_val;
+	struct aspeed_spim_cs_pd_info pd_info[4] = {
+		{0x610, BIT(6)},
+		{0x610, BIT(20)},
+		{0x614, BIT(2)},
+		{0x614, BIT(16)},
+	};
+	/* Avoid SCU being accessed by more than a thread */
+	k_spinlock_key_t key = k_spin_lock(&data->scu_lock);
+
+	if (idx >= 4)
+		goto end;
+
+	reg_val = sys_read32(spim_scu_ctrl + pd_info[idx].off);
+	reg_val |= pd_info[idx].bit;
+	sys_write32(reg_val, spim_scu_ctrl + pd_info[idx].off);
+
+end:
 	k_spin_unlock(&data->scu_lock, key);
 }
 
@@ -1260,6 +1297,8 @@ static int aspeed_spi_monitor_init(const struct device *dev)
 	spim_scu_passthrough_mode(dev, 0, true);
 	/* always keep at master mode during booting up stage */
 	spim_ext_mux_config(dev, config->ext_mux_sel_default);
+	/* always disable internal pull-down of CS pin */
+	spim_disable_cs_internal_pd(config->parent, config->ctrl_idx - 1);
 
 	if (config->extra_clk_en)
 		spim_block_mode_config(dev, SPIM_BLOCK_EXTRA_CLK);
