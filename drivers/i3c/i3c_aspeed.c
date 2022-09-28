@@ -1079,12 +1079,7 @@ static void i3c_aspeed_enable(struct i3c_aspeed_obj *obj)
 	reg.fields.enable = 1;
 	reg.fields.slave_ibi_payload_en = 1;
 	if (config->secondary) {
-		/*
-		 * We don't support hot-join on master mode, so disable auto-mode-adaption for
-		 * slave mode accordingly.  Since the only master device we may connect with is
-		 * our ourself.
-		 */
-		reg.fields.slave_auto_mode_adapt = 1;
+		reg.fields.slave_auto_mode_adapt = 0;
 	}
 	i3c_register->device_ctrl.value = reg.value;
 }
