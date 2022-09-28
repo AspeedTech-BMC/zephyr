@@ -60,6 +60,12 @@ void aspeed_dcscm_rst_demo(struct k_work *item)
 		spim_ext_mux_config(spim_dev, 0);
 	}
 
+	/*
+	 * wait for 50ms after configuring external MUX
+	 * in order to get overall stable system.
+	 */
+	k_busy_wait(50000);
+
 	pfr_bmc_srst_enable_ctrl(false);
 	pfr_bmc_extrst_enable_ctrl(false);
 

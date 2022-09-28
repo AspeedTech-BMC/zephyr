@@ -70,6 +70,12 @@ void ast1060_rst_demo_ext_mux(struct k_work *item)
 		spim_passthrough_config(spim_dev, SPIM_SINGLE_PASSTHROUGH, true);
 	}
 
+	/*
+	 * wait for 50ms after configuring external MUX
+	 * in order to get overall stable system.
+	 */
+	k_busy_wait(50000);
+
 	pfr_bmc_srst_enable_ctrl(false);
 	ARG_UNUSED(item);
 }

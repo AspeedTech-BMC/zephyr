@@ -30,12 +30,12 @@ void main(void)
 	pfr_bmc_extrst_enable_ctrl(true);
 	pfr_pch_rst_enable_ctrl(true);
 
-	rst_ind_gpio_event_register();
-
-	k_work_init(&rst_work, aspeed_dcscm_rst_demo);
 	demo_spim_irq_init();
 
 	aspeed_dcscm_rst_demo(NULL);
+
+	rst_ind_gpio_event_register();
+	k_work_init(&rst_work, aspeed_dcscm_rst_demo);
 
 #if CONFIG_I2C_PFR_FILTER
 	aspeed_dcscm_i2c_flt_demo();

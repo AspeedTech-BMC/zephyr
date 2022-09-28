@@ -27,12 +27,12 @@ void main(void)
 	/* reset BMC first */
 	pfr_bmc_srst_enable_ctrl(true);
 
-	rst_gpio_event_register();
-
-	k_work_init(&rst_work, ast1060_rst_demo_ext_mux);
 	demo_spim_irq_init();
 
 	ast1060_rst_demo_ext_mux(NULL);
+
+	rst_gpio_event_register();
+	k_work_init(&rst_work, ast1060_rst_demo_ext_mux);
 
 #if CONFIG_I2C_PFR_FILTER
 	ast1060_i2c_demo_flt();
