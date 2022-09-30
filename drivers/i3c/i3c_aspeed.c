@@ -1077,6 +1077,7 @@ static void i3c_aspeed_enable(struct i3c_aspeed_obj *obj)
 
 	reg.value = i3c_register->device_ctrl.value;
 	reg.fields.enable = 1;
+	reg.fields.hj_ack_ctrl = 1;
 	reg.fields.slave_ibi_payload_en = 1;
 	if (config->secondary) {
 		reg.fields.slave_auto_mode_adapt = 0;
