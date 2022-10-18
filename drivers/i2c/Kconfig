@@ -44,6 +44,17 @@ source "drivers/i2c/Kconfig.npcx"
 source "drivers/i2c/Kconfig.aspeed"
 source "drivers/i2c/Kconfig.test"
 
+if I2C_ASPEED
+
+config I2C_ASPEED_SHELL
+	bool "Enable ASPEED I2C Shell"
+	default y
+	depends on SHELL
+	help
+	  Enable I2C Shell for ASPEED MCU I2C Usage.
+
+endif # I2C_ASPEED
+
 config I2C_INIT_PRIORITY
 	int "Init priority"
 	default 60

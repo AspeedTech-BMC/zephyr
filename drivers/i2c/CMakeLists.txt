@@ -33,6 +33,7 @@ zephyr_library_sources_ifdef(CONFIG_I2C_NPCX		i2c_npcx_controller.c)
 zephyr_library_sources_ifdef(CONFIG_I2C_NPCX		i2c_npcx_port.c)
 zephyr_library_sources_ifdef(CONFIG_I2C_ASPEED		i2c_global_aspeed.c)
 zephyr_library_sources_ifdef(CONFIG_I2C_ASPEED		i2c_aspeed.c)
+zephyr_library_sources_ifdef(CONFIG_I2C_ASPEED_SHELL	i2c_aspeed_shell.c)
 zephyr_library_sources_ifdef(CONFIG_I2C_DW		i2c_dw.c)
 
 zephyr_library_sources_ifdef(CONFIG_I2C_STM32_V1
