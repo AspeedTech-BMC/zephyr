@@ -26,4 +26,6 @@ endchoice
 config SYS_CLOCK_HW_CYCLES_PER_SEC
 	default 200000000
 
+config XIP
+	default y
 endif # SOC_SERIES_AST26XX
