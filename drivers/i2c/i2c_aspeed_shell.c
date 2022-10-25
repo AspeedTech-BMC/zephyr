@@ -215,6 +215,42 @@ static int cmd_i2c_write_byte(const struct shell *shell,
 	return 0;
 }
 
+static int cmd_i2c_write_bytes(const struct shell *shell,
+			      size_t argc, char **argv)
+{
+	const struct device *dev;
+	uint8_t buf[MAX_I2C_BYTES];
+	int num_bytes;
+	int dev_addr;
+	int i;
+
+	dev = device_get_binding(argv[1]);
+	if (!dev) {
+		shell_error(shell, "I2C: Device driver %s not found.",
+			    argv[1]);
+		return -ENODEV;
+	}
+
+	dev_addr = strtol(argv[2], NULL, 16);
+	num_bytes = argc - 3;
+	if (num_bytes < 0) {
+		return 0;
+	}
+	if (num_bytes > MAX_I2C_BYTES) {
+		num_bytes = MAX_I2C_BYTES;
+	}
+	for (i = 0; i < num_bytes; i++) {
+		buf[i] = (uint8_t)strtol(argv[3 + i], NULL, 16);
+	}
+
+	if (i2c_write(dev, buf, num_bytes, dev_addr) < 0) {
+		shell_error(shell, "Failed to write to device: %s", argv[1]);
+		return -EIO;
+	}
+
+	return 0;
+}
+
 static int cmd_i2c_read_byte(const struct shell *shell,
 			     size_t argc, char **argv)
 {
@@ -1355,6 +1391,9 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_iic_cmds,
 			       SHELL_CMD_ARG(write_byte, &dsub_device_name,
 					     "Write a byte to an I2C device",
 					     cmd_i2c_write_byte, 4, 1),
+				SHELL_CMD_ARG(write_bytes, &dsub_device_name,
+					  "Write bytes to an I2C device",
+					  cmd_i2c_write_bytes, 3, MAX_I2C_BYTES),
 #ifdef CONFIG_I2C_SLAVE
 			       SHELL_CMD_ARG(slave_attach, &dsub_device_name,
 					     "Attach slave device",
