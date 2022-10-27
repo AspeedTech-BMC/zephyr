@@ -226,9 +226,36 @@ static const struct otpkey_type ast10xxa1_key_type[] = {
 static int ast_otp_init(const struct shell *shell);
 static void ast_otp_finish(void);
 
-int confirm_yesno(void)
+int confirm_yesno(const struct shell *shell)
 {
-	return 1;
+	char str_input[5] = {0};
+	size_t cnt = 0;
+	int i = 0;
+	char c;
+
+	while (i < sizeof(str_input)) {
+		shell->iface->api->read(shell->iface, &c, sizeof(c), &cnt);
+		while (cnt == 0) {
+			k_busy_wait(100);
+			shell->iface->api->read(shell->iface, &c, sizeof(c), &cnt);
+		}
+
+		shell->iface->api->write(shell->iface, &c, sizeof(c), &cnt);
+		str_input[i] = c;
+		if (c == '\r') {
+			break;
+		}
+
+		i++;
+	}
+
+	if (strncmp(str_input, "y\r", 2) == 0 ||
+	    strncmp(str_input, "Y\r", 2) == 0 ||
+	    strncmp(str_input, "yes\r", 4) == 0 ||
+	    strncmp(str_input, "YES\r", 4) == 0)
+		return 1;
+
+	return 0;
 }
 
 static void buf_print(const struct shell *shell, uint8_t *buf, int len)
@@ -1980,7 +2007,7 @@ static int otp_prog_image(const struct shell *shell, int addr, int nconfirm)
 		}
 
 		shell_printf(shell, "type \"YES\" (no quotes) to continue:\n");
-		if (!confirm_yesno()) {
+		if (!confirm_yesno(shell)) {
 			shell_printf(shell, " Aborting\n");
 			return OTP_FAILURE;
 		}
@@ -2098,7 +2125,7 @@ static int otp_prog_bit(const struct shell *shell, int mode, int otp_dw_offset,
 
 	if (!nconfirm) {
 		shell_printf(shell, "type \"YES\" (no quotes) to continue:\n");
-		if (!confirm_yesno()) {
+		if (!confirm_yesno(shell)) {
 			shell_printf(shell, " Aborting\n");
 			return OTP_FAILURE;
 		}
@@ -2192,7 +2219,7 @@ static int otp_update_rid(const struct shell *shell, uint32_t update_num, int fo
 	shell_printf(shell, " will be programmed\n");
 	if (force == 0) {
 		shell_printf(shell, "type \"YES\" (no quotes) to continue:\n");
-		if (!confirm_yesno()) {
+		if (!confirm_yesno(shell)) {
 			shell_printf(shell, " Aborting\n");
 			return OTP_FAILURE;
 		}
@@ -2265,7 +2292,7 @@ static int otp_retire_key(const struct shell *shell, uint32_t retire_id, int for
 	shell_printf(shell, "OTPCFG0x4[0x%X] will be programmed\n", retire_id);
 	if (force == 0) {
 		shell_printf(shell, "type \"YES\" (no quotes) to continue:\n");
-		if (!confirm_yesno()) {
+		if (!confirm_yesno(shell)) {
 			shell_printf(shell, " Aborting\n");
 			return OTP_FAILURE;
 		}
@@ -2315,7 +2342,7 @@ static int otp_invalid_key(const struct shell *shell, uint32_t header_offset,
 	shell_printf(shell, "Key[%d] will be invalid\n", header_offset);
 	if (force == 0) {
 		shell_printf(shell, "type \"YES\" (no quotes) to continue:\n");
-		if (!confirm_yesno()) {
+		if (!confirm_yesno(shell)) {
 			shell_printf(shell, " Aborting\n");
 			return OTP_FAILURE;
 		}
@@ -2665,7 +2692,7 @@ static int do_otpprotect(const struct shell *shell, size_t argc, char **argv)
 	if (!force) {
 		shell_printf(shell, "OTPSTRAP[0x%X] will be protected\n", input);
 		shell_printf(shell, "type \"YES\" (no quotes) to continue:\n");
-		if (!confirm_yesno()) {
+		if (!confirm_yesno(shell)) {
 			shell_printf(shell, " Aborting\n");
 			return -EINVAL;
 		}
@@ -2738,7 +2765,7 @@ static int do_otp_scuprotect(const struct shell *shell, size_t argc, char **argv
 		shell_printf(shell, "OTPCONF0x%X[0x%X] will be programmed\n", conf_offset, bit_offset);
 		shell_printf(shell, "SCU0x%X[0x%X] will be protected\n", scu_offset, bit_offset);
 		shell_printf(shell, "type \"YES\" (no quotes) to continue:\n");
-		if (!confirm_yesno()) {
+		if (!confirm_yesno(shell)) {
 			shell_printf(shell, " Aborting\n");
 			return -EINVAL;
 		}
