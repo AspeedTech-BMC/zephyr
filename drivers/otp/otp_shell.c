@@ -5,6 +5,7 @@
  */
 
 #include <shell/shell.h>
+#include <soc.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>
@@ -152,6 +153,9 @@ struct otp_image_layout {
 
 static struct otp_info_cb info_cb;
 struct otpstrap_status strap_status[64];
+
+/* OTP data region total 8KB */
+static uint32_t g_data[2048] NON_CACHED_BSS;
 
 static const struct otpkey_type ast10xxa0_key_type[] = {
 	{
@@ -1396,14 +1400,14 @@ static int otp_print_data_image(const struct shell *shell,
 
 static void otp_print_key_info(const struct shell *shell)
 {
-	uint32_t *data;
+	uint32_t *data = g_data;
 	int i;
 
-	data = malloc(8192);
+	memset(data, 0, sizeof(g_data));
+
 	for (i = 0; i < 2048 ; i += 2)
 		otp_read_data(i, &data[i]);
 	otp_print_key(shell, data);
-	free(data);
 }
 
 static int otp_prog_data(const struct shell *shell,
