@@ -232,5 +232,8 @@ void aspeed_soc_show_chip_id(void)
 		}
 	}
 
+	if (i == ARRAY_SIZE(soc_map_table) && i > 0)
+		i--;
+
 	printk("SOC: %s\n", soc_map_table[i].name);
 }
