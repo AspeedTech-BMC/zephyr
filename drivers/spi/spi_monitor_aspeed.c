@@ -94,7 +94,7 @@ static uint8_t spim_log_arr[SPIM_LOG_RAM_TOTAL_SIZE] NON_CACHED_BSS_ALIGN16;
 
 /* control register */
 #define SPIM_CTRL               (0x0000)
-#define SPIM_IRQ_CTRL           (0x0004)
+#define SPIM_IO_IRQ_CTRL        (0x0004)
 #define SPIM_EAR                (0x0008)
 #define SPIM_FIFO               (0x000C)
 #define SPIM_LOG_BASE           (0x0010)
@@ -151,6 +151,9 @@ static uint8_t spim_log_arr[SPIM_LOG_RAM_TOTAL_SIZE] NON_CACHED_BSS_ALIGN16;
 #define SPIM_CMD_BLOCK_IRQ_EN           BIT(16)
 #define SPIM_WRITE_BLOCK_IRQ_EN         BIT(17)
 #define SPIM_READ_BLOCK_IRQ_EN          BIT(18)
+
+/* push-pulll mode enabled bit */
+#define SPIM_PUSH_PULL_ENABLED          BIT(31)
 
 /* spi monitor log control */
 #define SPIM_BLOCK_INFO_EN              BIT(31)
@@ -290,6 +293,20 @@ void spim_disable_cs_internal_pd(const struct device *dev, uint32_t idx)
 
 end:
 	k_spin_unlock(&data->scu_lock, key);
+}
+
+void spim_push_pull_mode_config(const struct device *dev)
+{
+	const struct aspeed_spim_config *config = dev->config;
+	uint32_t reg_val;
+
+	acquire_spim_device(dev);
+
+	reg_val = sys_read32(config->ctrl_base + SPIM_IO_IRQ_CTRL);
+	reg_val |= SPIM_PUSH_PULL_ENABLED;
+	sys_write32(reg_val, config->ctrl_base + SPIM_IO_IRQ_CTRL);
+
+	release_spim_device(dev);
 }
 
 void spim_scu_ctrl_clear(const struct device *dev, uint32_t clear_bits)
@@ -1212,9 +1229,9 @@ void spim_isr(const void *param)
 		data->isr_callback(dev);
 
 	/* ack */
-	reg_val = sys_read32(config->ctrl_base + SPIM_IRQ_CTRL);
+	reg_val = sys_read32(config->ctrl_base + SPIM_IO_IRQ_CTRL);
 	sts_backup = reg_val & SPIM_IRQ_STS_MASK;
-	sys_write32(reg_val | SPIM_IRQ_STS_MASK, config->ctrl_base + SPIM_IRQ_CTRL);
+	sys_write32(reg_val | SPIM_IRQ_STS_MASK, config->ctrl_base + SPIM_IO_IRQ_CTRL);
 
 	k_spin_unlock(&data->irq_ctrl_lock, key);
 }
@@ -1226,10 +1243,10 @@ void spim_irq_enable(const struct device *dev)
 	uint32_t reg_val;
 	k_spinlock_key_t key = k_spin_lock(&data->irq_ctrl_lock);
 
-	reg_val = sys_read32(config->ctrl_base + SPIM_IRQ_CTRL);
+	reg_val = sys_read32(config->ctrl_base + SPIM_IO_IRQ_CTRL);
 	reg_val |= (SPIM_CMD_BLOCK_IRQ_EN | SPIM_WRITE_BLOCK_IRQ_EN |
 				SPIM_READ_BLOCK_IRQ_EN);
-	sys_write32(reg_val, config->ctrl_base + SPIM_IRQ_CTRL);
+	sys_write32(reg_val, config->ctrl_base + SPIM_IO_IRQ_CTRL);
 
 	k_spin_unlock(&data->irq_ctrl_lock, key);
 }
@@ -1299,6 +1316,8 @@ static int aspeed_spi_monitor_init(const struct device *dev)
 	spim_ext_mux_config(dev, config->ext_mux_sel_default);
 	/* always disable internal pull-down of CS pin */
 	spim_disable_cs_internal_pd(config->parent, config->ctrl_idx - 1);
+	/* use push-pull mode to improve IO signal quality */
+	spim_push_pull_mode_config(dev);
 
 	if (config->extra_clk_en)
 		spim_block_mode_config(dev, SPIM_BLOCK_EXTRA_CLK);
