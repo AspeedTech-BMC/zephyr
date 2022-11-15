@@ -562,14 +562,14 @@ static int dfu_class_handle_to_device(struct usb_setup_packet *setup,
 			LOG_DBG("DFU_DNLOAD start");
 			dfu_reset_counters();
 			k_poll_signal_reset(&dfu_signal);
-
+#ifndef CONFIG_USB_ASPEED
 			if (dfu_data.flash_area_id != UPLOAD_FLASH_AREA_ID) {
 				dfu_data.status = errWRITE;
 				dfu_data.state = dfuERROR;
 				LOG_ERR("This area can not be overwritten");
 				break;
 			}
-
+#endif
 			dfu_data.state = dfuDNBUSY;
 			dfu_data_worker.worker_state = dfuIDLE;
 			dfu_data_worker.worker_len  = setup->wLength;
@@ -747,6 +747,9 @@ static int dfu_custom_handle_req(struct usb_setup_packet *setup,
 		dfu_data.flash_upload_size = fa->fa_size;
 		flash_area_close(fa);
 		dfu_data.alt_setting = setup->wValue;
+		*data_len = 0;
+
+		return 0;
 	}
 
 	/* Never handled by us */
