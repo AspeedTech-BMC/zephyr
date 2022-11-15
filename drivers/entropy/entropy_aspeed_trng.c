@@ -17,7 +17,7 @@ LOG_MODULE_REGISTER(hwrng_aspeed);
 #define AST_RNG_DATA		0x4
 
 #define RNG_DISABLE		BIT(0)
-#define RNG_MODE		0x9
+#define RNG_MODE		0x18
 #define RNG_SET_MODE(x)		((x & 0x1F) << 0x1)
 #define RNG_READY		BIT(31)
 
