@@ -7,7 +7,6 @@
 #include <ztest.h>
 #include <tc_util.h>
 #include <usb/usb_device.h>
-#include <usb/usb_common.h>
 #include <drivers/uart.h>
 #include "ast_test.h"
 
