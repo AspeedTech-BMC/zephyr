@@ -312,7 +312,7 @@ int ast_i2c_filter_init(const struct device *dev)
 		clock_control_get_rate(gcfg->clock_dev, gcfg->clk_id, &clk_src);
 		LOG_DBG("i2c flt pclk : %d MHz", clk_src / 1000000);
 
-		timeout_count = clk_src / (cfg->clock * 2 * 1000);
+		timeout_count = clk_src / (cfg->clock * 3 * 1000);
 		timeout_count |= (timeout_count) << 16;
 		LOG_DBG("i2c timeout tick : %x", timeout_count);
 
