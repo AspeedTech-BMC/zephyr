@@ -22,10 +22,6 @@
 #define OTP_REGION_CONF			BIT(1)
 #define OTP_REGION_DATA			BIT(2)
 
-#define OTP_USAGE			-1
-#define OTP_FAILURE			-2
-#define OTP_SUCCESS			0
-
 #define OTP_PROG_SKIP			1
 
 #define OTP_KEY_TYPE_RSA_PUB		1
@@ -83,6 +79,17 @@
 
 #define shell_printf(_sh, _ft, ...) \
 	shell_fprintf(_sh, SHELL_NORMAL, _ft, ##__VA_ARGS__)
+
+enum otp_status {
+	OTP_SUCCESS		= 0,
+	OTP_USAGE		= -1,
+	OTP_FAILURE		= -2,
+	OTP_INVALID_HEADER	= -3,
+	OTP_INVALID_SOC		= -4,
+	OTP_INVALID_CHECKSUM	= -5,
+	OTP_PROTECTED		= -6,
+	OTP_PROG_FAILED		= -7,
+};
 
 struct otp_header {
 	uint8_t		otp_magic[8];
@@ -723,10 +730,11 @@ static int otp_prog_strap_b(const struct shell *shell, int bit_offset, int value
 
 	otp_strap_status(strap_status);
 
-	ret = otp_strap_bit_confirm(shell, &strap_status[bit_offset], bit_offset, 0, value, 0);
-
-	if (ret != OTP_SUCCESS)
-		return ret;
+	if (shell) {
+		ret = otp_strap_bit_confirm(shell, &strap_status[bit_offset], bit_offset, 0, value, 0);
+		if (ret != OTP_SUCCESS)
+			return ret;
+	}
 
 	prog_address = 0x800;
 	if (bit_offset < 32) {
@@ -1447,13 +1455,15 @@ static int otp_prog_data(const struct shell *shell,
 
 	buf = (uint32_t *)image_layout->data;
 	buf_ignore = (uint32_t *)image_layout->data_ignore;
-	shell_printf(shell, "Start Programing...\n");
+	if (shell)
+		shell_printf(shell, "Start Programing...\n");
 
 	/* programing ecc region first */
 	for (i = 1792; i < 2046; i += 2) {
 		ret = otp_prog_verify_2dw(&data[i], &buf[i], &buf_ignore[i], i);
 		if (ret != OTP_SUCCESS) {
-			shell_printf(shell,
+			if (shell)
+				shell_printf(shell,
 				     "address: %08x, data: %08x %08x, buffer: %08x %08x, mask: %08x %08x\n",
 				     i, data[i], data[i + 1], buf[i], buf[i + 1],
 				     buf_ignore[i], buf_ignore[i + 1]);
@@ -1464,7 +1474,8 @@ static int otp_prog_data(const struct shell *shell,
 	for (i = 0; i < 1792; i += 2) {
 		ret = otp_prog_verify_2dw(&data[i], &buf[i], &buf_ignore[i], i);
 		if (ret != OTP_SUCCESS) {
-			shell_printf(shell,
+			if (shell)
+				shell_printf(shell,
 				     "address: %08x, data: %08x %08x, buffer: %08x %08x, mask: %08x %08x\n",
 				     i, data[i], data[i + 1], buf[i], buf[i + 1],
 				     buf_ignore[i], buf_ignore[i + 1]);
@@ -1565,7 +1576,8 @@ static int otp_prog_conf(const struct shell *shell,
 	int pass = 0;
 	int i, k;
 
-	shell_printf(shell, "Start Programing...\n");
+	if (shell)
+		shell_printf(shell, "Start Programing...\n");
 	otp_soak(0);
 	for (i = 0; i < 16; i++) {
 		data_masked = otp_conf[i]  & ~conf_ignore[i];
@@ -1598,7 +1610,8 @@ static int otp_prog_conf(const struct shell *shell,
 			}
 		}
 		if (pass == 0) {
-			shell_printf(shell, "address: %08x, otp_conf: %08x, input_conf: %08x, mask: %08x\n",
+			if (shell)
+				shell_printf(shell, "address: %08x, otp_conf: %08x, input_conf: %08x, mask: %08x\n",
 				     i, otp_conf[i], conf[i], conf_ignore[i]);
 			break;
 		}
@@ -1624,7 +1637,8 @@ static int otp_prog_scu_protect(const struct shell *shell,
 	int pass = 0;
 	int i, k;
 
-	shell_printf(shell, "Start Programing...\n");
+	if (shell)
+		shell_printf(shell, "Start Programing...\n");
 	otp_soak(0);
 	for (i = 0; i < 2; i++) {
 		data_masked = scu_pro[i]  & ~OTPSCU_IGNORE[i];
@@ -1655,7 +1669,8 @@ static int otp_prog_scu_protect(const struct shell *shell,
 			}
 		}
 		if (pass == 0) {
-			shell_printf(shell, "OTPCFG0x%x: 0x%08x, input: 0x%08x, mask: 0x%08x\n",
+			if (shell)
+				shell_printf(shell, "OTPCFG0x%x: 0x%08x, input: 0x%08x, mask: 0x%08x\n",
 				     i + 28, scu_pro[i], OTPSCU[i], OTPSCU_IGNORE[i]);
 			break;
 		}
@@ -2048,6 +2063,148 @@ static int otp_prog_image(const struct shell *shell, int addr, int nconfirm)
 			return ret;
 		}
 		shell_printf(shell, "Done\n");
+	}
+
+	return OTP_SUCCESS;
+}
+
+static int _otp_prog_image(int addr)
+{
+	const struct shell *shell = NULL;
+	struct otp_image_layout image_layout;
+	struct otp_header *otp_header;
+	uint32_t data[2048];
+	uint32_t scu_pro[2];
+	uint32_t conf[16];
+	uint8_t *checksum;
+	uint8_t *buf;
+	int image_soc_ver = 0;
+	int image_size;
+	int ret;
+	int i;
+
+	otp_header = (struct otp_header *)addr;
+	image_size = OTP_IMAGE_SIZE(otp_header->image_info);
+	buf = (uint8_t *)addr;
+
+	if (!buf) {
+		return OTP_FAILURE;
+	}
+	otp_header = (struct otp_header *)buf;
+	checksum = buf + otp_header->checksum_offset;
+
+	if (strcmp(OTP_MAGIC, (char *)otp_header->otp_magic) != 0) {
+		return OTP_INVALID_HEADER;
+	}
+
+	image_layout.data_length = (int)(OTP_REGION_SIZE(otp_header->data_info) / 2);
+	image_layout.data = buf + OTP_REGION_OFFSET(otp_header->data_info);
+	image_layout.data_ignore = image_layout.data + image_layout.data_length;
+
+	image_layout.conf_length = (int)(OTP_REGION_SIZE(otp_header->config_info) / 2);
+	image_layout.conf = buf + OTP_REGION_OFFSET(otp_header->config_info);
+	image_layout.conf_ignore = image_layout.conf + image_layout.conf_length;
+
+	image_layout.strap = buf + OTP_REGION_OFFSET(otp_header->strap_info);
+	image_layout.strap_length = (int)(OTP_REGION_SIZE(otp_header->strap_info) / 3);
+	image_layout.strap_pro = image_layout.strap + image_layout.strap_length;
+	image_layout.strap_ignore = image_layout.strap + 2 * image_layout.strap_length;
+
+	image_layout.scu_pro = buf + OTP_REGION_OFFSET(otp_header->scu_protect_info);
+	image_layout.scu_pro_length = (int)(OTP_REGION_SIZE(otp_header->scu_protect_info) / 2);
+	image_layout.scu_pro_ignore = image_layout.scu_pro + image_layout.scu_pro_length;
+
+	if (otp_header->soc_ver == SOC_AST1030A0) {
+		image_soc_ver = OTP_AST1030A0;
+	} else if (otp_header->soc_ver == SOC_AST1030A1) {
+		image_soc_ver = OTP_AST1030A1;
+	} else if (otp_header->soc_ver == SOC_AST1060A1) {
+		image_soc_ver = OTP_AST1060A1;
+	} else {
+		return OTP_INVALID_SOC;
+	}
+
+	if (image_soc_ver != info_cb.version) {
+		return OTP_INVALID_SOC;
+	}
+
+	switch (OTPTOOL_VERSION_MAJOR(otp_header->otptool_ver)) {
+	case 1:
+		/* WARNING: OTP image is not generated by otptool v2.x.x */
+		/* Please use the latest version of otptool to generate OTP image */
+		ret = otp_verify_image(buf, image_size, checksum, 1);
+		break;
+	case 2:
+		ret = otp_verify_image(buf, image_size, checksum, 2);
+		break;
+	default:
+		return OTP_FAILURE;
+	}
+
+	if (ret) {
+		return OTP_INVALID_CHECKSUM;
+	}
+
+	if (info_cb.pro_sts.mem_lock) {
+		return OTP_PROTECTED;
+	}
+	ret = 0;
+	if (otp_header->image_info & OTP_INC_DATA) {
+		if (info_cb.pro_sts.pro_data) {
+			ret = OTP_PROTECTED;
+		}
+		if (info_cb.pro_sts.pro_sec) {
+			ret = OTP_PROTECTED;
+		}
+		for (i = 0; i < 2048 ; i += 2)
+			otp_read_data(i, &data[i]);
+	}
+	if (otp_header->image_info & OTP_INC_CONFIG) {
+		if (info_cb.pro_sts.pro_conf) {
+			ret = OTP_PROTECTED;
+		}
+		for (i = 0; i < 16 ; i++)
+			otp_read_conf(i, &conf[i]);
+	}
+	if (otp_header->image_info & OTP_INC_STRAP) {
+		if (info_cb.pro_sts.pro_strap) {
+			ret = OTP_PROTECTED;
+		}
+		otp_strap_status(strap_status);
+	}
+	if (otp_header->image_info & OTP_INC_SCU_PRO) {
+		if (info_cb.pro_sts.pro_strap) {
+			ret = OTP_PROTECTED;
+		}
+		otp_read_conf(28, &scu_pro[0]);
+		otp_read_conf(29, &scu_pro[1]);
+	}
+	if (ret < 0)
+		return ret;
+
+	if (otp_header->image_info & OTP_INC_DATA) {
+		ret = otp_prog_data(shell, &image_layout, data);
+		if (ret != 0) {
+			return OTP_PROG_FAILED;
+		}
+	}
+	if (otp_header->image_info & OTP_INC_STRAP) {
+		ret = otp_prog_strap(&image_layout, strap_status);
+		if (ret != 0) {
+			return OTP_PROG_FAILED;
+		}
+	}
+	if (otp_header->image_info & OTP_INC_SCU_PRO) {
+		ret = otp_prog_scu_protect(shell, &image_layout, scu_pro);
+		if (ret != 0) {
+			return OTP_PROG_FAILED;
+		}
+	}
+	if (otp_header->image_info & OTP_INC_CONFIG) {
+		ret = otp_prog_conf(shell, &image_layout, conf);
+		if (ret != 0) {
+			return OTP_PROG_FAILED;
+		}
 	}
 
 	return OTP_SUCCESS;
@@ -3181,6 +3338,77 @@ int aspeed_otp_prog_conf(uint32_t offset, uint32_t *buf, uint32_t len)
 	ast_otp_finish();
 
 	return OTP_SUCCESS;
+}
+
+/*
+ * Program OTP memory with OTP image.
+ * @ addr: OTP image location
+ */
+int aspeed_otp_prog_image(uint32_t addr)
+{
+	int ret;
+
+	ret = ast_otp_init(NULL);
+	if (ret)
+		return -EINVAL;
+
+	ret = _otp_prog_image(addr);
+
+	ast_otp_finish();
+	return ret;
+}
+
+/*
+ * Program OTP strap by bit field.
+ * @ bit_offset: bit field
+ * @ value: 0 or 1
+ */
+int aspeed_otp_prog_strap_bit(uint32_t bit_offset, int value)
+{
+	int ret = -EINVAL;
+
+	if (bit_offset >= 64 || (value != 0 && value != 1))
+		return -EINVAL;
+
+	ret = ast_otp_init(NULL);
+	if (ret)
+		return -EINVAL;
+
+	if (info_cb.pro_sts.pro_strap)
+		goto end;
+
+	ret = otp_prog_strap_b(NULL, bit_offset, value);
+
+end:
+	ast_otp_finish();
+	return ret;
+}
+
+/*
+ * Read full OTP strap into buffer.
+ * @ buf: output OTP strap into buffer, should be at least 8 bytes length.
+ */
+int aspeed_otp_read_strap(uint32_t *buf)
+{
+	int ret;
+
+	if (!buf)
+		return -EINVAL;
+
+	ret = ast_otp_init(NULL);
+	if (ret)
+		return -EINVAL;
+
+	buf[0] = buf[1] = 0;
+	otp_strap_status(strap_status);
+
+	for (int i = 0; i < 2; i++) {
+		for (int j = 0; j < 32; j++)
+			buf[i] |= strap_status[i * 32 + j].value << j;
+	}
+
+	ast_otp_finish();
+	return 0;
 }
 
 #define SHELL_HELP_OTPREAD	\
