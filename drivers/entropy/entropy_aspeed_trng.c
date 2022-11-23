@@ -52,15 +52,23 @@ static int entropy_aspeed_trng_read(const struct device *dev,
 	}
 
 	/* Handle the case where len is not a multiple of 4 */
-	if (len > 0) {
+	while (len > 0 && timeout > 0) {
 		ctrl = sys_read32(config->base + AST_RNG_CTRL);
 		if (ctrl & RNG_READY)
 			tmp = sys_read32(config->base + AST_RNG_DATA);
-		else
-			return -EINVAL;
+		else {
+			timeout--;
+			if (timeout <= 0) {
+				LOG_ERR("rng is not ready, len:%d", len);
+				return -EINVAL;
+			}
+			k_usleep(100);
+			continue;
+		}
 
 		output = (uint8_t *)data;
 		memcpy(output, &tmp, len);
+		break;
 	}
 
 	return 0;
