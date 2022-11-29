@@ -5,13 +5,6 @@
 
 mainmenu "I3C driver sample application"
 
-config I3C_SAMPLE_LOOPBACK
-	bool "i3c0 & i3c1 loopback"
-	default n
-	help
-	  This sample demonstrates the i3c loopback.  Where i3c0 plays the role as the main master
-	  and i3c1 plays the role as the slave.
-
 config I3C_SAMPLE_IMX3102
 	bool "access imx3102"
 	default n
