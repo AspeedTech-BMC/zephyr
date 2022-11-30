@@ -1374,6 +1374,18 @@ int i3c_aspeed_slave_register(const struct device *dev, struct i3c_slave_setup *
 	return 0;
 }
 
+static int i3c_aspeed_slave_wait_data_consume(const struct device *dev)
+{
+	struct i3c_aspeed_obj *obj = DEV_DATA(dev);
+	union i3c_intr_s events;
+
+	events.value = 0;
+	events.fields.resp_q_ready = 1;
+	osEventFlagsWait(obj->event_id, events.value, osFlagsWaitAny, osWaitForever);
+
+	return 0;
+}
+
 int i3c_aspeed_slave_put_read_data(const struct device *dev, struct i3c_slave_payload *data,
 				   struct i3c_ibi_payload *ibi_notify)
 {
@@ -1433,6 +1445,8 @@ int i3c_aspeed_slave_put_read_data(const struct device *dev, struct i3c_slave_pa
 		}
 	}
 
+	i3c_aspeed_slave_wait_data_consume(dev);
+
 	return 0;
 }
 
@@ -1477,18 +1491,6 @@ int i3c_aspeed_slave_send_sir(const struct device *dev, struct i3c_ibi_payload *
 	if (config->ibi_append_pec) {
 		i3c_register->device_ctrl.fields.slave_pec_en = 0;
 	}
-
-	return 0;
-}
-
-int i3c_aspeed_slave_wait_data_consume(const struct device *dev)
-{
-	struct i3c_aspeed_obj *obj = DEV_DATA(dev);
-	union i3c_intr_s events;
-
-	events.value = 0;
-	events.fields.resp_q_ready = 1;
-	osEventFlagsWait(obj->event_id, events.value, osFlagsWaitAny, osWaitForever);
 
 	return 0;
 }

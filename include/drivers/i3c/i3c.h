@@ -209,21 +209,15 @@ int i3c_aspeed_slave_send_sir(const struct device *dev, struct i3c_ibi_payload *
  * @param ibi_notify pointer to the IBI notification structure (optional)
  * @return int 0 = success
  *
- * This function puts the pending read data to the TX FIFO.  If @ibi_notify is
- * specified, a slave interrupt with the IBI payload will be issued to notify
- * the master device that there is a pending read data.  The master device shall
- * issue a private read transfer to read the data back.
+ * This function puts the pending read data to the TX FIFO and waits until the
+ * pending read data is consumed.  The API uses osEventFlagsWait and will make
+ * the caller thread sleep so do not call it in the ISR.
+ * If @ibi_notify is specified, a slave interrupt with the IBI payload will be
+ * issued to notify the master device that there is a pending read data.  The
+ * master device shall issue a private read transfer to read the data back.
  */
 int i3c_aspeed_slave_put_read_data(const struct device *dev, struct i3c_slave_payload *data,
 				   struct i3c_ibi_payload *ibi_notify);
-
-/**
- * @brief slave device waits for the private read data be consumed
- *
- * @param dev the slave device
- * @return int 0 = success
- */
-int i3c_aspeed_slave_wait_data_consume(const struct device *dev);
 
 /**
  * @brief set the pid extra info of the i3c controller
@@ -254,7 +248,6 @@ int i3c_master_send_getbcr(const struct device *master, uint8_t addr, uint8_t *b
 #define i3c_slave_set_static_addr	i3c_aspeed_slave_set_static_addr
 #define i3c_slave_send_sir		i3c_aspeed_slave_send_sir
 #define i3c_slave_put_read_data		i3c_aspeed_slave_put_read_data
-#define i3c_slave_wait_data_consume	i3c_aspeed_slave_wait_data_consume
 #define i3c_slave_get_dynamic_addr	i3c_aspeed_slave_get_dynamic_addr
 #define i3c_slave_get_event_enabling	i3c_aspeed_slave_get_event_enabling
 #define i3c_set_pid_extra_info		i3c_aspeed_set_pid_extra_info
