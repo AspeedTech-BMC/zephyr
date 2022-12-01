@@ -396,11 +396,9 @@ static int gpio_aspeed_config(const struct device *dev,
 
 	if (flags & GPIO_SINGLE_ENDED) {
 		if (flags & GPIO_LINE_OPEN_DRAIN) {
-			/* connect to ground or disconnected */
-			ret = gpio_aspeed_port_set_bits_raw(dev, BIT(pin));
-		} else {
-			/* connect to power supply or disconnected */
 			ret = gpio_aspeed_port_clear_bits_raw(dev, BIT(pin));
+		} else {
+			ret = gpio_aspeed_port_set_bits_raw(dev, BIT(pin));
 		}
 	} else {
 		/* do nothing */
