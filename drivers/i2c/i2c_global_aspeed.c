@@ -79,6 +79,7 @@ static int i2c_global_init(const struct device *dev)
 	/* check chip id*/
 	len = hwinfo_get_device_id((uint8_t *)&rev_id, sizeof(rev_id));
 
+	/* skip i2c common config change when the zephyr is running on co-processer */
 	if (((uint32_t)rev_id & 0xFF000000) != AST2600ID) {
 		/* i2c controller reset / de-reset */
 		reset_control_assert(reset_dev, DEV_CFG(dev)->rst_id);

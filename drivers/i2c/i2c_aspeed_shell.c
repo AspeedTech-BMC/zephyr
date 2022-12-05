@@ -2,6 +2,11 @@
  * Copyright (c) 2018 Prevas A/S
  * Copyright (c) 2022 ASPEED Technology Inc.
  *
+ * Implement common and specified i2c usage for aspeed chips.
+ *
+ * Common i2c : ast2600 / ast1030 / ast1060
+ * PFR i2c : ast1060
+ *
  * SPDX-License-Identifier: Apache-2.0
  */
 

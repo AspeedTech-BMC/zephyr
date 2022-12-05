@@ -235,7 +235,9 @@ LOG_MODULE_REGISTER(i2c_aspeed);
 
 #define AST2600ID 0x05000000
 
-/* new for i2c snoop */
+/* i2c timeout counter: use base clk4 1Mhz
+ * 1/(1000/4096) = 4.096ms * 8 = 32.768ms
+ */
 #define I2C_TIMEOUT_CLK			0x2
 #define I2C_TIMEOUT_COUNT		0x8 /* i2c timeout setting (wait about 35ms) */
 /***************************************************************************/
