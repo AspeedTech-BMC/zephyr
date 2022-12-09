@@ -1413,15 +1413,17 @@ int i3c_aspeed_slave_put_read_data(const struct device *dev, struct i3c_slave_pa
 
 		i3c_register->queue_thld_ctrl.fields.resp_q_thld = 1 - 1;
 		i3c_register->device_ctrl.fields.slave_mdb = ibi_notify->buf[0];
-		i3c_aspeed_wr_tx_fifo(obj, ibi_notify->buf, ibi_notify->size);
-
-		cmd.slave_data_cmd.cmd_attr = COMMAND_PORT_SLAVE_DATA_CMD;
-		cmd.slave_data_cmd.dl = ibi_notify->size;
-		i3c_register->cmd_queue_port.value = cmd.value;
-
 		if (config->ibi_append_pec) {
-			i3c_register->device_ctrl.fields.slave_pec_en = 1;
+			xfer_buf = pec_append(dev, ibi_notify->buf, ibi_notify->size);
+			i3c_aspeed_wr_tx_fifo(obj, xfer_buf, ibi_notify->size + 1);
+			cmd.slave_data_cmd.dl = ibi_notify->size + 1;
+			k_free(xfer_buf);
+		} else {
+			i3c_aspeed_wr_tx_fifo(obj, ibi_notify->buf, ibi_notify->size);
+			cmd.slave_data_cmd.dl = ibi_notify->size;
 		}
+		cmd.slave_data_cmd.cmd_attr = COMMAND_PORT_SLAVE_DATA_CMD;
+		i3c_register->cmd_queue_port.value = cmd.value;
 	}
 
 	if (config->priv_xfer_pec) {
@@ -1439,10 +1441,6 @@ int i3c_aspeed_slave_put_read_data(const struct device *dev, struct i3c_slave_pa
 	if (ibi_notify) {
 		i3c_register->i3c_slave_intr_req.fields.sir = 1;
 		osEventFlagsWait(obj->event_id, events.value, osFlagsWaitAll, osWaitForever);
-
-		if (config->ibi_append_pec) {
-			i3c_register->device_ctrl.fields.slave_pec_en = 0;
-		}
 	}
 
 	i3c_aspeed_slave_wait_data_consume(dev);
@@ -1457,6 +1455,7 @@ int i3c_aspeed_slave_send_sir(const struct device *dev, struct i3c_ibi_payload *
 	struct i3c_register_s *i3c_register = config->base;
 	union i3c_intr_s events;
 	union i3c_device_cmd_queue_port_s cmd;
+	uint8_t *xfer_buf;
 
 	__ASSERT_NO_MSG(payload);
 	__ASSERT_NO_MSG(payload->buf);
@@ -1474,23 +1473,22 @@ int i3c_aspeed_slave_send_sir(const struct device *dev, struct i3c_ibi_payload *
 
 	i3c_register->queue_thld_ctrl.fields.resp_q_thld = 1 - 1;
 	i3c_register->device_ctrl.fields.slave_mdb = payload->buf[0];
-	i3c_aspeed_wr_tx_fifo(obj, payload->buf, payload->size);
+	if (config->ibi_append_pec) {
+		xfer_buf = pec_append(dev, payload->buf, payload->size);
+		i3c_aspeed_wr_tx_fifo(obj, xfer_buf, payload->size + 1);
+		cmd.slave_data_cmd.dl = payload->size + 1;
+		k_free(xfer_buf);
+	} else {
+		i3c_aspeed_wr_tx_fifo(obj, payload->buf, payload->size);
+		cmd.slave_data_cmd.dl = payload->size;
+	}
 
 	cmd.slave_data_cmd.cmd_attr = COMMAND_PORT_SLAVE_DATA_CMD;
-	cmd.slave_data_cmd.dl = payload->size;
 	i3c_register->cmd_queue_port.value = cmd.value;
-
-	if (config->ibi_append_pec) {
-		i3c_register->device_ctrl.fields.slave_pec_en = 1;
-	}
 
 	/* trigger the hw and wait done */
 	i3c_register->i3c_slave_intr_req.fields.sir = 1;
 	osEventFlagsWait(obj->event_id, events.value, osFlagsWaitAll, osWaitForever);
-
-	if (config->ibi_append_pec) {
-		i3c_register->device_ctrl.fields.slave_pec_en = 0;
-	}
 
 	return 0;
 }
