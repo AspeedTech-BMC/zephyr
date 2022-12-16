@@ -1154,7 +1154,9 @@ int aspeed_i2c_master_irq(const struct device *dev)
 	if (AST_I2CM_BUS_RECOVER_FAIL & sts) {
 		LOG_DBG("AST_I2CM_BUS_RECOVER_FAIL\n");
 		LOG_DBG("M clear isr: AST_I2CM_BUS_RECOVER_FAIL= %x\n", sts);
-		sys_write32(AST_I2CM_BUS_RECOVER_FAIL, i2c_base + AST_I2CM_ISR);
+		/*clear other status to avoid endless irq in recovery fail condition*/
+		/*if any other irq is existed, it should be clear here*/
+		sys_write32(sts, i2c_base + AST_I2CM_ISR);
 		if (data->bus_recover) {
 			data->cmd_err = -EPROTO;
 			data->bus_recover = 0;
