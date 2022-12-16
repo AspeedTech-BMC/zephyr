@@ -1113,6 +1113,11 @@
 			reg = <0x7e6e2530 0x10>;
 			label = "RNG";
 		};
+
+		otp: otp@7e6f2000 {
+			compatible = "aspeed,otp";
+			reg = <0x7e6f2000 0x80>;
+		};
 	};
 };
 
