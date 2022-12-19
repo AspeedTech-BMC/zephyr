@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#define DT_DRV_COMPAT aspeed_ast1030_udc
+#define DT_DRV_COMPAT aspeed_udc
 
 #include <drivers/usb/usb_dc.h>
 #include <drivers/reset_control.h>

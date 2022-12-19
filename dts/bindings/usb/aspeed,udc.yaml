@@ -4,7 +4,7 @@
 description: |
     Aspeed USB Device Controller (UDC)
 
-compatible: "aspeed,ast1030-udc"
+compatible: "aspeed,udc"
 
 include: usb-ep.yaml
 
