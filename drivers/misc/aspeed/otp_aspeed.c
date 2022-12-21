@@ -42,6 +42,15 @@ LOG_MODULE_REGISTER(otp_aspeed, CONFIG_LOG_DEFAULT_LEVEL);
 #define ASPEED_REVISION_ID0		0x7e6e2004
 #define ASPEED_REVISION_ID1		0x7e6e2014
 
+/*
+ * Maximum commands number
+ * otcfg:    16 (16 * 3)
+ * otpstrap: 24 (24 * 2)
+ */
+#define OTP_DT_OTPCFG_GROUP_NUM		3
+#define OTP_DT_OTPSTRAP_GROUP_NUM	2
+#define OTP_DT_SETTING_NUM_MAX		48
+
 static uintptr_t otp_base;
 #define OTP_RD(reg)             sys_read32(otp_base + (reg))
 #define OTP_WR(val, reg)        sys_write32(val, otp_base + (reg))
@@ -52,6 +61,10 @@ struct otp_aspeed_data {
 
 struct otp_aspeed_config {
 	uintptr_t base;
+	uint32_t otpcfg_dt_setting_list[OTP_DT_SETTING_NUM_MAX];
+	int otpcfg_dt_setting_num;
+	uint32_t otpstrap_dt_setting_list[OTP_DT_SETTING_NUM_MAX];
+	int otpstrap_dt_setting_num;
 };
 
 static struct otp_aspeed_data otp_aspeed_data;
@@ -1277,7 +1290,88 @@ int aspeed_otp_read_strap(uint32_t *buf)
 	return 0;
 }
 
-static int ast_otp_init(const struct device *dev)
+static int aspeed_otp_dt(const struct device *dev)
+{
+	struct otp_aspeed_config *cfg = (struct otp_aspeed_config *)dev->config;
+	int otpcfg_num = cfg->otpcfg_dt_setting_num/OTP_DT_OTPCFG_GROUP_NUM;
+	int otpstrap_num = cfg->otpstrap_dt_setting_num/OTP_DT_OTPSTRAP_GROUP_NUM;
+	uint32_t *otpcfg_list = cfg->otpcfg_dt_setting_list;
+	uint32_t *otpstrap_list = cfg->otpstrap_dt_setting_list;
+	uint32_t otp_conf[16];
+	uint32_t prog_address;
+	uint32_t compare[2];
+	uint32_t value;
+	int pass = 0;
+
+	if (!cfg->otpcfg_dt_setting_num && !cfg->otpcfg_dt_setting_num)
+		return 0;
+
+	ast_otp_unlock();
+	LOG_INF("Start programming OTPCFG... (numbers of setting: %d)", otpcfg_num);
+
+	for (int i = 0; i < 16 ; i++)
+		otp_read_conf(i, &otp_conf[i]);
+
+	otp_soak(0);
+	for (int i = 0; i < otpcfg_num * OTP_DT_OTPCFG_GROUP_NUM; i += OTP_DT_OTPCFG_GROUP_NUM) {
+		LOG_INF("otpcfg[%d]: bit_offset:0x%x, value:0x%x",
+			otpcfg_list[i], otpcfg_list[i + 1], otpcfg_list[i + 2]);
+
+		prog_address = 0x800;
+		prog_address |= (otpcfg_list[i] / 8) * 0x200;
+		prog_address |= (otpcfg_list[i] % 8) * 0x2;
+
+		otp_soak(1);
+		value = otpcfg_list[i + 2] << otpcfg_list[i+1];
+
+		otp_prog_dw(value, 0x0, prog_address);
+
+		pass = 0;
+		for (int k = 0; k < RETRY; k++) {
+			if (verify_dw(prog_address, &value, 0x0, compare, 1) != 0) {
+				otp_soak(2);
+				otp_prog_dw(compare[0], 0x0, prog_address);
+				if (verify_dw(prog_address, &value, 0x0, compare, 1) != 0) {
+					otp_soak(1);
+				} else {
+					pass = 1;
+					break;
+				}
+			} else {
+				pass = 1;
+				break;
+			}
+		}
+		if (pass == 0) {
+			LOG_ERR("address: %08x, otp_conf: %08x, input_conf: %08x\n",
+				otpcfg_list[i], otp_conf[otpcfg_list[i]], value);
+			break;
+		}
+	}
+
+	otp_soak(0);
+	ast_otp_lock();
+	if (!pass)
+		return OTP_FAILURE;
+
+	LOG_INF("Done");
+
+	LOG_INF("Start programming OTPSTRAP... (numbers of setting: %d)", otpstrap_num);
+
+	for (int i = 0; i < otpstrap_num * OTP_DT_OTPSTRAP_GROUP_NUM; i += OTP_DT_OTPSTRAP_GROUP_NUM) {
+		LOG_INF("otpstrap[%d]: 0x%x", otpstrap_list[i], otpstrap_list[i + 1]);
+		pass = aspeed_otp_prog_strap_bit(otpstrap_list[i], otpstrap_list[i + 1]);
+	}
+
+	if (!pass)
+		return OTP_FAILURE;
+
+	LOG_INF("Done");
+
+	return OTP_SUCCESS;
+}
+
+static int aspeed_otp_init(const struct device *dev)
 {
 	struct otp_aspeed_config *cfg = (struct otp_aspeed_config *)dev->config;
 	struct otp_aspeed_data *data = (struct otp_aspeed_data *)dev->data;
@@ -1285,6 +1379,7 @@ static int ast_otp_init(const struct device *dev)
 	struct otp_pro_sts *pro_sts;
 	uint32_t otp_conf0;
 	uint32_t ver;
+	int ret;
 
 	if (!otp_base)
 		otp_base = cfg->base;
@@ -1359,6 +1454,10 @@ static int ast_otp_init(const struct device *dev)
 	pro_sts->pro_sec = (otp_conf0 >> 22) & 0x1;
 	pro_sts->sec_size = ((otp_conf0 >> 16) & 0x3f) << 5;
 
+	ret = aspeed_otp_dt(dev);
+	if (ret)
+		LOG_ERR("Program otpcfg/otpstrap from dt failed");
+
 	return 0;
 }
 
@@ -1378,9 +1477,13 @@ static struct otp_driver_api otp_funcs = {
 
 static struct otp_aspeed_config otp_aspeed_config = {
 	.base = DT_REG_ADDR(DT_DRV_INST(0)),
+	.otpcfg_dt_setting_list = DT_PROP(DT_DRV_INST(0), otpcfg),
+	.otpcfg_dt_setting_num = DT_PROP_LEN(DT_DRV_INST(0), otpcfg),
+	.otpstrap_dt_setting_list = DT_PROP(DT_DRV_INST(0), otpstrap),
+	.otpstrap_dt_setting_num = DT_PROP_LEN(DT_DRV_INST(0), otpstrap),
 };
 
-DEVICE_DEFINE(otp_aspeed, CONFIG_OTP_ASPEED_DRV_NAME, ast_otp_init,
+DEVICE_DEFINE(otp_aspeed, CONFIG_OTP_ASPEED_DRV_NAME, aspeed_otp_init,
 		NULL, &otp_aspeed_data, &otp_aspeed_config,
 		POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEVICE,
 		(void *)&otp_funcs);
