@@ -11,6 +11,7 @@
 #include <dt-bindings/clock/ast10x0_clock.h>
 #include <dt-bindings/reset/ast10x0_reset.h>
 #include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/otp/ast10x0_otp.h>
 
 / {
 	cpus {
@@ -1117,6 +1118,8 @@
 		otp: otp@7e6f2000 {
 			compatible = "aspeed,otp";
 			reg = <0x7e6f2000 0x80>;
+			otpcfg = <>;
+			otpstrap = <>;
 		};
 	};
 };

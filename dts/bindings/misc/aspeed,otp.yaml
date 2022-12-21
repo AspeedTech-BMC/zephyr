@@ -6,3 +6,17 @@ description: ASPEED OTP (One-Time-Programmable) Memory Controller
 compatible: "aspeed,otp"
 
 include: base.yaml
+
+properties:
+  otpcfg:
+    type: array
+    required: false
+    description: |
+      Program OTP Configure by driver initialization.
+
+  otpstrap:
+    type: array
+    required: false
+    description: |
+      Program OTP Strap by driver initialization.
+
