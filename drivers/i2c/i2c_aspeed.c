@@ -1222,9 +1222,14 @@ int aspeed_i2c_master_irq(const struct device *dev)
 		case AST_I2CM_NORMAL_STOP:
 			/*write 0 byte only have stop isr*/
 			LOG_DBG("M clear isr: AST_I2CM_NORMAL_STOP = %x\n", sts);
-			/*sys_write32(AST_I2CM_NORMAL_STOP, i2c_base + AST_I2CM_ISR);*/
 			data->msgs_index++;
-			k_sem_give(&data->sync_sem);
+			/* if there is another message need to send, trigger here */
+			if (data->msgs_index < data->msgs_count) {
+				aspeed_new_i2c_do_start(dev);
+			} else {
+				data->cmd_err = data->msgs_index;
+				k_sem_give(&data->sync_sem);
+			}
 			break;
 		case AST_I2CM_TX_ACK:
 		case AST_I2CM_TX_ACK | AST_I2CM_NORMAL_STOP:
