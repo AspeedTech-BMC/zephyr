@@ -1300,6 +1300,7 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 
 	/* clear irq first */
 	sys_write32(AST_I2CS_PKT_DONE, i2c_base + AST_I2CS_ISR);
+	sys_read32(i2c_base + AST_I2CS_ISR);
 
 	sts &= ~(AST_I2CS_PKT_DONE | AST_I2CS_PKT_ERROR);
 
@@ -1311,6 +1312,7 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 		}
 		break;
 	case AST_I2CS_SLAVE_MATCH | AST_I2CS_Wait_RX_DMA:
+	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE | AST_I2CS_Wait_RX_DMA: /* re-trigger? */
 		if (sys_read32(i2c_base + AST_I2CM_ISR)) {
 			LOG_DBG("S : Sw|D - Wait normal\n");
 		} else {
@@ -1333,7 +1335,6 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 	case AST_I2CS_RX_DONE | AST_I2CS_Wait_RX_DMA | AST_I2CS_STOP:
 	case AST_I2CS_RX_DONE_NAK | AST_I2CS_RX_DONE | AST_I2CS_STOP:
 	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE | AST_I2CS_STOP:
-	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE | AST_I2CS_Wait_RX_DMA: /* re-trigger? */
 	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE | AST_I2CS_Wait_RX_DMA | AST_I2CS_STOP:
 	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE_NAK | AST_I2CS_RX_DONE | AST_I2CS_STOP:
 		if (sts & AST_I2CS_STOP) {
