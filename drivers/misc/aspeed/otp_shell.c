@@ -1928,7 +1928,7 @@ static int otp_prog_bit(const struct shell *shell, int mode, int otp_dw_offset,
 			return OTP_SUCCESS;
 		}
 
-		shell_printf(shell, "Program OTPDATA0x%X[0x%X] to 1\n", otp_dw_offset, bit_offset);
+		shell_printf(shell, "Program OTPDATA0x%X[0x%X] to %d\n", otp_dw_offset, bit_offset, value);
 		break;
 	case OTP_REGION_STRAP:
 		otp_strap_status(strap_status);
