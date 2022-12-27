@@ -178,6 +178,7 @@ static void test_i3c_ci(int count)
 			xfer.rnw = 1;
 			xfer.len = TEST_IBI_PAYLOAD_SIZE;
 			xfer.data.in = test_data_rx;
+			k_yield();
 			ret = i3c_master_priv_xfer(&slave, &xfer, 1);
 			ast_zassert_mem_equal(test_data_tx, test_data_rx, TEST_IBI_PAYLOAD_SIZE,
 					      "data mismatch");
