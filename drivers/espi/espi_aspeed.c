@@ -14,6 +14,7 @@
 #include <drivers/espi.h>
 #include <drivers/espi_aspeed.h>
 #include <logging/log.h>
+#include "espi_utils.h"
 LOG_MODULE_REGISTER(espi, CONFIG_ESPI_LOG_LEVEL);
 
 /* SCU register offset */
@@ -291,11 +292,27 @@ LOG_MODULE_REGISTER(espi, CONFIG_ESPI_LOG_LEVEL);
 	 | ESPI_INT_EN_FLASH_TX_CMPLT \
 	 | ESPI_INT_EN_FLASH_RX_CMPLT)
 
-
 static uint32_t espi_base;
 #define ESPI_RD(reg)            sys_read32(espi_base + reg)
 #define ESPI_WR(val, reg)       sys_write32((uint32_t)val, espi_base + reg)
 #define ESPI_PLD_LEN_MAX        (1UL << 12)
+
+/* driver data */
+struct espi_aspeed_perif;
+struct espi_aspeed_vw;
+struct espi_aspeed_oob;
+struct espi_aspeed_flash;
+
+struct espi_aspeed_data {
+	const struct device *dev;
+	struct espi_aspeed_perif *perif;
+	struct espi_aspeed_vw *vw;
+	struct espi_aspeed_oob *oob;
+	struct espi_aspeed_flash *flash;
+	sys_slist_t callbacks;
+};
+
+static struct espi_aspeed_data espi_aspeed_data;
 
 /* peripheral channel */
 static uint8_t perif_pc_rx_buf[ESPI_PLD_LEN_MAX] NON_CACHED_BSS;
@@ -326,8 +343,12 @@ struct espi_aspeed_perif {
 	struct k_sem rx_ready;
 };
 
-static void espi_aspeed_perif_isr(uint32_t sts, struct espi_aspeed_perif *perif)
+static struct espi_aspeed_perif espi_aspeed_perif;
+
+static void espi_aspeed_perif_isr(uint32_t sts, struct espi_aspeed_data *data)
 {
+	struct espi_aspeed_perif *perif = data->perif;
+
 	if (sts & ESPI_INT_STS_PERIF_PC_RX_CMPLT)
 		k_sem_give(&perif->rx_ready);
 
@@ -372,9 +393,14 @@ struct espi_aspeed_vw {
 	uint32_t gpio_val;
 };
 
-static void espi_aspeed_vw_isr(uint32_t sts, struct espi_aspeed_vw *vw)
+static struct espi_aspeed_vw espi_aspeed_vw;
+
+static void espi_aspeed_vw_isr(uint32_t sts, struct espi_aspeed_data *data)
 {
-	uint32_t evt, evt_int;
+	uint32_t evt_int;
+	struct espi_event evt_vw = { ESPI_BUS_EVENT_VWIRE_RECEIVED, 0, 0 };
+
+	espi_send_callbacks(&data->callbacks, data->dev, evt_vw);
 
 	if (sts & ESPI_INT_STS_VW_GPIOEVT)
 		ESPI_WR(ESPI_INT_STS_VW_GPIOEVT, ESPI_INT_STS);
@@ -386,13 +412,7 @@ static void espi_aspeed_vw_isr(uint32_t sts, struct espi_aspeed_vw *vw)
 	}
 
 	if (sts & ESPI_INT_STS_VW_SYSEVT1) {
-		evt = ESPI_RD(ESPI_SYSEVT1);
 		evt_int = ESPI_RD(ESPI_SYSEVT1_INT_STS);
-
-		if (evt_int & ESPI_SYSEVT1_INT_STS_SUSPEND_WARN)
-			evt |= ESPI_SYSEVT1_SUSPEND_ACK;
-
-		ESPI_WR(evt, ESPI_SYSEVT1);
 		ESPI_WR(evt_int, ESPI_SYSEVT1_INT_STS);
 		ESPI_WR(ESPI_INT_STS_VW_SYSEVT1, ESPI_INT_STS);
 	}
@@ -469,10 +489,13 @@ struct espi_aspeed_oob {
 	struct k_sem rx_ready;
 };
 
-static void espi_aspeed_oob_isr(uint32_t sts, struct espi_aspeed_oob *oob)
+static struct espi_aspeed_oob espi_aspeed_oob;
+
+static void espi_aspeed_oob_isr(uint32_t sts, struct espi_aspeed_data *data)
 {
 	int i;
 	uint32_t reg;
+	struct espi_aspeed_oob *oob = data->oob;
 
 	if (sts & ESPI_INT_STS_HW_RST_DEASSERT) {
 		if (oob->dma_mode) {
@@ -572,8 +595,12 @@ struct espi_aspeed_flash {
 	struct k_sem rx_ready;
 };
 
-static void espi_aspeed_flash_isr(uint32_t sts, struct espi_aspeed_flash *flash)
+static struct espi_aspeed_flash espi_aspeed_flash;
+
+static void espi_aspeed_flash_isr(uint32_t sts, struct espi_aspeed_data *data)
 {
+	struct espi_aspeed_flash *flash = data->flash;
+
 	if (sts & ESPI_INT_STS_FLASH_RX_CMPLT)
 		k_sem_give(&flash->rx_ready);
 
@@ -606,15 +633,6 @@ static void espi_aspeed_flash_init(struct espi_aspeed_flash *flash)
 }
 
 /* eSPI controller config. */
-struct espi_aspeed_data {
-	struct espi_aspeed_perif perif;
-	struct espi_aspeed_vw vw;
-	struct espi_aspeed_oob oob;
-	struct espi_aspeed_flash flash;
-};
-
-static struct espi_aspeed_data espi_aspeed_data;
-
 struct espi_aspeed_config {
 	uintptr_t base;
 };
@@ -647,10 +665,10 @@ static void espi_aspeed_reset_isr(const struct device *dev)
 	struct espi_aspeed_data *data = dev->data;
 
 	espi_aspeed_ctrl_init(data);
-	espi_aspeed_perif_init(&data->perif);
-	espi_aspeed_vw_init(&data->vw);
-	espi_aspeed_oob_init(&data->oob);
-	espi_aspeed_flash_init(&data->flash);
+	espi_aspeed_perif_init(data->perif);
+	espi_aspeed_vw_init(data->vw);
+	espi_aspeed_oob_init(data->oob);
+	espi_aspeed_flash_init(data->flash);
 
 	ESPI_WR(ESPI_INT_STS_HW_RST_ASSERT, ESPI_INT_STS);
 
@@ -670,16 +688,16 @@ static void espi_aspeed_isr(const struct device *dev)
 		return espi_aspeed_reset_isr(dev);
 
 	if (sts & ESPI_INT_STS_PERIF_BITS)
-		espi_aspeed_perif_isr(sts, &data->perif);
+		espi_aspeed_perif_isr(sts, data);
 
 	if (sts & ESPI_INT_STS_VW_BITS)
-		espi_aspeed_vw_isr(sts, &data->vw);
+		espi_aspeed_vw_isr(sts, data);
 
 	if (sts & (ESPI_INT_STS_OOB_BITS | ESPI_INT_STS_HW_RST_DEASSERT))
-		espi_aspeed_oob_isr(sts, &data->oob);
+		espi_aspeed_oob_isr(sts, data);
 
 	if (sts & ESPI_INT_STS_FLASH_BITS)
-		espi_aspeed_flash_isr(sts, &data->flash);
+		espi_aspeed_flash_isr(sts, data);
 
 	if (sts & ESPI_INT_STS_HW_RST_DEASSERT) {
 		sysevt = ESPI_RD(ESPI_SYSEVT) |
@@ -698,10 +716,12 @@ static int espi_aspeed_init(const struct device *dev)
 	uint32_t reg, scu_base;
 	struct espi_aspeed_config *cfg = (struct espi_aspeed_config *)dev->config;
 	struct espi_aspeed_data *data = (struct espi_aspeed_data *)dev->data;
-	struct espi_aspeed_perif *perif = &data->perif;
-	struct espi_aspeed_vw *vw = &data->vw;
-	struct espi_aspeed_oob *oob = &data->oob;
-	struct espi_aspeed_flash *flash = &data->flash;
+	struct espi_aspeed_perif *perif = data->perif = &espi_aspeed_perif;
+	struct espi_aspeed_vw *vw = data->vw = &espi_aspeed_vw;
+	struct espi_aspeed_oob *oob = data->oob = &espi_aspeed_oob;
+	struct espi_aspeed_flash *flash = data->flash = &espi_aspeed_flash;
+
+	data->dev = dev;
 
 	espi_base = cfg->base;
 	scu_base = DT_REG_ADDR_BY_IDX(DT_INST_PHANDLE_BY_IDX(0, aspeed_scu, 0), 0);
@@ -895,7 +915,7 @@ int espi_aspeed_perif_pc_get_rx(const struct device *dev, struct espi_aspeed_ioc
 	uint32_t cyc, tag, len;
 	struct espi_comm_hdr *hdr = (struct espi_comm_hdr *)ioc->pkt;
 	struct espi_aspeed_data *data = (struct espi_aspeed_data *)dev->data;
-	struct espi_aspeed_perif *perif = &data->perif;
+	struct espi_aspeed_perif *perif = data->perif;
 
 	rc = k_sem_take(&perif->rx_lock, (blocking) ? K_FOREVER : K_NO_WAIT);
 	if (rc)
@@ -963,7 +983,7 @@ int espi_aspeed_perif_pc_put_tx(const struct device *dev, struct espi_aspeed_ioc
 	uint32_t cyc, tag, len;
 	struct espi_comm_hdr *hdr = (struct espi_comm_hdr *)ioc->pkt;
 	struct espi_aspeed_data *data = (struct espi_aspeed_data *)dev->data;
-	struct espi_aspeed_perif *perif = &data->perif;
+	struct espi_aspeed_perif *perif = data->perif;
 
 	rc = k_sem_take(&perif->pc_tx_lock, K_NO_WAIT);
 	if (rc)
@@ -1005,7 +1025,7 @@ int espi_aspeed_perif_np_put_tx(const struct device *dev, struct espi_aspeed_ioc
 	uint32_t cyc, tag, len;
 	struct espi_comm_hdr *hdr = (struct espi_comm_hdr *)ioc->pkt;
 	struct espi_aspeed_data *data = (struct espi_aspeed_data *)dev->data;
-	struct espi_aspeed_perif *perif = &data->perif;
+	struct espi_aspeed_perif *perif = data->perif;
 
 	rc = k_sem_take(&perif->np_tx_lock, K_NO_WAIT);
 	if (rc)
@@ -1049,7 +1069,7 @@ int espi_aspeed_oob_get_rx(const struct device *dev, struct espi_aspeed_ioc *ioc
 	struct oob_rx_dma_desc *d;
 	struct espi_comm_hdr *hdr = (struct espi_comm_hdr *)ioc->pkt;
 	struct espi_aspeed_data *data = (struct espi_aspeed_data *)dev->data;
-	struct espi_aspeed_oob *oob = &data->oob;
+	struct espi_aspeed_oob *oob = data->oob;
 
 	rc = k_sem_take(&oob->rx_lock, (blocking) ? K_FOREVER : K_NO_WAIT);
 	if (rc)
@@ -1122,7 +1142,7 @@ int espi_aspeed_oob_put_tx(const struct device *dev, struct espi_aspeed_ioc *ioc
 	struct oob_tx_dma_desc *d;
 	struct espi_comm_hdr *hdr = (struct espi_comm_hdr *)ioc->pkt;
 	struct espi_aspeed_data *data = (struct espi_aspeed_data *)dev->data;
-	struct espi_aspeed_oob *oob = &data->oob;
+	struct espi_aspeed_oob *oob = data->oob;
 
 	rc = k_sem_take(&oob->tx_lock, K_NO_WAIT);
 	if (rc)
@@ -1190,7 +1210,7 @@ int espi_aspeed_flash_get_rx(const struct device *dev, struct espi_aspeed_ioc *i
 	uint32_t cyc, tag, len;
 	struct espi_comm_hdr *hdr = (struct espi_comm_hdr *)ioc->pkt;
 	struct espi_aspeed_data *data = (struct espi_aspeed_data *)dev->data;
-	struct espi_aspeed_flash *flash = &data->flash;
+	struct espi_aspeed_flash *flash = data->flash;
 
 	rc = k_sem_take(&flash->rx_lock, (blocking) ? K_FOREVER : K_NO_WAIT);
 	if (rc)
@@ -1255,7 +1275,7 @@ int espi_aspeed_flash_put_tx(const struct device *dev, struct espi_aspeed_ioc *i
 	uint32_t cyc, tag, len;
 	struct espi_comm_hdr *hdr = (struct espi_comm_hdr *)ioc->pkt;
 	struct espi_aspeed_data *data = (struct espi_aspeed_data *)dev->data;
-	struct espi_aspeed_flash *flash = &data->flash;
+	struct espi_aspeed_flash *flash = data->flash;
 
 	rc = k_sem_take(&flash->tx_lock, K_NO_WAIT);
 	if (rc)
@@ -1388,6 +1408,15 @@ static int espi_aspeed_flash_erase(const struct device *dev, struct espi_flash_p
 	return espi_aspeed_flash_rwe(dev, pckt, FLASH_ERASE);
 }
 
+static int espi_aspeed_manage_callback(const struct device *dev,
+					struct espi_callback *callback,
+					bool set)
+{
+	struct espi_aspeed_data *data = (struct espi_aspeed_data *)dev->data;
+
+	return espi_manage_callback(&data->callbacks, callback, set);
+}
+
 static const struct espi_driver_api espi_aspeed_driver_api = {
 	.get_channel_status = espi_aspeed_channel_ready,
 	.send_oob = espi_aspeed_send_oob,
@@ -1395,6 +1424,7 @@ static const struct espi_driver_api espi_aspeed_driver_api = {
 	.flash_read = espi_aspeed_flash_read,
 	.flash_write = espi_aspeed_flash_write,
 	.flash_erase = espi_aspeed_flash_erase,
+	.manage_callback = espi_aspeed_manage_callback,
 };
 
 DEVICE_DT_INST_DEFINE(0, &espi_aspeed_init, NULL,
