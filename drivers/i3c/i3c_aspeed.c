@@ -857,7 +857,7 @@ static void i3c_aspeed_isr(const struct device *dev)
 
 		i3c_aspeed_slave_event(dev, status);
 	} else {
-		if (status.fields.resp_q_ready) {
+		if (status.fields.resp_q_ready || status.fields.xfr_error) {
 			i3c_aspeed_end_xfer(obj);
 		}
 
