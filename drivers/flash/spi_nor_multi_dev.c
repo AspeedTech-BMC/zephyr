@@ -1080,17 +1080,19 @@ int spi_nor_erase_by_cmd(const struct device *dev, off_t addr,
 static int spi_nor_write_protection_set(const struct device *dev,
 					bool write_protect)
 {
-	int ret;
+	int ret = 0;
 	struct spi_nor_op_info op_info =
 			SPI_NOR_OP_INFO(JESD216_MODE_111, 0,
 				0, 0, 0, NULL, 0, SPI_NOR_DATA_DIRECT_OUT);
 
 	op_info.opcode = (write_protect) ? SPI_NOR_CMD_WRDI : SPI_NOR_CMD_WREN;
-	ret = spi_nor_op_exec(dev, op_info);
 
 	if (IS_ENABLED(DT_INST_PROP(0, requires_ulbpr))
-	    && (ret == 0)
 	    && !write_protect) {
+		ret = spi_nor_op_exec(dev, op_info);
+		if (ret != 0)
+			return ret;
+
 		op_info.opcode = SPI_NOR_CMD_ULBPR;
 		ret = spi_nor_op_exec(dev, op_info);
 	}
