@@ -1714,13 +1714,17 @@ static int i3c_aspeed_init(const struct device *dev)
 		i3c_register->intr_status_en.value = intr_reg.value;
 		if (obj->ibi_event == NULL) {
 			obj->ibi_event = osEventFlagsNew(NULL);
-			if (obj->ibi_event == NULL)
+			if (obj->ibi_event == NULL) {
 				LOG_ERR("Creat ibi event flags failed");
+				return -ENOSPC;
+			}
 		}
 		if (obj->data_event == NULL) {
 			obj->data_event = osEventFlagsNew(NULL);
-			if (obj->data_event == NULL)
+			if (obj->data_event == NULL) {
 				LOG_ERR("Creat data event flags failed");
+				return -ENOSPC;
+			}
 		}
 	} else {
 		union i3c_device_addr_s reg;
@@ -1782,7 +1786,10 @@ static int i3c_aspeed_init(const struct device *dev)
 												   \
 	static int i3c_aspeed_config_func_##n(const struct device *dev)                            \
 	{                                                                                          \
-		i3c_aspeed_init(dev);                                                              \
+		int ret;                                                                           \
+		ret = i3c_aspeed_init(dev);                                                        \
+		if (ret < 0)                                                                       \
+			return ret;                                                                \
 		IRQ_CONNECT(DT_INST_IRQN(n), DT_INST_IRQ(n, priority), i3c_aspeed_isr,             \
 			    DEVICE_DT_INST_GET(n), 0);                                             \
 		irq_enable(DT_INST_IRQN(n));                                                       \
