@@ -1385,18 +1385,6 @@ int i3c_aspeed_slave_register(const struct device *dev, struct i3c_slave_setup *
 	return 0;
 }
 
-static uint32_t i3c_aspeed_slave_wait_data_consume(const struct device *dev)
-{
-	struct i3c_aspeed_obj *obj = DEV_DATA(dev);
-	union i3c_intr_s events;
-
-	osEventFlagsClear(obj->data_event, ~osFlagsError);
-	events.value = 0;
-	events.fields.resp_q_ready = 1;
-
-	return osEventFlagsWait(obj->data_event, events.value, osFlagsWaitAny, K_SECONDS(3).ticks);
-}
-
 int i3c_aspeed_slave_put_read_data(const struct device *dev, struct i3c_slave_payload *data,
 				   struct i3c_ibi_payload *ibi_notify)
 {
@@ -1440,6 +1428,7 @@ int i3c_aspeed_slave_put_read_data(const struct device *dev, struct i3c_slave_pa
 		i3c_register->cmd_queue_port.value = cmd.value;
 	}
 
+	osEventFlagsClear(obj->data_event, ~osFlagsError);
 	if (config->priv_xfer_pec) {
 		xfer_buf = pec_append(dev, data->buf, data->size);
 		i3c_aspeed_wr_tx_fifo(obj, xfer_buf, data->size + 1);
@@ -1463,8 +1452,10 @@ int i3c_aspeed_slave_put_read_data(const struct device *dev, struct i3c_slave_pa
 			goto ibi_err;
 		}
 	}
-
-	flag_ret = i3c_aspeed_slave_wait_data_consume(dev);
+	events.value = 0;
+	events.fields.resp_q_ready = 1;
+	flag_ret =
+		osEventFlagsWait(obj->data_event, events.value, osFlagsWaitAny, K_SECONDS(3).ticks);
 	if (flag_ret & osFlagsError) {
 		i3c_aspeed_init(dev);
 		ret = -EIO;
