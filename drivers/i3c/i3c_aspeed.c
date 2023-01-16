@@ -130,7 +130,8 @@ union i3c_device_cmd_queue_port_s {
 
 	struct {
 		volatile uint32_t cmd_attr : 3;			/* bit[2:0] */
-		volatile uint32_t reserved0 : 13;		/* bit[15:3] */
+		volatile uint32_t tid : 3;			/* bit[5:3] */
+		volatile uint32_t reserved0 : 10;		/* bit[15:5] */
 		volatile uint32_t dl : 16;			/* bit[31:16] */
 	} slave_data_cmd;
 }; /* offset 0x0c */
@@ -144,6 +145,8 @@ union i3c_device_resp_queue_port_s {
 		volatile uint32_t err_status : 4;		/* bit[31:28] */
 	} fields;
 }; /* offset 0x10 */
+#define SLAVE_TID_IBI_DONE 0x1
+#define SLAVE_TID_MASTER_READ_DATA 0x2
 #define SLAVE_TID_MASTER_WRITE_DATA 0x8
 #define SLAVE_TID_DEFSLV_WRITE_DATA 0xF
 
@@ -706,10 +709,11 @@ static void i3c_aspeed_slave_resp_handler(struct i3c_aspeed_obj *obj, union i3c_
 				cb->write_done(obj->slave_data.dev);
 			}
 		} else {
-			if (status.fields.ibi_update)
+			if (status.fields.ibi_update && resp.fields.tid == SLAVE_TID_IBI_DONE) {
 				osEventFlagsSet(obj->ibi_event, status.value);
-			else
+			} else if (resp.fields.tid == SLAVE_TID_MASTER_READ_DATA) {
 				osEventFlagsSet(obj->data_event, status.value);
+			}
 		}
 	}
 }
@@ -1429,6 +1433,7 @@ int i3c_aspeed_slave_put_read_data(const struct device *dev, struct i3c_slave_pa
 			i3c_aspeed_wr_tx_fifo(obj, ibi_notify->buf, ibi_notify->size);
 			cmd.slave_data_cmd.dl = ibi_notify->size;
 		}
+		cmd.slave_data_cmd.tid = SLAVE_TID_IBI_DONE;
 		cmd.slave_data_cmd.cmd_attr = COMMAND_PORT_SLAVE_DATA_CMD;
 		i3c_register->cmd_queue_port.value = cmd.value;
 	}
@@ -1442,6 +1447,7 @@ int i3c_aspeed_slave_put_read_data(const struct device *dev, struct i3c_slave_pa
 		i3c_aspeed_wr_tx_fifo(obj, data->buf, data->size);
 		cmd.slave_data_cmd.dl = data->size;
 	}
+	cmd.slave_data_cmd.tid = SLAVE_TID_MASTER_READ_DATA;
 	cmd.slave_data_cmd.cmd_attr = COMMAND_PORT_SLAVE_DATA_CMD;
 	i3c_register->cmd_queue_port.value = cmd.value;
 
