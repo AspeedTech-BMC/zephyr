@@ -549,6 +549,7 @@ struct i3c_aspeed_obj {
 #define DEV_CFG(dev)			((struct i3c_aspeed_config *)(dev)->config)
 #define DEV_DATA(dev)			((struct i3c_aspeed_obj *)(dev)->data)
 #define DESC_PRIV(desc)			((struct i3c_aspeed_dev_priv *)(desc)->priv_data)
+static int i3c_aspeed_init(const struct device *dev);
 
 static uint8_t *pec_append(const struct device *dev, uint8_t *ptr, uint8_t len)
 {
@@ -1384,7 +1385,7 @@ int i3c_aspeed_slave_register(const struct device *dev, struct i3c_slave_setup *
 	return 0;
 }
 
-static int i3c_aspeed_slave_wait_data_consume(const struct device *dev)
+static uint32_t i3c_aspeed_slave_wait_data_consume(const struct device *dev)
 {
 	struct i3c_aspeed_obj *obj = DEV_DATA(dev);
 	union i3c_intr_s events;
@@ -1392,9 +1393,8 @@ static int i3c_aspeed_slave_wait_data_consume(const struct device *dev)
 	osEventFlagsClear(obj->data_event, ~osFlagsError);
 	events.value = 0;
 	events.fields.resp_q_ready = 1;
-	osEventFlagsWait(obj->data_event, events.value, osFlagsWaitAny, osWaitForever);
 
-	return 0;
+	return osEventFlagsWait(obj->data_event, events.value, osFlagsWaitAny, K_SECONDS(3).ticks);
 }
 
 int i3c_aspeed_slave_put_read_data(const struct device *dev, struct i3c_slave_payload *data,
@@ -1406,6 +1406,8 @@ int i3c_aspeed_slave_put_read_data(const struct device *dev, struct i3c_slave_pa
 	union i3c_intr_s events;
 	union i3c_device_cmd_queue_port_s cmd;
 	uint8_t *xfer_buf;
+	uint32_t flag_ret;
+	int ret = 0;
 
 	__ASSERT_NO_MSG(data);
 	__ASSERT_NO_MSG(data->buf);
@@ -1453,12 +1455,22 @@ int i3c_aspeed_slave_put_read_data(const struct device *dev, struct i3c_slave_pa
 
 	if (ibi_notify) {
 		i3c_register->i3c_slave_intr_req.fields.sir = 1;
-		osEventFlagsWait(obj->ibi_event, events.value, osFlagsWaitAll, osWaitForever);
+		flag_ret = osEventFlagsWait(obj->ibi_event, events.value, osFlagsWaitAll,
+					    K_SECONDS(1).ticks);
+		if (flag_ret & osFlagsError) {
+			i3c_aspeed_init(dev);
+			ret = -EIO;
+			goto ibi_err;
+		}
 	}
 
-	i3c_aspeed_slave_wait_data_consume(dev);
-
-	return 0;
+	flag_ret = i3c_aspeed_slave_wait_data_consume(dev);
+	if (flag_ret & osFlagsError) {
+		i3c_aspeed_init(dev);
+		ret = -EIO;
+	}
+ibi_err:
+	return ret;
 }
 
 int i3c_aspeed_slave_send_sir(const struct device *dev, struct i3c_ibi_payload *payload)
@@ -1469,6 +1481,7 @@ int i3c_aspeed_slave_send_sir(const struct device *dev, struct i3c_ibi_payload *
 	union i3c_intr_s events;
 	union i3c_device_cmd_queue_port_s cmd;
 	uint8_t *xfer_buf;
+	uint32_t flag_ret;
 
 	__ASSERT_NO_MSG(payload);
 	__ASSERT_NO_MSG(payload->buf);
@@ -1501,7 +1514,12 @@ int i3c_aspeed_slave_send_sir(const struct device *dev, struct i3c_ibi_payload *
 
 	/* trigger the hw and wait done */
 	i3c_register->i3c_slave_intr_req.fields.sir = 1;
-	osEventFlagsWait(obj->ibi_event, events.value, osFlagsWaitAll, osWaitForever);
+	flag_ret =
+		osEventFlagsWait(obj->ibi_event, events.value, osFlagsWaitAll, K_SECONDS(1).ticks);
+	if (flag_ret & osFlagsError) {
+		i3c_aspeed_init(dev);
+		return -EIO;
+	}
 
 	return 0;
 }
@@ -1654,6 +1672,7 @@ static int i3c_aspeed_init(const struct device *dev)
 
 	obj->dev = dev;
 	obj->config = config;
+	reset_control_assert(reset_dev, config->reset_id);
 	clock_control_on(config->clock_dev, config->clock_id);
 	reset_control_deassert(reset_dev, config->reset_id);
 
@@ -1693,6 +1712,16 @@ static int i3c_aspeed_init(const struct device *dev)
 		 */
 		intr_reg.fields.ibi_update = 1;
 		i3c_register->intr_status_en.value = intr_reg.value;
+		if (obj->ibi_event == NULL) {
+			obj->ibi_event = osEventFlagsNew(NULL);
+			if (obj->ibi_event == NULL)
+				LOG_ERR("Creat ibi event flags failed");
+		}
+		if (obj->data_event == NULL) {
+			obj->data_event = osEventFlagsNew(NULL);
+			if (obj->data_event == NULL)
+				LOG_ERR("Creat data event flags failed");
+		}
 	} else {
 		union i3c_device_addr_s reg;
 
@@ -1719,9 +1748,6 @@ static int i3c_aspeed_init(const struct device *dev)
 	i3c_register->sir_reject = GENMASK(31, 0);
 
 	i3c_aspeed_enable(obj);
-
-	obj->ibi_event = osEventFlagsNew(NULL);
-	obj->data_event = osEventFlagsNew(NULL);
 
 	return 0;
 }
