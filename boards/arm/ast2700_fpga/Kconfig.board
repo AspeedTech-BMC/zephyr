@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Aspeed AST2700 FPGA board configuration
+#
+# Copyright (c) 2023 Aspeed Technology Inc.
+
+config BOARD_AST2700_FPGA
+	bool "ASPEED AST2700 FPGA Board"
+	depends on SOC_AST2700
