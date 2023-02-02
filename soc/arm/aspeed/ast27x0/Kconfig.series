@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Copyright (c) 2023 ASPEED Technology Inc.
+
+config SOC_SERIES_AST27X0
+	bool "Aspeed AST27X0 Series"
+	select ARM
+	select CPU_CORTEX_M4
+	select CPU_HAS_FPU
+	select CPU_HAS_ARM_MPU
+	select SOC_FAMILY_ASPEED
+	select SYSCON
+#	select CACHE
+#	select CPU_HAS_DCACHE
+#	select CPU_HAS_ICACHE
+#	select CACHE_MANAGEMENT
+#	select CACHE_ASPEED
+	help
+	  Enable support for ASPEED AST27X0 series

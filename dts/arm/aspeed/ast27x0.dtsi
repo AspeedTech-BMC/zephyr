@@ -1,0 +1,69 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Copyright (c) 2023 ASPEED Technology Inc.
+ */
+
+#include <arm/armv7-m.dtsi>
+#include <mem.h>
+#include <zephyr/dt-bindings/clock/ast10x0_clock.h>
+
+/ {
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu@0 {
+			device_type = "cpu";
+			compatible = "arm,cortex-m4f";
+			reg = <0>;
+		};
+	};
+
+	sram0: memory@0 {
+		compatible = "mmio-sram";
+	};
+
+	soc {
+		syscon0: syscon@72c00200 {
+			compatible = "syscon";
+			reg = <0x72c00200 0x1000>;
+			sysclk0: sysclk {
+				compatible = "aspeed,ast10x0-clock";
+				#clock-cells = <1>;
+			};
+
+			sysrst0: sysrst {
+				compatible = "aspeed,ast10x0-reset";
+				#reset-cells = <1>;
+			};
+		};
+
+		syscon1: syscon@74c02200 {
+			compatible = "syscon";
+			reg = <0x74c02200 0x1000>;
+			sysclk1: sysclk {
+				compatible = "aspeed,ast10x0-clock";
+				#clock-cells = <1>;
+			};
+
+			sysrst1: sysrst {
+				compatible = "aspeed,ast10x0-reset";
+				#reset-cells = <1>;
+			};
+		};
+
+		uart5: serial@72c1a000 {
+			compatible = "ns16550";
+			reg = <0x72c1a000 0x1000>;
+			interrupts = <8 0>;
+			//clocks = <&sysclk1 ASPEED_CLK_UART5>;
+			status = "disabled";
+			reg-shift = <2>;
+		};
+	};
+};
+
+&nvic {
+	arm,num-irq-priority-bits = <3>;
+};
