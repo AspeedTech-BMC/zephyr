@@ -50,6 +50,7 @@ struct aspeed_adc_trim_locate {
 struct adc_aspeed_cfg {
 	struct adc_register_s *base;
 	uint32_t scu_base;
+	uint32_t channels_used;
 	bool trim_valid;
 	struct aspeed_adc_trim_locate trim_locate;
 	const struct device *clock_dev;
@@ -256,13 +257,15 @@ static int adc_aspeed_start_read(const struct device *dev,
 				 const struct adc_sequence *sequence)
 {
 	struct adc_aspeed_data *priv = DEV_DATA(dev);
+	const struct adc_aspeed_cfg *config = DEV_CFG(dev);
 
 	if (sequence->resolution != 10) {
 		LOG_ERR("unsupported resolution %d", sequence->resolution);
 		return -ENOTSUP;
 	}
 
-	if (find_msb_set(sequence->channels) > ASPEED_ADC_CH_NUMBER + 1) {
+	if (find_msb_set(sequence->channels) > ASPEED_ADC_CH_NUMBER + 1 ||
+	    !(sequence->channels & config->channels_used)) {
 		LOG_ERR("unsupported channels in mask: 0x%08x",
 			sequence->channels);
 		return -ENOTSUP;
@@ -416,7 +419,7 @@ static int aspeed_adc_engine_init(const struct device *dev,
 		return ret;
 	}
 
-	engine_ctrl.fields.channel_enable = 0xff;
+	engine_ctrl.fields.channel_enable = config->channels_used;
 	adc_register->engine_ctrl.value = engine_ctrl.value;
 
 	return 0;
@@ -485,6 +488,7 @@ static struct adc_driver_api adc_aspeed_api = {
 		.base = (struct adc_register_s *)DT_INST_REG_ADDR(n),		       \
 		.scu_base = DT_REG_ADDR_BY_IDX(DT_INST_PHANDLE(n, aspeed_scu), 0),     \
 		.trim_valid = DT_INST_PROP_OR(n, aspeed_trim_data_valid, false),       \
+		.channels_used = DT_INST_PROP_OR(n, aspeed_adc_channels_used, 0xff),   \
 		.trim_locate = { DT_INST_PROP_BY_IDX(n, aspeed_trim_data_locate, 0),   \
 				 DT_INST_PROP_BY_IDX(n, aspeed_trim_data_locate, 1) }, \
 		.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(n)),		       \

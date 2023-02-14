@@ -20,6 +20,10 @@ properties:
       required: true
       description: phandle to SCU device tree node
 
+    aspeed,adc-channels-used:
+      type: int
+      description: Bitmask of the channels muxed and enabled for this device
+
     aspeed,trim-data-valid:
       type: boolean
       description: |
