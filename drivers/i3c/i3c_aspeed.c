@@ -575,6 +575,50 @@ void i3c_aspeed_isolate_scl_sda(int inst_id, bool iso)
 	}
 }
 
+void i3c_aspeed_toggle_scl_in(int inst_id)
+{
+	uint32_t i3c_gr = DT_REG_ADDR(DT_NODELABEL(i3c_gr));
+	uint32_t value;
+
+	value = sys_read32(i3c_gr + I3CG_REG1(inst_id));
+	value |= SCL_IN_SW_MODE_VAL;
+	sys_write32(value, i3c_gr + I3CG_REG1(inst_id));
+
+	value &= ~SCL_IN_SW_MODE_VAL;
+	sys_write32(value, i3c_gr + I3CG_REG1(inst_id));
+	value |= SCL_IN_SW_MODE_VAL;
+	sys_write32(value, i3c_gr + I3CG_REG1(inst_id));
+}
+
+void i3c_aspeed_gen_start_to_internal(int inst_id)
+{
+	uint32_t i3c_gr = DT_REG_ADDR(DT_NODELABEL(i3c_gr));
+	uint32_t value;
+
+	value = sys_read32(i3c_gr + I3CG_REG1(inst_id));
+	value |= SCL_IN_SW_MODE_VAL | SDA_IN_SW_MODE_VAL;
+	sys_write32(value, i3c_gr + I3CG_REG1(inst_id));
+
+	value &= ~SDA_IN_SW_MODE_VAL;
+	sys_write32(value, i3c_gr + I3CG_REG1(inst_id));
+	value &= ~SCL_IN_SW_MODE_VAL;
+	sys_write32(value, i3c_gr + I3CG_REG1(inst_id));
+}
+
+void i3c_aspeed_gen_stop_to_internal(int inst_id)
+{
+	uint32_t i3c_gr = DT_REG_ADDR(DT_NODELABEL(i3c_gr));
+	uint32_t value;
+
+	value = sys_read32(i3c_gr + I3CG_REG1(inst_id));
+	value |= SCL_IN_SW_MODE_VAL;
+	sys_write32(value, i3c_gr + I3CG_REG1(inst_id));
+	value &= ~SDA_IN_SW_MODE_VAL;
+	sys_write32(value, i3c_gr + I3CG_REG1(inst_id));
+	value |= SDA_IN_SW_MODE_VAL;
+	sys_write32(value, i3c_gr + I3CG_REG1(inst_id));
+}
+
 #define DEV_CFG(dev)			((struct i3c_aspeed_config *)(dev)->config)
 #define DEV_DATA(dev)			((struct i3c_aspeed_obj *)(dev)->data)
 #define DESC_PRIV(desc)			((struct i3c_aspeed_dev_priv *)(desc)->priv_data)
@@ -1129,6 +1173,9 @@ static void i3c_aspeed_enable(struct i3c_aspeed_obj *obj)
 		k_busy_wait(DIV_ROUND_UP(config->core_period *
 						 i3c_register->bus_free_timing.fields.i3c_ibi_free,
 					 NSEC_PER_USEC));
+		while (!i3c_register->device_ctrl.fields.enable)
+			i3c_aspeed_toggle_scl_in(config->inst_id);
+		i3c_aspeed_gen_stop_to_internal(config->inst_id);
 		i3c_aspeed_isolate_scl_sda(config->inst_id, false);
 	}
 }
