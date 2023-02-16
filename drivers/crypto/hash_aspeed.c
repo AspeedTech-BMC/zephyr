@@ -426,11 +426,13 @@ static int aspeed_hash_session_setup(const struct device *dev,
 static int aspeed_hash_session_free(const struct device *dev,
 				    struct hash_ctx *ctx)
 {
+	struct hace_register_s *hace_register = hace_eng.base;
 	struct aspeed_hash_ctx *data = &drv_state.data;
 
 	ARG_UNUSED(dev);
 	ARG_UNUSED(ctx);
 
+	hace_register->hash_cmd_reg.value = 0x0;
 	drv_state.in_use = false;
 	memset(data->buffer, 0, HASH_TMP_BUFF_SIZE);
 	data->bufcnt = 0;
