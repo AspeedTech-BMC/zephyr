@@ -1469,6 +1469,43 @@ int i3c_aspeed_slave_register(const struct device *dev, struct i3c_slave_setup *
 	return 0;
 }
 
+static void i3c_aspeed_slave_reset_queue(const struct device *dev)
+{
+	struct i3c_aspeed_config *config = DEV_CFG(dev);
+	struct i3c_register_s *i3c_register = config->base;
+	union i3c_reset_ctrl_s reset_ctrl;
+	int i;
+
+	i3c_aspeed_isolate_scl_sda(config->inst_id, true);
+	i3c_register->device_ctrl.fields.enable = 0;
+	for (i = 0; i < 8; i++)
+		i3c_aspeed_toggle_scl_in(config->inst_id);
+	if (i3c_register->device_ctrl.fields.enable) {
+		LOG_ERR("failed to disable controller: reset i3c controller\n");
+		i3c_aspeed_isolate_scl_sda(config->inst_id, false);
+		i3c_aspeed_init(dev);
+		return;
+	}
+	reset_ctrl.value = 0;
+	reset_ctrl.fields.tx_queue_reset = 1;
+	reset_ctrl.fields.rx_queue_reset = 1;
+	reset_ctrl.fields.ibi_queue_reset = 1;
+	reset_ctrl.fields.cmd_queue_reset = 1;
+	reset_ctrl.fields.resp_queue_reset = 1;
+	i3c_register->reset_ctrl.value = reset_ctrl.value;
+	i3c_register->device_ctrl.fields.enable = 1;
+	k_busy_wait(DIV_ROUND_UP(config->core_period *
+					 i3c_register->bus_free_timing.fields.i3c_ibi_free,
+				 NSEC_PER_USEC));
+	for (i = 0; i < 8; i++)
+		i3c_aspeed_toggle_scl_in(config->inst_id);
+	if (!i3c_register->device_ctrl.fields.enable) {
+		LOG_ERR("failed to enable controller: reset i3c controller\n");
+		i3c_aspeed_isolate_scl_sda(config->inst_id, false);
+		i3c_aspeed_init(dev);
+	}
+}
+
 int i3c_aspeed_slave_put_read_data(const struct device *dev, struct i3c_slave_payload *data,
 				   struct i3c_ibi_payload *ibi_notify)
 {
@@ -1531,6 +1568,7 @@ int i3c_aspeed_slave_put_read_data(const struct device *dev, struct i3c_slave_pa
 		flag_ret = osEventFlagsWait(obj->ibi_event, events.value, osFlagsWaitAll,
 					    K_SECONDS(1).ticks);
 		if (flag_ret & osFlagsError) {
+			LOG_WRN("SIR timeout: reset i3c controller\n");
 			i3c_aspeed_init(dev);
 			ret = -EIO;
 			goto ibi_err;
@@ -1541,7 +1579,8 @@ int i3c_aspeed_slave_put_read_data(const struct device *dev, struct i3c_slave_pa
 	flag_ret =
 		osEventFlagsWait(obj->data_event, events.value, osFlagsWaitAny, K_SECONDS(3).ticks);
 	if (flag_ret & osFlagsError) {
-		i3c_aspeed_init(dev);
+		LOG_WRN("Wait master read timeout: reset queue\n");
+		i3c_aspeed_slave_reset_queue(dev);
 		ret = -EIO;
 	}
 ibi_err:
