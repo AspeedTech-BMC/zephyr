@@ -527,6 +527,8 @@ struct i3c_aspeed_obj {
 	struct i3c_aspeed_config *config;
 	struct k_spinlock lock;
 	struct i3c_aspeed_xfer *curr_xfer;
+	struct k_work work;
+	bool sir_allowed_by_sw;
 	struct {
 		uint32_t ibi_status_correct : 1;
 		uint32_t ibi_pec_force_enable : 1;
@@ -887,11 +889,13 @@ static void i3c_aspeed_master_rx_ibi(struct i3c_aspeed_obj *obj)
 static void i3c_aspeed_slave_event(const struct device *dev, union i3c_intr_s status)
 {
 	struct i3c_aspeed_config *config = DEV_CFG(dev);
+	struct i3c_aspeed_obj *obj = DEV_DATA(dev);
 	struct i3c_register_s *i3c_register = config->base;
 	uint32_t cm_tfr_sts = i3c_register->present_state.fields.cm_tfr_sts;
 
 	if (status.fields.dyn_addr_assign) {
 		LOG_DBG("dynamic address assigned\n");
+		k_work_submit(&obj->work);
 	}
 
 	if (status.fields.ccc_update) {
@@ -1528,6 +1532,11 @@ int i3c_aspeed_slave_put_read_data(const struct device *dev, struct i3c_slave_pa
 			return -EACCES;
 		}
 
+		if (obj->sir_allowed_by_sw == 0) {
+			LOG_ERR("SIR is not allowed by software\n");
+			return -EACCES;
+		}
+
 		osEventFlagsClear(obj->ibi_event, ~osFlagsError);
 		events.value = 0;
 		events.fields.ibi_update = 1;
@@ -1774,6 +1783,14 @@ int i3c_aspeed_master_send_ccc(const struct device *dev, struct i3c_ccc_cmd *ccc
 	return ret;
 }
 
+static void sir_allowed_worker(struct k_work *work)
+{
+	struct i3c_aspeed_obj *obj = CONTAINER_OF(work, struct i3c_aspeed_obj, work);
+
+	k_msleep(1000);
+	obj->sir_allowed_by_sw = 1;
+}
+
 static int i3c_aspeed_init(const struct device *dev)
 {
 	struct i3c_aspeed_config *config = DEV_CFG(dev);
@@ -1840,6 +1857,8 @@ static int i3c_aspeed_init(const struct device *dev)
 				return -ENOSPC;
 			}
 		}
+		obj->sir_allowed_by_sw = 0;
+		k_work_init(&obj->work, sir_allowed_worker);
 	} else {
 		union i3c_device_addr_s reg;
 
