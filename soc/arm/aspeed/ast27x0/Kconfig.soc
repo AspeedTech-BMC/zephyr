@@ -11,6 +11,14 @@ config SOC_AST2700
 
 endchoice
 
+config SRAM_RO_SIZE
+	int "Read-only SRAM Size in kB"
+	help
+	 The cached SRAM has two memory regions: read-only and read-write. This
+	 option allows you to configure the size of the read-only region, while
+	 the size of the read-write region is determined by subtracting
+	 SRAM_RO_SIZE from the total SRAM_SIZE.
+
 config SRAM_NC_SIZE
 	int "noncached SRAM Size in kB"
 	help
