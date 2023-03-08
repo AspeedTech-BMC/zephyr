@@ -23,9 +23,9 @@
 #define RAMABLE_REGION SRAM_RW
 
 #define ROM_ADDR CONFIG_SRAM_BASE_ADDRESS
-#define ROM_SIZE (48 * 1K)
+#define ROM_SIZE (128 * 1K)
 #define RAM_ADDR (ROM_ADDR + ROM_SIZE)
-#define RAM_SIZE (24 * 1K)
+#define RAM_SIZE (640 * 1K)
 /* #define RAM_SIZE (CONFIG_SRAM_SIZE - ROM_SIZE) */
 
 /* Set alignment to CONFIG_ARM_MPU_REGION_MIN_ALIGN_AND_SIZE
