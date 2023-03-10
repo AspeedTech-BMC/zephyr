@@ -67,6 +67,8 @@
 #define SPI_NOR_CMD_DPD             0xB9    /* Deep Power Down */
 #define SPI_NOR_CMD_RDPD            0xAB    /* Release from Deep Power Down */
 #define SPI_NOR_CMD_RDSFDP          0x5A    /* Read SFDP */
+#define SPI_NOR_CMD_SRSTEN          0x66    /* reset enabled */
+#define SPI_NOR_CMD_SRST            0x99    /* trigger reset */
 
 /* Page, sector, and block size are standard, not configurable. */
 #define SPI_NOR_PAGE_SIZE    0x0100U
@@ -144,5 +146,6 @@ int spi_nor_re_init(const struct device *dev);
 int spi_nor_erase_by_cmd(const struct device *dev, off_t addr,
 			 size_t size, uint8_t cmd);
 int spi_nor_get_erase_sz(const struct device *dev, uint8_t cmd);
+int spi_nor_rst_by_cmd(const struct device *dev);
 
 #endif /*__SPI_NOR_H__*/

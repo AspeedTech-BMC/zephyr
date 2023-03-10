@@ -728,6 +728,37 @@ int spi_nor_sr_cr_bit1_config(const struct device *dev)
 	return 0;
 }
 
+int spi_nor_rst_by_cmd(const struct device *dev)
+{
+	int ret;
+	struct spi_nor_op_info op_info_srsten =
+			SPI_NOR_OP_INFO(JESD216_MODE_111, SPI_NOR_CMD_SRSTEN,
+					0, 0, 0, NULL, 0, SPI_NOR_DATA_DIRECT_OUT);
+	struct spi_nor_op_info op_info_srst =
+			SPI_NOR_OP_INFO(JESD216_MODE_111, SPI_NOR_CMD_SRST,
+					0, 0, 0, NULL, 0, SPI_NOR_DATA_DIRECT_OUT);
+	acquire_device(dev);
+
+	ret = spi_nor_op_exec(dev, op_info_srsten);
+	if (ret)
+		goto end;
+
+	k_busy_wait(10 * 1000);
+
+	ret = spi_nor_op_exec(dev, op_info_srst);
+	if (ret)
+		goto end;
+
+	k_busy_wait(50 * 1000);
+
+	release_device(dev);
+
+	spi_nor_config_4byte_mode(dev, false);
+
+end:
+	return ret;
+}
+
 #define SPI_NOR_QE_NO_NEED        0x0 /* Micron, Gigadevice */
 #define SPI_NOR_QE_SR_CR_BIT1     0x1
 #define SPI_NOR_QE_NOT_SUPPORTED  0x7 /* GigaDevice */
