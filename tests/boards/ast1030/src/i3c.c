@@ -140,6 +140,9 @@ static void test_i3c_ci(int count)
 	ret = i3c_master_enable_ibi(&slave);
 	ast_zassert_equal(ret, 0, "failed to enable sir");
 
+	/* Sleep 2s to ensure slave can send sir */
+	k_usleep(2000000);
+
 	for (i = 0; i < count; i++) {
 		/*
 		 * Test part 1:
