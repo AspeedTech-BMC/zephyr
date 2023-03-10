@@ -63,6 +63,12 @@ int demo_spi_host_read(void)
 			return -ENOEXEC;
 		}
 
+		ret = spi_nor_rst_by_cmd(flash_dev);
+		if (ret) {
+			LOG_ERR("fail to reset flash %s", flash_devices[i]);
+			goto end;
+		}
+
 		ret = flash_read(flash_dev, 0x0, op_buf, SPI_FLASH_TEST_SIZE);
 		if (ret) {
 			LOG_ERR("fail to read flash %s", flash_devices[i]);

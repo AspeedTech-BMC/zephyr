@@ -33,7 +33,7 @@ void aspeed_dcscm_rst_demo(struct k_work *item)
 			return;
 		}
 
-		spim_rst_flash(spim_dev, 1000);
+		/* spim_rst_flash(spim_dev, 1000); */
 
 		spim_passthrough_config(spim_dev, 0, false);
 		/* config all spi monitor as master mode */
