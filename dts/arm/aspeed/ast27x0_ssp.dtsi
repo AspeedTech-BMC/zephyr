@@ -1,0 +1,31 @@
+/dts-v1/;
+#include <aspeed/ast27x0.dtsi>
+
+&ipc {
+	ipc0: ipc@0 {
+		compatible = "aspeed,ast2700-ipc";
+		reg = <0x0 0x200>;
+		reg-tx-offset = <0x100>;
+		reg-rx-offset = <0>;
+		interrupts = <100 1>;
+		status = "disabled";
+	};
+
+	ipc1: ipc@200 {
+		compatible = "aspeed,ast2700-ipc";
+		reg = <0x200 0x200>;
+		reg-tx-offset = <0x100>;
+		reg-rx-offset = <0>;
+		interrupts = <102 1>;
+		status = "disabled";
+	};
+
+	ipc2: ipc@800 {
+		compatible = "aspeed,ast2700-ipc";
+		reg = <0x800 0x200>;
+		reg-tx-offset = <0x0>;
+		reg-rx-offset = <0x100>;
+		interrupts = <109 1>;
+		status = "disabled";
+	};
+};

@@ -25,9 +25,9 @@
 	};
 
 	soc {
-		syscon0: syscon@72c00200 {
+		syscon0: syscon@72c02000 {
 			compatible = "syscon";
-			reg = <0x72c00200 0x1000>;
+			reg = <0x72c02000 0x1000>;
 			sysclk0: sysclk {
 				compatible = "aspeed,ast10x0-clock";
 				#clock-cells = <1>;
@@ -39,9 +39,9 @@
 			};
 		};
 
-		syscon1: syscon@74c02200 {
+		syscon1: syscon@74c02000 {
 			compatible = "syscon";
-			reg = <0x74c02200 0x1000>;
+			reg = <0x74c02000 0x1000>;
 			sysclk1: sysclk {
 				compatible = "aspeed,ast10x0-clock";
 				#clock-cells = <1>;
@@ -53,13 +53,20 @@
 			};
 		};
 
-		uart5: serial@72c1a000 {
+		uart4: serial@72c1a000 {
 			compatible = "ns16550";
 			reg = <0x72c1a000 0x1000>;
 			interrupts = <8 0>;
 			//clocks = <&sysclk1 ASPEED_CLK_UART5>;
 			status = "disabled";
 			reg-shift = <2>;
+		};
+
+		ipc: bus@72c1c000 {
+			compatible = "simple-bus";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges = <0 0x72c1c000 0x1000>;
 		};
 	};
 };

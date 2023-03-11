@@ -1,0 +1,25 @@
+/dts-v1/;
+#include <aspeed/ast27x0.dtsi>
+
+&ipc {
+	ipc0: ipc@400 {
+		compatible = "aspeed,ast2700-ipc";
+		reg = <0x400 0x200>;
+		interrupts = <104 0>;
+		status = "disabled";
+	};
+
+	ipc1: ipc@600 {
+		compatible = "aspeed,ast2700-ipc";
+		reg = <0x600 0x200>;
+		interrupts = <106 0>;
+		status = "disabled";
+	};
+
+	ipc2: ipc@800 {
+		compatible = "aspeed,ast2700-ipc";
+		reg = <0x800 0x200>;
+		interrupts = <108 0>;
+		status = "disabled";
+	};
+};
