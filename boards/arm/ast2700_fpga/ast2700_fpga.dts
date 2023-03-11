@@ -27,3 +27,15 @@
 	current-speed = <115200>;
 	status = "okay";
 };
+
+&ipc0 {
+	status = "okay";
+};
+
+&ipc1 {
+	status = "okay";
+};
+
+&ipc2 {
+	status = "okay";
+};
