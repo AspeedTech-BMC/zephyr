@@ -5,6 +5,8 @@
 	ipc0: ipc@400 {
 		compatible = "aspeed,ast2700-ipc";
 		reg = <0x400 0x200>;
+		reg-tx-offset = <0x100>;
+		reg-rx-offset = <0>;
 		interrupts = <104 0>;
 		status = "disabled";
 	};
@@ -12,6 +14,8 @@
 	ipc1: ipc@600 {
 		compatible = "aspeed,ast2700-ipc";
 		reg = <0x600 0x200>;
+		reg-tx-offset = <0x100>;
+		reg-rx-offset = <0>;
 		interrupts = <106 0>;
 		status = "disabled";
 	};
@@ -19,6 +23,8 @@
 	ipc2: ipc@800 {
 		compatible = "aspeed,ast2700-ipc";
 		reg = <0x800 0x200>;
+		reg-tx-offset = <0x100>;
+		reg-rx-offset = <0>;
 		interrupts = <108 0>;
 		status = "disabled";
 	};
