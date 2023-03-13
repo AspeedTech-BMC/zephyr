@@ -8,7 +8,7 @@
 #include <aspeed/ast27x0_ssp.dtsi>
 
 / {
-	model = "Aspeed AST2700 FPGA board";
+	model = "Aspeed AST2700-SSP FPGA board";
 	compatible = "aspeed,ast2700-evb";
 
 	chosen {

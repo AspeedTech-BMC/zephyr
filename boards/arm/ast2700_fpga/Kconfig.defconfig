@@ -4,7 +4,12 @@
 #
 # Copyright (c) 2023 Aspeed Technology Inc.
 
-if BOARD_AST2700_FPGA
+if BOARD_AST2700_SSP_FPGA
 config BOARD
-	default "ast2700_fpga"
-endif # BOARD_AST2700_FPGA
+	default "ast2700_ssp_fpga"
+endif # BOARD_AST2700_SSP_FPGA
+
+if BOARD_AST2700_TSP_FPGA
+config BOARD
+	default "ast2700_tsp_fpga"
+endif # BOARD_AST2700_TSP_FPGA

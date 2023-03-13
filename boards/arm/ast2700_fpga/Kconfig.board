@@ -4,6 +4,10 @@
 #
 # Copyright (c) 2023 Aspeed Technology Inc.
 
-config BOARD_AST2700_FPGA
-	bool "ASPEED AST2700 FPGA Board"
+config BOARD_AST2700_SSP_FPGA
+	bool "ASPEED AST2700 SSP FPGA Board"
+	depends on SOC_AST2700
+
+config BOARD_AST2700_TSP_FPGA
+	bool "ASPEED AST2700 TSP FPGA Board"
 	depends on SOC_AST2700
