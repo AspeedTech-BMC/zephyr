@@ -18,6 +18,7 @@ LOG_MODULE_REGISTER(ipm_ast2700);
 #define IPC_NUM_OF_ID	4
 #define IPC_MAX_MSG_SIZE 0x20
 
+/* Each bit in the register represents an IPC ID */
 #define IPCR_TRIG	0x0
 #define IPCR_ENABLE	0x4
 #define IPCR_STATUS	0x8
@@ -78,8 +79,8 @@ static int ipm_ast2700_send(const struct device *dev, int wait, uint32_t id, con
 		return -EMSGSIZE;
 	}
 
-	if (wait) {
-		LOG_WRN("not support wait mode for now\n");
+	if (id >= IPC_NUM_OF_ID) {
+		return -EINVAL;
 	}
 
 	reg = sys_read32(base + IPCR_TRIG);
@@ -88,6 +89,12 @@ static int ipm_ast2700_send(const struct device *dev, int wait, uint32_t id, con
 	}
 
 	sys_write32(reg | BIT(id), base + IPCR_TRIG);
+
+	if (wait) {
+		while (sys_read32(base + IPCR_TRIG) & BIT(id)) {
+			/* busy-wait */
+		}
+	}
 
 	return 0;
 }
@@ -117,7 +124,7 @@ static int ipm_ast2700_set_enabled(const struct device *dev, int enable)
 	uint32_t reg = 0;
 
 	if (enable) {
-		reg = 0xf;
+		reg = GENMASK(IPC_NUM_OF_ID - 1, 0);
 	}
 	sys_write32(reg, config->base + config->reg_rx_offset + IPCR_ENABLE);
 
@@ -128,8 +135,8 @@ static int ipm_ast2700_init(const struct device *dev)
 {
 	const struct ipm_ast2700_config *config = dev->config;
 
-	/* Enabled by default just for now.  This should be controlled by api->set_enabled */
-	sys_write32(0xf, config->base + config->reg_rx_offset + IPCR_ENABLE);
+	/* Disabled by default */
+	sys_write32(0x0, config->base + config->reg_rx_offset + IPCR_ENABLE);
 
 	/* clear all un-finished interrupts */
 	sys_write32(0xf, config->base + config->reg_rx_offset + IPCR_STATUS);
