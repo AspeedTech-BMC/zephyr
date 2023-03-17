@@ -1507,7 +1507,9 @@ static void i3c_aspeed_slave_reset_queue(const struct device *dev)
 		LOG_ERR("failed to enable controller: reset i3c controller\n");
 		i3c_aspeed_isolate_scl_sda(config->inst_id, false);
 		i3c_aspeed_init(dev);
+		return;
 	}
+	i3c_aspeed_isolate_scl_sda(config->inst_id, false);
 }
 
 int i3c_aspeed_slave_put_read_data(const struct device *dev, struct i3c_slave_payload *data,
