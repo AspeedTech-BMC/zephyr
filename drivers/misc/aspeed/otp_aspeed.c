@@ -174,7 +174,8 @@ static uint32_t chip_version(void)
 	} else if (revid0 == ID0_AST1060A1 && revid1 == ID1_AST1060A1) {
 		/* AST1060-A1 */
 		return OTP_AST1060A1;
-	} else if (revid0 == ID0_AST1060A2 && revid1 == ID1_AST1060A2) {
+	} else if ((revid0 == ID0_AST1060A2 && revid1 == ID1_AST1060A2) ||
+		(revid0 == ID0_AST1060A2_ENG && revid1 == ID1_AST1060A2_ENG)) {
 		/* AST1060-A1 */
 		return OTP_AST1060A2;
 	}
