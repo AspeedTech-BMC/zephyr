@@ -162,7 +162,7 @@ struct adc_register_s {
 /**********************************************************
  * Software setting
  *********************************************************/
-#define ASPEED_CLOCK_FREQ_DEFAULT       3000000
+#define ASPEED_SAMPLING_RATE_DEFAULT    KHZ(250)
 #define ASPEED_ADC_INIT_TIMEOUT         500000
 #define ASPEED_CV_SAMPLE_TIMES          10
 
