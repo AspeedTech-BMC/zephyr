@@ -22,6 +22,7 @@
 #define I3C_CCC_ENTDAA          0x07
 #define I3C_CCC_SETAASA         0x29
 #define I3C_CCC_SETHID		0x61
+#define I3C_CCC_DEVCTRL		0x62
 
 /* unicast only commands */
 #define I3C_CCC_SETDASA         (0x7 | I3C_CCC_DIRECT)

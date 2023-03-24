@@ -80,6 +80,7 @@ union i3c_device_cmd_queue_port_s {
 #define COMMAND_PORT_SLAVE_DATA_CMD	0x0
 
 #define COMMAND_PORT_SPEED_I3C_SDR	0
+#define COMMAND_PORT_SPEED_I3C_I2C_FM	7
 #define COMMAND_PORT_SPEED_I2C_FM	0
 #define COMMAND_PORT_SPEED_I2C_FMP	1
 	struct {
@@ -1735,10 +1736,6 @@ int i3c_aspeed_master_send_ccc(const struct device *dev, struct i3c_ccc_cmd *ccc
 		}
 	}
 
-	if (ccc->id == I3C_CCC_SETHID) {
-		i3c_register->pp_timing.value = od_timing;
-	}
-
 	xfer.ncmds = 1;
 	xfer.cmds = &cmd;
 	xfer.ret = 0;
@@ -1766,6 +1763,9 @@ int i3c_aspeed_master_send_ccc(const struct device *dev, struct i3c_ccc_cmd *ccc
 	cmd_lo.xfer_cmd.roc = 1;
 	cmd_lo.xfer_cmd.rnw = ccc->rnw;
 	cmd_lo.xfer_cmd.toc = 1;
+	if (ccc->id == I3C_CCC_SETHID || ccc->id == I3C_CCC_DEVCTRL) {
+		cmd_lo.xfer_cmd.speed = COMMAND_PORT_SPEED_I3C_I2C_FM;
+	}
 	cmd.cmd_hi = cmd_hi.value;
 	cmd.cmd_lo = cmd_lo.value;
 
