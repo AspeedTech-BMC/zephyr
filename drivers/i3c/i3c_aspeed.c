@@ -1778,10 +1778,6 @@ int i3c_aspeed_master_send_ccc(const struct device *dev, struct i3c_ccc_cmd *ccc
 
 	ret = xfer.ret;
 
-	if (ccc->id == I3C_CCC_SETHID) {
-		i3c_register->pp_timing.value = pp_timing;
-	}
-
 	return ret;
 }
 
