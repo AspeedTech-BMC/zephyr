@@ -423,7 +423,8 @@ union i3c_dev_addr_tbl_s {
 		volatile uint32_t sir_reject : 1;		/* bit[13] */
 		volatile uint32_t mr_reject : 1;		/* bit[14] */
 		volatile uint32_t reserved1 : 1;		/* bit[15] */
-		volatile uint32_t dynamic_addr : 8;		/* bit[23:16] */
+		volatile uint32_t dynamic_addr : 7;		/* bit[22:16] */
+		volatile uint32_t parity : 1;			/* bit[23] */
 		volatile uint32_t ibi_mask : 2;			/* bit[25:24] */
 		volatile uint32_t reserved2 : 3;		/* bit[28:26] */
 		volatile uint32_t dev_nack_retry_cnt : 2;	/* bit[30:29] */
@@ -1338,6 +1339,19 @@ int i3c_aspeed_master_detach_device(const struct device *dev, struct i3c_dev_des
 	return 0;
 }
 
+static int even_parity(uint8_t byte)
+{
+	int parity = 0;
+	uint8_t b;
+
+	while (b) {
+		parity = !parity;
+		b = b & (b - 1);
+	}
+
+	return !parity;
+}
+
 int i3c_aspeed_master_attach_device(const struct device *dev, struct i3c_dev_desc *slave)
 {
 	struct i3c_aspeed_obj *obj = DEV_DATA(dev);
@@ -1384,6 +1398,7 @@ int i3c_aspeed_master_attach_device(const struct device *dev, struct i3c_dev_des
 
 	dat.value = 0;
 	dat.fields.dynamic_addr = slave->info.dynamic_addr;
+	dat.fields.parity = even_parity(slave->info.dynamic_addr);
 	dat.fields.static_addr = slave->info.static_addr;
 	dat.fields.mr_reject = 1;
 	dat.fields.sir_reject = 1;
