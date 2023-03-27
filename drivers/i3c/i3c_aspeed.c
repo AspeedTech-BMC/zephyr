@@ -1741,7 +1741,7 @@ int i3c_aspeed_master_send_ccc(const struct device *dev, struct i3c_ccc_cmd *ccc
 	int pos = 0;
 	int ret;
 
-	if (ccc->addr & I3C_CCC_DIRECT) {
+	if (ccc->id & I3C_CCC_DIRECT) {
 		pos = i3c_aspeed_get_pos(obj, ccc->addr);
 		if (pos < 0) {
 			return pos;
