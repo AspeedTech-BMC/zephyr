@@ -90,12 +90,12 @@ struct i3c_device_info {
 
 /**
  * @brief descriptor of the i3c device attached to the bus
- * @param master_dev the master device which hosts the bus
+ * @param bus the bus controller which hosts the bus
  * @param priv_data pointer to the low level driver private data
  * @param info the device information
  */
 struct i3c_dev_desc {
-	const struct device *master_dev;
+	const struct device *bus;
 	struct i3c_device_info info;
 	void *priv_data;
 };

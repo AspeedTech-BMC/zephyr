@@ -1240,7 +1240,7 @@ static void i3c_aspeed_start_xfer(struct i3c_aspeed_obj *obj, struct i3c_aspeed_
 int i3c_aspeed_master_priv_xfer(struct i3c_dev_desc *i3cdev, struct i3c_priv_xfer *xfers,
 				int nxfers)
 {
-	struct i3c_aspeed_obj *obj = DEV_DATA(i3cdev->master_dev);
+	struct i3c_aspeed_obj *obj = DEV_DATA(i3cdev->bus);
 	struct i3c_aspeed_dev_priv *priv = DESC_PRIV(i3cdev);
 	struct i3c_aspeed_xfer xfer;
 	struct i3c_aspeed_cmd *cmds, *cmd;
@@ -1364,7 +1364,7 @@ int i3c_aspeed_master_attach_device(const struct device *dev, struct i3c_dev_des
 	uint32_t dat_addr;
 	int i, pos;
 
-	slave->master_dev = dev;
+	slave->bus = dev;
 
 	for (i = 0; i < obj->hw_dat.fields.depth; i++) {
 		if (obj->hw_dat_free_pos & BIT(i)) {
@@ -1428,7 +1428,7 @@ int i3c_aspeed_master_request_ibi(struct i3c_dev_desc *i3cdev, struct i3c_ibi_ca
 
 int i3c_aspeed_master_enable_ibi(struct i3c_dev_desc *i3cdev)
 {
-	struct i3c_aspeed_obj *obj = DEV_DATA(i3cdev->master_dev);
+	struct i3c_aspeed_obj *obj = DEV_DATA(i3cdev->bus);
 	struct i3c_register_s *i3c_register = obj->config->base;
 	struct i3c_aspeed_dev_priv *priv = DESC_PRIV(i3cdev);
 	union i3c_dev_addr_tbl_s dat;
@@ -1466,7 +1466,7 @@ int i3c_aspeed_master_enable_ibi(struct i3c_dev_desc *i3cdev)
 		 * Therefore, the last argument of i3c_master_send_setmrl is set to
 		 * "CONFIG_I3C_ASPEED_MAX_IBI_PAYLOAD - 1"
 		 */
-		ret = i3c_master_send_setmrl(i3cdev->master_dev, i3cdev->info.dynamic_addr, 256,
+		ret = i3c_master_send_setmrl(i3cdev->bus, i3cdev->info.dynamic_addr, 256,
 					     CONFIG_I3C_ASPEED_MAX_IBI_PAYLOAD - 1);
 		__ASSERT(!ret, "failed to send SETMRL\n");
 	}
@@ -1479,7 +1479,7 @@ int i3c_aspeed_master_enable_ibi(struct i3c_dev_desc *i3cdev)
 	intr_reg.fields.ibi_thld = 1;
 	i3c_register->intr_signal_en.value = intr_reg.value;
 
-	return i3c_master_send_enec(i3cdev->master_dev, i3cdev->info.dynamic_addr, I3C_CCC_EVT_SIR);
+	return i3c_master_send_enec(i3cdev->bus, i3cdev->info.dynamic_addr, I3C_CCC_EVT_SIR);
 }
 
 int i3c_aspeed_slave_register(const struct device *dev, struct i3c_slave_setup *slave_data)

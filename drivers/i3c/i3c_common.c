@@ -169,7 +169,7 @@ int i3c_jesd403_read(struct i3c_dev_desc *slave, uint8_t *addr, int addr_size, u
 {
 	struct i3c_priv_xfer xfer[2];
 
-	__ASSERT(slave->master_dev, "Unregistered device\n");
+	__ASSERT(slave->bus, "Unregistered device\n");
 	__ASSERT(!slave->info.i2c_mode, "Not I3C device\n\n");
 
 	xfer[0].rnw = 0;
@@ -199,7 +199,7 @@ int i3c_jesd403_write(struct i3c_dev_desc *slave, uint8_t *addr, int addr_size, 
 	uint8_t *out;
 	int ret;
 
-	__ASSERT(slave->master_dev, "Unregistered device\n");
+	__ASSERT(slave->bus, "Unregistered device\n");
 	__ASSERT(!slave->info.i2c_mode, "Not I3C device\n\n");
 
 	out = k_calloc(sizeof(uint8_t), addr_size + data_size);
@@ -230,7 +230,7 @@ int i3c_i2c_read(struct i3c_dev_desc *slave, uint8_t addr, uint8_t *buf, int len
 	uint8_t mode_reg = addr;
 	int ret;
 
-	__ASSERT(slave->master_dev, "Unregistered device\n");
+	__ASSERT(slave->bus, "Unregistered device\n");
 	__ASSERT(slave->info.i2c_mode, "Not I2C device\n\n");
 
 	xfer.rnw = 0;
@@ -261,7 +261,7 @@ int i3c_i2c_write(struct i3c_dev_desc *slave, uint8_t addr, uint8_t *buf, int le
 	uint8_t *out;
 	int ret;
 
-	__ASSERT(slave->master_dev, "Unregistered device\n");
+	__ASSERT(slave->bus, "Unregistered device\n");
 	__ASSERT(slave->info.i2c_mode, "Not I2C device\n\n");
 
 	out = k_calloc(sizeof(uint8_t), length + 1);

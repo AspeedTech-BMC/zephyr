@@ -35,7 +35,7 @@ static struct i3c_dev_desc *find_matching_desc(const struct device *dev, uint8_t
 	int i;
 
 	for (i = 0; i < I3C_SHELL_MAX_DESC_NUM; i++) {
-		if (i3c_shell_desc_tbl[i].master_dev == dev &&
+		if (i3c_shell_desc_tbl[i].bus == dev &&
 		    i3c_shell_desc_tbl[i].info.dynamic_addr == desc_addr) {
 			desc = &i3c_shell_desc_tbl[i];
 			break;
