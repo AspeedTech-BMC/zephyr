@@ -15,3 +15,4 @@ CONFIG_HEAP_MEM_POOL_SIZE=50000
 # Use polling mode for ns16550 driver.  Enable interrupt mode when aspeed driver is ready
 CONFIG_SHELL_BACKEND_SERIAL_INTERRUPT_DRIVEN=n
 CONFIG_IPM=y
+CONFIG_BOARD_AST2700_TSP_FPGA=y
