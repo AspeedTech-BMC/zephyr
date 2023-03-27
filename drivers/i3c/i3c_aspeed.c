@@ -1675,6 +1675,7 @@ int i3c_aspeed_slave_set_static_addr(const struct device *dev, uint8_t static_ad
 
 	device_addr.value = i3c_register->device_addr.value;
 	device_addr.fields.static_addr = static_addr;
+	device_addr.fields.static_addr_valid = static_addr ? 1 : 0;
 	i3c_register->device_addr.value = device_addr.value;
 
 	return 0;
@@ -1836,9 +1837,11 @@ static int i3c_aspeed_init(const struct device *dev)
 	intr_reg.fields.resp_q_ready = 1;
 
 	if (config->secondary) {
-		/* setup static address so that we can support SETAASA and SETDASA */
-		i3c_register->device_addr.fields.static_addr = config->assigned_addr;
-		i3c_register->device_addr.fields.static_addr_valid = 1;
+		/* setup static address so that we can support SETAASA,SETDASA and i2c mode */
+		if (config->assigned_addr) {
+			i3c_register->device_addr.fields.static_addr = config->assigned_addr;
+			i3c_register->device_addr.fields.static_addr_valid = 1;
+		}
 
 		/* for slave mode */
 		intr_reg.fields.ccc_update = 1;

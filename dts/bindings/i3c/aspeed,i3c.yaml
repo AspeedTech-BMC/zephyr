@@ -14,7 +14,7 @@ properties:
     description: Initialized as a secondary master / slave device
 
   assigned-address:
-    required: true
+    required: false
     type: int
     description: Dynamic address when playing the role as the main master. Static address when playing the role as the slave.
 
