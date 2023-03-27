@@ -1855,14 +1855,14 @@ static int i3c_aspeed_init(const struct device *dev)
 		if (obj->ibi_event == NULL) {
 			obj->ibi_event = osEventFlagsNew(NULL);
 			if (obj->ibi_event == NULL) {
-				LOG_ERR("Creat ibi event flags failed");
+				LOG_ERR("Create ibi event flags failed");
 				return -ENOSPC;
 			}
 		}
 		if (obj->data_event == NULL) {
 			obj->data_event = osEventFlagsNew(NULL);
 			if (obj->data_event == NULL) {
-				LOG_ERR("Creat data event flags failed");
+				LOG_ERR("Create data event flags failed");
 				return -ENOSPC;
 			}
 		}
