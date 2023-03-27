@@ -1342,7 +1342,7 @@ int i3c_aspeed_master_detach_device(const struct device *dev, struct i3c_dev_des
 static int even_parity(uint8_t byte)
 {
 	int parity = 0;
-	uint8_t b;
+	uint8_t b = byte;
 
 	while (b) {
 		parity = !parity;
