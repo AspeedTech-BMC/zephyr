@@ -1734,13 +1734,9 @@ int i3c_aspeed_slave_get_event_enabling(const struct device *dev, uint32_t *even
 int i3c_aspeed_master_send_ccc(const struct device *dev, struct i3c_ccc_cmd *ccc)
 {
 	struct i3c_aspeed_obj *obj = DEV_DATA(dev);
-	struct i3c_aspeed_config *config = DEV_CFG(dev);
-	struct i3c_register_s *i3c_register = config->base;
 	struct i3c_aspeed_xfer xfer;
 	struct i3c_aspeed_cmd cmd;
 	union i3c_device_cmd_queue_port_s cmd_hi, cmd_lo;
-	uint32_t pp_timing = i3c_register->pp_timing.value;
-	uint32_t od_timing = i3c_register->od_timing.value;
 	int pos = 0;
 	int ret;
 
