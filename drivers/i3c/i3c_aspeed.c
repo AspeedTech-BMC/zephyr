@@ -1319,6 +1319,7 @@ int i3c_aspeed_master_detach_device(const struct device *dev, struct i3c_dev_des
 {
 	struct i3c_aspeed_obj *obj = DEV_DATA(dev);
 	struct i3c_aspeed_dev_priv *priv = DESC_PRIV(slave);
+	union i3c_dev_addr_tbl_s dat;
 	uint32_t dat_addr;
 	int pos;
 
@@ -1331,7 +1332,10 @@ int i3c_aspeed_master_detach_device(const struct device *dev, struct i3c_dev_des
 	obj->dev_addr_tbl[pos] = 0;
 
 	dat_addr = (uint32_t)obj->config->base + obj->hw_dat.fields.start_addr + (pos << 2);
-	sys_write32(0, dat_addr);
+	dat.value = 0;
+	dat.fields.mr_reject = 1;
+	dat.fields.sir_reject = 1;
+	sys_write32(dat.value, dat_addr);
 
 	k_free(slave->priv_data);
 	obj->dev_descs[pos] = (struct i3c_dev_desc *)NULL;
@@ -1809,7 +1813,9 @@ static int i3c_aspeed_init(const struct device *dev)
 	const struct device *reset_dev = device_get_binding(ASPEED_RST_CTRL_NAME);
 	union i3c_reset_ctrl_s reset_ctrl;
 	union i3c_intr_s intr_reg;
-	int ret;
+	union i3c_dev_addr_tbl_s dat;
+	uint32_t dat_base;
+	int ret, i;
 
 	obj->dev = dev;
 	obj->config = config;
@@ -1890,6 +1896,12 @@ static int i3c_aspeed_init(const struct device *dev)
 
 	obj->hw_dat.value = i3c_register->dev_addr_tbl_ptr.value;
 	obj->hw_dat_free_pos = GENMASK(obj->hw_dat.fields.depth - 1, 0);
+	dat.fields.mr_reject = 1;
+	dat.fields.sir_reject = 1;
+	dat_base = (uint32_t)obj->config->base + obj->hw_dat.fields.start_addr;
+	for (i = 0; i < obj->hw_dat.fields.depth; i++) {
+		sys_write32(dat.value, dat_base + (i << 2));
+	}
 
 	/* Not support MR for now */
 	i3c_register->mr_reject = GENMASK(31, 0);
