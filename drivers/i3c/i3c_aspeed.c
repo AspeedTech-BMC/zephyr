@@ -1870,6 +1870,53 @@ static uint16_t parse_extra_gpio(const struct extra_gpio *extra_gpios, int size)
 	return result;
 }
 
+int i3c_aspeed_master_send_entdaa(struct i3c_dev_desc *i3cdev)
+{
+	struct i3c_aspeed_obj *obj = DEV_DATA(i3cdev->bus);
+	struct i3c_aspeed_dev_priv *priv = DESC_PRIV(i3cdev);
+	struct i3c_aspeed_xfer xfer;
+	struct i3c_aspeed_cmd cmd;
+	union i3c_device_cmd_queue_port_s cmd_hi, cmd_lo;
+
+	cmd_hi.value = 0;
+	cmd_hi.xfer_arg.cmd_attr = COMMAND_PORT_XFER_ARG;
+
+	cmd_lo.value = 0;
+	cmd_lo.addr_assign_cmd.cmd = I3C_CCC_ENTDAA;
+	cmd_lo.addr_assign_cmd.cmd_attr = COMMAND_PORT_ADDR_ASSIGN;
+	cmd_lo.addr_assign_cmd.toc = 1;
+	cmd_lo.addr_assign_cmd.roc = 1;
+
+	cmd_lo.addr_assign_cmd.dev_cnt = 1;
+	cmd_lo.addr_assign_cmd.dev_idx = priv->pos;
+
+	cmd.cmd_hi = cmd_hi.value;
+	cmd.cmd_lo = cmd_lo.value;
+	cmd.rx_length = 0;
+	cmd.tx_length = 0;
+
+	k_sem_init(&xfer.sem, 0, 1);
+	xfer.ret = -ETIMEDOUT;
+	xfer.ncmds = 1;
+	xfer.cmds = &cmd;
+	i3c_aspeed_start_xfer(obj, &xfer);
+
+	/* wait done, xfer.ret will be changed in ISR */
+	k_sem_take(&xfer.sem, I3C_ASPEED_CCC_TIMEOUT);
+
+	if (cmd.rx_length) {
+		LOG_INF("ENTDAA: No more new device. DA 0x%02x at DAT[%d] is not assigned",
+			i3cdev->info.dynamic_addr, priv->pos);
+		return -1;
+	}
+
+	i3c_master_send_getpid(i3cdev->bus, i3cdev->info.dynamic_addr, &i3cdev->info.pid);
+	LOG_INF("ENTDAA: DA 0x%02x at DAT[%d] is assigned, PID 0x%llx",
+			i3cdev->info.dynamic_addr, priv->pos, i3cdev->info.pid);
+
+	return 0;
+}
+
 static int i3c_aspeed_init(const struct device *dev)
 {
 	struct i3c_aspeed_config *config = DEV_CFG(dev);
