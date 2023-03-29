@@ -76,7 +76,7 @@ static int cmd_priv_xfer(const struct shell *shell, size_t argc, char **argv)
 
 	dev = device_get_binding(argv[1]);
 	if (!dev) {
-		shell_error(shell, "I3C: Device driver %s not found.", argv[1]);
+		shell_error(shell, "I3C: Device %s not found.", argv[1]);
 		return -ENODEV;
 	}
 
@@ -154,7 +154,7 @@ static int cmd_send_ccc(const struct shell *shell, size_t argc, char **argv)
 
 	dev = device_get_binding(argv[1]);
 	if (!dev) {
-		shell_error(shell, "I3C: Device driver %s not found.", argv[1]);
+		shell_error(shell, "I3C: Device %s not found.", argv[1]);
 		return -ENODEV;
 	}
 
@@ -234,7 +234,7 @@ static int cmd_attach(const struct shell *shell, size_t argc, char **argv)
 
 	dev = device_get_binding(argv[1]);
 	if (!dev) {
-		shell_error(shell, "I3C: Device driver %s not found.", argv[1]);
+		shell_error(shell, "I3C: Device %s not found.", argv[1]);
 		return -ENODEV;
 	}
 
@@ -270,11 +270,11 @@ static int cmd_attach(const struct shell *shell, size_t argc, char **argv)
 		}
 	}
 
-	shell_print(shell, "Attach address 0x%02x to %s\n", desc->info.assigned_dynamic_addr,
+	shell_print(shell, "Attach address 0x%02x to %s", desc->info.assigned_dynamic_addr,
 		    dev->name);
 	ret = i3c_master_attach_device(dev, desc);
 	if (ret) {
-		shell_print(shell, "Failed to attach device: %d\n", ret);
+		shell_print(shell, "Failed to attach device: %d", ret);
 	} else {
 		i3c_shell_num_of_descs++;
 	}
@@ -296,7 +296,7 @@ static int cmd_smq_xfer(const struct shell *shell, size_t argc, char **argv)
 
 	dev = device_get_binding(argv[1]);
 	if (!dev) {
-		shell_error(shell, "I3C: Device driver %s not found.", argv[1]);
+		shell_error(shell, "I3C: Device %s not found.", argv[1]);
 		return -ENODEV;
 	}
 
