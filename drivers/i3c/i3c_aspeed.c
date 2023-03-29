@@ -1202,7 +1202,8 @@ static void i3c_aspeed_enable(struct i3c_aspeed_obj *obj)
 					 NSEC_PER_USEC));
 		while (!i3c_register->device_ctrl.fields.enable)
 			i3c_aspeed_toggle_scl_in(config->inst_id);
-		i3c_aspeed_gen_stop_to_internal(config->inst_id);
+		if (!config->assigned_addr)
+			i3c_aspeed_gen_stop_to_internal(config->inst_id);
 		i3c_aspeed_isolate_scl_sda(config->inst_id, false);
 	}
 }
