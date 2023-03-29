@@ -68,6 +68,26 @@
 		__ret;								    \
 	})
 
+#define readx_poll_timeout(op, args, sleep_us, timeout_ms)			    \
+	({									    \
+		uint32_t __timeout_tick = Z_TIMEOUT_MS(timeout_ms).ticks;	    \
+		uint32_t __start = sys_clock_tick_get_32();			    \
+		int __ret = 0;							    \
+		for (;;) {							    \
+			if (op(args)) {						    \
+				break;						    \
+			}							    \
+			if ((sys_clock_tick_get_32() - __start) > __timeout_tick) { \
+				__ret = -ETIMEDOUT;				    \
+				break;						    \
+			}							    \
+			if (sleep_us) {						    \
+				k_usleep(sleep_us);				    \
+			}							    \
+		}								    \
+		__ret;								    \
+	})
+
 /* Common reset control device name for all ASPEED SOC family */
 #define ASPEED_RST_CTRL_NAME DT_INST_RESETS_LABEL(0)
 

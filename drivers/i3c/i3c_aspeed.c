@@ -276,6 +276,7 @@ union i3c_present_state_s {
 		volatile uint32_t current_master : 1;		/* bit[2] */
 		volatile uint32_t reserved0 : 5;		/* bit[7:3] */
 #define CM_TFR_STS_SLAVE_HALT	0x6
+#define CM_TFR_STS_MASTER_SERV_IBI	0xe
 		volatile uint32_t cm_tfr_sts : 6;		/* bit[13:8] */
 		volatile uint32_t reserved1 : 2;		/* bit[15:14] */
 		volatile uint32_t cm_tfr_st_sts : 6;		/* bit[21:16] */
@@ -579,6 +580,39 @@ void i3c_aspeed_isolate_scl_sda(int inst_id, bool iso)
 	}
 }
 
+static bool aspeed_i3c_fsm_is_idle(struct i3c_register_s *i3c_register)
+{
+	uint32_t temp;
+
+	/*
+	 * Clear the IBI queue to enable the hardware to generate SCL and
+	 * begin detecting the T-bit low to stop reading IBI data.
+	 */
+	temp = i3c_register->ibi_queue_status.value;
+	if (i3c_register->present_state.fields.cm_tfr_sts)
+		return false;
+	return true;
+}
+
+void i3c_aspeed_gen_tbits_low(struct i3c_aspeed_obj *obj)
+{
+	struct i3c_aspeed_config *config = obj->config;
+	struct i3c_register_s *i3c_register = config->base;
+	uint32_t i3c_gr = DT_REG_ADDR(DT_NODELABEL(i3c_gr));
+	uint32_t value;
+	int ret;
+
+	i3c_aspeed_isolate_scl_sda(config->inst_id, true);
+	value = sys_read32(i3c_gr + I3CG_REG1(config->inst_id));
+	value &= ~SDA_IN_SW_MODE_VAL;
+	sys_write32(value, i3c_gr + I3CG_REG1(config->inst_id));
+	ret = readx_poll_timeout(aspeed_i3c_fsm_is_idle, i3c_register, 0, 2000);
+	i3c_aspeed_isolate_scl_sda(config->inst_id, false);
+
+	if (ret)
+		LOG_ERR("Failed to recovery the i3c fsm from %x to idle: %d",
+			i3c_register->present_state.fields.cm_tfr_sts, ret);
+}
 void i3c_aspeed_toggle_scl_in(int inst_id)
 {
 	uint32_t i3c_gr = DT_REG_ADDR(DT_NODELABEL(i3c_gr));
@@ -907,6 +941,9 @@ out:
 			for (j = 0; j < nwords; j++) {
 				tmp = i3c_register->ibi_queue_status.value;
 			}
+			if (i3c_register->present_state.fields.cm_tfr_sts ==
+			    CM_TFR_STS_MASTER_SERV_IBI)
+				i3c_aspeed_gen_tbits_low(obj);
 		}
 	}
 }
