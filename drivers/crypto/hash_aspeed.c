@@ -68,7 +68,7 @@ static int aspeed_hash_wait_completion(int timeout_ms)
 	int ret;
 
 	ret = reg_read_poll_timeout(hace_register, hace_sts, hace_sts,
-				    hace_sts.fields.hash_int, 1, timeout_ms);
+				    hace_sts.fields.hash_int, 100, timeout_ms);
 	if (ret)
 		LOG_ERR("HACE poll timeout\n");
 
