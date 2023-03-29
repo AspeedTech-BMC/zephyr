@@ -335,12 +335,260 @@ static int cmd_smq_xfer(const struct shell *shell, size_t argc, char **argv)
 }
 #endif
 
+#define I3C_SHELL_STACK0_SIZE	1024
+#define I3C_SHELL_STACK1_SIZE	1024
+K_KERNEL_STACK_MEMBER(stack0, I3C_SHELL_STACK0_SIZE);
+K_KERNEL_STACK_MEMBER(stack1, I3C_SHELL_STACK1_SIZE);
+
+k_tid_t tid[2];
+struct k_thread thread[2];
+static const char do_stress_helper[] = "i3c stress <dev> -l <loop count>";
+
+static void i3c_stress_target_thread(void *arg0, void *arg1, void *arg2)
+{
+	const struct device *dev = arg0;
+	const struct shell *shell = arg1;
+	int loop_cnt = POINTER_TO_INT(arg2);
+
+	int i, ret;
+	uint8_t data[16];
+	bool do_forever = !loop_cnt;
+
+	shell_print(shell, "I3C target thread start");
+
+	do {
+		ret = i3c_slave_mqueue_read(dev, data, 16);
+		if (ret > 0) {
+			shell_hexdump(shell, data, 16);
+		}
+		k_usleep(10);
+
+		for (i = 0; i < 16; i++) {
+			data[i] = 16 - i;
+		}
+		i3c_slave_mqueue_write(dev, data, 16);
+
+		if (!do_forever && --loop_cnt == 0) {
+			break;
+		}
+	} while (1);
+
+	k_thread_abort(k_current_get());
+}
+
+static struct i3c_ibi_payload i3c_payload;
+uint8_t test_data_rx[256];
+struct i3c_shell_ibi_data {
+	const struct shell *shell;
+	struct k_work work;
+	struct i3c_dev_desc *dev_desc;
+	struct i3c_ibi_payload payload;
+};
+
+struct i3c_shell_ibi_data i3c_shell_ibi_user_data;
+
+static void i3c_shell_ibi_worker(struct k_work *work)
+{
+	struct i3c_shell_ibi_data *data = CONTAINER_OF(work, struct i3c_shell_ibi_data, work);
+	struct i3c_priv_xfer xfer;
+	uint8_t buf[16];
+
+	/* dump IBI payload data */
+	shell_hexdump(data->shell, data->payload.buf, data->payload.size);
+
+	if (IS_MDB_PENDING_READ_NOTIFY(data->payload.buf[0])) {
+		/* read pending data */
+		xfer.data.in = buf;
+		xfer.len = 16;
+		xfer.rnw = 1;
+		i3c_master_priv_xfer(data->dev_desc, &xfer, 1);
+		shell_hexdump(data->shell, xfer.data.in, xfer.len);
+	}
+}
+
+static struct i3c_ibi_payload *test_ibi_write_requested(struct i3c_dev_desc *desc)
+{
+	i3c_payload.buf = test_data_rx;
+	i3c_payload.size = 0;
+	i3c_payload.max_payload_size = 16;
+
+	return &i3c_payload;
+}
+
+static void test_ibi_write_done(struct i3c_dev_desc *desc)
+{
+	memcpy(&i3c_shell_ibi_user_data.payload, &i3c_payload, sizeof(struct i3c_ibi_payload));
+	k_work_submit(&i3c_shell_ibi_user_data.work);
+}
+
+static struct i3c_ibi_callbacks i3c_ibi_def_callbacks = {
+	.write_requested = test_ibi_write_requested,
+	.write_done = test_ibi_write_done,
+};
+
+static void i3c_stress_daa_thread(void *arg0, void *arg1, void *arg2)
+{
+	const struct device *dev = arg0;
+	const struct shell *shell = arg1;
+	int loop_cnt = POINTER_TO_INT(arg2);
+
+	bool do_forever = !loop_cnt;
+
+	shell_print(shell, "I3C DAA thread start");
+	do {
+		i3c_master_send_aasa(dev);
+		k_msleep(1000);
+
+		if (!do_forever && --loop_cnt == 0) {
+			break;
+		}
+	} while (1);
+
+	k_thread_abort(k_current_get());
+}
+
+static void i3c_stress_main_thread(void *arg0, void *arg1, void *arg2)
+{
+	const struct device *dev = arg0;
+	const struct shell *shell = arg1;
+	int loop_cnt = POINTER_TO_INT(arg2);
+
+	struct i3c_priv_xfer xfer;
+	struct i3c_dev_desc *desc = &i3c_shell_desc_tbl[0];
+	uint8_t data[16];
+	int i;
+	bool do_forever = !loop_cnt;
+
+	if (!i3c_shell_ibi_user_data.work.handler) {
+		k_work_init(&i3c_shell_ibi_user_data.work, i3c_shell_ibi_worker);
+	}
+	i3c_shell_ibi_user_data.shell = shell;
+	i3c_shell_ibi_user_data.dev_desc = desc;
+
+	/* register dev_desc */
+	desc->info.static_addr = 0x9;
+	desc->info.assigned_dynamic_addr = 0x9;
+	desc->info.i2c_mode = 0;
+	desc->info.pid = 0x7ec80011000;
+	desc->info.bcr = 0x66;
+	desc->info.dcr = 0;
+	i3c_master_attach_device(dev, desc);
+
+	/* Assign dynamic address through SETAASA */
+	i3c_master_send_aasa(dev);
+	i3c_master_request_ibi(desc, &i3c_ibi_def_callbacks);
+	i3c_master_enable_ibi(desc);
+
+	tid[1] = k_thread_create(&thread[1], stack1, I3C_SHELL_STACK1_SIZE,
+				 (k_thread_entry_t)i3c_stress_daa_thread, (void *)dev,
+				 (void *)shell, INT_TO_POINTER(loop_cnt), 55, 0, K_FOREVER);
+
+	k_thread_name_set(tid[1], "i3c_stress_daa");
+	k_thread_start(tid[1]);
+
+	/* init private write data */
+	for (i = 0; i < 16; i++) {
+		data[i] = i;
+	}
+	xfer.data.out = data;
+	xfer.len = 16;
+	xfer.rnw = 0;
+
+	shell_print(shell, "I3C main thread start");
+	do {
+		i3c_master_priv_xfer(desc, &xfer, 1);
+		k_msleep(1000);
+
+		if (!do_forever && --loop_cnt == 0) {
+			break;
+		}
+	} while (1);
+
+	k_thread_abort(k_current_get());
+}
+
+static int cmd_do_stress(const struct shell *shell, size_t argc, char **argv)
+{
+	const struct device *dev;
+	struct getopt_state *state;
+	int c, target_mode = 0, loop_cnt = 0;
+
+	dev = device_get_binding(argv[1]);
+	if (!dev) {
+		shell_error(shell, "I3C: Device %s not found.", argv[1]);
+		return -ENODEV;
+	}
+
+	if (strstr(dev->name, "SMQ") != NULL) {
+		/*
+		 * if "SMQ" is present in device name, implies the I3C controller operates in
+		 * the target mode
+		 */
+		target_mode = 1;
+	}
+
+	while ((c = shell_getopt(shell, argc - 1, &argv[1], "l:")) != -1) {
+		state = shell_getopt_state_get(shell);
+		switch (c) {
+		case 'l':
+			loop_cnt = strtoul(state->optarg, NULL, 0);
+			return 0;
+		case 'h':
+			shell_help(shell);
+			return SHELL_CMD_HELP_PRINTED;
+		case '?':
+			if (state->optopt == 'l') {
+				shell_print(shell, "Option -%c requires an argument.",
+					    state->optopt);
+			} else if (isprint(state->optopt)) {
+				shell_print(shell, "Unknown option `-%c'.", state->optopt);
+			} else {
+				shell_print(shell, "Unknown option character `\\x%x'.",
+					    state->optopt);
+			}
+			return 1;
+		default:
+			break;
+		}
+	}
+
+	if (strcmp(k_thread_state_str(&thread[0]), "") == 0 ||
+	    strcmp(k_thread_state_str(&thread[0]), "dead") == 0) {
+		if (target_mode) {
+			tid[0] = k_thread_create(&thread[0], stack0, I3C_SHELL_STACK0_SIZE,
+						 (k_thread_entry_t)i3c_stress_target_thread,
+						 (void *)dev, (void *)shell,
+						 INT_TO_POINTER(loop_cnt), 55, 0, K_FOREVER);
+		} else {
+			tid[0] = k_thread_create(&thread[0], stack0, I3C_SHELL_STACK0_SIZE,
+						 (k_thread_entry_t)i3c_stress_main_thread,
+						 (void *)dev, (void *)shell,
+						 INT_TO_POINTER(loop_cnt), 55, 0, K_FOREVER);
+		}
+
+		if (!tid[0]) {
+			shell_print(shell, "thread creat failed = %d", tid[0]);
+			return 1;
+		}
+
+		if (target_mode) {
+			k_thread_name_set(tid[0], "i3c_stress_target");
+		} else {
+			k_thread_name_set(tid[0], "i3c_stress_main");
+		}
+		k_thread_start(tid[0]);
+	}
+
+	return 0;
+}
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_i3c_cmds,
 	SHELL_CMD(attach, &dsub_device_name, attach_helper, cmd_attach),
 	SHELL_CMD(ccc, &dsub_device_name, send_ccc_helper, cmd_send_ccc),
 	SHELL_CMD(xfer, &dsub_device_name, priv_xfer_helper, cmd_priv_xfer),
 #ifdef CONFIG_I3C_SLAVE_MQUEUE
 	SHELL_CMD(smq, &dsub_device_name, smq_xfer_helper, cmd_smq_xfer),
+	SHELL_CMD(stress, &dsub_device_name, do_stress_helper, cmd_do_stress),
 #endif
 	SHELL_SUBCMD_SET_END);
 SHELL_CMD_REGISTER(i3c, &sub_i3c_cmds, "I3C commands", NULL);
