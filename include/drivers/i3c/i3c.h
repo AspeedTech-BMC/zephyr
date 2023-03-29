@@ -113,6 +113,7 @@ struct i3c_dev_desc {
 #define IBI_MDB_ASPEED			IBI_MDB_ID(IBI_MDB_GRP_PENDING_READ_NOTIF, 0x1f)
 
 struct i3c_ibi_payload {
+	int max_payload_size;
 	int size;
 	uint8_t *buf;
 };

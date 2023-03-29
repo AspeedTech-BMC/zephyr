@@ -41,6 +41,7 @@ static struct i3c_ibi_payload *test_ibi_write_requested(struct i3c_dev_desc *des
 {
 	i3c_payload.buf = test_data_rx;
 	i3c_payload.size = 0;
+	i3c_payload.max_payload_size = MAX_DATA_SIZE;
 
 	return &i3c_payload;
 }

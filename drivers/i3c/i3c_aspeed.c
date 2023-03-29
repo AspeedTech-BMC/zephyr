@@ -877,6 +877,12 @@ static void i3c_aspeed_master_rx_ibi(struct i3c_aspeed_obj *obj)
 
 		nbytes = ibi_status.length;
 		nwords = nbytes >> 2;
+		if ((payload->size + ibi_status.length) > payload->max_payload_size) {
+			LOG_ERR("IBI length exceeds the max size (%d bytes)\n",
+				payload->max_payload_size);
+			goto out;
+		}
+
 		for (j = 0; j < nwords; j++) {
 			dst[j] = i3c_register->ibi_queue_status.value;
 		}
