@@ -16,7 +16,15 @@ properties:
   assigned-address:
     required: false
     type: int
-    description: Dynamic address when playing the role as the main master. Static address when playing the role as the slave.
+    description: |
+      Dynamic address when playing the role as the main master. Static address when playing the role as the slave.
+      If extra-gpios exist, the lsb of slave static address will be replaced by the value of extra-gpios.
+
+  extra-gpios:
+      type: phandle-array
+      required: false
+      description: |
+        Used to add the extra info to identify different BIC by GPIOs.
 
   instance-id:
     required: true
@@ -39,7 +47,9 @@ properties:
   pid-extra-info:
     required: false
     type: int
-    description: Extra information of the PID Bits[11:0]. Use to identify the different BIC.
+    description: |
+      Extra information of the PID Bits[11:0]. Use to identify the different BIC.
+      If extra-gpios exist, the extra pid will be replaced by the value of extra-gpios.
 
   i3c-pp-scl-hi-period-ns:
     required: false

@@ -7,6 +7,7 @@
 
 #include <drivers/clock_control.h>
 #include <drivers/reset_control.h>
+#include <drivers/gpio.h>
 #include <drivers/i3c/i3c.h>
 #include <soc.h>
 #include <sys/util.h>
@@ -478,6 +479,12 @@ struct i3c_register_s {
 	union i3c_ibi_payload_length_s ibi_payload_config;	/* 0xec */
 };
 
+struct extra_gpio {
+	const char *port;
+	gpio_pin_t pin;
+	gpio_dt_flags_t flags;
+};
+
 struct i3c_aspeed_config {
 	struct i3c_register_s *base;
 	const struct device *clock_dev;
@@ -497,6 +504,8 @@ struct i3c_aspeed_config {
 	int i3c_pp_scl_lo_period_ns;
 	int i3c_od_scl_hi_period_ns;
 	int i3c_od_scl_lo_period_ns;
+	const struct extra_gpio *extra_gpios;
+	int extra_gpios_size;
 };
 
 struct i3c_aspeed_cmd {
@@ -550,6 +559,7 @@ struct i3c_aspeed_obj {
 	struct i3c_slave_setup slave_data;
 	osEventFlagsId_t ibi_event;
 	osEventFlagsId_t data_event;
+	uint16_t extra_val;
 };
 
 #define I3CG_REG1(x)			((x * 0x10) + 0x14)
@@ -1849,6 +1859,34 @@ static void sir_allowed_worker(struct k_work *work)
 	obj->sir_allowed_by_sw = 1;
 }
 
+static uint16_t parse_extra_gpio(const struct extra_gpio *extra_gpios, int size)
+{
+	const struct device *gpio_dev;
+	int i, ret;
+	uint16_t result = 0;
+
+	for (i = 0; i < size; i++) {
+		gpio_dev = device_get_binding(extra_gpios[i].port);
+		ret = gpio_pin_configure(gpio_dev, extra_gpios[i].pin, extra_gpios[i].flags | GPIO_INPUT);
+		if (ret < 0) {
+			LOG_ERR("pin %s:%d:%d configure failed %d\n", extra_gpios[i].port,
+				extra_gpios[i].pin, extra_gpios[i].flags | GPIO_INPUT, ret);
+			result = 0;
+			break;
+		}
+		ret = gpio_pin_get(gpio_dev, extra_gpios[i].pin);
+		if (ret < 0) {
+			LOG_ERR("pin %s:%d get value failed %d\n", extra_gpios[i].port,
+				extra_gpios[i].pin, ret);
+			result = 0;
+			break;
+		}
+		result |= ret << i;
+	}
+	LOG_DBG("extra val = %x\n", result);
+	return result;
+}
+
 static int i3c_aspeed_init(const struct device *dev)
 {
 	struct i3c_aspeed_config *config = DEV_CFG(dev);
@@ -1863,6 +1901,7 @@ static int i3c_aspeed_init(const struct device *dev)
 
 	obj->dev = dev;
 	obj->config = config;
+	obj->extra_val = parse_extra_gpio(config->extra_gpios, config->extra_gpios_size);
 	reset_control_assert(reset_dev, config->reset_id);
 	clock_control_on(config->clock_dev, config->clock_id);
 	reset_control_deassert(reset_dev, config->reset_id);
@@ -1889,7 +1928,12 @@ static int i3c_aspeed_init(const struct device *dev)
 	if (config->secondary) {
 		/* setup static address so that we can support SETAASA,SETDASA and i2c mode */
 		if (config->assigned_addr) {
-			i3c_register->device_addr.fields.static_addr = config->assigned_addr;
+			i3c_register->device_addr.fields.static_addr =
+				config->extra_gpios ?
+					((config->assigned_addr &
+					  ~GENMASK(MIN(config->extra_gpios_size - 1, 7), 0)) |
+					 obj->extra_val) :
+					config->assigned_addr;
 			i3c_register->device_addr.fields.static_addr_valid = 1;
 		}
 
@@ -1937,6 +1981,8 @@ static int i3c_aspeed_init(const struct device *dev)
 
 	i3c_aspeed_init_queues(obj);
 	i3c_aspeed_init_pid(obj);
+	if (config->extra_gpios)
+		i3c_aspeed_set_pid_extra_info(dev, obj->extra_val);
 
 	obj->hw_dat.value = i3c_register->dev_addr_tbl_ptr.value;
 	obj->hw_dat_free_pos = GENMASK(obj->hw_dat.fields.depth - 1, 0);
@@ -1957,8 +2003,20 @@ static int i3c_aspeed_init(const struct device *dev)
 	return 0;
 }
 
+/* Helper macro that UTIL_LISTIFY can use and produces an element with comma */
+#define ASPEED_EXTRA_GPIO_ELEM(idx, inst) \
+	{ \
+		DT_INST_GPIO_LABEL_BY_IDX(inst, extra_gpios, idx), \
+		DT_INST_GPIO_PIN_BY_IDX(inst, extra_gpios, idx), \
+		DT_INST_GPIO_FLAGS_BY_IDX(inst, extra_gpios, idx), \
+	},
+
+#define EXTRA_GPIO_INIT(n) \
+	UTIL_LISTIFY(DT_PROP_LEN_OR(DT_DRV_INST(n), extra_gpios, 0), ASPEED_EXTRA_GPIO_ELEM, n)
+
 #define I3C_ASPEED_INIT(n)                                                                         \
 	static int i3c_aspeed_config_func_##n(const struct device *dev);                           \
+	static const struct extra_gpio extra_gpios##n[] = { EXTRA_GPIO_INIT(n) };		   \
 	static const struct i3c_aspeed_config i3c_aspeed_config_##n = {                            \
 		.base = (struct i3c_register_s *)DT_INST_REG_ADDR(n),                              \
 		.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(n)),                                \
@@ -1977,6 +2035,8 @@ static int i3c_aspeed_init(const struct device *dev)
 		.i3c_pp_scl_lo_period_ns = DT_INST_PROP_OR(n, i3c_pp_scl_lo_period_ns, 0),         \
 		.i3c_od_scl_hi_period_ns = DT_INST_PROP_OR(n, i3c_od_scl_hi_period_ns, 0),         \
 		.i3c_od_scl_lo_period_ns = DT_INST_PROP_OR(n, i3c_od_scl_lo_period_ns, 0),         \
+		.extra_gpios = sizeof(extra_gpios##n) ? extra_gpios##n : NULL,			   \
+		.extra_gpios_size = ARRAY_SIZE(extra_gpios##n),					   \
 	};                                                                                         \
 												   \
 	static struct i3c_aspeed_obj i3c_aspeed_obj##n;                                            \
