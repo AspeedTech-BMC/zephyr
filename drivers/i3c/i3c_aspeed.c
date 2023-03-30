@@ -1723,7 +1723,7 @@ int i3c_aspeed_slave_send_sir(const struct device *dev, struct i3c_ibi_payload *
 	return 0;
 }
 
-int i3c_aspeed_slave_set_static_addr(const struct device *dev, uint8_t static_addr)
+static int i3c_aspeed_slave_set_static_addr(const struct device *dev, uint8_t static_addr)
 {
 	struct i3c_aspeed_config *config = DEV_CFG(dev);
 	struct i3c_register_s *i3c_register = config->base;
@@ -1739,7 +1739,7 @@ int i3c_aspeed_slave_set_static_addr(const struct device *dev, uint8_t static_ad
 	return 0;
 }
 
-int i3c_aspeed_set_pid_extra_info(const struct device *dev, uint16_t extra_info)
+static int i3c_aspeed_set_pid_extra_info(const struct device *dev, uint16_t extra_info)
 {
 	struct i3c_aspeed_config *config = DEV_CFG(dev);
 	struct i3c_register_s *i3c_register = config->base;
