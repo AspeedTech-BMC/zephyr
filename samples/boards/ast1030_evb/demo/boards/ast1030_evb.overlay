@@ -392,6 +392,7 @@
 	status = "okay";
 	assigned-address = <0x9>;
 	secondary;
+	ibi-append-pec;
 	i3c1_smq:i3c-slave-mqueue@9 {
 		compatible = "aspeed,i3c-slave-mqueue";
 		reg = <0x9>;
