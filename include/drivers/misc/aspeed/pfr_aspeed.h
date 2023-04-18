@@ -51,6 +51,8 @@
 #define CMD_SE_1_1_0_64_3B  0xD8
 #define CMD_SE_1_1_0_64_4B  0xDC
 
+#define CMD_WREAR           0xC5
+
 /* define the total ram size used to record exception log */
 #define SPIM_LOG_RAM_TOTAL_SIZE 2048
 

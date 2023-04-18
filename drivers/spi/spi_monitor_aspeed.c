@@ -88,6 +88,8 @@ struct cmd_table_info cmds_array[] = {
 		.cmd_table_val = CMD_TABLE_VALUE(1, 0, 1, 0, 1, 0, 0, 0, 0, CMD_RDFSR)},
 	{.cmd = CMD_VSR_WREN,
 		.cmd_table_val = CMD_TABLE_VALUE(1, 0, 0, 0, 0, 0, 0, 0, 0, CMD_VSR_WREN)},
+	{.cmd = CMD_WREAR,
+		.cmd_table_val = CMD_TABLE_VALUE(0, 1, 0, 0, 1, 0, 0, 0, 0, CMD_WREAR)},
 };
 
 static uint8_t spim_log_arr[SPIM_LOG_RAM_TOTAL_SIZE] NON_CACHED_BSS_ALIGN16;
@@ -543,9 +545,15 @@ void spim_allow_cmd_table_init(const struct device *dev,
 		case CMD_EX4B:
 			sys_write32(reg_val, table_base + 4);
 			continue;
+		case CMD_WREAR:
+			sys_write32(reg_val, table_base + 4 * 31);
+			continue;
 		default:
 			idx++;
 		}
+
+		if (idx == 31)
+			LOG_ERR("The allowed command number may exceed the expected.");
 
 		sys_write32(reg_val, table_base + idx * 4);
 	}
