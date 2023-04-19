@@ -330,9 +330,8 @@
 	assigned-address = <0x9>;
 	pinctrl-0 = <&pinctrl_i3c2_default>;
 	secondary;
-	i3c2_smq:i3c-slave-mqueue@9 {
+	i3c2_smq:i3c-slave-mqueue {
 		compatible = "aspeed,i3c-slave-mqueue";
-		reg = <0x9>;
 		msg-size = <256>;
 		num-of-msgs = <4>;
 		mandatory-data-byte = <0xbf>;

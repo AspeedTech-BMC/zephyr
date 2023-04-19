@@ -393,9 +393,8 @@
 	assigned-address = <0x9>;
 	secondary;
 	ibi-append-pec;
-	i3c1_smq:i3c-slave-mqueue@9 {
+	i3c1_smq:i3c-slave-mqueue {
 		compatible = "aspeed,i3c-slave-mqueue";
-		reg = <0x9>;
 		msg-size = <256>;
 		num-of-msgs = <4>;
 		mandatory-data-byte = <0xbf>;
