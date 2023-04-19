@@ -459,23 +459,30 @@ static void i3c_stress_main_thread(void *arg0, void *arg1, void *arg2)
 	int i;
 	bool do_forever = !loop_cnt;
 
+	if (!desc->bus) {
+		shell_print(shell,
+			    "No device desc attached, please execute: "
+			    "i3c attach %s -a <target address>",
+			    dev->name);
+		return;
+	}
+
 	if (!i3c_shell_ibi_user_data.work.handler) {
 		k_work_init(&i3c_shell_ibi_user_data.work, i3c_shell_ibi_worker);
 	}
 	i3c_shell_ibi_user_data.shell = shell;
 	i3c_shell_ibi_user_data.dev_desc = desc;
 
-	/* register dev_desc */
-	desc->info.static_addr = 0x9;
-	desc->info.assigned_dynamic_addr = 0x9;
-	desc->info.i2c_mode = 0;
-	desc->info.pid = 0x7ec80011000;
-	desc->info.bcr = 0x66;
-	desc->info.dcr = 0;
-	i3c_master_attach_device(dev, desc);
-
 	/* Assign dynamic address through SETAASA */
+	desc->info.dynamic_addr = desc->info.static_addr;
+	i3c_master_send_rstdaa(dev);
 	i3c_master_send_aasa(dev);
+	i3c_master_send_getbcr(dev, desc->info.dynamic_addr, &desc->info.bcr);
+	i3c_master_send_getpid(dev, desc->info.dynamic_addr, &desc->info.pid);
+	shell_print(shell, "Got target BCR %02x", desc->info.bcr);
+	shell_print(shell, "Got target PID %llx", desc->info.pid);
+	desc->info.dcr = 0;
+
 	i3c_master_request_ibi(desc, &i3c_ibi_def_callbacks);
 	i3c_master_enable_ibi(desc);
 
