@@ -1227,7 +1227,6 @@ int aspeed_i2c_master_irq(const struct device *dev)
 			if (data->msgs_index < data->msgs_count) {
 				aspeed_new_i2c_do_start(dev);
 			} else {
-				data->cmd_err = data->msgs_index;
 				k_sem_give(&data->sync_sem);
 			}
 			break;
