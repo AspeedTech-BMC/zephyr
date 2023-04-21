@@ -560,6 +560,9 @@ static uint32_t i2c_aspeed_select_clock(const struct device *dev)
 		/* Select time out timer */
 		ac_timing |= AST_I2CC_toutBaseCLK(I2C_TIMEOUT_CLK);
 		ac_timing |= AST_I2CC_tTIMEOUT(I2C_TIMEOUT_COUNT);
+		ac_timing |= AST_I2CC_tHDDAT(1);
+		/*ac_timing |= AST_I2CC_tHDDAT(2);*/
+		/*ac_timing |= AST_I2CC_tHDDAT(3);*/
 		LOG_DBG("ac_timing %x", ac_timing);
 	} else {
 		for (i = 0; i < ARRAY_SIZE(aspeed_old_i2c_timing_table); i++) {
