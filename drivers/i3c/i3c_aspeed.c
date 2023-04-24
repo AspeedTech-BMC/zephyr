@@ -1141,10 +1141,11 @@ static void i3c_aspeed_init_hw_feature(struct i3c_aspeed_obj *obj)
 	uint32_t rev_id = (sys_read32(scu + 0x4) & GENMASK(31, 16)) >> 16;
 
 	/*
-	 * if AST26xx-A3 or AST10x0-A1, the IBI status bitfield is correct.
+	 * if AST26xx-A3, AST10x0-A1 or AST10x0-A2, the IBI status bitfield is correct.
 	 * The others are not correct and need for workaround.
 	 */
-	if ((rev_id == 0x0503) || (rev_id == 0x8001)) {
+	if (rev_id == 0x0503 || rev_id == 0x8001 || rev_id == 0xA001 || rev_id == 0x8003 ||
+	    rev_id == 0xA003) {
 		obj->hw_feature.ibi_status_correct = 1;
 		obj->ibi_status_parser = i3c_aspeed_parse_ibi_status;
 	} else {
