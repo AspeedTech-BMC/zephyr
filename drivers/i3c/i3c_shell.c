@@ -539,7 +539,7 @@ static int cmd_do_stress(const struct shell *shell, size_t argc, char **argv)
 		switch (c) {
 		case 'l':
 			loop_cnt = strtoul(state->optarg, NULL, 0);
-			return 0;
+			break;
 		case 'h':
 			shell_help(shell);
 			return SHELL_CMD_HELP_PRINTED;
