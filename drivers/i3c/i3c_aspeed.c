@@ -831,7 +831,7 @@ static void i3c_aspeed_slave_resp_handler(struct i3c_aspeed_obj *obj, union i3c_
 				cb->write_done(obj->slave_data.dev);
 			}
 		} else {
-			if (status.fields.ibi_update && resp.fields.tid == SLAVE_TID_IBI_DONE) {
+			if (resp.fields.tid == SLAVE_TID_IBI_DONE) {
 				osEventFlagsSet(obj->ibi_event, status.value);
 			} else if (resp.fields.tid == SLAVE_TID_MASTER_READ_DATA) {
 				osEventFlagsSet(obj->data_event, status.value);
@@ -1616,7 +1616,6 @@ int i3c_aspeed_slave_put_read_data(const struct device *dev, struct i3c_slave_pa
 
 		osEventFlagsClear(obj->ibi_event, ~osFlagsError);
 		events.value = 0;
-		events.fields.ibi_update = 1;
 		events.fields.resp_q_ready = 1;
 
 		i3c_register->queue_thld_ctrl.fields.resp_q_thld = 1 - 1;
@@ -1694,7 +1693,6 @@ int i3c_aspeed_slave_send_sir(const struct device *dev, struct i3c_ibi_payload *
 
 	osEventFlagsClear(obj->ibi_event, ~osFlagsError);
 	events.value = 0;
-	events.fields.ibi_update = 1;
 	events.fields.resp_q_ready = 1;
 
 	i3c_register->queue_thld_ctrl.fields.resp_q_thld = 1 - 1;
