@@ -272,7 +272,11 @@ struct i2c_aspeed_config {
 	uintptr_t buf_base;
 	size_t buf_size;
 	uint32_t bitrate;
-	int multi_master;
+	uint8_t multi_master;
+	uint8_t smbus_timeout;
+	uint8_t manual_scl_high;
+	uint8_t manual_scl_low;
+	uint8_t manual_sda_hold;
 	int smbus_alert;
 	const struct device *clock_dev;
 	const clock_control_subsys_t clk_id;
@@ -305,7 +309,6 @@ struct i2c_aspeed_data {
 
 	uint32_t bus_frequency;
 	/* master configuration */
-	bool multi_master;
 	int cmd_err;
 	uint16_t flags;
 	uint8_t         *buf;
@@ -548,21 +551,54 @@ static uint32_t i2c_aspeed_select_clock(const struct device *dev)
 		divider_ratio = MIN(divider_ratio, 32);
 		LOG_DBG("divider_ratio min %x", divider_ratio);
 		div &= 0xf;
-		scl_low = ((divider_ratio * 9) / 16) - 1;
-		LOG_DBG("scl_low %x", scl_low);
+
+		/* Set menual scl low length */
+		if (config->manual_scl_low && config->manual_scl_high) {
+			scl_low = config->manual_scl_low;
+			scl_high = config->manual_scl_high;
+			LOG_DBG("maual scl_low min %x", scl_low);
+			LOG_DBG("maual scl_high min %x", scl_high);
+		} else if (config->manual_scl_low || config->manual_scl_high) {
+			if (config->manual_scl_low) {
+				scl_low = config->manual_scl_low;
+				LOG_DBG("maual scl_low min %x", scl_low);
+				scl_high = (divider_ratio - scl_low - 2) & 0xf;
+			} else {
+				scl_high = config->manual_scl_high;
+				LOG_DBG("maual scl_high min %x", scl_high);
+				scl_low = (divider_ratio - scl_high - 2) & 0xf;
+			}
+		} else {
+			scl_low = ((divider_ratio * 9) / 16) - 1;
+			LOG_DBG("default scl_low min%x", scl_low);
+			scl_high = (divider_ratio - scl_low - 2) & 0xf;
+			LOG_DBG("default scl_high min%x", scl_low);
+		}
+
 		scl_low = MIN(scl_low, 0xf);
+		scl_high = MIN(scl_high, 0xf);
 		LOG_DBG("scl_low min %x", scl_low);
-		scl_high = (divider_ratio - scl_low - 2) & 0xf;
-		LOG_DBG("scl_high %x", scl_high);
+		LOG_DBG("scl_high min %x", scl_high);
 
 		/*Divisor : Base Clock : tCKHighMin : tCK High : tCK Low*/
 		ac_timing = ((scl_high-1) << 20) | (scl_high << 16) | (scl_low << 12) | (div);
-		/* Select time out timer */
-		ac_timing |= AST_I2CC_toutBaseCLK(I2C_TIMEOUT_CLK);
-		ac_timing |= AST_I2CC_tTIMEOUT(I2C_TIMEOUT_COUNT);
-		ac_timing |= AST_I2CC_tHDDAT(1);
-		/*ac_timing |= AST_I2CC_tHDDAT(2);*/
-		/*ac_timing |= AST_I2CC_tHDDAT(3);*/
+
+		/* Set time out timer */
+		if (config->smbus_timeout) {
+			ac_timing |= AST_I2CC_toutBaseCLK(I2C_TIMEOUT_CLK);
+			ac_timing |= AST_I2CC_tTIMEOUT(I2C_TIMEOUT_COUNT);
+			LOG_DBG("smbus_timeout enable");
+		}
+
+		/* Manual set the sda hold time */
+		if (config->manual_sda_hold) {
+			LOG_DBG("manual_sda_hold %x", config->manual_sda_hold);
+			if (config->manual_sda_hold < 4)
+				ac_timing |= AST_I2CC_tHDDAT(config->manual_sda_hold);
+			else
+				LOG_DBG("invalid sda hold setting %x", config->manual_sda_hold);
+		}
+
 		LOG_DBG("ac_timing %x", ac_timing);
 	} else {
 		for (i = 0; i < ARRAY_SIZE(aspeed_old_i2c_timing_table); i++) {
@@ -1766,7 +1802,6 @@ static int i2c_aspeed_init(const struct device *dev)
 	}
 
 	/* default apply multi-master with DMA mode */
-	config->multi_master = 1;
 	config->mode = DMA_MODE;
 
 	/* buffer mode base and size */
@@ -1884,6 +1919,11 @@ static const struct i2c_driver_api i2c_aspeed_driver_api = {
 		.base = DT_INST_REG_ADDR(n),					  \
 		.irq_config_func = i2c_aspeed_config_func_##n,			  \
 		.bitrate = DT_INST_PROP(n, clock_frequency),			  \
+		.multi_master = DT_INST_PROP(n, multi_master),		  \
+		.smbus_timeout = DT_INST_PROP(n, smbus_timeout),		  \
+		.manual_scl_high = DT_INST_PROP(n, manual_high_count),  \
+		.manual_scl_low = DT_INST_PROP(n, manual_low_count),	  \
+		.manual_sda_hold = DT_INST_PROP(n, manual_sda_delay),  \
 		.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(n)),		  \
 		.clk_id = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(n, clk_id), \
 	};									  \

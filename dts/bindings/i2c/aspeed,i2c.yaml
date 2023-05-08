@@ -17,3 +17,22 @@ properties:
     interrupts:
       required: true
 
+    multi-master:
+       type: int
+       required: true
+
+    smbus-timeout:
+       type: int
+       required: true
+
+    manual-high-count:
+       type: int
+       required: true
+
+    manual-low-count:
+       type: int
+       required: true
+
+    manual-sda-delay:
+       type: int
+       required: true
