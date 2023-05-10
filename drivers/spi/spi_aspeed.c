@@ -352,15 +352,18 @@ static void aspeed_spi_nor_transceive_user(const struct device *dev,
 	struct spi_context *ctx = &data->ctx;
 	uint32_t cs = ctx->config->slave;
 	uint8_t dummy[12] = {0};
+	uint32_t spim_idx = config->mux_ctrl.spim_output_base + ctx->config->slave;
 
 #ifdef CONFIG_SPI_MONITOR_ASPEED
 	/* change internal MUX */
 	if (config->mux_ctrl.master_idx != 0) {
 		cs = 0;
 		spim_scu_ctrl_set(config->mux_ctrl.spi_monitor_common_ctrl,
-				BIT(3), (config->mux_ctrl.master_idx - 1) << 3);
+				  BIT(3), (config->mux_ctrl.master_idx - 1) << 3);
 		spim_scu_ctrl_set(config->mux_ctrl.spi_monitor_common_ctrl,
-				0x7, config->mux_ctrl.spim_output_base + ctx->config->slave);
+				  0x7, spim_idx);
+		spim_scu_ctrl_set(config->mux_ctrl.spi_monitor_common_ctrl,
+				  BIT(spim_idx - 1) << 4, BIT(spim_idx - 1) << 4);
 	}
 #endif
 
@@ -415,8 +418,11 @@ static void aspeed_spi_nor_transceive_user(const struct device *dev,
 		config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
 
 #ifdef CONFIG_SPI_MONITOR_ASPEED
-	if (config->mux_ctrl.master_idx != 0)
+	if (config->mux_ctrl.master_idx != 0) {
 		spim_scu_ctrl_clear(config->mux_ctrl.spi_monitor_common_ctrl, 0xf);
+		spim_scu_ctrl_clear(config->mux_ctrl.spi_monitor_common_ctrl,
+				    BIT(spim_idx - 1) << 4);
+	}
 #endif
 
 	spi_context_complete(ctx, 0);
@@ -441,6 +447,7 @@ void aspeed_spi_dma_isr(const void *param)
 	struct spi_context *ctx = &data->ctx;
 	uint32_t cs = ctx->config->slave;
 	uint32_t reg_val;
+	uint32_t spim_idx = config->mux_ctrl.spim_output_base + ctx->config->slave;
 
 #ifdef CONFIG_SPI_MONITOR_ASPEED
 	/* change internal MUX */
@@ -462,8 +469,11 @@ void aspeed_spi_dma_isr(const void *param)
 	sys_write32(SPI_DMA_DISCARD_REQ_MAGIC, config->ctrl_base + SPI80_DMA_CTRL);
 
 #ifdef CONFIG_SPI_MONITOR_ASPEED
-	if (config->mux_ctrl.master_idx != 0)
+	if (config->mux_ctrl.master_idx != 0) {
 		spim_scu_ctrl_clear(config->mux_ctrl.spi_monitor_common_ctrl, 0xf);
+		spim_scu_ctrl_clear(config->mux_ctrl.spi_monitor_common_ctrl,
+				    BIT(spim_idx - 1) << 4);
+	}
 #endif
 
 	sys_write32(data->cmd_mode[cs].normal_read,
@@ -481,6 +491,7 @@ static void aspeed_spi_read_dma(const struct device *dev,
 	struct spi_context *ctx = &data->ctx;
 	uint32_t cs = ctx->config->slave;
 	uint32_t ctrl_reg;
+	uint32_t spim_idx = config->mux_ctrl.spim_output_base + ctx->config->slave;
 
 #ifdef CONFIG_SPI_MONITOR_ASPEED
 	/* change internal MUX */
@@ -505,9 +516,11 @@ static void aspeed_spi_read_dma(const struct device *dev,
 	/* change internal MUX */
 	if (config->mux_ctrl.master_idx != 0) {
 		spim_scu_ctrl_set(config->mux_ctrl.spi_monitor_common_ctrl,
-				BIT(3), (config->mux_ctrl.master_idx - 1) << 3);
+				  BIT(3), (config->mux_ctrl.master_idx - 1) << 3);
 		spim_scu_ctrl_set(config->mux_ctrl.spi_monitor_common_ctrl,
-				0x7, config->mux_ctrl.spim_output_base + ctx->config->slave);
+				  0x7, spim_idx);
+		spim_scu_ctrl_set(config->mux_ctrl.spi_monitor_common_ctrl,
+				  BIT(spim_idx - 1) << 4, BIT(spim_idx - 1) << 4);
 	}
 #endif
 

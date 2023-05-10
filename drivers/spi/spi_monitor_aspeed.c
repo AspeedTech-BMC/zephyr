@@ -1319,7 +1319,7 @@ static int aspeed_spi_monitor_init(const struct device *dev)
 		k_sem_init(&data->sem_spim, 1, 1);
 
 	/* always enable internal passthrough configuration */
-	spim_scu_passthrough_mode(dev, 0, true);
+	spim_scu_passthrough_mode(dev, 0, false);
 	/* always keep at master mode during booting up stage */
 	spim_ext_mux_config(dev, config->ext_mux_sel_default);
 	/* always disable internal pull-down of CS pin */

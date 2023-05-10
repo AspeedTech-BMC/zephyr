@@ -89,6 +89,9 @@ void pfr_pch_rst_enable_ctrl(bool enable);
 void spim_rst_flash(const struct device *dev, uint32_t rst_duration_ms);
 void spim_scu_ctrl_set(const struct device *dev, uint32_t mask, uint32_t val);
 void spim_scu_ctrl_clear(const struct device *dev, uint32_t clear_bits);
+void spim_scu_passthrough_mode(const struct device *dev,
+			       enum spim_passthrough_mode mode,
+			       bool passthrough_en);
 void spim_ext_mux_config(const struct device *dev,
 	enum spim_ext_mux_sel mux_sel);
 void spim_passthrough_config(const struct device *dev,
