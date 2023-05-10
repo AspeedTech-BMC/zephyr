@@ -261,13 +261,13 @@
  */
 
 &spi2_cs0 {
-	spi-max-buswidth = <4>;
+	spi-max-buswidth = <1>;
 	spi-max-frequency = <25000000>;
 	status = "okay";
 };
 
 &spi2_cs1 {
-	spi-max-buswidth = <4>;
+	spi-max-buswidth = <1>;
 	spi-max-frequency = <25000000>;
 	status = "okay";
 };
