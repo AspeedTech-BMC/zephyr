@@ -36,6 +36,9 @@ struct adc_aspeed_data {
 	uint16_t *buffer;
 	uint16_t *repeat_buffer;
 	bool calibrate;
+	uint16_t upper_bound[ASPEED_ADC_CH_NUMBER];
+	uint16_t lower_bound[ASPEED_ADC_CH_NUMBER];
+	bool deglitch_en[ASPEED_ADC_CH_NUMBER];
 	int cv;
 	struct k_thread thread;
 	struct k_sem acq_sem;
@@ -101,11 +104,20 @@ static int adc_aspeed_read_channel(const struct device *dev, uint8_t channel,
 				   int32_t *result)
 {
 	struct adc_aspeed_data *priv = DEV_DATA(dev);
+	const struct adc_aspeed_cfg *config = DEV_CFG(dev);
 
 	if (priv->battery_sensing_enable && channel == 7) {
 		*result = aspeed_adc_battery_read(dev, channel);
 	} else {
 		*result = aspeed_adc_read_raw(dev, channel);
+		if (priv->deglitch_en[channel]) {
+			if (*result >= priv->upper_bound[channel] ||
+			    *result <= priv->lower_bound[channel]) {
+				k_busy_wait(priv->sampling_period_us *
+					    popcount(config->channels_used));
+				*result = aspeed_adc_read_raw(dev, channel);
+			}
+		}
 	}
 	return 0;
 }
@@ -332,6 +344,27 @@ static int adc_aspeed_channel_setup(const struct device *dev,
 		LOG_ERR("Unsupported channel acquisition time");
 		return -ENOTSUP;
 	}
+
+	if (channel_cfg->deglitch_en) {
+		if (channel_cfg->upper_bound == 0 ||
+		    channel_cfg->upper_bound >= BIT(ASPEED_RESOLUTION_BITS)) {
+			LOG_ERR("Unsupported upper bound %d", channel_cfg->upper_bound);
+			return -ENOTSUP;
+		}
+
+		if (channel_cfg->lower_bound >= channel_cfg->upper_bound) {
+			LOG_ERR("Unsupported lower bound %d >= upper bound %d",
+				channel_cfg->lower_bound, channel_cfg->upper_bound);
+			return -ENOTSUP;
+		}
+		priv->upper_bound[channel_id] = channel_cfg->upper_bound;
+		priv->lower_bound[channel_id] = channel_cfg->lower_bound;
+		priv->deglitch_en[channel_id] = channel_cfg->deglitch_en;
+	}
+
+	LOG_DBG("channel %d, upper_bound:%d, lower_bound: %d, deglitch_en %d\n", channel_id,
+		priv->upper_bound[channel_id], priv->lower_bound[channel_id],
+		priv->deglitch_en[channel_id]);
 
 	/* The last channel have gain feature for battery sensing */
 	if (channel_id == ASPEED_ADC_CH_NUMBER - 1) {

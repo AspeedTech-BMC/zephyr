@@ -139,6 +139,12 @@ struct adc_channel_cfg {
 	 */
 	uint8_t input_negative;
 #endif /* CONFIG_ADC_CONFIGURABLE_INPUTS */
+
+#ifdef CONFIG_ADC_ASPEED
+	uint16_t upper_bound;
+	uint16_t lower_bound;
+	bool deglitch_en;
+#endif
 };
 
 /**
