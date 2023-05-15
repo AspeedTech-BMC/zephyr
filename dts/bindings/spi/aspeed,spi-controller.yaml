@@ -87,3 +87,8 @@ properties:
       phandle to SPI monitor common device node which
       includes general control register.
 
+  spim-proprietary-config-enable:
+    type: boolean
+    required: false
+    description: |
+      Enable SPI monitor proprietary configurations.

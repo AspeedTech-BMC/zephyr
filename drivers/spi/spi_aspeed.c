@@ -113,6 +113,8 @@ struct aspeed_spi_data {
 	struct aspeed_spi_decoded_addr decode_addr[ASPEED_MAX_CS];
 	struct aspeed_cmd_mode cmd_mode[ASPEED_MAX_CS];
 	uint32_t hclk;
+	void (*aspeed_spim_proprietary_pre_config)(void);
+	void (*aspeed_spim_proprietary_post_config)(void);
 };
 
 struct aspeed_spim_internal_mux_ctrl {
@@ -132,6 +134,29 @@ struct aspeed_spi_config {
 	uint32_t irq_num;
 	uint32_t irq_priority;
 	struct aspeed_spim_internal_mux_ctrl mux_ctrl;
+	bool aspeed_spim_proprietary_config_enable;
+};
+
+#define SPIM_CLK_GPIO_INFO(__scu_reg__, __scu_bit__, __gpio_reg__, __gpio_bit__)	\
+	{	\
+		.scu_reg_addr = __scu_reg__,	\
+		.scu_bit_mask = __scu_bit__,	\
+		.gpio_reg_addr = __gpio_reg__,	\
+		.gpio_bit_mask = __gpio_bit__,	\
+		.gpio_ori_val = 0,	\
+	}
+
+/*
+ * SPIM1CLKOUT: SCU690[7]   GPIO_A7 0x7e780004[7]
+ * SPIM2CLKOUT: SCU690[21]  GPIO_C5 0x7e780004[21]
+ * SPIM3CLKOUT: SCU694[3]   GPIO_E3 0x7e780024[3]
+ * SPIM4CLKOUT: SCU694[17]  GPIO_G1 0x7e780024[17]
+ */
+struct spim_clk_gpio_info g_ast1060_spim_clk_gpio_info[4] = {
+	SPIM_CLK_GPIO_INFO(0x7e6e2690, BIT(7), 0x7e780004, BIT(7)),
+	SPIM_CLK_GPIO_INFO(0x7e6e2690, BIT(21), 0x7e780004, BIT(21)),
+	SPIM_CLK_GPIO_INFO(0x7e6e2694, BIT(3), 0x7e780024, BIT(3)),
+	SPIM_CLK_GPIO_INFO(0x7e6e2694, BIT(17), 0x7e780024, BIT(17)),
 };
 
 uint32_t ast2600_segment_addr_start(uint32_t reg_val)
@@ -362,6 +387,9 @@ static void aspeed_spi_nor_transceive_user(const struct device *dev,
 		spim_scu_ctrl_set(config->mux_ctrl.spi_monitor_common_ctrl,
 				0x7, config->mux_ctrl.spim_output_base + ctx->config->slave);
 	}
+
+	if (data->aspeed_spim_proprietary_pre_config)
+		data->aspeed_spim_proprietary_pre_config();
 #endif
 
 	sys_write32(data->cmd_mode[cs].user | ASPEED_SPI_USER_INACTIVE,
@@ -415,6 +443,9 @@ static void aspeed_spi_nor_transceive_user(const struct device *dev,
 		config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
 
 #ifdef CONFIG_SPI_MONITOR_ASPEED
+	if (data->aspeed_spim_proprietary_post_config)
+		data->aspeed_spim_proprietary_post_config();
+
 	if (config->mux_ctrl.master_idx != 0)
 		spim_scu_ctrl_clear(config->mux_ctrl.spi_monitor_common_ctrl, 0xf);
 #endif
@@ -462,6 +493,9 @@ void aspeed_spi_dma_isr(const void *param)
 	sys_write32(SPI_DMA_DISCARD_REQ_MAGIC, config->ctrl_base + SPI80_DMA_CTRL);
 
 #ifdef CONFIG_SPI_MONITOR_ASPEED
+	if (data->aspeed_spim_proprietary_post_config)
+		data->aspeed_spim_proprietary_post_config();
+
 	if (config->mux_ctrl.master_idx != 0)
 		spim_scu_ctrl_clear(config->mux_ctrl.spi_monitor_common_ctrl, 0xf);
 #endif
@@ -509,6 +543,9 @@ static void aspeed_spi_read_dma(const struct device *dev,
 		spim_scu_ctrl_set(config->mux_ctrl.spi_monitor_common_ctrl,
 				0x7, config->mux_ctrl.spim_output_base + ctx->config->slave);
 	}
+
+	if (data->aspeed_spim_proprietary_pre_config)
+		data->aspeed_spim_proprietary_pre_config();
 #endif
 
 	ctrl_reg = data->cmd_mode[cs].normal_read & SPI_CTRL_FREQ_MASK;
@@ -576,6 +613,9 @@ static void aspeed_spi_write_dma(const struct device *dev,
 		spim_scu_ctrl_set(config->mux_ctrl.spi_monitor_common_ctrl,
 				0x7, config->mux_ctrl.spim_output_base + ctx->config->slave);
 	}
+
+	if (data->aspeed_spim_proprietary_pre_config)
+		data->aspeed_spim_proprietary_pre_config();
 #endif
 
 	ctrl_reg = data->cmd_mode[cs].normal_write & SPI_CTRL_FREQ_MASK;
@@ -1175,6 +1215,73 @@ void aspeed_decode_range_pre_init(
 	}
 }
 
+void aspeed_ast1060_spim_proprietary_pre_config(void)
+{
+	uint32_t scu0f0_val;
+	uint32_t spim_idx;
+	uint32_t idx;
+	uint32_t reg_val;
+
+	scu0f0_val = sys_read32(0x7e6e20f0);
+	/* configure SPI CLK pin to GPIO input */
+	if ((scu0f0_val & 0x3) == 0)
+		return;
+
+	spim_idx = (scu0f0_val & 0x3) - 1;
+	if (spim_idx > 3)
+		return;
+
+	/* if the SPIMCLK is unused, config it to GPIO input mode. */
+	for (idx = 0; idx < 4; idx++) {
+		if (idx != spim_idx) {
+			/* change multiple function pin to GPIO mode. */
+			reg_val = sys_read32(g_ast1060_spim_clk_gpio_info[idx].scu_reg_addr);
+			reg_val &= ~(g_ast1060_spim_clk_gpio_info[idx].scu_bit_mask);
+			sys_write32(reg_val, g_ast1060_spim_clk_gpio_info[idx].scu_reg_addr);
+
+			/* change GPIO to input mode. */
+			reg_val = sys_read32(g_ast1060_spim_clk_gpio_info[idx].gpio_reg_addr);
+			g_ast1060_spim_clk_gpio_info[idx].gpio_ori_val =
+				(reg_val & g_ast1060_spim_clk_gpio_info[idx].gpio_bit_mask);
+			reg_val &= ~(g_ast1060_spim_clk_gpio_info[idx].gpio_bit_mask);
+			sys_write32(reg_val, g_ast1060_spim_clk_gpio_info[idx].gpio_reg_addr);
+		}
+	}
+}
+
+void aspeed_ast1060_spim_proprietary_post_config(void)
+{
+	uint32_t scu0f0_val;
+	uint32_t spim_idx;
+	uint32_t idx;
+	uint32_t reg_val;
+
+	scu0f0_val = sys_read32(0x7e6e20f0);
+	/* configure SPI CLK pin to GPIO input */
+	if ((scu0f0_val & 0x3) == 0)
+		return;
+
+	spim_idx = (scu0f0_val & 0x3) - 1;
+	if (spim_idx > 3)
+		return;
+
+	/* if the SPIMCLK is unused, config it back to SPIM mode. */
+	for (idx = 0; idx < 4; idx++) {
+		if (idx != spim_idx) {
+			/* restore its GPIO value. */
+			reg_val = sys_read32(g_ast1060_spim_clk_gpio_info[idx].gpio_reg_addr);
+			reg_val &= ~(g_ast1060_spim_clk_gpio_info[idx].gpio_bit_mask);
+			reg_val |= g_ast1060_spim_clk_gpio_info[idx].gpio_ori_val;
+			sys_write32(reg_val, g_ast1060_spim_clk_gpio_info[idx].gpio_reg_addr);
+
+			/* change multiple function pin back to SPIM mode. */
+			reg_val = sys_read32(g_ast1060_spim_clk_gpio_info[idx].scu_reg_addr);
+			reg_val |= g_ast1060_spim_clk_gpio_info[idx].scu_bit_mask;
+			sys_write32(reg_val, g_ast1060_spim_clk_gpio_info[idx].scu_reg_addr);
+		}
+	}
+}
+
 static int aspeed_spi_init(const struct device *dev)
 {
 	const struct aspeed_spi_config *config = dev->config;
@@ -1215,6 +1322,13 @@ static int aspeed_spi_init(const struct device *dev)
 		return -EINVAL;
 	}
 
+	if (config->aspeed_spim_proprietary_config_enable) {
+		data->aspeed_spim_proprietary_pre_config =
+			aspeed_ast1060_spim_proprietary_pre_config;
+		data->aspeed_spim_proprietary_post_config =
+			aspeed_ast1060_spim_proprietary_post_config;
+	}
+
 	return 0;
 }
 
@@ -1248,6 +1362,8 @@ static const struct spi_driver_api aspeed_spi_driver_api = {
 				spi_monitor_common_ctrl),	\
 			    DEVICE_DT_GET(DT_INST_PHANDLE_BY_IDX(n, spi_monitor_common_ctrl, 0)),	\
 				NULL),	\
+		.aspeed_spim_proprietary_config_enable = DT_PROP(DT_INST(n, DT_DRV_COMPAT),	\
+								 spim_proprietary_config_enable),	\
 	};								\
 									\
 	static struct aspeed_spi_data aspeed_spi_data_##n = {	\
