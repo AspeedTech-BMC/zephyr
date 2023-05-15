@@ -272,7 +272,7 @@ static int adc_aspeed_start_read(const struct device *dev,
 		return -ENOTSUP;
 	}
 
-	if (find_msb_set(sequence->channels) > ASPEED_ADC_CH_NUMBER + 1 ||
+	if (find_msb_set(sequence->channels) > ASPEED_ADC_CH_NUMBER ||
 	    !(sequence->channels & config->channels_used)) {
 		LOG_ERR("unsupported channels in mask: 0x%08x",
 			sequence->channels);
@@ -313,7 +313,7 @@ static int adc_aspeed_channel_setup(const struct device *dev,
 	const struct adc_aspeed_cfg *config = DEV_CFG(dev);
 	uint8_t channel_id = channel_cfg->channel_id;
 
-	if (channel_id > ASPEED_ADC_CH_NUMBER) {
+	if (channel_id > ASPEED_ADC_CH_NUMBER - 1) {
 		LOG_ERR("Channel %d is not valid", channel_id);
 		return -EINVAL;
 	}
@@ -334,7 +334,7 @@ static int adc_aspeed_channel_setup(const struct device *dev,
 	}
 
 	/* The last channel have gain feature for battery sensing */
-	if (channel_id == ASPEED_ADC_CH_NUMBER) {
+	if (channel_id == ASPEED_ADC_CH_NUMBER - 1) {
 		if (channel_cfg->gain != ADC_GAIN_1) {
 			if ((config->ref_voltage_mv < 1550 &&
 			     channel_cfg->gain != ADC_GAIN_1_3) ||

@@ -133,7 +133,7 @@ struct adc_register_s {
 /**********************************************************
  * ADC feature define
  *********************************************************/
-#define ASPEED_ADC_CH_NUMBER            7
+#define ASPEED_ADC_CH_NUMBER            8
 #define ASPEED_RESOLUTION_BITS          10
 #define ASPEED_CLOCKS_PER_SAMPLE        12
 
