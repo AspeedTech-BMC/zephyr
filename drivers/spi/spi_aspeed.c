@@ -1224,10 +1224,10 @@ void aspeed_ast1060_spim_proprietary_pre_config(void)
 
 	scu0f0_val = sys_read32(0x7e6e20f0);
 	/* configure SPI CLK pin to GPIO input */
-	if ((scu0f0_val & 0x3) == 0)
+	if ((scu0f0_val & 0x7) == 0)
 		return;
 
-	spim_idx = (scu0f0_val & 0x3) - 1;
+	spim_idx = (scu0f0_val & 0x7) - 1;
 	if (spim_idx > 3)
 		return;
 
@@ -1258,10 +1258,10 @@ void aspeed_ast1060_spim_proprietary_post_config(void)
 
 	scu0f0_val = sys_read32(0x7e6e20f0);
 	/* configure SPI CLK pin to GPIO input */
-	if ((scu0f0_val & 0x3) == 0)
+	if ((scu0f0_val & 0x7) == 0)
 		return;
 
-	spim_idx = (scu0f0_val & 0x3) - 1;
+	spim_idx = (scu0f0_val & 0x7) - 1;
 	if (spim_idx > 3)
 		return;
 
