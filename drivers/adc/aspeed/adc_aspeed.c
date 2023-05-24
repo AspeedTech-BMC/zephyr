@@ -69,12 +69,14 @@ static uint32_t aspeed_adc_read_raw(const struct device *dev, uint32_t channel)
 {
 	const struct adc_aspeed_cfg *config = DEV_CFG(dev);
 	struct adc_register_s *adc_register = config->base;
+	struct adc_aspeed_data *priv = DEV_DATA(dev);
 	uint32_t raw_data;
 
 	raw_data =
 		(channel & 0x1) ?
 		adc_register->adc_data[channel >> 1].fields.data_even :
 		adc_register->adc_data[channel >> 1].fields.data_odd;
+	raw_data += priv->cv;
 	LOG_DBG("%u\n", raw_data);
 	return raw_data;
 }
@@ -412,11 +414,12 @@ static void aspeed_acquisition_thread(struct adc_aspeed_data *data)
 
 			LOG_DBG("reading channel %d", channel);
 
+			if (data->calibrate) {
+				aspeed_adc_calibration(data->dev);
+			}
+
 			err = adc_aspeed_read_channel(data->dev, channel,
 						      &result);
-			if (data->calibrate) {
-				result += data->cv;
-			}
 
 			if (err) {
 				adc_context_complete(&data->ctx, err);
