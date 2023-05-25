@@ -231,7 +231,7 @@ int i3c_master_send_getbcr(const struct device *master, uint8_t addr, uint8_t *b
 #define i3c_master_priv_xfer		i3c_aspeed_master_priv_xfer
 #define i3c_master_request_ibi		i3c_aspeed_master_request_ibi
 #define i3c_master_enable_ibi		i3c_aspeed_master_enable_ibi
-#define i3c_maser_send_entdaa		i3c_aspeed_master_send_entdaa
+#define i3c_master_send_entdaa		i3c_aspeed_master_send_entdaa
 #define i3c_slave_register		i3c_aspeed_slave_register
 #define i3c_slave_send_sir		i3c_aspeed_slave_send_sir
 #define i3c_slave_put_read_data		i3c_aspeed_slave_put_read_data
