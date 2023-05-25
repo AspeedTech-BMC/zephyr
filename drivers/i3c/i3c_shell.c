@@ -276,12 +276,63 @@ static int cmd_attach(const struct shell *shell, size_t argc, char **argv)
 	if (ret) {
 		shell_print(shell, "Failed to attach device: %d", ret);
 	} else {
+		shell_print(shell, "device with DA %02x is attached to i3c_shell_desc_tbl[%d]",
+			    desc->info.dynamic_addr, i3c_shell_num_of_descs);
 		i3c_shell_num_of_descs++;
 	}
 
 	return ret;
 }
 
+static const char entdaa_helper[] = "i3c entdaa <dev> -i <index of the target device>";
+static int cmd_entdaa(const struct shell *shell, size_t argc, char **argv)
+{
+	const struct device *dev;
+	struct getopt_state *state;
+	int c, ret, index = -1;
+
+	dev = device_get_binding(argv[1]);
+	if (!dev) {
+		shell_error(shell, "I3C: Device %s not found.", argv[1]);
+		return -ENODEV;
+	}
+
+	while ((c = shell_getopt(shell, argc - 1, &argv[1], "hi:")) != -1) {
+		state = shell_getopt_state_get(shell);
+		switch (c) {
+		case 'i':
+			index = strtoul(state->optarg, NULL, 0);
+			break;
+		case 'h':
+			shell_help(shell);
+			return SHELL_CMD_HELP_PRINTED;
+		case '?':
+			if (state->optopt == 'i') {
+				shell_print(shell, "Option -%c requires an argument.",
+					    state->optopt);
+			} else if (isprint(state->optopt)) {
+				shell_print(shell, "Unknown option `-%c'.", state->optopt);
+			} else {
+				shell_print(shell, "Unknown option character `\\x%x'.",
+					    state->optopt);
+			}
+			return 1;
+		default:
+			break;
+		}
+	}
+
+	if (index < 0) {
+		shell_print(shell, "dev_desc index not assigned");
+		return SHELL_CMD_HELP_PRINTED;
+	}
+
+	ret = i3c_master_send_entdaa(&i3c_shell_desc_tbl[index]);
+	shell_print(shell, "The DA of the target device attached to i3c_shell_desc_tbl[%d] is %s",
+		    index, ret ? "not assigned" : "assigned");
+
+	return ret;
+}
 
 #ifdef CONFIG_I3C_SLAVE_MQUEUE
 int i3c_slave_mqueue_read(const struct device *dev, uint8_t *dest, int budget);
@@ -592,6 +643,7 @@ static int cmd_do_stress(const struct shell *shell, size_t argc, char **argv)
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_i3c_cmds,
 	SHELL_CMD(attach, &dsub_device_name, attach_helper, cmd_attach),
 	SHELL_CMD(ccc, &dsub_device_name, send_ccc_helper, cmd_send_ccc),
+	SHELL_CMD(entdaa, &dsub_device_name, entdaa_helper, cmd_entdaa),
 	SHELL_CMD(xfer, &dsub_device_name, priv_xfer_helper, cmd_priv_xfer),
 #ifdef CONFIG_I3C_SLAVE_MQUEUE
 	SHELL_CMD(smq, &dsub_device_name, smq_xfer_helper, cmd_smq_xfer),
