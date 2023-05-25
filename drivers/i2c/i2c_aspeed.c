@@ -1641,6 +1641,32 @@ void aspeed_i2c_slave_byte_irq(const struct device *dev, uint32_t i2c_base, uint
 
 		data->slave_addr_last = byte_data;
 		break;
+
+	/*pending stop and start address handle*/
+	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE |
+	AST_I2CS_Wait_RX_DMA | AST_I2CS_STOP | AST_I2CS_TX_NAK:
+		LOG_DBG("S : Sw|D|P\n");
+
+		if (slave_cb->stop) {
+			slave_cb->stop(data->slave_cfg);
+		}
+
+		/* clear record slave address */
+		data->slave_addr_last = 0x0;
+
+		/* first address match is address */
+		byte_data =
+		AST_I2CC_GET_RX_BUFF(sys_read32(i2c_base + AST_I2CC_STS_AND_BUFF));
+		LOG_DBG("addr [%x]", byte_data);
+
+		/* address set request */
+		if (slave_cb->write_requested) {
+			slave_cb->write_requested(data->slave_cfg);
+		}
+
+		data->slave_addr_last = byte_data;
+		break;
+
 	case AST_I2CS_RX_DONE | AST_I2CS_Wait_RX_DMA:
 		LOG_DBG("S : D\n");
 		byte_data =
@@ -1681,6 +1707,7 @@ void aspeed_i2c_slave_byte_irq(const struct device *dev, uint32_t i2c_base, uint
 		break;
 	case AST_I2CS_STOP:
 	case AST_I2CS_STOP | AST_I2CS_TX_NAK:
+	case AST_I2CS_SLAVE_MATCH | AST_I2CS_STOP | AST_I2CS_TX_NAK:
 		LOG_DBG("S : P\n");
 		if (slave_cb->stop) {
 			slave_cb->stop(data->slave_cfg);
@@ -1689,6 +1716,11 @@ void aspeed_i2c_slave_byte_irq(const struct device *dev, uint32_t i2c_base, uint
 		if (sts & AST_I2CS_TX_NAK) {
 			/* clear record slave address */
 			data->slave_addr_last = 0x0;
+		}
+
+		if (sts & AST_I2CS_SLAVE_MATCH) {
+			/* Don't handle this match for current condition*/
+			sts &= ~(AST_I2CS_SLAVE_MATCH);
 		}
 		break;
 	default:
