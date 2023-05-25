@@ -17,6 +17,14 @@ properties:
     interrupts:
       required: true
 
+    xfer-mode:
+      type: string
+      required: true
+      enum:
+          - "BYTE"
+          - "BUFF"
+          - "DMA"
+
     multi-master:
        type: int
        required: true

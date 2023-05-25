@@ -260,9 +260,9 @@ LOG_MODULE_REGISTER(i2c_aspeed);
 	((DEV_CFG(dev))->base)
 
 enum i2c_xfer_mode {
-	DMA_MODE = 0,
-	BUFF_MODE,
 	BYTE_MODE,
+	BUFF_MODE,
+	DMA_MODE,
 };
 
 struct i2c_aspeed_config {
@@ -1833,9 +1833,6 @@ static int i2c_aspeed_init(const struct device *dev)
 		config->clk_div_mode = 1;
 	}
 
-	/* default apply multi-master with DMA mode */
-	config->mode = DMA_MODE;
-
 	/* buffer mode base and size */
 	config->buf_base = config->global_reg + i2c_base_offset;
 	config->buf_size = I2C_BUF_SIZE;
@@ -1951,6 +1948,7 @@ static const struct i2c_driver_api i2c_aspeed_driver_api = {
 		.base = DT_INST_REG_ADDR(n),					  \
 		.irq_config_func = i2c_aspeed_config_func_##n,			  \
 		.bitrate = DT_INST_PROP(n, clock_frequency),			  \
+		.mode = DT_ENUM_IDX(DT_INST(n, DT_DRV_COMPAT), xfer_mode),	\
 		.multi_master = DT_INST_PROP(n, multi_master),		  \
 		.smbus_timeout = DT_INST_PROP(n, smbus_timeout),		  \
 		.manual_scl_high = DT_INST_PROP(n, manual_high_count),  \
