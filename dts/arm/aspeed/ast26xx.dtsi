@@ -270,6 +270,7 @@
 		    reg = <0x7e78a000 0x20>;
 		    clocks = <&sysclk ASPEED_CLK_APB2>;
 		    resets = <&sysrst ASPEED_RESET_I2C>;
+		    clk-divider = <0x62220803>;
 		    label = "I2C_GLOBAL";
 		};
 

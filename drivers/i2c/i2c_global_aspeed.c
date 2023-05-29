@@ -41,13 +41,15 @@ struct i2c_global_config {
 	const clock_control_subsys_t clk_id;
 	const reset_control_subsys_t rst_id;
 	uint32_t clk_src;
+	uint32_t clk_divider;
 };
 
 #define DEV_CFG(dev)			 \
 	((struct i2c_global_config *) \
 	 (dev)->config)
 
-#define I2CG_DIV_CTRL 0x62220803
+/* #define I2CG_DIV_CTRL 0x62220803 */
+/* This clock divider setting has been removed into dtsi file */
 /*
  * APB clk : 50Mhz
  * div  : scl       : baseclk [APB/((div/2) + 1)] : tBuf [1/bclk * 16]
@@ -87,8 +89,9 @@ static int i2c_global_init(const struct device *dev)
 
 		/* set i2c global setting */
 		sys_write32(I2CG_SET, i2c_global_base + ASPEED_I2CG_CONTROL);
-		/* calculate divider */
-		sys_write32(I2CG_DIV_CTRL, i2c_global_base + ASPEED_I2CG_NEW_CLK_DIV);
+
+		/* divider parameter */
+		sys_write32(config->clk_divider, i2c_global_base + ASPEED_I2CG_NEW_CLK_DIV);
 
 		/* initial i2c sram region */
 		for (int i = 0; i < ASPEED_I2C_SRAM_SIZE; i++)
@@ -103,6 +106,7 @@ static const struct i2c_global_config i2c_aspeed_config = {
 	.clk_id = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(0, clk_id),
 	.rst_id = (reset_control_subsys_t)DT_INST_RESETS_CELL(0, rst_id),
 	.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(0)),
+	.clk_divider = DT_INST_PROP(0, clk_divider),
 };
 
 
