@@ -96,3 +96,16 @@ child-binding:
       description: |
         External MUX selection default value which is configured
         during probe stage.
+
+    ext-mux-sel-gpios:
+      type: phandle-array
+      required: false
+      description: |
+        The external mux select pin is controlled by gpio or sgpio.
+
+    ext-mux-sel-delay-us:
+      type: int
+      required: false
+      default: 0
+      description: |
+        Delay in microseconds from the external mux select assert.
