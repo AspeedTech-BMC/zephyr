@@ -109,3 +109,9 @@ child-binding:
       default: 0
       description: |
         Delay in microseconds from the external mux select assert.
+    force-release-flash-reset:
+      type: boolean
+      required: false
+      description: |
+        Release flash reset at the beginning
+        driver probe stage.
