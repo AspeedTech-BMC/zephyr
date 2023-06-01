@@ -53,6 +53,14 @@
 			};
 		};
 
+		uart0: serial@074c33000 {
+			compatible = "ns16550";
+			reg = <0x74c33000 0x1000>;
+			interrupts = <263 0>;
+			status = "disabled";
+			reg-shift = <2>;
+		};
+
 		uart4: serial@72c1a000 {
 			compatible = "ns16550";
 			reg = <0x72c1a000 0x1000>;
