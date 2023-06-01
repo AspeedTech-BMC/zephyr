@@ -11,36 +11,55 @@ compatible: "aspeed,i2c"
 include: [i2c-controller.yaml, aspeed-pinctrl.yaml]
 
 properties:
-    reg:
-      required: true
+  reg:
+    required: true
 
-    interrupts:
-      required: true
+  interrupts:
+    required: true
 
-    xfer-mode:
-      type: string
-      required: true
-      enum:
-          - "BYTE"
-          - "BUFF"
-          - "DMA"
+  xfer-mode:
+    type: string
+    required: true
+    enum:
+        - "BYTE"
+        - "BUFF"
+        - "DMA"
+    description: |
+      i2c transfer type. Default value is DMA.
 
-    multi-master:
-       type: int
-       required: true
+  multi-master:
+    type: int
+    required: true
+    description: |
+      i2c multi-master support. Default value is enable.
 
-    smbus-timeout:
-       type: int
-       required: true
+  smbus-timeout:
+    type: int
+    required: true
+    description: |
+      smbus slave timeout support. Default value is enable.
+      The timeout value is set 35ms.
 
-    manual-high-count:
-       type: int
-       required: true
+  manual-high-count:
+    type: int
+    required: true
+    description: |
+      manual i2c clock high part. Default value is 0.
+      The value should be 0x3 ~ 0xF.0 means that this
+      parameter use driver default value.
 
-    manual-low-count:
-       type: int
-       required: true
+  manual-low-count:
+    type: int
+    required: true
+    description: |
+      manual i2c clock low part. Default value is 0.
+      The value should be 0x3 ~ 0xF. 0 means that this
+      parameter use driver default value.
 
-    manual-sda-delay:
-       type: int
-       required: true
+  manual-sda-delay:
+    type: int
+    required: true
+    description: |
+      manual i2c sda dealy. Default value is 0.
+      The value should be 0x0 ~ 0x3. 0 means that this
+      parameter use driver default value.
