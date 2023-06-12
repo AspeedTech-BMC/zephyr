@@ -1358,6 +1358,41 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 			if (slave_cb->write_requested) {
 				slave_cb->write_requested(data->slave_cfg);
 			}
+
+			if (config->mode == DMA_MODE) {
+				slave_rx_len =
+				AST_I2C_GET_RX_DMA_LEN(sys_read32(i2c_base + AST_I2CS_DMA_LEN_STS));
+
+				/*aspeed_cache_invalid_data*/
+				cache_data_range((&data->slave_dma_buf[0])
+				, slave_rx_len, K_CACHE_INVD);
+
+				if (slave_cb->write_received) {
+					for (i = 0; i < slave_rx_len; i++) {
+						LOG_DBG("[%02x] ", data->slave_dma_buf[i]);
+						slave_cb->write_received(data->slave_cfg
+						, data->slave_dma_buf[i]);
+					}
+				}
+			} else if (config->mode == BUFF_MODE) {
+				LOG_DBG("Slave_Buff");
+				slave_rx_len =
+				AST_I2CC_GET_RX_BUF_LEN(sys_read32(i2c_base + AST_I2CC_BUFF_CTRL));
+
+				if (slave_cb->write_received) {
+					for (i = 0; i < slave_rx_len ; i++) {
+						slave_cb->write_received(data->slave_cfg
+						, sys_read8(config->buf_base + i));
+					}
+				}
+			} else {
+				byte_data =
+				AST_I2CC_GET_RX_BUFF(sys_read32(i2c_base + AST_I2CC_STS_AND_BUFF));
+				LOG_DBG("[%02x]", byte_data);
+				if (slave_cb->write_received) {
+					slave_cb->write_received(data->slave_cfg, byte_data);
+				}
+			}
 			aspeed_i2c_trigger_package_cmd(i2c_base, config->mode);
 		}
 		break;
@@ -1401,7 +1436,7 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 
 			if (slave_cb->write_received) {
 				for (i = 0; i < slave_rx_len; i++) {
-					/*LOG_DBG(data->dev, "[%02x]", data->slave_dma_buf[i]);*/
+					LOG_DBG("[%02x] ", data->slave_dma_buf[i]);
 					slave_cb->write_received(data->slave_cfg
 					, data->slave_dma_buf[i]);
 				}
