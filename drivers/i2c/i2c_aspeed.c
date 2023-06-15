@@ -1744,6 +1744,7 @@ void aspeed_i2c_slave_byte_irq(const struct device *dev, uint32_t i2c_base, uint
 	case AST_I2CS_STOP | AST_I2CS_TX_NAK:
 	case AST_I2CS_SLAVE_MATCH | AST_I2CS_STOP | AST_I2CS_TX_NAK:
 	case AST_I2CS_SLAVE_MATCH | AST_I2CS_Wait_RX_DMA | AST_I2CS_STOP | AST_I2CS_TX_NAK:
+	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE | AST_I2CS_Wait_RX_DMA | AST_I2CS_STOP:
 		LOG_DBG("S : P\n");
 		if (slave_cb->stop) {
 			slave_cb->stop(data->slave_cfg);
