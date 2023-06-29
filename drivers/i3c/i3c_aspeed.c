@@ -1158,10 +1158,10 @@ static void i3c_aspeed_init_hw_feature(struct i3c_aspeed_obj *obj)
 	 * received IBI data with length (4n + 1) bytes.  This bug can be worked
 	 * arround if IBI PEC is enabled.
 	 */
-	if (rev_id == 0x8001) {
-		obj->hw_feature.ibi_pec_force_enable = 0;
-	} else {
+	if (rev_id == 0x0500 || rev_id == 0x0501 || rev_id == 0x0503 || rev_id == 0x0800) {
 		obj->hw_feature.ibi_pec_force_enable = 1;
+	} else {
+		obj->hw_feature.ibi_pec_force_enable = 0;
 	}
 }
 
