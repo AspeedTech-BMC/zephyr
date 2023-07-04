@@ -877,9 +877,10 @@ static void i3c_aspeed_master_rx_ibi(struct i3c_aspeed_obj *obj)
 	struct i3c_aspeed_dev_priv *priv;
 	struct i3c_ibi_status ibi_status;
 	struct i3c_ibi_payload *payload;
-	uint32_t i, j, nstatus, nbytes, nwords, pos, tmp;
+	uint32_t i, j, nstatus, nbytes, nwords, tmp;
 	uint32_t *dst;
 	bool data_consumed;
+	int pos;
 
 	nstatus = i3c_register->queue_status_level.fields.ibi_status_cnt;
 	if (!nstatus) {
@@ -899,7 +900,12 @@ static void i3c_aspeed_master_rx_ibi(struct i3c_aspeed_obj *obj)
 			goto out;
 		}
 
-		if (ibi_status.id == (0x2 << 1)) {
+		if ((ibi_status.id >> 1) != 0x2 && !(ibi_status.id & 0x1)) {
+			LOG_INF("Receive Controller Role Request event (Not supported for now)\n");
+			goto out;
+		}
+
+		if ((ibi_status.id >> 1) == 0x2 && !(ibi_status.id & 0x1)) {
 			LOG_INF("Receive Hot-join event (Not supported for now)\n");
 			goto out;
 		}
@@ -910,7 +916,17 @@ static void i3c_aspeed_master_rx_ibi(struct i3c_aspeed_obj *obj)
 			goto out;
 		}
 
+		if (pos > ARRAY_SIZE(obj->dev_descs)) {
+			LOG_ERR("pos(%d) exceeds the max device(%ld)\n", pos, ARRAY_SIZE(obj->dev_descs));
+			goto out;
+		}
+
 		i3cdev = obj->dev_descs[pos];
+		if (!i3cdev) {
+			LOG_ERR("device descriptor not found\n");
+			goto out;
+		}
+
 		priv = DESC_PRIV(i3cdev);
 		if (priv->ibi.incomplete) {
 			payload = priv->ibi.incomplete;
