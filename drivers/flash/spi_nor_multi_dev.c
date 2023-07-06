@@ -95,6 +95,8 @@ struct spi_nor_data {
 	struct flash_pages_layout layout;
 
 	struct flash_parameters flash_nor_parameter;
+	int (*fixup_read)(const struct device *dev,
+			  struct spi_nor_op_info op_info);
 
 	bool init_4b_mode_once;
 	bool re_init_support;
@@ -833,6 +835,45 @@ static int mxic_mx25v8035f_fixup(const struct device *dev)
 	return ret;
 }
 
+/*
+ * w25q02g flash part includes four 512Mb dies.
+ * Each die size is 0x04000000. User cannot execute
+ * continuous read operation which directly crosses
+ * each die boundary. Thus, a cross die boundary
+ * read operation should be divided into two or more
+ * read operations.
+ */
+static int winbond_w25q02g_read_fixup(const struct device *dev,
+				      struct spi_nor_op_info op_info)
+{
+	int ret = 0;
+	uint8_t *dest_ptr = (uint8_t *)op_info.buf;
+	uint32_t data_len = op_info.data_len;
+	off_t start_addr = op_info.addr;
+	uint32_t die_sz = 0x04000000;
+	uint32_t read_len;
+
+	while (data_len > 0) {
+		read_len = data_len;
+		if (read_len > die_sz - (start_addr % die_sz))
+			read_len = die_sz - (start_addr % die_sz);
+
+		op_info.buf = (void *)dest_ptr;
+		op_info.data_len = read_len;
+		op_info.addr = start_addr;
+
+		ret = spi_nor_op_exec(dev, op_info);
+		if (ret != 0)
+			break;
+
+		data_len -= read_len;
+		start_addr += read_len;
+		dest_ptr += read_len;
+	}
+
+	return ret;
+}
+
 static int spi_nor_read(const struct device *dev, off_t addr, void *dest,
 			size_t size)
 {
@@ -862,7 +903,10 @@ static int spi_nor_read(const struct device *dev, off_t addr, void *dest,
 
 	acquire_device(dev);
 
-	ret = spi_nor_op_exec(dev, op_info);
+	if (data->fixup_read)
+		ret = data->fixup_read(dev, op_info);
+	else
+		ret = spi_nor_op_exec(dev, op_info);
 
 	release_device(dev);
 
@@ -1516,6 +1560,10 @@ static int sfdp_post_fixup(const struct device *dev)
 				if (ret != 0)
 					goto end;
 			}
+		}
+
+		if (SPI_NOR_GET_JESDID(data->jedec_id) == 0x7022) {
+			data->fixup_read = winbond_w25q02g_read_fixup;
 		}
 		break;
 	case SPI_NOR_MFR_ID_MXIC:
