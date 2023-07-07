@@ -402,6 +402,7 @@ static int spi_nor_wait_until_ready(const struct device *dev)
 			0, 0, 0, &reg, sizeof(reg), SPI_NOR_DATA_DIRECT_IN);
 	do {
 		ret = spi_nor_op_exec(dev, op_info);
+		k_usleep(1);
 	} while (!ret && (reg & SPI_NOR_WIP_BIT));
 
 	return ret;
