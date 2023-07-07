@@ -37,6 +37,14 @@
 				compatible = "aspeed,ast10x0-reset";
 				#reset-cells = <1>;
 			};
+
+			pinctrl: pinctrl {
+				compatible = "aspeed,pinctrl";
+			};
+
+			pinmux: pinmux {
+				compatible = "aspeed,pinmux";
+			};
 		};
 
 		uart5: serial@7e784000 {
@@ -53,3 +61,5 @@
 &nvic {
 	arm,num-irq-priority-bits = <3>;
 };
+
+#include "ast10x0-pinctrl.dtsi"
