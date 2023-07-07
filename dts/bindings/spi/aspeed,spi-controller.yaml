@@ -92,3 +92,9 @@ properties:
     required: false
     description: |
       Enable SPI monitor proprietary configurations.
+
+  timing-calibration-disabled:
+    type: boolean
+    required: false
+    description: |
+      Disable SPI controller timing calibration capability.

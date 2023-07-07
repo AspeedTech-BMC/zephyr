@@ -133,6 +133,7 @@ struct aspeed_spi_config {
 	const clock_control_subsys_t clk_id;
 	uint32_t irq_num;
 	uint32_t irq_priority;
+	bool timing_calibration_disabled;
 	struct aspeed_spim_internal_mux_ctrl mux_ctrl;
 	bool aspeed_spim_proprietary_config_enable;
 };
@@ -805,6 +806,9 @@ void aspeed_spi_timing_calibration(const struct device *dev)
 	bool pass;
 	int calib_point;
 
+	if (config->timing_calibration_disabled)
+		goto no_calib;
+
 	reg_val =
 		sys_read32(ctrl_reg + SPI94_CE0_TIMING_CTRL + cs * 4);
 	if (reg_val != 0) {
@@ -1364,6 +1368,8 @@ static const struct spi_driver_api aspeed_spi_driver_api = {
 				NULL),	\
 		.aspeed_spim_proprietary_config_enable = DT_PROP(DT_INST(n, DT_DRV_COMPAT),	\
 								 spim_proprietary_config_enable),	\
+		.timing_calibration_disabled = DT_PROP(DT_INST(n, DT_DRV_COMPAT),	\
+						       timing_calibration_disabled),	\
 	};								\
 									\
 	static struct aspeed_spi_data aspeed_spi_data_##n = {	\
