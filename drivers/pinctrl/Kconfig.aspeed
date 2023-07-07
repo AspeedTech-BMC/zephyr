@@ -1,0 +1,17 @@
+# Copyright (c) 2023 ASPEED Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+config PINCTRL_ASPEED
+	bool "Pin controller driver for Aspeed SOCs"
+	default y
+	depends on DT_HAS_ASPEED_PINCTRL_ENABLED
+	depends on SYSCON
+	help
+	  Enable pin controller driver for Aspeed SOCs
+
+config PINCTRL_ASPEED_STRING_NAME
+	bool "Store the pin name in a string"
+	default y
+	depends on PINCTRL_ASPEED
+	help
+	  Enable storing the pin name for debugging
