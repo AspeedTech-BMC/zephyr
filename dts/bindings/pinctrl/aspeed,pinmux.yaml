@@ -1,0 +1,17 @@
+# Copyright (c) 2023 Aspeed Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+description: ASPEED Pinmux control
+
+compatible: "aspeed,pinmux"
+
+include: base.yaml
+
+child-binding:
+  properties:
+      sig_descs:
+        required: true
+        type: array
+      ball:
+        required: true
+        type: int

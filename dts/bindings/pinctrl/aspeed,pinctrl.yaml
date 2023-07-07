@@ -1,0 +1,20 @@
+# Copyright (c) 2023 Aspeed Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+description: Aspeed pin control
+
+compatible: "aspeed,pinctrl"
+
+include: base.yaml
+
+child-binding:
+  description: Aspeed pin configuration nodes
+  child-binding:
+    include:
+      - name: pincfg-node.yaml
+
+    properties:
+      pinmux:
+        required: true
+        type: phandles
+        description: Configurations of pinmux selection
