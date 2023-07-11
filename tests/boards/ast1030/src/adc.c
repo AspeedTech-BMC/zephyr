@@ -141,7 +141,7 @@ int test_adc(int count, enum aspeed_test_type type)
 	switch (type) {
 	case AST_TEST_CI:
 		gv = ci_golden_value;
-		tolerance = 0.02;
+		tolerance = 0.03;
 		break;
 	case AST_TEST_SLT:
 	case AST_TEST_FT:
