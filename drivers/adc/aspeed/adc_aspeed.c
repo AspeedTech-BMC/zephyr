@@ -447,22 +447,6 @@ static void aspeed_acquisition_thread(struct adc_aspeed_data *data)
 	}
 }
 
-static void adc_aspeed_channel_config(const struct device *dev)
-{
-	const struct adc_aspeed_cfg *config = DEV_CFG(dev);
-	struct adc_aspeed_data *priv = DEV_DATA(dev);
-	struct adc_register_s *adc_register = config->base;
-	union adc_engine_control_s engine_ctrl;
-
-	engine_ctrl.value = adc_register->engine_ctrl.value;
-	engine_ctrl.fields.channel_enable = config->channels_used;
-	adc_register->engine_ctrl.value = engine_ctrl.value;
-
-	priv->required_eoc_num = popcount(config->channels_used);
-	if (config->channels_used & BIT(ASPEED_ADC_CH_NUMBER - 1))
-		priv->required_eoc_num += 12;
-}
-
 static int adc_aspeed_engine_init(const struct device *dev,
 				  uint32_t timeout_ms)
 {
@@ -483,6 +467,10 @@ static int adc_aspeed_engine_init(const struct device *dev,
 	if (ret) {
 		return ret;
 	}
+
+	engine_ctrl.value = adc_register->engine_ctrl.value;
+	engine_ctrl.fields.channel_enable = config->channels_used;
+	adc_register->engine_ctrl.value = engine_ctrl.value;
 
 	return 0;
 }
@@ -507,7 +495,9 @@ static int adc_aspeed_init(const struct device *dev)
 		return ret;
 	}
 
-	adc_aspeed_channel_config(dev);
+	priv->required_eoc_num = popcount(config->channels_used);
+	if (config->channels_used & BIT(ASPEED_ADC_CH_NUMBER - 1))
+		priv->required_eoc_num += 12;
 	ret = adc_aspeed_set_rate(dev, ASPEED_SAMPLING_RATE_DEFAULT);
 	if (ret) {
 		return ret;
