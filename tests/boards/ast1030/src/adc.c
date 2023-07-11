@@ -48,7 +48,7 @@ void test_adc_normal_mode(const uint16_t *golden_value, float tolerance)
 		.buffer = m_sample_buffer,
 		.buffer_size = sizeof(m_sample_buffer),
 		.resolution = 10,
-		.calibrate = 1,
+		.calibrate = 0,
 	};
 
 	for (i = 0; i < ARRAY_SIZE(adc_list) - 1; i++) {
@@ -94,7 +94,7 @@ void test_adc_battery_mode(const uint16_t *golden_value, float tolerance)
 		.buffer = m_sample_buffer,
 		.buffer_size = sizeof(m_sample_buffer),
 		.resolution = 10,
-		.calibrate = 1,
+		.calibrate = 0,
 	};
 
 	for (i = 0; i < ARRAY_SIZE(adc_list) - 1; i++) {
