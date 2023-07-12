@@ -27,6 +27,7 @@ LOG_MODULE_REGISTER(pwm_aspeed);
 
 struct pwm_aspeed_data {
 	uint32_t clk_src;
+	uint32_t curr_period_cycles;
 };
 
 struct pwm_aspeed_cfg {
@@ -50,8 +51,6 @@ static int pwm_aspeed_init(const struct device *dev)
 
 	clock_control_get_rate(config->clock_dev, config->clk_id,
 			       &priv->clk_src);
-	/* Fixed period divisor = 256 */
-	priv->clk_src /= (PWM_ASPEED_FIXED_PERIOD + 1);
 	reset_control_deassert(reset_dev, config->rst_id);
 	return 0;
 }
@@ -68,24 +67,18 @@ static void aspeed_set_pwm_channel_enable(const struct device *dev,
 	pwm_reg->pwm_gather[pwm].pwm_general.value = general_reg.value;
 }
 
-static uint32_t aspeed_pwm_get_period(const struct device *dev, uint32_t pwm)
-{
-	pwm_register_t *pwm_reg = DEV_CFG(dev)->base;
-	uint32_t period, div_h, div_l;
-
-	div_h = pwm_reg->pwm_gather[pwm].pwm_general.fields.pwm_clock_division_h;
-	div_l = pwm_reg->pwm_gather[pwm].pwm_general.fields.pwm_clock_division_l;
-	period = (div_l + 1) << div_h;
-
-	return period;
-}
-
 static int aspeed_set_pwm_period(const struct device *dev, uint32_t pwm,
 				 uint32_t period_cycles)
 {
 	pwm_register_t *pwm_reg = DEV_CFG(dev)->base;
+	struct pwm_aspeed_data *priv = DEV_DATA(dev);
 	pwm_general_register_t general_reg;
-	uint32_t div_h, div_l;
+	uint32_t div_h, div_l, expected_period_cycles = period_cycles;
+
+	if (period_cycles < (PWM_ASPEED_FIXED_PERIOD + 1))
+		return -ENOTSUP;
+	period_cycles /= (PWM_ASPEED_FIXED_PERIOD + 1);
+
 #ifdef CONFIG_PWM_ASPEED_ACCURATE_FREQ
 	int diff, min_diff = INT_MAX;
 	uint32_t tmp_div_h, tmp_div_l;
@@ -148,6 +141,7 @@ static int aspeed_set_pwm_period(const struct device *dev, uint32_t pwm,
 	general_reg.fields.pwm_clock_division_h = div_h;
 	general_reg.fields.pwm_clock_division_l = div_l;
 	pwm_reg->pwm_gather[pwm].pwm_general.value = general_reg.value;
+	priv->curr_period_cycles = expected_period_cycles;
 	return 0;
 }
 
@@ -155,8 +149,9 @@ static void aspeed_set_pwm_duty(const struct device *dev, uint32_t pwm,
 				uint32_t pulse_cycles)
 {
 	pwm_register_t *pwm_reg = DEV_CFG(dev)->base;
+	struct pwm_aspeed_data *priv = DEV_DATA(dev);
 	pwm_duty_cycle_register_t duty_reg;
-	uint32_t period_cycles = aspeed_pwm_get_period(dev, pwm);
+	uint32_t period_cycles = priv->curr_period_cycles;
 	uint32_t duty_pt = (pulse_cycles * 256) / period_cycles;
 
 	LOG_DBG("cur_period = %d, duty_cycle = %d, duty_pt = %d\n",
