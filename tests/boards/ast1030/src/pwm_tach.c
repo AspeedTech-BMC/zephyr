@@ -72,7 +72,7 @@ void test_pwm_tach_loopback_accurate(void)
 
 			div_l = sys_rand32_get() % 256;
 			div_h = sys_rand32_get() % 4;
-			rand_cycles = BIT(div_h) * (div_l + 1);
+			rand_cycles = BIT(div_h) * (div_l + 1) * 256;
 			if (rand_cycles < 2) {
 				rand_cycles = 2;
 			}
