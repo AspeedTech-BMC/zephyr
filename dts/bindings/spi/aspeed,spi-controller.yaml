@@ -98,3 +98,9 @@ properties:
     required: false
     description: |
       Disable SPI controller timing calibration capability.
+
+  timing-calibration-start-offset:
+    type: int
+    required: false
+    description: |
+      The flash data offset for timing calibration.

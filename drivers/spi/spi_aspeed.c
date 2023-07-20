@@ -134,6 +134,7 @@ struct aspeed_spi_config {
 	uint32_t irq_num;
 	uint32_t irq_priority;
 	bool timing_calibration_disabled;
+	uint32_t timing_calibration_start_off;
 	struct aspeed_spim_internal_mux_ctrl mux_ctrl;
 	bool aspeed_spim_proprietary_config_enable;
 };
@@ -738,8 +739,9 @@ static uint32_t aspeed_spi_dma_checksum(const struct device *dev,
 			;
 	}
 
-	sys_write32(data->decode_addr[ctx->config->slave].start,
-	       ctrl_reg + SPI84_DMA_FLASH_ADDR);
+	sys_write32(data->decode_addr[ctx->config->slave].start +
+		    config->timing_calibration_start_off,
+		    ctrl_reg + SPI84_DMA_FLASH_ADDR);
 	sys_write32(SPI_CALIB_LEN, ctrl_reg + SPI8C_DMA_LEN);
 
 	ctrl_val = SPI_DMA_ENABLE | SPI_DMA_CALC_CKSUM | SPI_DMA_CALIB_MODE |
@@ -806,6 +808,8 @@ void aspeed_spi_timing_calibration(const struct device *dev)
 	bool pass;
 	int calib_point;
 
+	LOG_DBG("device name: %s (%d)", dev->name, cs);
+
 	if (config->timing_calibration_disabled)
 		goto no_calib;
 
@@ -818,6 +822,20 @@ void aspeed_spi_timing_calibration(const struct device *dev)
 
 	if (config->mux_ctrl.master_idx != 0 && cs != 0)
 		goto no_calib;
+
+#ifdef CONFIG_SPI_MONITOR_ASPEED
+	/* change internal MUX */
+	if (config->mux_ctrl.master_idx != 0) {
+		cs = 0;
+		spim_scu_ctrl_set(config->mux_ctrl.spi_monitor_common_ctrl,
+				BIT(3), (config->mux_ctrl.master_idx - 1) << 3);
+		spim_scu_ctrl_set(config->mux_ctrl.spi_monitor_common_ctrl,
+				0x7, config->mux_ctrl.spim_output_base + ctx->config->slave);
+	}
+
+	if (data->aspeed_spim_proprietary_pre_config)
+		data->aspeed_spim_proprietary_pre_config();
+#endif
 
 	LOG_DBG("Calculate timing compensation:");
 	/*
@@ -835,7 +853,9 @@ void aspeed_spi_timing_calibration(const struct device *dev)
 	}
 
 	LOG_DBG("reg_val = 0x%x", reg_val);
-	memcpy(check_buf, (uint8_t *)data->decode_addr[cs].start, SPI_CALIB_LEN);
+	memcpy(check_buf,
+	       (uint8_t *)data->decode_addr[cs].start + config->timing_calibration_start_off,
+	       SPI_CALIB_LEN);
 
 	if (!aspeed_spi_calibriation_enable(check_buf, SPI_CALIB_LEN)) {
 		LOG_DBG("Flash data is monotonous, skip calibration.");
@@ -919,6 +939,14 @@ no_calib:
 
 	/* add clock setting info for CE ctrl setting */
 	LOG_DBG("freq: %dMHz", max_freq / 1000000);
+
+#ifdef CONFIG_SPI_MONITOR_ASPEED
+	if (data->aspeed_spim_proprietary_post_config)
+		data->aspeed_spim_proprietary_post_config();
+
+	if (config->mux_ctrl.master_idx != 0)
+		spim_scu_ctrl_clear(config->mux_ctrl.spi_monitor_common_ctrl, 0xf);
+#endif
 
 	if (check_buf)
 		k_free(check_buf);
@@ -1370,6 +1398,9 @@ static const struct spi_driver_api aspeed_spi_driver_api = {
 								 spim_proprietary_config_enable),	\
 		.timing_calibration_disabled = DT_PROP(DT_INST(n, DT_DRV_COMPAT),	\
 						       timing_calibration_disabled),	\
+		.timing_calibration_start_off = DT_INST_PROP_OR(n,	\
+								timing_calibration_start_offset,	\
+								0),	\
 	};								\
 									\
 	static struct aspeed_spi_data aspeed_spi_data_##n = {	\
