@@ -22,6 +22,11 @@ properties:
       required: false
       description: enable DMA for peripheral channel
 
+    perif,memcyc-enable:
+      type: boolean
+      required: false
+      description: enable memory cycle for peripheral channel
+
     perif,memcyc-src-addr:
       type: int
       required: true

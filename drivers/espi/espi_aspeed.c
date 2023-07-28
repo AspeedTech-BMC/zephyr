@@ -315,10 +315,21 @@ struct espi_aspeed_data {
 static struct espi_aspeed_data espi_aspeed_data;
 
 /* peripheral channel */
+#if DT_INST_PROP(0, perif_dma_mode)
 static uint8_t perif_pc_rx_buf[ESPI_PLD_LEN_MAX] NON_CACHED_BSS;
 static uint8_t perif_pc_tx_buf[ESPI_PLD_LEN_MAX] NON_CACHED_BSS;
 static uint8_t perif_np_tx_buf[ESPI_PLD_LEN_MAX] NON_CACHED_BSS;
+#else
+static uint8_t perif_pc_rx_buf[0];
+static uint8_t perif_pc_tx_buf[0];
+static uint8_t perif_np_tx_buf[0];
+#endif
+
+#if DT_INST_PROP(0, perif_memcyc_enable)
 static uint8_t perif_mcyc_buf[DT_INST_PROP(0, perif_memcyc_size)]  __attribute__((aligned(DT_INST_PROP(0, perif_memcyc_size)))) NON_CACHED_BSS;
+#else
+static uint8_t perif_mcyc_buf[0];
+#endif
 
 struct espi_aspeed_perif {
 	uint8_t dma_mode;
@@ -332,6 +343,7 @@ struct espi_aspeed_perif {
 	uint8_t *np_tx_virt;
 	uintptr_t np_tx_addr;
 
+	uint8_t mcyc_en;
 	uint8_t *mcyc_virt;
 	uint32_t mcyc_size;
 	uintptr_t mcyc_saddr;
@@ -359,12 +371,14 @@ static void espi_aspeed_perif_init(struct espi_aspeed_perif *perif)
 {
 	uint32_t reg;
 
-	ESPI_WR(perif->mcyc_saddr, ESPI_PERIF_PC_RX_SADDR);
-	ESPI_WR(perif->mcyc_taddr, ESPI_PERIF_PC_RX_TADDR);
+	if (perif->mcyc_en) {
+		ESPI_WR(perif->mcyc_saddr, ESPI_PERIF_PC_RX_SADDR);
+		ESPI_WR(perif->mcyc_taddr, ESPI_PERIF_PC_RX_TADDR);
 
-	reg = ESPI_RD(ESPI_CTRL2);
-	reg &= ~(ESPI_CTRL2_MEMCYC_RD_DIS | ESPI_CTRL2_MEMCYC_WR_DIS);
-	ESPI_WR(reg, ESPI_CTRL2);
+		reg = ESPI_RD(ESPI_CTRL2);
+		reg &= ~(ESPI_CTRL2_MEMCYC_RD_DIS | ESPI_CTRL2_MEMCYC_WR_DIS);
+		ESPI_WR(reg, ESPI_CTRL2);
+	}
 
 	if (perif->dma_mode) {
 		ESPI_WR(perif->pc_rx_addr, ESPI_PERIF_PC_RX_DMA);
@@ -464,10 +478,17 @@ struct oob_rx_dma_desc {
 	uint8_t dirty : 1;
 } __packed;
 
+#if DT_INST_PROP(0, oob_dma_mode)
 static struct oob_tx_dma_desc oob_tx_desc[OOB_TX_DMA_DESC_NUM] NON_CACHED_BSS;
 static struct oob_rx_dma_desc oob_rx_desc[OOB_RX_DMA_DESC_NUM] NON_CACHED_BSS;
 static uint8_t oob_tx_buf[OOB_TX_DMA_BUF_SIZE] NON_CACHED_BSS;
 static uint8_t oob_rx_buf[OOB_RX_DMA_BUF_SIZE] NON_CACHED_BSS;
+#else
+static struct oob_tx_dma_desc oob_tx_desc[0];
+static struct oob_rx_dma_desc oob_rx_desc[0];
+static uint8_t oob_tx_buf[0];
+static uint8_t oob_rx_buf[0];
+#endif
 
 struct espi_aspeed_oob {
 	uint8_t dma_mode;
@@ -577,8 +598,13 @@ static void espi_aspeed_oob_init(struct espi_aspeed_oob *oob)
 #define FLASH_ERASE     0x02
 #define FLASH_TAG       0x00
 
+#if DT_INST_PROP(0, flash_dma_mode)
 static uint8_t flash_tx_buf[ESPI_PLD_LEN_MAX] NON_CACHED_BSS;
 static uint8_t flash_rx_buf[ESPI_PLD_LEN_MAX] NON_CACHED_BSS;
+#else
+static uint8_t flash_tx_buf[0];
+static uint8_t flash_rx_buf[0];
+#endif
 
 struct espi_aspeed_flash {
 	uint8_t dma_mode;
@@ -749,6 +775,7 @@ static int espi_aspeed_init(const struct device *dev)
 	perif->pc_tx_addr = TO_PHY_ADDR(perif->pc_tx_virt);
 	perif->np_tx_virt = perif_np_tx_buf;
 	perif->np_tx_addr = TO_PHY_ADDR(perif->np_tx_virt);
+	perif->mcyc_en = DT_INST_PROP(0, perif_memcyc_enable);
 	perif->mcyc_virt = perif_mcyc_buf;
 	perif->mcyc_size = DT_INST_PROP(0, perif_memcyc_size);
 	perif->mcyc_saddr = DT_INST_PROP(0, perif_memcyc_src_addr);
