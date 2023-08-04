@@ -1723,6 +1723,7 @@ int i3c_aspeed_slave_send_sir(const struct device *dev, struct i3c_ibi_payload *
 		cmd.slave_data_cmd.dl = payload->size;
 	}
 
+	cmd.slave_data_cmd.tid = SLAVE_TID_IBI_DONE;
 	cmd.slave_data_cmd.cmd_attr = COMMAND_PORT_SLAVE_DATA_CMD;
 	i3c_register->cmd_queue_port.value = cmd.value;
 
