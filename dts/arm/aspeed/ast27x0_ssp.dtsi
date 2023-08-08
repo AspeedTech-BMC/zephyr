@@ -29,3 +29,86 @@
 		status = "disabled";
 	};
 };
+
+&intc {
+	intc0: interrupt-controller@2000 {
+		#interrupt-cells = <1>;
+		interrupt-controller;
+		compatible = "aspeed,ast2700-intc-ic";
+		reg = <0x2000 0x10>;
+		interrupts = <128 1>;
+		status = "disabled";
+	};
+
+	intc1: interrupt-controller@2100 {
+		#interrupt-cells = <1>;
+		interrupt-controller;
+		compatible = "aspeed,ast2700-intc-ic";
+		reg = <0x2100 0x10>;
+		interrupts = <129 1>;
+		status = "disabled";
+	};
+
+	intc2: interrupt-controller@2200 {
+		#interrupt-cells = <1>;
+		interrupt-controller;
+		compatible = "aspeed,ast2700-intc-ic";
+		reg = <0x2200 0x10>;
+		interrupts = <130 1>;
+		status = "disabled";
+	};
+
+	intc3: interrupt-controller@2300 {
+		#interrupt-cells = <1>;
+		interrupt-controller;
+		compatible = "aspeed,ast2700-intc-ic";
+		reg = <0x2300 0x10>;
+		interrupts = <131 1>;
+		status = "disabled";
+	};
+
+	intc4: interrupt-controller@2400 {
+		#interrupt-cells = <1>;
+		interrupt-controller;
+		compatible = "aspeed,ast2700-intc-ic";
+		reg = <0x2400 0x10>;
+		interrupts = <132 1>;
+		status = "disabled";
+	};
+
+	intc5: interrupt-controller@2500 {
+		#interrupt-cells = <1>;
+		interrupt-controller;
+		compatible = "aspeed,ast2700-intc-ic";
+		reg = <0x2500 0x10>;
+		interrupts = <133 1>;
+		status = "disabled";
+	};
+
+	intc6: interrupt-controller@2600 {
+		#interrupt-cells = <1>;
+		interrupt-controller;
+		compatible = "aspeed,ast2700-intc-ic";
+		reg = <0x2600 0x10>;
+		interrupts = <134 1>;
+		status = "disabled";
+	};
+
+	intc7: interrupt-controller@2700 {
+		#interrupt-cells = <1>;
+		interrupt-controller;
+		compatible = "aspeed,ast2700-intc-ic";
+		reg = <0x2700 0x10>;
+		interrupts = <135 1>;
+		status = "disabled";
+	};
+
+	intc8: interrupt-controller@2800 {
+		#interrupt-cells = <1>;
+		interrupt-controller;
+		compatible = "aspeed,ast2700-intc-ic";
+		reg = <0x2800 0x10>;
+		interrupts = <136 1>;
+		status = "disabled";
+	};
+};

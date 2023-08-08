@@ -25,6 +25,15 @@
 	};
 
 	soc {
+		intc: interrupt-controller@72100000 {
+			compatible = "simple-bus";
+			interrupt-controller;
+			#interrupt-cells = <1>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges = <0x0 0x72100000 0x4000>;
+		};
+
 		reset0: reset-controller@72c02200 {
 			compatible = "aspeed,ast27xx-reset";
 			reg = <0x72c02200 0x80>;
