@@ -127,7 +127,7 @@ static int aspeed_clock_control_get_rate(const struct device *dev,
 			*rate = src / clk_div;
 			break;
 		}
-		/* fall through if clock source is HCLK */
+		__fallthrough;
 	case ASPEED_CLK_HCLK:
 		*rate = HCLK_FREQ;
 		break;
