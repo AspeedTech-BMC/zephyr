@@ -16,7 +16,7 @@
 #include "otp_info_10x0.h"
 LOG_MODULE_REGISTER(otp_aspeed, CONFIG_LOG_DEFAULT_LEVEL);
 
-#define OTP_VER				"2.1.0"
+#define OTP_VER				"2.1.1"
 #define OTP_PASSWD			0x349fe38a
 
 /****************************
@@ -171,6 +171,9 @@ static uint32_t chip_version(void)
 	} else if (revid0 == ID0_AST1030A1 && revid1 == ID1_AST1030A1) {
 		/* AST1030-A1 */
 		return OTP_AST1030A1;
+	} else if (revid0 == ID0_AST1035A1 && revid1 == ID1_AST1035A1) {
+		/* AST1035-A1 */
+		return OTP_AST1035A1;
 	} else if (revid0 == ID0_AST1060A1 && revid1 == ID1_AST1060A1) {
 		/* AST1060-A1 */
 		return OTP_AST1060A1;
@@ -842,6 +845,8 @@ static int _otp_prog_image(int addr)
 		image_soc_ver = OTP_AST1030A0;
 	} else if (otp_header->soc_ver == SOC_AST1030A1) {
 		image_soc_ver = OTP_AST1030A1;
+	} else if (otp_header->soc_ver == SOC_AST1035A1) {
+		image_soc_ver = OTP_AST1035A1;
 	} else if (otp_header->soc_ver == SOC_AST1060A1) {
 		image_soc_ver = OTP_AST1060A1;
 	} else if (otp_header->soc_ver == SOC_AST1060A2) {
@@ -1412,6 +1417,18 @@ static int aspeed_otp_init(const struct device *dev)
 		info_cb->key_info = ast10xxa1_key_type;
 		info_cb->key_info_len = ARRAY_SIZE(ast10xxa1_key_type);
 		sprintf(info_cb->ver_name, "AST1030A1");
+		break;
+	case OTP_AST1035A1:
+		info_cb->version = OTP_AST1035A1;
+		info_cb->conf_info = ast1030a1_conf_info;
+		info_cb->conf_info_len = ARRAY_SIZE(ast1030a1_conf_info);
+		info_cb->strap_info = ast1030a0_strap_info;
+		info_cb->strap_info_len = ARRAY_SIZE(ast1030a0_strap_info);
+		info_cb->scu_info = ast1030a0_scu_info;
+		info_cb->scu_info_len = ARRAY_SIZE(ast1030a0_scu_info);
+		info_cb->key_info = ast10xxa1_key_type;
+		info_cb->key_info_len = ARRAY_SIZE(ast10xxa1_key_type);
+		sprintf(info_cb->ver_name, "AST1035A1");
 		break;
 	case OTP_AST1060A1:
 		info_cb->version = OTP_AST1060A1;
