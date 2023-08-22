@@ -33,10 +33,12 @@
 				#clock-cells = <1>;
 			};
 
-			sysrst0: sysrst {
-				compatible = "aspeed,ast10x0-reset";
-				#reset-cells = <1>;
-			};
+		};
+
+		reset0: reset-controller@72c02200 {
+			compatible = "aspeed,ast27xx-reset";
+			reg = <0x72c02200 0x80>;
+			#reset-cells = <1>;
 		};
 
 		syscon1: syscon@74c02000 {
@@ -46,14 +48,15 @@
 				compatible = "aspeed,ast10x0-clock";
 				#clock-cells = <1>;
 			};
-
-			sysrst1: sysrst {
-				compatible = "aspeed,ast10x0-reset";
-				#reset-cells = <1>;
-			};
 		};
 
-		uart0: serial@074c33000 {
+		reset1: reset-controller@74c02200 {
+			compatible = "aspeed,ast27xx-reset";
+			reg = <0x74c02200 0x80>;
+			#reset-cells = <1>;
+		};
+
+		uart0: serial@74c33000 {
 			compatible = "ns16550";
 			reg = <0x74c33000 0x1000>;
 			interrupts = <263 0>;
