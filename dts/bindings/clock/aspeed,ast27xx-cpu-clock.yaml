@@ -1,0 +1,15 @@
+# Copyright (c) 2023 Aspeed Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+description: Aspeed AST27XX Clock Controller
+
+compatible: "aspeed,ast27xx-cpu-clock"
+
+include: [clock-controller.yaml, base.yaml]
+
+properties:
+  "#clock-cells":
+    const: 1
+
+clock-cells:
+  - clk_id
