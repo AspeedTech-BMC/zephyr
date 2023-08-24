@@ -6,7 +6,7 @@
 
 #include <arm/armv7-m.dtsi>
 #include <mem.h>
-#include <zephyr/dt-bindings/clock/ast10x0_clock.h>
+#include <zephyr/dt-bindings/clock/ast27xx_clock.h>
 
 / {
 	cpus {
@@ -25,14 +25,11 @@
 	};
 
 	soc {
-		syscon0: syscon@72c02000 {
-			compatible = "syscon";
-			reg = <0x72c02000 0x1000>;
-			sysclk0: sysclk {
-				compatible = "aspeed,ast10x0-clock";
-				#clock-cells = <1>;
-			};
-
+		cpu_clk: clk@72c02240 {
+			compatible = "aspeed,ast27xx-cpu-clock";
+			reg = <0x72c02240 0x1c0>;
+			#clock-cells = <1>;
+			status = "okay";
 		};
 
 		reset0: reset-controller@72c02200 {
@@ -41,13 +38,11 @@
 			#reset-cells = <1>;
 		};
 
-		syscon1: syscon@74c02000 {
-			compatible = "syscon";
-			reg = <0x74c02000 0x1000>;
-			sysclk1: sysclk {
-				compatible = "aspeed,ast10x0-clock";
-				#clock-cells = <1>;
-			};
+		io_clk: clk@74c02240 {
+			compatible = "aspeed,ast27xx-io-clock";
+			reg = <0x74c02240 0x1c0>;
+			#clock-cells = <1>;
+			status = "okay";
 		};
 
 		reset1: reset-controller@74c02200 {
