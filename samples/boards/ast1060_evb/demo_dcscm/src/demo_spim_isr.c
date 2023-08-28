@@ -112,6 +112,7 @@ void demo_spim_irq_init(void)
 	uint32_t i;
 	static char *spim_dev_names[4] = {
 		"spi_m1",
+		"spi_m2",
 		"spi_m3",
 		"spi_m4"
 	};
@@ -121,7 +122,12 @@ void demo_spim_irq_init(void)
 
 	memset(log_ctrls, 0x0, sizeof(struct demo_spim_log_ctrl));
 
-	for (i = 0; i < 3; i++) {
+	for (i = 0; i < 4; i++) {
+		if (i == 1) {
+			/* spim2 is not used on dc-scm board. */
+			continue;
+		}
+
 		spim_devs[i] = device_get_binding(spim_dev_names[i]);
 		if (!spim_devs[i]) {
 			printk("demo_err: cannot get device, %s.\n", spim_dev_names[i]);
