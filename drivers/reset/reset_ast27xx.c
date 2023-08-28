@@ -84,5 +84,5 @@ static const struct reset_ast27xx_config reset_ast27xx_config = {
 };
 
 DEVICE_DT_INST_DEFINE(0, NULL, NULL, NULL, &reset_ast27xx_config, PRE_KERNEL_1,
-		      CONFIG_RESET_INIT_PRIORITY, &ast27xx_reset_api)
+		      CONFIG_RESET_INIT_PRIORITY, &ast27xx_reset_api);
 
