@@ -104,3 +104,9 @@ properties:
     required: false
     description: |
       The flash data offset for timing calibration.
+
+  pure-spi-mode-only:
+    type: boolean
+    required: false
+    description: |
+      Use pure SPI mode to access SPI flash.

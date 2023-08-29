@@ -137,6 +137,7 @@ struct aspeed_spi_config {
 	uint32_t timing_calibration_start_off;
 	struct aspeed_spim_internal_mux_ctrl mux_ctrl;
 	bool aspeed_spim_proprietary_config_enable;
+	bool pure_spi_mode_only;
 };
 
 #define SPIM_CLK_GPIO_INFO(__scu_reg__, __scu_bit__, __gpio_reg__, __gpio_bit__)	\
@@ -1080,7 +1081,7 @@ static int aspeed_spi_nor_read_init(const struct device *dev,
 		ctx->config->frequency);
 
 	/* If internal MUX is used, don't reinit decoded address. */
-	if (config->mux_ctrl.master_idx == 0) {
+	if (config->mux_ctrl.master_idx == 0 && !config->pure_spi_mode_only) {
 		ret = aspeed_spi_decode_range_reinit(dev, op_info.data_len);
 		if (ret != 0)
 			goto end;
@@ -1216,6 +1217,11 @@ void aspeed_decode_range_pre_init(
 	if (config->mux_ctrl.master_idx != 0) {
 		max_cs = 1;
 		unit_sz = ASPEED_SPI_SZ_256M;
+	}
+
+	if (config->pure_spi_mode_only) {
+		unit_sz = ASPEED_SPI_SZ_256M / config->max_cs;
+		unit_sz &= ~(ASPEED_SPI_SZ_2M - 1);
 	}
 
 	for (cs = 0; cs < max_cs; cs++) {
@@ -1401,6 +1407,7 @@ static const struct spi_driver_api aspeed_spi_driver_api = {
 		.timing_calibration_start_off = DT_INST_PROP_OR(n,	\
 								timing_calibration_start_offset,	\
 								0),	\
+		.pure_spi_mode_only = DT_PROP(DT_INST(n, DT_DRV_COMPAT), pure_spi_mode_only),	\
 	};								\
 									\
 	static struct aspeed_spi_data aspeed_spi_data_##n = {	\
