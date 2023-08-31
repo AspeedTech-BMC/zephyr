@@ -47,6 +47,10 @@ struct cmd_table_info cmds_array[] = {
 		.cmd_table_val = CMD_TABLE_VALUE(1, 0, 1, 1, 3, 8, 0, 3, 1, CMD_READ_1_1_4_3B)},
 	{.cmd = CMD_READ_1_1_4_4B,
 		.cmd_table_val = CMD_TABLE_VALUE(1, 0, 1, 1, 3, 8, 0, 4, 1, CMD_READ_1_1_4_4B)},
+	{.cmd = CMD_READ_1_4_4_3B,
+		.cmd_table_val = CMD_TABLE_VALUE(1, 0, 1, 1, 3, 6, 0, 3, 3, CMD_READ_1_4_4_3B)},
+	{.cmd = CMD_READ_1_4_4_4B,
+		.cmd_table_val = CMD_TABLE_VALUE(1, 0, 1, 1, 3, 6, 0, 4, 3, CMD_READ_1_4_4_4B)},
 	{.cmd = CMD_PP_1_1_1_3B,
 		.cmd_table_val = CMD_TABLE_VALUE(1, 1, 0, 1, 1, 0, 1, 3, 1, CMD_PP_1_1_1_3B)},
 	{.cmd = CMD_PP_1_1_1_4B,
@@ -546,7 +550,7 @@ void spim_allow_cmd_table_init(const struct device *dev,
 	mm_reg_t table_base = config->ctrl_base + SPIM_ALLOW_CMD_BASE;
 	uint32_t i;
 	uint32_t reg_val;
-	uint32_t idx = 3;
+	uint32_t idx = 1;
 
 	acquire_spim_device(dev);
 
@@ -594,7 +598,7 @@ static int spim_get_empty_allow_cmd_slot(const struct device *dev)
 	int idx;
 	uint32_t reg_val;
 
-	for (idx = 4; idx < SPIM_CMD_TABLE_NUM; idx++) {
+	for (idx = 2; idx < SPIM_CMD_TABLE_NUM; idx++) {
 		reg_val = sys_read32(config->ctrl_base + SPIM_ALLOW_CMD_BASE + idx * 4);
 		if (reg_val == 0)
 			return idx;

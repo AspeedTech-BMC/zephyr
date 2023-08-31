@@ -36,6 +36,8 @@
 #define CMD_READ_1_2_2_4B   0xBC
 #define CMD_READ_1_1_4_3B   0x6B
 #define CMD_READ_1_1_4_4B   0x6C
+#define CMD_READ_1_4_4_3B   0xEB
+#define CMD_READ_1_4_4_4B   0xEC
 
 /* write command */
 #define CMD_PP_1_1_1_3B     0x02
