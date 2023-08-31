@@ -704,6 +704,10 @@ int spim_add_allow_command(const struct device *dev,
 		sys_write32(reg_val, table_base + 4);
 		goto end;
 
+	case CMD_WREAR:
+		sys_write32(reg_val, table_base + 31);
+		goto end;
+
 	default:
 		break;
 	}
