@@ -659,9 +659,11 @@ void i3c_aspeed_gen_stop_to_internal(int inst_id)
 	uint32_t value;
 
 	value = sys_read32(i3c_gr + I3CG_REG1(inst_id));
-	value |= SCL_IN_SW_MODE_VAL;
+	value &= ~SCL_IN_SW_MODE_VAL;
 	sys_write32(value, i3c_gr + I3CG_REG1(inst_id));
 	value &= ~SDA_IN_SW_MODE_VAL;
+	sys_write32(value, i3c_gr + I3CG_REG1(inst_id));
+	value |= SCL_IN_SW_MODE_VAL;
 	sys_write32(value, i3c_gr + I3CG_REG1(inst_id));
 	value |= SDA_IN_SW_MODE_VAL;
 	sys_write32(value, i3c_gr + I3CG_REG1(inst_id));
