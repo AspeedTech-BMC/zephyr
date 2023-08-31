@@ -1279,6 +1279,28 @@ static int i3c_aspeed_enable(struct i3c_aspeed_obj *obj)
 	return 0;
 }
 
+static int i3c_aspeed_disable(struct i3c_aspeed_obj *obj)
+{
+	struct i3c_aspeed_config *config = obj->config;
+	struct i3c_register_s *i3c_register = config->base;
+
+	if (config->secondary)
+		i3c_aspeed_isolate_scl_sda(config->inst_id, true);
+	i3c_register->device_ctrl.fields.enable = 0;
+	if (config->secondary) {
+		i3c_aspeed_toggle_scl_in(config->inst_id, 8);
+		/* Clear the internal busy status */
+		i3c_aspeed_gen_stop_to_internal(config->inst_id);
+		if (i3c_register->device_ctrl.fields.enable) {
+			LOG_WRN("Failed to disable controller");
+			i3c_aspeed_isolate_scl_sda(config->inst_id, false);
+			return -EACCES;
+		}
+		i3c_aspeed_isolate_scl_sda(config->inst_id, false);
+	}
+	return 0;
+}
+
 static void i3c_aspeed_wr_tx_fifo(struct i3c_aspeed_obj *obj, uint8_t *bytes, int nbytes)
 {
 	struct i3c_register_s *i3c_register = obj->config->base;
@@ -1571,21 +1593,17 @@ int i3c_aspeed_slave_register(const struct device *dev, struct i3c_slave_setup *
 	return 0;
 }
 
-static void i3c_aspeed_slave_reset_queue(const struct device *dev)
+static int i3c_aspeed_slave_reset_queue(const struct device *dev)
 {
 	struct i3c_aspeed_config *config = DEV_CFG(dev);
+	struct i3c_aspeed_obj *obj = DEV_DATA(dev);
 	struct i3c_register_s *i3c_register = config->base;
 	union i3c_reset_ctrl_s reset_ctrl;
+	int ret;
 
-	i3c_aspeed_isolate_scl_sda(config->inst_id, true);
-	i3c_register->device_ctrl.fields.enable = 0;
-	i3c_aspeed_toggle_scl_in(config->inst_id, 8);
-	if (i3c_register->device_ctrl.fields.enable) {
-		LOG_ERR("failed to disable controller: reset i3c controller\n");
-		i3c_aspeed_isolate_scl_sda(config->inst_id, false);
-		i3c_aspeed_init(dev);
-		return;
-	}
+	ret = i3c_aspeed_disable(obj);
+	if (ret)
+		return ret;
 	reset_ctrl.value = 0;
 	reset_ctrl.fields.tx_queue_reset = 1;
 	reset_ctrl.fields.rx_queue_reset = 1;
@@ -1593,18 +1611,11 @@ static void i3c_aspeed_slave_reset_queue(const struct device *dev)
 	reset_ctrl.fields.cmd_queue_reset = 1;
 	reset_ctrl.fields.resp_queue_reset = 1;
 	i3c_register->reset_ctrl.value = reset_ctrl.value;
-	i3c_register->device_ctrl.fields.enable = 1;
-	k_busy_wait(DIV_ROUND_UP(config->core_period *
-					 i3c_register->bus_free_timing.fields.i3c_ibi_free,
-				 NSEC_PER_USEC));
-	i3c_aspeed_toggle_scl_in(config->inst_id, 8);
-	if (!i3c_register->device_ctrl.fields.enable) {
-		LOG_ERR("failed to enable controller: reset i3c controller\n");
-		i3c_aspeed_isolate_scl_sda(config->inst_id, false);
-		i3c_aspeed_init(dev);
-		return;
-	}
-	i3c_aspeed_isolate_scl_sda(config->inst_id, false);
+
+	ret = i3c_aspeed_enable(obj);
+	if (ret)
+		return ret;
+	return 0;
 }
 
 int i3c_aspeed_slave_put_read_data(const struct device *dev, struct i3c_slave_payload *data,
@@ -1685,8 +1696,7 @@ int i3c_aspeed_slave_put_read_data(const struct device *dev, struct i3c_slave_pa
 		osEventFlagsWait(obj->data_event, events.value, osFlagsWaitAny, K_SECONDS(3).ticks);
 	if (flag_ret & osFlagsError) {
 		LOG_WRN("Wait master read timeout: reset queue\n");
-		i3c_aspeed_slave_reset_queue(dev);
-		ret = -EIO;
+		ret = i3c_aspeed_slave_reset_queue(dev);
 	}
 ibi_err:
 	return ret;
@@ -1956,6 +1966,8 @@ static int i3c_aspeed_init(const struct device *dev)
 	reset_control_assert(reset_dev, config->reset_id);
 	clock_control_on(config->clock_dev, config->clock_id);
 	reset_control_deassert(reset_dev, config->reset_id);
+
+	ret = i3c_aspeed_disable(obj);
 
 	reset_ctrl.value = 0;
 	reset_ctrl.fields.core_reset = 1;
