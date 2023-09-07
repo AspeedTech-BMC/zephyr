@@ -6,6 +6,7 @@
 
 #include <arm/armv7-m.dtsi>
 #include <mem.h>
+#include <aspeed/ast10x0-irq.h>
 #include <zephyr/dt-bindings/clock/ast10x0_clock.h>
 
 / {
@@ -47,6 +48,14 @@
 			};
 		};
 
+		espi: espi@7e6ee000 {
+			compatible = "aspeed,espi";
+			reg = <0x7e6ee000 0x800>;
+			interrupts = <INTR_ESPI AST10X0_IRQ_DEFAULT_PRIORITY>;
+			aspeed,scu = <&syscon>;
+			status = "disabled";
+		};
+
 		uart5: serial@7e784000 {
 			compatible = "ns16550";
 			reg = <0x7e784000 0x1000>;
@@ -54,6 +63,63 @@
 			clocks = <&sysclk ASPEED_CLK_UART5>;
 			status = "disabled";
 			reg-shift = <2>;
+		};
+
+		lpc: lpc@7e789000 {
+			compatible = "aspeed,lpc";
+			reg = <0x7e789000 0x1000>;
+
+			kcs1: kcs1 {
+				compatible = "aspeed,kcs";
+				interrupts = <INTR_KCS1 AST10X0_IRQ_DEFAULT_PRIORITY>;
+				chan = <1>;
+				status = "disabled";
+			};
+
+			kcs2: kcs2 {
+				compatible = "aspeed,kcs";
+				interrupts = <INTR_KCS2 AST10X0_IRQ_DEFAULT_PRIORITY>;
+				chan = <2>;
+				status = "disabled";
+			};
+
+			kcs3: kcs3 {
+				compatible = "aspeed,kcs";
+				interrupts = <INTR_KCS3 AST10X0_IRQ_DEFAULT_PRIORITY>;
+				chan = <3>;
+				status = "disabled";
+			};
+
+			kcs4: kcs4 {
+				compatible = "aspeed,kcs";
+				interrupts = <INTR_KCS4 AST10X0_IRQ_DEFAULT_PRIORITY>;
+				chan = <4>;
+				status = "disabled";
+			};
+
+			bt: bt {
+				compatible = "aspeed,bt";
+				interrupts = <INTR_BT AST10X0_IRQ_DEFAULT_PRIORITY>;
+				status = "disabled";
+			};
+
+			snoop: snoop {
+				compatible = "aspeed,snoop";
+				interrupts = <INTR_SNOOP AST10X0_IRQ_DEFAULT_PRIORITY>;
+				status = "disabled";
+			};
+
+			mbox: mbox {
+				compatible = "aspeed,mbox";
+				interrupts = <INTR_MBOX AST10X0_IRQ_DEFAULT_PRIORITY>;
+				status = "disabled";
+			};
+
+			pcc: pcc {
+				compatible = "aspeed,pcc";
+				interrupts = <INTR_PCC AST10X0_IRQ_DEFAULT_PRIORITY>;
+				status = "disabled";
+			};
 		};
 	};
 };
