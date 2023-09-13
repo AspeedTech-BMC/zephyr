@@ -7,16 +7,6 @@
 #include <zephyr/device.h>
 #include <zephyr/drivers/espi_aspeed.h>
 
-#define ESPI_PLD_LEN_MAX	BIT(12)
-
-struct espi_oob_msg {
-	uint8_t cyc;
-	uint8_t len_h : 4;
-	uint8_t tag : 4;
-	uint8_t len_l;
-	uint8_t data[];
-};
-
 static void hexdump(uint8_t *buf, uint32_t len)
 {
 	int i;

@@ -8,35 +8,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/sys/byteorder.h>
 
-#define ESPI_PLD_LEN_MAX	BIT(12)
 #define ESPI_PLD_LEN_MIN	BIT(6)
-
-#define ESPI_FLASH_READ			0x00
-#define ESPI_FLASH_WRITE		0x01
-#define ESPI_FLASH_ERASE		0x02
-#define ESPI_FLASH_SUC_CMPLT		0x06
-#define ESPI_FLASH_SUC_CMPLT_D_MIDDLE	0x09
-#define ESPI_FLASH_SUC_CMPLT_D_FIRST	0x0b
-#define ESPI_FLASH_SUC_CMPLT_D_LAST	0x0d
-#define ESPI_FLASH_SUC_CMPLT_D_ONLY	0x0f
-#define ESPI_FLASH_UNSUC_CMPLT		0x0c
-
-struct espi_flash_rwe {
-	uint8_t cyc;
-	uint8_t len_h : 4;
-	uint8_t tag : 4;
-	uint8_t len_l;
-	uint32_t addr_be;
-	uint8_t data[];
-} __packed;
-
-struct espi_flash_cmplt {
-	uint8_t cyc;
-	uint8_t len_h : 4;
-	uint8_t tag : 4;
-	uint8_t len_l;
-	uint8_t data[];
-} __packed;
 
 static void hexdump(uint8_t *buf, uint32_t len)
 {

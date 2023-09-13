@@ -9,4 +9,12 @@ config ESPI_ASPEED
 	help
 	  This option enables the eSPI slave driver for ASPEED
 	  SoCs.
-	  Say y if you wish to use eSPI channels on ASPEED MCU.
+	  Say y if you wish to use eSPI channels on AST10x0 and AST2600.
+
+config ESPI_ASPEED_V2
+	bool "ASPEED eSPI slave driver v2"
+	depends on SOC_FAMILY_ASPEED
+	help
+	  This option enables the eSPI slave driver for ASPEED
+	  SoCs.
+	  Say y if you wish to use eSPI channels on AST27xx.
