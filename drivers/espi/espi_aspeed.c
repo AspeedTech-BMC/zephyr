@@ -775,8 +775,8 @@ static int espi_aspeed_init(const struct device *dev)
 	perif->np_tx_addr = TO_PHY_ADDR(perif->np_tx_virt);
 	perif->mcyc_en = DT_INST_PROP(0, perif_memcyc_enable);
 	perif->mcyc_virt = perif_mcyc_buf;
-	perif->mcyc_size = DT_INST_PROP(0, perif_memcyc_size);
-	perif->mcyc_saddr = DT_INST_PROP(0, perif_memcyc_src_addr);
+	perif->mcyc_size = DT_INST_PROP_OR(0, perif_memcyc_size, 0);
+	perif->mcyc_saddr = DT_INST_PROP_OR(0, perif_memcyc_src_addr, 0);
 	perif->mcyc_taddr = TO_PHY_ADDR(perif->mcyc_virt);
 	k_sem_init(&perif->pc_tx_lock, 1, 1);
 	k_sem_init(&perif->np_tx_lock, 1, 1);
@@ -799,8 +799,7 @@ static int espi_aspeed_init(const struct device *dev)
 
 	/* init flash private data */
 	flash->dma_mode = DT_INST_PROP(0, flash_dma_mode);
-	flash->safs_mode = DT_NODE_HAS_PROP(DT_DRV_INST(0), flash_safs_mode) ?
-			   DT_INST_PROP(0, flash_safs_mode) : 2;
+	flash->safs_mode = DT_INST_PROP_OR(0, flash_safs_mode, 2);
 	flash->tx_virt = flash_tx_buf;
 	flash->tx_addr = TO_PHY_ADDR(flash->tx_virt);
 	flash->rx_virt = flash_rx_buf;

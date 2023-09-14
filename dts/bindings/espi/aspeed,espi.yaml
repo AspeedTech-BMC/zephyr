@@ -29,12 +29,12 @@ properties:
 
     perif,memcyc-src-addr:
       type: int
-      required: true
+      required: false
       description: host side decoding address of memory cycle
 
     perif,memcyc-size:
       type: int
-      required: true
+      required: false
       description: region size for memory cycle
 
     oob,dma-mode:
@@ -49,5 +49,5 @@ properties:
 
     flash,safs-mode:
       type: int
-      required: true
+      required: false
       description: select the SAFS mode (0->mix, 1->hw, 2->sw), don't care for MAFS
