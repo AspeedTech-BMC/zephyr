@@ -19,15 +19,41 @@
  * @{
  */
 
+/* Hash digest/block size definition */
+#define SHA1_DIGEST_SIZE	20
+#define SHA1_BLOCK_SIZE		64
+#define SHA1_IV_SIZE		32
+
+#define SHA224_DIGEST_SIZE      28
+#define SHA224_BLOCK_SIZE       64
+#define SHA224_IV_SIZE		32
+
+#define SHA256_DIGEST_SIZE      32
+#define SHA256_BLOCK_SIZE       64
+#define SHA256_IV_SIZE		32
+
+#define SHA384_DIGEST_SIZE      48
+#define SHA384_BLOCK_SIZE       128
+#define SHA384_IV_SIZE		64
+
+#define SHA512_DIGEST_SIZE      64
+#define SHA512_BLOCK_SIZE       128
+#define SHA512_IV_SIZE		64
+
+#define HMAC_IPAD_VALUE		0x36
+#define HMAC_OPAD_VALUE		0x5c
 
 /**
  * Hash algorithm
  */
 enum hash_algo {
-	CRYPTO_HASH_ALGO_SHA224 = 1,
-	CRYPTO_HASH_ALGO_SHA256 = 2,
-	CRYPTO_HASH_ALGO_SHA384 = 3,
-	CRYPTO_HASH_ALGO_SHA512 = 4,
+	CRYPTO_HASH_ALGO_SHA1 = 1,
+	CRYPTO_HASH_ALGO_SHA224,
+	CRYPTO_HASH_ALGO_SHA256,
+	CRYPTO_HASH_ALGO_SHA384,
+	CRYPTO_HASH_ALGO_SHA512,
+	CRYPTO_HASH_ALGO_SHA512_224,
+	CRYPTO_HASH_ALGO_SHA512_256,
 };
 
 /* Forward declarations */
@@ -37,6 +63,14 @@ struct hash_pkt;
 
 typedef int (*hash_op_t)(struct hash_ctx *ctx, struct hash_pkt *pkt,
 			 bool finish);
+
+typedef int (*hash_setkey_t)(struct hash_ctx *ctx, struct hash_pkt *pkt);
+typedef int (*hash_digest_hmac_t)(struct hash_ctx *ctx, struct hash_pkt *pkt);
+
+struct hash_ops {
+	hash_setkey_t           setkey_hndlr;
+	hash_digest_hmac_t      digest_hmac_hndlr;
+};
 
 /**
  * Structure encoding session parameters.
@@ -76,6 +110,14 @@ struct hash_ctx {
 	 * by calling crypto_query_hwcaps().
 	 */
 	uint16_t flags;
+
+	/** Place for driver to return function pointers to be invoked per
+	 * cipher operation. To be populated by crypto driver on return from
+	 * begin_session() based on the algo/mode chosen by the app.
+	 */
+	struct hash_ops ops;
+
+	uint32_t digest_size;
 };
 
 /**
@@ -86,6 +128,12 @@ struct hash_ctx {
  * be filled up by the app before calling hash_compute().
  */
 struct hash_pkt {
+
+	/** Start address of key buffer */
+	uint8_t *key_buf;
+
+	/** Bytes to be operated upon */
+	int key_len;
 
 	/** Start address of input buffer */
 	uint8_t *in_buf;
