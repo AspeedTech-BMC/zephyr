@@ -27,3 +27,15 @@
 	current-speed = <115200>;
 	status = "okay";
 };
+
+&hace {
+	status = "okay";
+};
+
+&rsa {
+	status = "okay";
+};
+
+&ecdsa {
+	status = "okay";
+};
