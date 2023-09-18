@@ -9,6 +9,7 @@
 #include <aspeed/ast10x0-irq.h>
 #include <zephyr/dt-bindings/clock/ast10x0_clock.h>
 #include <zephyr/dt-bindings/reset/ast10x0_reset.h>
+#include <zephyr/dt-bindings/otp/ast10x0_otp.h>
 
 / {
 	cpus {
@@ -79,6 +80,13 @@
 			reg = <0x7e6f2000 0x100
 				0x79000000 0x2400>;
 			status = "disabled";
+		};
+
+		otp: otp@7e6f2000 {
+			compatible = "aspeed,otp";
+			reg = <0x7e6f2000 0x80>;
+			otpcfg = <>;
+			otpstrap = <>;
 		};
 
 		uart5: serial@7e784000 {
