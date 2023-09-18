@@ -59,6 +59,11 @@
 			status = "disabled";
 		};
 
+		rng: hwrng@7e6e2530 {
+			compatible = "aspeed,hwrng";
+			reg = <0x7e6e2530 0x10>;
+		};
+
 		espi: espi@7e6ee000 {
 			compatible = "aspeed,espi";
 			reg = <0x7e6ee000 0x800>;
