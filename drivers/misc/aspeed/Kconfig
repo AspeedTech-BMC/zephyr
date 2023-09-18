@@ -28,3 +28,22 @@ config PCC_ASPEED
 	  Note that PCC is not suitable for use with snooping
 	  over eSPI.
 	  Say y if you wish to use LPC PCC on ASPEED MCU.
+
+config OTP_ASPEED
+	bool "ASPEED OTP Utility"
+	depends on SOC_FAMILY_ASPEED
+	help
+	  This option enables the OTP Utility for ASPEED SoCs.
+
+config OTP_ASPEED_DRV_NAME
+	string "Device name for ASPEED OTP device"
+	default "OTP_ASPEED"
+	depends on OTP_ASPEED
+	help
+	  Device name for ASPEED OTP device.
+
+config SHELL_CMDS_OTP
+	bool "Enable OTP shell commands"
+	depends on OTP_ASPEED
+	help
+	  This option enables the OTP shell commands.
