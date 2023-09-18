@@ -1,0 +1,15 @@
+# Copyright (c) 2022 ASPEED Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+    Aspeed HWRNG (Hardware Random Number Generator).
+
+    The HWRNG module is a non-deterministic random number generator based on a full hardware solution.
+
+compatible: "aspeed,hwrng"
+
+include: base.yaml
+
+properties:
+    reg:
+      required: true
