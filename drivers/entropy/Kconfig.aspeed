@@ -1,0 +1,20 @@
+# Aspeed entropy generator driver configuration
+
+# Copyright (c) 2023 ASPEED Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+config ENTROPY_ASPEED_TRNG
+	bool "Aspeed TRNG driver"
+	depends on SOC_FAMILY_ASPEED
+	select ENTROPY_HAS_DRIVER
+	help
+	  This option enables the true random number generator
+	  driver based on the TRNG.
+
+config RANDOM_SHELL
+	bool "Enable random shell"
+	default y
+	depends on ENTROPY_ASPEED_TRNG
+	depends on SHELL
+	help
+	  Enable random shell for testing.
