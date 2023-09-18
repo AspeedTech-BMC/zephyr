@@ -135,6 +135,14 @@ config HWINFO_PSOC6
 	help
 	  Enable Cypress PSoC-6 hwinfo driver.
 
+config HWINFO_ASPEED
+	bool "Aspeed hwinfo"
+	default y
+	depends on SOC_FAMILY_ASPEED
+	select HWINFO_HAS_DRIVER
+	help
+	  Enable ASPEED hwinfo driver.
+
 config HWINFO_GECKO
 	bool "GECKO hwinfo"
 	default y
