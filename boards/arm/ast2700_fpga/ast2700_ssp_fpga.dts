@@ -39,3 +39,39 @@
 &ipc2 {
 	status = "okay";
 };
+
+&intc0 {
+	status = "okay";
+};
+
+&intc1 {
+	status = "okay";
+};
+
+&intc2 {
+	status = "okay";
+};
+
+&intc3 {
+	status = "okay";
+};
+
+&intc4 {
+	status = "okay";
+};
+
+&intc5 {
+	status = "okay";
+};
+
+&intc6 {
+	status = "okay";
+};
+
+&intc7 {
+	status = "okay";
+};
+
+&intc8 {
+	status = "okay";
+};
