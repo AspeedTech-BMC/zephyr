@@ -1,0 +1,9 @@
+# ASPEED driver configuration options
+
+# Copyright (c) 2020 ASPEED Technology Corporation.
+# SPDX-License-Identifier: Apache-2.0
+
+config ASPEED_INTC
+	bool "Aspeed interrupt controller driver"
+	help
+	  This option enables the interrupt controller
