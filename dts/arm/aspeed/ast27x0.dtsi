@@ -25,38 +25,17 @@
 	};
 
 	soc {
-		cpu_clk: clk@72c02240 {
-			compatible = "aspeed,ast27xx-cpu-clock";
-			reg = <0x72c02240 0x1c0>;
-			#clock-cells = <1>;
-			status = "okay";
-		};
-
 		reset0: reset-controller@72c02200 {
 			compatible = "aspeed,ast27xx-reset";
 			reg = <0x72c02200 0x80>;
 			#reset-cells = <1>;
 		};
 
-		io_clk: clk@74c02240 {
-			compatible = "aspeed,ast27xx-io-clock";
-			reg = <0x74c02240 0x1c0>;
+		cpu_clk: clk@72c02240 {
+			compatible = "aspeed,ast27xx-cpu-clock";
+			reg = <0x72c02240 0x1c0>;
 			#clock-cells = <1>;
 			status = "okay";
-		};
-
-		reset1: reset-controller@74c02200 {
-			compatible = "aspeed,ast27xx-reset";
-			reg = <0x74c02200 0x80>;
-			#reset-cells = <1>;
-		};
-
-		uart0: serial@74c33000 {
-			compatible = "ns16550";
-			reg = <0x74c33000 0x1000>;
-			interrupts = <263 0>;
-			status = "disabled";
-			reg-shift = <2>;
 		};
 
 		uart4: serial@72c1a000 {
@@ -73,6 +52,27 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 			ranges = <0 0x72c1c000 0x1000>;
+		};
+
+		reset1: reset-controller@74c02200 {
+			compatible = "aspeed,ast27xx-reset";
+			reg = <0x74c02200 0x80>;
+			#reset-cells = <1>;
+		};
+
+		io_clk: clk@74c02240 {
+			compatible = "aspeed,ast27xx-io-clock";
+			reg = <0x74c02240 0x1c0>;
+			#clock-cells = <1>;
+			status = "okay";
+		};
+
+		uart0: serial@74c33000 {
+			compatible = "ns16550";
+			reg = <0x74c33000 0x1000>;
+			interrupts = <263 0>;
+			status = "disabled";
+			reg-shift = <2>;
 		};
 	};
 };
