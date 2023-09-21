@@ -10,8 +10,13 @@
 #include <zephyr/dt-bindings/clock/ast10x0_clock.h>
 #include <zephyr/dt-bindings/reset/ast10x0_reset.h>
 #include <zephyr/dt-bindings/otp/ast10x0_otp.h>
+#include <zephyr/dt-bindings/i2c/i2c.h>
 
 / {
+	aliases {
+		i2c0 = &i2c0;
+	};
+
 	cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -158,6 +163,33 @@
 				interrupts = <INTR_PCC AST10X0_IRQ_DEFAULT_PRIORITY>;
 				status = "disabled";
 			};
+		};
+
+		i2c_gr: i2c-global-regs@7e7b0000 {
+			compatible = "aspeed,i2c-global";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x7e7b0000 0x20>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			resets = <&sysrst ASPEED_RESET_I2C>;
+			clk-divider = <0x62220803>;
+		};
+
+		i2c0: i2c@7e7b0080 {
+			compatible = "aspeed,i2c";
+			clock-frequency = <I2C_BITRATE_FAST>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x7e7b0080 0x80>;
+			interrupts = <INTR_I2C0 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			xfer-mode = "DMA";
+			multi-master = <1>;
+			smbus-timeout = <1>;
+			manual-high-count = <0>;
+			manual-low-count = <0>;
+			manual-sda-delay = <0>;
+			status = "disabled";
 		};
 	};
 };
