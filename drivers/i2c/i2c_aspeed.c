@@ -10,6 +10,7 @@
 
 #include <errno.h>
 #include <zephyr/drivers/i2c.h>
+#include <zephyr/drivers/pinctrl.h>
 #include <soc.h>
 
 #include <zephyr/sys/util.h>
@@ -282,6 +283,7 @@ struct i2c_aspeed_config {
 	int smbus_alert;
 	const struct device *clock_dev;
 	const clock_control_subsys_t clk_id;
+	const struct pinctrl_dev_config *pcfg;
 	uint32_t ac_timing;
 	void (*irq_config_func)(const struct device *dev);
 	uint32_t clk_src;
@@ -1909,7 +1911,7 @@ static int i2c_aspeed_init(const struct device *dev)
 		config->clk_src, config->clk_div_mode, config->multi_master, config->mode);
 
 	bitrate_cfg = i2c_map_dt_bitrate(config->bitrate);
-
+	error = pinctrl_apply_state(config->pcfg, PINCTRL_STATE_DEFAULT);
 	error = i2c_aspeed_configure(dev, I2C_MODE_CONTROLLER | bitrate_cfg);
 	if (error) {
 		return error;
@@ -2005,42 +2007,39 @@ static const struct i2c_driver_api i2c_aspeed_driver_api = {
 
 };
 
-#define I2C_ASPEED_INIT(n)							  \
-	static void i2c_aspeed_config_func_##n(const struct device *dev);	  \
-										  \
-	static const struct i2c_aspeed_config i2c_aspeed_config_##n = {		  \
-		.base = DT_INST_REG_ADDR(n),					  \
-		.irq_config_func = i2c_aspeed_config_func_##n,			  \
-		.bitrate = DT_INST_PROP(n, clock_frequency),			  \
-		.mode = DT_ENUM_IDX(DT_INST(n, DT_DRV_COMPAT), xfer_mode),	\
-		.multi_master = DT_INST_PROP(n, multi_master),		  \
-		.smbus_timeout = DT_INST_PROP(n, smbus_timeout),		  \
-		.manual_scl_high = DT_INST_PROP(n, manual_high_count),  \
-		.manual_scl_low = DT_INST_PROP(n, manual_low_count),	  \
-		.manual_sda_hold = DT_INST_PROP(n, manual_sda_delay),  \
-		.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(n)),		  \
-		.clk_id = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(n, clk_id), \
-	};									  \
-										  \
-	static struct i2c_aspeed_data i2c_aspeed_data_##n;			  \
-										  \
-	DEVICE_DT_INST_DEFINE(n,						  \
-			      &i2c_aspeed_init,					  \
-			      NULL,						  \
-			      &i2c_aspeed_data_##n, &i2c_aspeed_config_##n,	  \
-			      POST_KERNEL,					  \
-			      CONFIG_KERNEL_INIT_PRIORITY_DEVICE,		  \
-			      &i2c_aspeed_driver_api);				  \
-										  \
-	static void i2c_aspeed_config_func_##n(const struct device *dev)	  \
-	{									  \
-		ARG_UNUSED(dev);						  \
-										  \
-		IRQ_CONNECT(DT_INST_IRQN(n),					  \
-			    DT_INST_IRQ(n, priority),				  \
-			    i2c_aspeed_isr, DEVICE_DT_INST_GET(n), 0);		  \
-										  \
-		irq_enable(DT_INST_IRQN(n));					  \
+#define I2C_ASPEED_INIT(n)                                                                         \
+	PINCTRL_DT_INST_DEFINE(n);                                                                 \
+	static void i2c_aspeed_config_func_##n(const struct device *dev);                          \
+                                                                                                   \
+	static const struct i2c_aspeed_config i2c_aspeed_config_##n = {                            \
+		.base = DT_INST_REG_ADDR(n),                                                       \
+		.irq_config_func = i2c_aspeed_config_func_##n,                                     \
+		.bitrate = DT_INST_PROP(n, clock_frequency),                                       \
+		.mode = DT_ENUM_IDX(DT_INST(n, DT_DRV_COMPAT), xfer_mode),                         \
+		.multi_master = DT_INST_PROP(n, multi_master),                                     \
+		.smbus_timeout = DT_INST_PROP(n, smbus_timeout),                                   \
+		.manual_scl_high = DT_INST_PROP(n, manual_high_count),                             \
+		.manual_scl_low = DT_INST_PROP(n, manual_low_count),                               \
+		.manual_sda_hold = DT_INST_PROP(n, manual_sda_delay),                              \
+		.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(n)),                                \
+		.clk_id = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(n, clk_id),                  \
+		.pcfg = PINCTRL_DT_INST_DEV_CONFIG_GET(n),                                         \
+	};                                                                                         \
+                                                                                                   \
+	static struct i2c_aspeed_data i2c_aspeed_data_##n;                                         \
+                                                                                                   \
+	I2C_DEVICE_DT_INST_DEFINE(n, &i2c_aspeed_init, NULL, &i2c_aspeed_data_##n,                 \
+				  &i2c_aspeed_config_##n, POST_KERNEL,                             \
+				  CONFIG_KERNEL_INIT_PRIORITY_DEVICE, &i2c_aspeed_driver_api);     \
+                                                                                                   \
+	static void i2c_aspeed_config_func_##n(const struct device *dev)                           \
+	{                                                                                          \
+		ARG_UNUSED(dev);                                                                   \
+                                                                                                   \
+		IRQ_CONNECT(DT_INST_IRQN(n), DT_INST_IRQ(n, priority), i2c_aspeed_isr,             \
+			    DEVICE_DT_INST_GET(n), 0);                                             \
+                                                                                                   \
+		irq_enable(DT_INST_IRQN(n));                                                       \
 	}
 
 DT_INST_FOREACH_STATUS_OKAY(I2C_ASPEED_INIT)
