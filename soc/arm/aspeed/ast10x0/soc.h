@@ -24,5 +24,6 @@
 #define ASPEED_FMC_WDT2_CTRL		0x7e620064
 
 void aspeed_print_sysrst_info(void);
+void aspeed_soc_show_chip_id(void);
 
 #endif /* ZEPHYR_SOC_ARM_ASPEED_AST10X0_SOC_H_*/

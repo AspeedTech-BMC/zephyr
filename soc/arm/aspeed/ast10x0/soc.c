@@ -12,6 +12,7 @@
 #include <zephyr/device.h>
 #include <zephyr/cache.h>
 #include <soc.h>
+#include <zephyr/drivers/hwinfo.h>
 
 extern char __bss_nc_start__[];
 extern char __bss_nc_end__[];
@@ -152,4 +153,44 @@ void aspeed_print_sysrst_info(void)
 	ARG_UNUSED(rest2);
 
 	aspeed_print_abr_wdt_mode();
+}
+
+#define SOC_ID(str, rev) { .name = str, .rev_id = rev, }
+
+struct soc_id {
+	const char *name;
+	uint64_t rev_id;
+};
+
+static struct soc_id soc_map_table[] = {
+	SOC_ID("AST1030-A0", ASPEED_SOC_ID_AST1030A0),
+	SOC_ID("AST1030-A1", ASPEED_SOC_ID_AST1030A1),
+	SOC_ID("AST1035-A1", ASPEED_SOC_ID_AST1035A1),
+	SOC_ID("AST1060-A1", ASPEED_SOC_ID_AST1060A1),
+	SOC_ID("AST1060-A2", ASPEED_SOC_ID_AST1060A2),
+	SOC_ID("AST1060-A2-ENG", ASPEED_SOC_ID_AST1060A2_ENG),
+	SOC_ID("Unknown",    0x0000000000000000),
+};
+
+void aspeed_soc_show_chip_id(void)
+{
+	uint64_t rev_id;
+	size_t len;
+	int i;
+
+	len = hwinfo_get_device_id((uint8_t *)&rev_id, sizeof(rev_id));
+	if (len < 0) {
+		return;
+	}
+
+	for (i = 0; i < ARRAY_SIZE(soc_map_table); i++) {
+		if (rev_id == soc_map_table[i].rev_id) {
+			break;
+		}
+	}
+
+	if (i == ARRAY_SIZE(soc_map_table) && i > 0)
+		i--;
+
+	printk("SOC: %s\n", soc_map_table[i].name);
 }
