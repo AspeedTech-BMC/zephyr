@@ -189,6 +189,8 @@
 			manual-high-count = <0>;
 			manual-low-count = <0>;
 			manual-sda-delay = <0>;
+			pinctrl-0 = <&pinctrl_i2c0_default>;
+			pinctrl-names = "default";
 			status = "disabled";
 		};
 	};
