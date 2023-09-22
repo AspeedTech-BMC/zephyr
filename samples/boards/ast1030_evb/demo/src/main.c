@@ -9,6 +9,8 @@
 
 void main(void)
 {
-	printk("ast1030 demo board!\n");
+	printk("%s demo\n", CONFIG_BOARD);
+	aspeed_print_sysrst_info();
+	aspeed_soc_show_chip_id();
 }
 
