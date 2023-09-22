@@ -13,10 +13,6 @@
 #include <zephyr/dt-bindings/i2c/i2c.h>
 
 / {
-	aliases {
-		i2c0 = &i2c0;
-	};
-
 	cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -190,6 +186,253 @@
 			manual-low-count = <0>;
 			manual-sda-delay = <0>;
 			pinctrl-0 = <&pinctrl_i2c0_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+		};
+
+		i2c1: i2c@7e7b0100 {
+			compatible = "aspeed,i2c";
+			clock-frequency = <I2C_BITRATE_FAST>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x7e7b0100 0x80>;
+			interrupts = <INTR_I2C1 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			xfer-mode = "DMA";
+			multi-master = <1>;
+			smbus-timeout = <1>;
+			manual-high-count = <0>;
+			manual-low-count = <0>;
+			manual-sda-delay = <0>;
+			pinctrl-0 = <&pinctrl_i2c1_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+		};
+
+		i2c2: i2c@7e7b0180 {
+			compatible = "aspeed,i2c";
+			clock-frequency = <I2C_BITRATE_FAST>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x7e7b0180 0x80>;
+			interrupts = <INTR_I2C2 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			xfer-mode = "DMA";
+			multi-master = <1>;
+			smbus-timeout = <1>;
+			manual-high-count = <0>;
+			manual-low-count = <0>;
+			manual-sda-delay = <0>;
+			pinctrl-0 = <&pinctrl_i2c2_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+		};
+
+		i2c3: i2c@7e7b0200 {
+			compatible = "aspeed,i2c";
+			clock-frequency = <I2C_BITRATE_FAST>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x7e7b0200 0x80>;
+			interrupts = <INTR_I2C3 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			xfer-mode = "DMA";
+			multi-master = <1>;
+			smbus-timeout = <1>;
+			manual-high-count = <0>;
+			manual-low-count = <0>;
+			manual-sda-delay = <0>;
+			pinctrl-0 = <&pinctrl_i2c3_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+		};
+
+		i2c4: i2c@7e7b0280 {
+			compatible = "aspeed,i2c";
+			clock-frequency = <I2C_BITRATE_FAST>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x7e7b0280 0x80>;
+			interrupts = <INTR_I2C4 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			xfer-mode = "DMA";
+			multi-master = <1>;
+			smbus-timeout = <1>;
+			manual-high-count = <0>;
+			manual-low-count = <0>;
+			manual-sda-delay = <0>;
+			pinctrl-0 = <&pinctrl_i2c4_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+		};
+
+		i2c5: i2c@7e7b0300 {
+			compatible = "aspeed,i2c";
+			clock-frequency = <I2C_BITRATE_FAST>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x7e7b0300 0x80>;
+			interrupts = <INTR_I2C5 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			xfer-mode = "DMA";
+			multi-master = <1>;
+			smbus-timeout = <1>;
+			manual-high-count = <0>;
+			manual-low-count = <0>;
+			manual-sda-delay = <0>;
+			pinctrl-0 = <&pinctrl_i2c5_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+		};
+
+		i2c6: i2c@7e7b0380 {
+			compatible = "aspeed,i2c";
+			clock-frequency = <I2C_BITRATE_FAST>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x7e7b0380 0x80>;
+			interrupts = <INTR_I2C6 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			xfer-mode = "DMA";
+			multi-master = <1>;
+			smbus-timeout = <1>;
+			manual-high-count = <0>;
+			manual-low-count = <0>;
+			manual-sda-delay = <0>;
+			pinctrl-0 = <&pinctrl_i2c6_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+		};
+
+		i2c7: i2c@7e7b0400 {
+			compatible = "aspeed,i2c";
+			clock-frequency = <I2C_BITRATE_FAST>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x7e7b0400 0x80>;
+			interrupts = <INTR_I2C7 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			xfer-mode = "DMA";
+			multi-master = <1>;
+			smbus-timeout = <1>;
+			manual-high-count = <0>;
+			manual-low-count = <0>;
+			manual-sda-delay = <0>;
+			pinctrl-0 = <&pinctrl_i2c7_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+		};
+
+		i2c8: i2c@7e7b0480 {
+			compatible = "aspeed,i2c";
+			clock-frequency = <I2C_BITRATE_FAST>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x7e7b0480 0x80>;
+			interrupts = <INTR_I2C8 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			xfer-mode = "DMA";
+			multi-master = <1>;
+			smbus-timeout = <1>;
+			manual-high-count = <0>;
+			manual-low-count = <0>;
+			manual-sda-delay = <0>;
+			pinctrl-0 = <&pinctrl_i2c8_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+		};
+
+		i2c9: i2c@7e7b0500 {
+			compatible = "aspeed,i2c";
+			clock-frequency = <I2C_BITRATE_FAST>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x7e7b0500 0x80>;
+			interrupts = <INTR_I2C9 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			xfer-mode = "DMA";
+			multi-master = <1>;
+			smbus-timeout = <1>;
+			manual-high-count = <0>;
+			manual-low-count = <0>;
+			manual-sda-delay = <0>;
+			pinctrl-0 = <&pinctrl_i2c9_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+		};
+
+		i2c10: i2c@7e7b0580 {
+			compatible = "aspeed,i2c";
+			clock-frequency = <I2C_BITRATE_FAST>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x7e7b0580 0x80>;
+			interrupts = <INTR_I2C10 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			xfer-mode = "DMA";
+			multi-master = <1>;
+			smbus-timeout = <1>;
+			manual-high-count = <0>;
+			manual-low-count = <0>;
+			manual-sda-delay = <0>;
+			pinctrl-0 = <&pinctrl_i2c10_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+		};
+
+		i2c11: i2c@7e7b0600 {
+			compatible = "aspeed,i2c";
+			clock-frequency = <I2C_BITRATE_FAST>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x7e7b0600 0x80>;
+			interrupts = <INTR_I2C11 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			xfer-mode = "DMA";
+			multi-master = <1>;
+			smbus-timeout = <1>;
+			manual-high-count = <0>;
+			manual-low-count = <0>;
+			manual-sda-delay = <0>;
+			pinctrl-0 = <&pinctrl_i2c11_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+		};
+
+		i2c12: i2c@7e7b0680 {
+			compatible = "aspeed,i2c";
+			clock-frequency = <I2C_BITRATE_FAST>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x7e7b0680 0x80>;
+			interrupts = <INTR_I2C12 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			xfer-mode = "DMA";
+			multi-master = <1>;
+			smbus-timeout = <1>;
+			manual-high-count = <0>;
+			manual-low-count = <0>;
+			manual-sda-delay = <0>;
+			pinctrl-0 = <&pinctrl_i2c12_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+		};
+
+		i2c13: i2c@7e7b0700 {
+			compatible = "aspeed,i2c";
+			clock-frequency = <I2C_BITRATE_FAST>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x7e7b0700 0x80>;
+			interrupts = <INTR_I2C13 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			xfer-mode = "DMA";
+			multi-master = <1>;
+			smbus-timeout = <1>;
+			manual-high-count = <0>;
+			manual-low-count = <0>;
+			manual-sda-delay = <0>;
+			pinctrl-0 = <&pinctrl_i2c13_default>;
 			pinctrl-names = "default";
 			status = "disabled";
 		};
