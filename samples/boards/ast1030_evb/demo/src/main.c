@@ -9,6 +9,6 @@
 
 void main(void)
 {
-	printk("demo\n");
+	printk("ast1030 demo board!\n");
 }
 
