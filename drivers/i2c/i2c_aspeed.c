@@ -326,9 +326,9 @@ struct i2c_aspeed_data {
 	/* byte mode check re-start */
 	uint8_t slave_addr_last;
 
-#ifdef CONFIG_I2C_SLAVE
+#ifdef CONFIG_I2C_TARGET
 	unsigned char slave_dma_buf[I2C_SLAVE_BUF_SIZE];
-	struct i2c_slave_config *slave_cfg;
+	struct i2c_target_config *slave_cfg;
 #endif
 };
 
@@ -737,7 +737,7 @@ static int i2c_aspeed_configure(const struct device *dev,
 			    i2c_base + AST_I2CM_IER);
 	}
 
-#ifdef CONFIG_I2C_SLAVE
+#ifdef CONFIG_I2C_TARGET
 	if (config->mode == DMA_MODE) {
 		memset(data->slave_dma_buf, 0, I2C_SLAVE_BUF_SIZE);
 	}
@@ -906,6 +906,10 @@ static int i2c_aspeed_transfer(const struct device *dev, struct i2c_msg *msgs,
 	uint32_t i2c_base = DEV_BASE(dev);
 	uint32_t isr = 0, ctrl = 0, sts = 0;
 
+#ifdef CONFIG_I2C_TARGET
+	uint32_t cmd = AST_I2CS_ACTIVE_ALL | AST_I2CS_PKT_MODE_EN;
+#endif
+
 	if (!num_msgs) {
 		return 0;
 	}
@@ -946,7 +950,7 @@ static int i2c_aspeed_transfer(const struct device *dev, struct i2c_msg *msgs,
 			ctrl = sys_read32(i2c_base + AST_I2CC_FUN_CTRL);
 			sys_write32(0, i2c_base + AST_I2CC_FUN_CTRL);
 			sys_write32(ctrl, i2c_base + AST_I2CC_FUN_CTRL);
-#ifdef CONFIG_I2C_SLAVE
+#ifdef CONFIG_I2C_TARGET
 			if (ctrl & AST_I2CC_SLAVE_EN) {
 				if (config->mode == DMA_MODE) {
 					cmd |= AST_I2CS_RX_DMA_EN;
@@ -1280,7 +1284,7 @@ int aspeed_i2c_master_irq(const struct device *dev)
 			break;
 		case AST_I2CM_TX_ACK:
 		case AST_I2CM_TX_ACK | AST_I2CM_NORMAL_STOP:
-#ifdef CONFIG_I2C_SLAVE
+#ifdef CONFIG_I2C_TARGET
 			if (sts == AST_I2CM_TX_ACK) {
 				/* Workaround for master/slave package mode
 				 * enable rx done stuck issue
@@ -1326,7 +1330,7 @@ int aspeed_i2c_master_irq(const struct device *dev)
 
 }
 
-#ifdef CONFIG_I2C_SLAVE
+#ifdef CONFIG_I2C_TARGET
 static inline void aspeed_i2c_trigger_package_cmd(uint32_t i2c_base, uint8_t mode)
 {
 	uint32_t cmd = SLAVE_TRIGGER_CMD;
@@ -1345,7 +1349,7 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 {
 	struct i2c_aspeed_config *config = DEV_CFG(dev);
 	struct i2c_aspeed_data *data = DEV_DATA(dev);
-	const struct i2c_slave_callbacks *slave_cb = data->slave_cfg->callbacks;
+	const struct i2c_target_callbacks *slave_cb = data->slave_cfg->callbacks;
 	uint32_t cmd = 0;
 	uint32_t i, slave_rx_len = 0;
 	uint8_t byte_data = 0, value = 0;
@@ -1673,7 +1677,7 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 void aspeed_i2c_slave_byte_irq(const struct device *dev, uint32_t i2c_base, uint32_t sts)
 {
 	struct i2c_aspeed_data *data = DEV_DATA(dev);
-	const struct i2c_slave_callbacks *slave_cb = data->slave_cfg->callbacks;
+	const struct i2c_target_callbacks *slave_cb = data->slave_cfg->callbacks;
 	uint32_t cmd = AST_I2CS_ACTIVE_ALL;
 	uint8_t byte_data = 0;
 
@@ -1863,7 +1867,7 @@ int aspeed_i2c_slave_irq(const struct device *dev)
 
 static void i2c_aspeed_isr(const struct device *dev)
 {
-#ifdef CONFIG_I2C_SLAVE
+#ifdef CONFIG_I2C_TARGET
 	uint32_t i2c_base = DEV_BASE(dev);
 
 	if (sys_read32(i2c_base + AST_I2CC_FUN_CTRL) & AST_I2CC_SLAVE_EN) {
@@ -1922,9 +1926,9 @@ static int i2c_aspeed_init(const struct device *dev)
 	return 0;
 }
 
-#ifdef CONFIG_I2C_SLAVE
+#ifdef CONFIG_I2C_TARGET
 static int i2c_aspeed_slave_register(const struct device *dev,
-				     struct i2c_slave_config *config)
+				     struct i2c_target_config *config)
 {
 	struct i2c_aspeed_config *i2c_config = DEV_CFG(dev);
 	struct i2c_aspeed_data *data = dev->data;
@@ -1974,7 +1978,7 @@ static int i2c_aspeed_slave_register(const struct device *dev,
 }
 
 static int i2c_aspeed_slave_unregister(const struct device *dev,
-				       struct i2c_slave_config *config)
+				       struct i2c_target_config *config)
 {
 	struct i2c_aspeed_data *data = dev->data;
 	uint32_t i2c_base = DEV_BASE(dev);
@@ -2000,9 +2004,9 @@ static int i2c_aspeed_slave_unregister(const struct device *dev,
 static const struct i2c_driver_api i2c_aspeed_driver_api = {
 	.configure = i2c_aspeed_configure,
 	.transfer = i2c_aspeed_transfer,
-#ifdef CONFIG_I2C_SLAVE
-	.slave_register = i2c_aspeed_slave_register,
-	.slave_unregister = i2c_aspeed_slave_unregister,
+#ifdef CONFIG_I2C_TARGET
+	.target_register = i2c_aspeed_slave_register,
+	.target_unregister = i2c_aspeed_slave_unregister,
 #endif
 
 };
