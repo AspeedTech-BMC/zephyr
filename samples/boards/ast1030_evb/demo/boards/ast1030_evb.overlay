@@ -1,23 +1,59 @@
 &i2c0 {
 	status = "okay";
+
+	eeprom0: eeprom0@40 {
+		compatible = "zephyr,i2c-target-eeprom";
+		reg = <0x40>;
+		size = <256>;
+	};
 };
 
 &i2c1 {
 	status = "okay";
+
+	eeprom1: eeprom1@41 {
+		compatible = "zephyr,i2c-target-eeprom";
+		reg = <0x41>;
+		size = <256>;
+	};
 };
 
 &i2c2 {
 	status = "okay";
+
+	eeprom2: eeprom2@42 {
+		compatible = "zephyr,i2c-target-eeprom";
+		reg = <0x42>;
+		size = <256>;
+	};
 };
 
 &i2c3 {
 	status = "okay";
+
+	eeprom3: eeprom3@43 {
+		compatible = "zephyr,i2c-target-eeprom";
+		reg = <0x43>;
+		size = <256>;
+	};
 };
 
 &i2c4 {
 	status = "okay";
+
+	eeprom4: eeprom2@44 {
+		compatible = "zephyr,i2c-target-eeprom";
+		reg = <0x44>;
+		size = <256>;
+	};
 };
 
 &i2c5 {
 	status = "okay";
+
+	eeprom5: eeprom2@45 {
+		compatible = "zephyr,i2c-target-eeprom";
+		reg = <0x45>;
+		size = <256>;
+	};
 };
