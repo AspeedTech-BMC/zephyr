@@ -25,7 +25,6 @@ struct ipmb_msg_package {
 };
 
 struct i2c_ipmb_target_data {
-	const struct device *i2c_controller;
 	struct i2c_target_config config;
 	struct ipmb_msg_package *buffer; /* total buffer */
 	struct ipmb_msg_package *current; /* current buffer */
@@ -38,17 +37,10 @@ struct i2c_ipmb_target_data {
 };
 
 struct i2c_ipmb_target_config {
-	char *controller_dev_name;
+	struct i2c_dt_spec bus;
 	uint8_t address;
 	uint32_t ipmb_msg_length;
 };
-
-/* convenience defines */
-#define DEV_CFG(dev)				     \
-	((const struct i2c_ipmb_target_config *const) \
-	 (dev)->config)
-#define DEV_DATA(dev) \
-	((struct i2c_ipmb_target_data *const)(dev)->data)
 
 static int ipmb_target_write_requested(struct i2c_target_config *config)
 {
@@ -136,7 +128,7 @@ static int ipmb_target_stop(struct i2c_target_config *config)
 
 int ipmb_target_read(const struct device *dev, struct ipmb_msg **ipmb_data, uint8_t *length)
 {
-	struct i2c_ipmb_target_data *data = DEV_DATA(dev);
+	struct i2c_ipmb_target_data *data = dev->data;
 	sys_snode_t *list_node = NULL;
 	struct ipmb_msg_package *pack = NULL;
 	unsigned int key = 0;
@@ -174,18 +166,21 @@ int ipmb_target_read(const struct device *dev, struct ipmb_msg **ipmb_data, uint
 
 static int ipmb_target_register(const struct device *dev)
 {
+	const struct i2c_ipmb_target_config *cfg = dev->config;
 	struct i2c_ipmb_target_data *data = dev->data;
 
 	/* initial msg index */
 	data->msg_index = 0;
 	data->cur_msg_count = 0;
 
-	return i2c_target_register(data->i2c_controller, &data->config);
+	return i2c_target_register(cfg->bus.bus, &data->config);
 }
 
 static int ipmb_target_unregister(const struct device *dev)
 {
+	const struct i2c_ipmb_target_config *cfg = dev->config;
 	struct i2c_ipmb_target_data *data = dev->data;
+
 	sys_snode_t *list_node = NULL;
 
 	/* free link list */
@@ -200,7 +195,7 @@ static int ipmb_target_unregister(const struct device *dev)
 
 	} while (list_node);
 
-	return i2c_target_unregister(data->i2c_controller, &data->config);
+	return i2c_target_unregister(cfg->bus.bus, &data->config);
 }
 
 static const struct i2c_target_driver_api api_ipmb_funcs = {
@@ -218,20 +213,17 @@ static const struct i2c_target_callbacks ipmb_callbacks = {
 
 static int i2c_ipmb_target_init(const struct device *dev)
 {
-	struct i2c_ipmb_target_data *data = DEV_DATA(dev);
-	const struct i2c_ipmb_target_config *cfg = DEV_CFG(dev);
+	struct i2c_ipmb_target_data *data = dev->data;
+	const struct i2c_ipmb_target_config *cfg = dev->config;
 
 	if (!cfg->ipmb_msg_length) {
 		LOG_ERR("i2c ipmb buffer size is zero");
 		return -EINVAL;
 	}
 
-	data->i2c_controller =
-		device_get_binding(cfg->controller_dev_name);
-	if (!data->i2c_controller) {
-		LOG_ERR("i2c controller not found: %s",
-			cfg->controller_dev_name);
-		return -EINVAL;
+	if (!device_is_ready(cfg->bus.bus)) {
+		LOG_ERR("I2C controller device not ready");
+		return -ENODEV;
 	}
 
 	data->max_msg_count = cfg->ipmb_msg_length;
@@ -260,7 +252,7 @@ static int i2c_ipmb_target_init(const struct device *dev)
 								 \
 	static const struct i2c_ipmb_target_config		 \
 		i2c_ipmb_target_##inst##_cfg = {			 \
-		.controller_dev_name = DT_INST_BUS_LABEL(inst),	 \
+		.bus = I2C_DT_SPEC_INST_GET(inst),	 \
 		.address = DT_INST_REG_ADDR(inst),		 \
 		.ipmb_msg_length = DT_INST_PROP(inst, size),	 \
 	};							 \
