@@ -6,6 +6,12 @@
 		reg = <0x40>;
 		size = <256>;
 	};
+
+	ipmb0: ipmb0@50 {
+		compatible = "aspeed,ipmb";
+		reg = <0x50>;
+		size = <5>;
+	};
 };
 
 &i2c1 {
@@ -15,6 +21,12 @@
 		compatible = "zephyr,i2c-target-eeprom";
 		reg = <0x41>;
 		size = <256>;
+	};
+
+	ipmb1: ipmb1@51 {
+		compatible = "aspeed,ipmb";
+		reg = <0x51>;
+		size = <5>;
 	};
 };
 
@@ -26,6 +38,12 @@
 		reg = <0x42>;
 		size = <256>;
 	};
+
+	ipmb2: ipmb2@52 {
+		compatible = "aspeed,ipmb";
+		reg = <0x52>;
+		size = <5>;
+	};
 };
 
 &i2c3 {
@@ -35,6 +53,12 @@
 		compatible = "zephyr,i2c-target-eeprom";
 		reg = <0x43>;
 		size = <256>;
+	};
+
+	ipmb3: ipmb3@53 {
+		compatible = "aspeed,ipmb";
+		reg = <0x53>;
+		size = <5>;
 	};
 };
 
@@ -46,6 +70,12 @@
 		reg = <0x44>;
 		size = <256>;
 	};
+
+	ipmb4: ipmb2@54 {
+		compatible = "aspeed,ipmb";
+		reg = <0x54>;
+		size = <5>;
+	};
 };
 
 &i2c5 {
@@ -55,5 +85,11 @@
 		compatible = "zephyr,i2c-target-eeprom";
 		reg = <0x45>;
 		size = <256>;
+	};
+
+	ipmb5: ipmb5@55 {
+		compatible = "aspeed,ipmb";
+		reg = <0x55>;
+		size = <5>;
 	};
 };
