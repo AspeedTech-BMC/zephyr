@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <zephyr/drivers/i2c.h>
 #include <zephyr/drivers/i2c/target/eeprom.h>
+#include <zephyr/drivers/i2c/target/ipmb.h>
 
 #include <string.h>
 #include <zephyr/sys/util.h>
@@ -1268,25 +1269,25 @@ static int cmd_i2c_pfr_demo(const struct shell *shell,
 }
 #endif
 
-#ifdef CONFIG_I2C_SLAVE
-#ifdef CONFIG_I2C_EEPROM_SLAVE
+#ifdef CONFIG_I2C_TARGET
+#ifdef CONFIG_I2C_EEPROM_TARGET
 #define EEPROM_SLAVE	0
 #define TEST_DATA_SIZE	20
 static const uint8_t eeprom_0_data[TEST_DATA_SIZE] = "0123456789abcdefghij";
 #endif
-static int cmd_i2c_slave_attach(const struct shell *shell,
+static int cmd_i2c_target_attach(const struct shell *shell,
 			      size_t argc, char **argv)
 {
-	const struct device *slave_dev;
+	const struct device *target_dev;
 
-	slave_dev = device_get_binding(argv[1]);
-	if (!slave_dev) {
-		shell_error(shell, "xx I2C: Slave Device driver %s not found.",
+	target_dev = device_get_binding(argv[1]);
+	if (!target_dev) {
+		shell_error(shell, "xx I2C: Target Device driver %s not found.",
 			    argv[1]);
 		return -ENODEV;
 	}
 
-#ifdef CONFIG_I2C_EEPROM_SLAVE
+#ifdef CONFIG_I2C_EEPROM_TARGET
 	int cmp = 0;
 	/* compare slave type*/
 	cmp = strcmp(argv[2], "EE");
@@ -1295,56 +1296,56 @@ static int cmd_i2c_slave_attach(const struct shell *shell,
 		/* Program differentiable data into the two devices through a back door
 		 * that doesn't use I2C.
 		 */
-		if (eeprom_slave_program(slave_dev, eeprom_0_data, TEST_DATA_SIZE))
-			shell_error(shell, "I2C: Slave Device driver %s found.", slave_dev->name);
+		if (eeprom_target_program(target_dev, eeprom_0_data, TEST_DATA_SIZE))
+			shell_error(shell, "I2C: Target Device driver %s found.", target_dev->name);
 	}
 #endif
 
 	/* Attach each EEPROM to its owning bus as a slave device. */
-	if (i2c_slave_driver_register(slave_dev))
-		shell_error(shell, "I2C: Slave Device driver %s not found.", slave_dev->name);
+	if (i2c_target_driver_register(target_dev))
+		shell_error(shell, "I2C: Target Device driver %s not found.", target_dev->name);
 
 	return 0;
 }
 
-static int cmd_i2c_slave_detach(const struct shell *shell,
+static int cmd_i2c_target_detach(const struct shell *shell,
 			      size_t argc, char **argv)
 {
-	const struct device *slave_dev;
+	const struct device *target_dev;
 
-	slave_dev = device_get_binding(argv[1]);
-	if (!slave_dev) {
-		shell_error(shell, "xx I2C: Slave Device driver %s not found.",
+	target_dev = device_get_binding(argv[1]);
+	if (!target_dev) {
+		shell_error(shell, "xx I2C: Target Device driver %s not found.",
 				argv[1]);
 		return -ENODEV;
 	}
 
 	/* Attach each EEPROM to its owning bus as a slave device. */
-	if (i2c_slave_driver_unregister(slave_dev))
-		shell_error(shell, "I2C: Slave Device driver %s not found.", slave_dev->name);
+	if (i2c_target_driver_unregister(target_dev))
+		shell_error(shell, "I2C: Target Device driver %s not found.", target_dev->name);
 
 	return 0;
 }
 
-#ifdef CONFIG_I2C_IPMB_SLAVE
+#ifdef CONFIG_I2C_IPMB_TARGET
 static int cmd_i2c_ipmb_read(const struct shell *shell,
 			      size_t argc, char **argv)
 {
-	const struct device *slave_dev = NULL;
+	const struct device *target_dev = NULL;
 	int ret = 0;
 	struct ipmb_msg *msg = NULL;
 	uint8_t length = 0;
 	uint8_t *buf = NULL;
 
-	slave_dev = device_get_binding(argv[1]);
-	if (!slave_dev) {
-		shell_error(shell, "xx I2C: Slave Device driver %s not found.",
+	target_dev = device_get_binding(argv[1]);
+	if (!target_dev) {
+		shell_error(shell, "xx I2C: Target Device driver %s not found.",
 			    argv[1]);
 		return -ENODEV;
 	}
 
-	if (slave_dev) {
-		ret = ipmb_slave_read(slave_dev, &msg, &length);
+	if (target_dev) {
+		ret = ipmb_target_read(target_dev, &msg, &length);
 
 		if (!ret) {
 			buf = (uint8_t *)(msg);
@@ -1399,16 +1400,16 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_iic_cmds,
 				SHELL_CMD_ARG(write_bytes, &dsub_device_name,
 					  "Write bytes to an I2C device",
 					  cmd_i2c_write_bytes, 3, MAX_I2C_BYTES),
-#ifdef CONFIG_I2C_SLAVE
-			       SHELL_CMD_ARG(slave_attach, &dsub_device_name,
-					     "Attach slave device",
-					     cmd_i2c_slave_attach, 2, 1),
-			       SHELL_CMD_ARG(slave_detach, &dsub_device_name,
-					     "Detach slave device",
-					     cmd_i2c_slave_detach, 0, 1),
-#ifdef CONFIG_I2C_IPMB_SLAVE
-			       SHELL_CMD_ARG(slave_ipmb_read, &dsub_device_name,
-					     "Read ipmb buffer from slave",
+#ifdef CONFIG_I2C_TARGET
+			       SHELL_CMD_ARG(target_attach, &dsub_device_name,
+					     "Attach target device",
+					     cmd_i2c_target_attach, 2, 1),
+			       SHELL_CMD_ARG(target_detach, &dsub_device_name,
+					     "Detach target device",
+					     cmd_i2c_target_detach, 0, 1),
+#ifdef CONFIG_I2C_IPMB_TARGET
+			       SHELL_CMD_ARG(target_ipmb_read, &dsub_device_name,
+					     "Read ipmb buffer from target",
 					      cmd_i2c_ipmb_read, 0, 1),
 #endif
 #endif

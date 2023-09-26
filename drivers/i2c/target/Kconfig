@@ -20,5 +20,6 @@ config I2C_TARGET_INIT_PRIORITY
 	  I2C Target device driver initialization priority.
 
 source "drivers/i2c/target/Kconfig.eeprom"
+source "drivers/i2c/target/Kconfig.ipmb"
 
 endif # I2C_TARGET
