@@ -31,7 +31,10 @@ LOG_MODULE_REGISTER(i2c_aspeed);
 /* i2c global */
 #define ASPEED_I2CG_CLK_DIV		0x10
 #define ASPEED_I2CG_CONTROL		0x0C
+#define ASPEED_I2CG_NEW_REG_BIT	BIT(2)
 #define ASPEED_I2CG_NEW_CLK_BIT	BIT(1)
+#define ASPEED_I2C_NEW_MODE	(ASPEED_I2CG_NEW_CLK_BIT |\
+			ASPEED_I2CG_NEW_REG_BIT)
 
 /* i2c control reg */
 /* 0x00 : I2CC Master/Slave Function Control Register  */
@@ -287,7 +290,6 @@ struct i2c_aspeed_config {
 	uint32_t ac_timing;
 	void (*irq_config_func)(const struct device *dev);
 	uint32_t clk_src;
-	int clk_div_mode;       /* 0: old mode, 1: new mode */
 	enum i2c_xfer_mode mode;
 };
 
@@ -337,155 +339,11 @@ struct ast_i2c_timing_table {
 	uint32_t timing;
 };
 
-static struct ast_i2c_timing_table aspeed_old_i2c_timing_table[] = {
-	/* Divisor : Base Clock : tCKHighMin : tCK High : tCK Low  */
-	/* Divisor :	  [3:0] : [23: 20]   :   [19:16]:   [15:12] */
-	{ 6,     0x00000300 | (0x0) | (0x2 << 20) | (0x2 << 16) | (0x2 << 12) },
-	{ 7,     0x00000300 | (0x0) | (0x3 << 20) | (0x3 << 16) | (0x2 << 12) },
-	{ 8,     0x00000300 | (0x0) | (0x3 << 20) | (0x3 << 16) | (0x3 << 12) },
-	{ 9,     0x00000300 | (0x0) | (0x4 << 20) | (0x4 << 16) | (0x3 << 12) },
-	{ 10,    0x00000300 | (0x0) | (0x4 << 20) | (0x4 << 16) | (0x4 << 12) },
-	{ 11,    0x00000300 | (0x0) | (0x5 << 20) | (0x5 << 16) | (0x4 << 12) },
-	{ 12,    0x00000300 | (0x0) | (0x5 << 20) | (0x5 << 16) | (0x5 << 12) },
-	{ 13,    0x00000300 | (0x0) | (0x6 << 20) | (0x6 << 16) | (0x5 << 12) },
-	{ 14,    0x00000300 | (0x0) | (0x6 << 20) | (0x6 << 16) | (0x6 << 12) },
-	{ 15,    0x00000300 | (0x0) | (0x7 << 20) | (0x7 << 16) | (0x6 << 12) },
-	{ 16,    0x00000300 | (0x0) | (0x7 << 20) | (0x7 << 16) | (0x7 << 12) },
-	{ 17,    0x00000300 | (0x0) | (0x8 << 20) | (0x8 << 16) | (0x7 << 12) },
-	{ 18,    0x00000300 | (0x0) | (0x8 << 20) | (0x8 << 16) | (0x8 << 12) },
-	{ 19,    0x00000300 | (0x0) | (0x9 << 20) | (0x9 << 16) | (0x8 << 12) },
-	{ 20,    0x00000300 | (0x0) | (0x9 << 20) | (0x9 << 16) | (0x9 << 12) },
-	{ 21,    0x00000300 | (0x0) | (0xa << 20) | (0xa << 16) | (0x9 << 12) },
-	{ 22,    0x00000300 | (0x0) | (0xa << 20) | (0xa << 16) | (0xa << 12) },
-	{ 23,    0x00000300 | (0x0) | (0xb << 20) | (0xb << 16) | (0xa << 12) },
-	{ 24,    0x00000300 | (0x0) | (0xb << 20) | (0xb << 16) | (0xb << 12) },
-	{ 25,    0x00000300 | (0x0) | (0xc << 20) | (0xc << 16) | (0xb << 12) },
-	{ 26,    0x00000300 | (0x0) | (0xc << 20) | (0xc << 16) | (0xc << 12) },
-	{ 27,    0x00000300 | (0x0) | (0xd << 20) | (0xd << 16) | (0xc << 12) },
-	{ 28,    0x00000300 | (0x0) | (0xd << 20) | (0xd << 16) | (0xd << 12) },
-	{ 29,    0x00000300 | (0x0) | (0xe << 20) | (0xe << 16) | (0xd << 12) },
-	{ 30,    0x00000300 | (0x0) | (0xe << 20) | (0xe << 16) | (0xe << 12) },
-	{ 31,    0x00000300 | (0x0) | (0xf << 20) | (0xf << 16) | (0xe << 12) },
-	{ 32,    0x00000300 | (0x0) | (0xf << 20) | (0xf << 16) | (0xf << 12) },
-
-	{ 34,    0x00000300 | (0x1) | (0x8 << 20) | (0x8 << 16) | (0x7 << 12) },
-	{ 36,    0x00000300 | (0x1) | (0x8 << 20) | (0x8 << 16) | (0x8 << 12) },
-	{ 38,    0x00000300 | (0x1) | (0x9 << 20) | (0x9 << 16) | (0x8 << 12) },
-	{ 40,    0x00000300 | (0x1) | (0x9 << 20) | (0x9 << 16) | (0x9 << 12) },
-	{ 42,    0x00000300 | (0x1) | (0xa << 20) | (0xa << 16) | (0x9 << 12) },
-	{ 44,    0x00000300 | (0x1) | (0xa << 20) | (0xa << 16) | (0xa << 12) },
-	{ 46,    0x00000300 | (0x1) | (0xb << 20) | (0xb << 16) | (0xa << 12) },
-	{ 48,    0x00000300 | (0x1) | (0xb << 20) | (0xb << 16) | (0xb << 12) },
-	{ 50,    0x00000300 | (0x1) | (0xc << 20) | (0xc << 16) | (0xb << 12) },
-	{ 52,    0x00000300 | (0x1) | (0xc << 20) | (0xc << 16) | (0xc << 12) },
-	{ 54,    0x00000300 | (0x1) | (0xd << 20) | (0xd << 16) | (0xc << 12) },
-	{ 56,    0x00000300 | (0x1) | (0xd << 20) | (0xd << 16) | (0xd << 12) },
-	{ 58,    0x00000300 | (0x1) | (0xe << 20) | (0xe << 16) | (0xd << 12) },
-	{ 60,    0x00000300 | (0x1) | (0xe << 20) | (0xe << 16) | (0xe << 12) },
-	{ 62,    0x00000300 | (0x1) | (0xf << 20) | (0xf << 16) | (0xe << 12) },
-	{ 64,    0x00000300 | (0x1) | (0xf << 20) | (0xf << 16) | (0xf << 12) },
-
-	{ 68,    0x00000300 | (0x2) | (0x8 << 20) | (0x8 << 16) | (0x7 << 12) },
-	{ 72,    0x00000300 | (0x2) | (0x8 << 20) | (0x8 << 16) | (0x8 << 12) },
-	{ 76,    0x00000300 | (0x2) | (0x9 << 20) | (0x9 << 16) | (0x8 << 12) },
-	{ 80,    0x00000300 | (0x2) | (0x9 << 20) | (0x9 << 16) | (0x9 << 12) },
-	{ 84,    0x00000300 | (0x2) | (0xa << 20) | (0xa << 16) | (0x9 << 12) },
-	{ 88,    0x00000300 | (0x2) | (0xa << 20) | (0xa << 16) | (0xa << 12) },
-	{ 92,    0x00000300 | (0x2) | (0xb << 20) | (0xb << 16) | (0xa << 12) },
-	{ 96,    0x00000300 | (0x2) | (0xb << 20) | (0xb << 16) | (0xb << 12) },
-	{ 100,   0x00000300 | (0x2) | (0xc << 20) | (0xc << 16) | (0xb << 12) },
-	{ 104,   0x00000300 | (0x2) | (0xc << 20) | (0xc << 16) | (0xc << 12) },
-	{ 108,   0x00000300 | (0x2) | (0xd << 20) | (0xd << 16) | (0xc << 12) },
-	{ 112,   0x00000300 | (0x2) | (0xd << 20) | (0xd << 16) | (0xd << 12) },
-	{ 116,   0x00000300 | (0x2) | (0xe << 20) | (0xe << 16) | (0xd << 12) },
-	{ 120,   0x00000300 | (0x2) | (0xe << 20) | (0xe << 16) | (0xe << 12) },
-	{ 124,   0x00000300 | (0x2) | (0xf << 20) | (0xf << 16) | (0xe << 12) },
-	{ 128,   0x00000300 | (0x2) | (0xf << 20) | (0xf << 16) | (0xf << 12) },
-
-	{ 136,   0x00000300 | (0x3) | (0x8 << 20) | (0x8 << 16) | (0x7 << 12) },
-	{ 144,   0x00000300 | (0x3) | (0x8 << 20) | (0x8 << 16) | (0x8 << 12) },
-	{ 152,   0x00000300 | (0x3) | (0x9 << 20) | (0x9 << 16) | (0x8 << 12) },
-	{ 160,   0x00000300 | (0x3) | (0x9 << 20) | (0x9 << 16) | (0x9 << 12) },
-	{ 168,   0x00000300 | (0x3) | (0xa << 20) | (0xa << 16) | (0x9 << 12) },
-	{ 176,   0x00000300 | (0x3) | (0xa << 20) | (0xa << 16) | (0xa << 12) },
-	{ 184,   0x00000300 | (0x3) | (0xb << 20) | (0xb << 16) | (0xa << 12) },
-	{ 192,   0x00000300 | (0x3) | (0xb << 20) | (0xb << 16) | (0xb << 12) },
-	{ 200,   0x00000300 | (0x3) | (0xc << 20) | (0xc << 16) | (0xb << 12) },
-	{ 208,   0x00000300 | (0x3) | (0xc << 20) | (0xc << 16) | (0xc << 12) },
-	{ 216,   0x00000300 | (0x3) | (0xd << 20) | (0xd << 16) | (0xc << 12) },
-	{ 224,   0x00000300 | (0x3) | (0xd << 20) | (0xd << 16) | (0xd << 12) },
-	{ 232,   0x00000300 | (0x3) | (0xe << 20) | (0xe << 16) | (0xd << 12) },
-	{ 240,   0x00000300 | (0x3) | (0xe << 20) | (0xe << 16) | (0xe << 12) },
-	{ 248,   0x00000300 | (0x3) | (0xf << 20) | (0xf << 16) | (0xe << 12) },
-	{ 256,   0x00000300 | (0x3) | (0xf << 20) | (0xf << 16) | (0xf << 12) },
-
-	{ 272,   0x00000300 | (0x4) | (0x8 << 20) | (0x8 << 16) | (0x7 << 12) },
-	{ 288,   0x00000300 | (0x4) | (0x8 << 20) | (0x8 << 16) | (0x8 << 12) },
-	{ 304,   0x00000300 | (0x4) | (0x9 << 20) | (0x9 << 16) | (0x8 << 12) },
-	{ 320,   0x00000300 | (0x4) | (0x9 << 20) | (0x9 << 16) | (0x9 << 12) },
-	{ 336,   0x00000300 | (0x4) | (0xa << 20) | (0xa << 16) | (0x9 << 12) },
-	{ 352,   0x00000300 | (0x4) | (0xa << 20) | (0xa << 16) | (0xa << 12) },
-	{ 368,   0x00000300 | (0x4) | (0xb << 20) | (0xb << 16) | (0xa << 12) },
-	{ 384,   0x00000300 | (0x4) | (0xb << 20) | (0xb << 16) | (0xb << 12) },
-	{ 400,   0x00000300 | (0x4) | (0xc << 20) | (0xc << 16) | (0xb << 12) },
-	{ 416,   0x00000300 | (0x4) | (0xc << 20) | (0xc << 16) | (0xc << 12) },
-	{ 432,   0x00000300 | (0x4) | (0xd << 20) | (0xd << 16) | (0xc << 12) },
-	{ 448,   0x00000300 | (0x4) | (0xd << 20) | (0xd << 16) | (0xd << 12) },
-	{ 464,   0x00000300 | (0x4) | (0xe << 20) | (0xe << 16) | (0xd << 12) },
-	{ 480,   0x00000300 | (0x4) | (0xe << 20) | (0xe << 16) | (0xe << 12) },
-	{ 496,   0x00000300 | (0x4) | (0xf << 20) | (0xf << 16) | (0xe << 12) },
-	{ 512,   0x00000300 | (0x4) | (0xf << 20) | (0xf << 16) | (0xf << 12) },
-
-	{ 544,   0x00000300 | (0x5) | (0x8 << 20) | (0x8 << 16) | (0x7 << 12) },
-	{ 576,   0x00000300 | (0x5) | (0x8 << 20) | (0x8 << 16) | (0x8 << 12) },
-	{ 608,   0x00000300 | (0x5) | (0x9 << 20) | (0x9 << 16) | (0x8 << 12) },
-	{ 640,   0x00000300 | (0x5) | (0x9 << 20) | (0x9 << 16) | (0x9 << 12) },
-	{ 672,   0x00000300 | (0x5) | (0xa << 20) | (0xa << 16) | (0x9 << 12) },
-	{ 704,   0x00000300 | (0x5) | (0xa << 20) | (0xa << 16) | (0xa << 12) },
-	{ 736,   0x00000300 | (0x5) | (0xb << 20) | (0xb << 16) | (0xa << 12) },
-	{ 768,   0x00000300 | (0x5) | (0xb << 20) | (0xb << 16) | (0xb << 12) },
-	{ 800,   0x00000300 | (0x5) | (0xc << 20) | (0xc << 16) | (0xb << 12) },
-	{ 832,   0x00000300 | (0x5) | (0xc << 20) | (0xc << 16) | (0xc << 12) },
-	{ 864,   0x00000300 | (0x5) | (0xd << 20) | (0xd << 16) | (0xc << 12) },
-	{ 896,   0x00000300 | (0x5) | (0xd << 20) | (0xd << 16) | (0xd << 12) },
-	{ 928,   0x00000300 | (0x5) | (0xe << 20) | (0xe << 16) | (0xd << 12) },
-	{ 960,   0x00000300 | (0x5) | (0xe << 20) | (0xe << 16) | (0xe << 12) },
-	{ 992,   0x00000300 | (0x5) | (0xf << 20) | (0xf << 16) | (0xe << 12) },
-	{ 1024,  0x00000300 | (0x5) | (0xf << 20) | (0xf << 16) | (0xf << 12) },
-
-	{ 1088,  0x00000300 | (0x6) | (0x8 << 20) | (0x8 << 16) | (0x7 << 12) },
-	{ 1152,  0x00000300 | (0x6) | (0x8 << 20) | (0x8 << 16) | (0x8 << 12) },
-	{ 1216,  0x00000300 | (0x6) | (0x9 << 20) | (0x9 << 16) | (0x8 << 12) },
-	{ 1280,  0x00000300 | (0x6) | (0x9 << 20) | (0x9 << 16) | (0x9 << 12) },
-	{ 1344,  0x00000300 | (0x6) | (0xa << 20) | (0xa << 16) | (0x9 << 12) },
-	{ 1408,  0x00000300 | (0x6) | (0xa << 20) | (0xa << 16) | (0xa << 12) },
-	{ 1472,  0x00000300 | (0x6) | (0xb << 20) | (0xb << 16) | (0xa << 12) },
-	{ 1536,  0x00000300 | (0x6) | (0xb << 20) | (0xb << 16) | (0xb << 12) },
-	{ 1600,  0x00000300 | (0x6) | (0xc << 20) | (0xc << 16) | (0xb << 12) },
-	{ 1664,  0x00000300 | (0x6) | (0xc << 20) | (0xc << 16) | (0xc << 12) },
-	{ 1728,  0x00000300 | (0x6) | (0xd << 20) | (0xd << 16) | (0xc << 12) },
-	{ 1792,  0x00000300 | (0x6) | (0xd << 20) | (0xd << 16) | (0xd << 12) },
-	{ 1856,  0x00000300 | (0x6) | (0xe << 20) | (0xe << 16) | (0xd << 12) },
-	{ 1920,  0x00000300 | (0x6) | (0xe << 20) | (0xe << 16) | (0xe << 12) },
-	{ 1984,  0x00000300 | (0x6) | (0xf << 20) | (0xf << 16) | (0xe << 12) },
-	{ 2048,  0x00000300 | (0x6) | (0xf << 20) | (0xf << 16) | (0xf << 12) },
-
-	{ 2176,  0x00000300 | (0x7) | (0x8 << 20) | (0x8 << 16) | (0x7 << 12) },
-	{ 2304,  0x00000300 | (0x7) | (0x8 << 20) | (0x8 << 16) | (0x8 << 12) },
-	{ 2432,  0x00000300 | (0x7) | (0x9 << 20) | (0x9 << 16) | (0x8 << 12) },
-	{ 2560,  0x00000300 | (0x7) | (0x9 << 20) | (0x9 << 16) | (0x9 << 12) },
-	{ 2688,  0x00000300 | (0x7) | (0xa << 20) | (0xa << 16) | (0x9 << 12) },
-	{ 2816,  0x00000300 | (0x7) | (0xa << 20) | (0xa << 16) | (0xa << 12) },
-	{ 2944,  0x00000300 | (0x7) | (0xb << 20) | (0xb << 16) | (0xa << 12) },
-	{ 3072,  0x00000300 | (0x7) | (0xb << 20) | (0xb << 16) | (0xb << 12) },
-};
-
 static uint32_t i2c_aspeed_select_clock(const struct device *dev)
 {
 	const struct i2c_aspeed_config *config = DEV_CFG(dev);
 	struct i2c_aspeed_data *data = DEV_DATA(dev);
 	uint32_t ac_timing;
-	int i;
 	int div = 0;
 	int divider_ratio = 0;
 	uint32_t clk_div_reg;
@@ -497,125 +355,112 @@ static uint32_t i2c_aspeed_select_clock(const struct device *dev)
 	unsigned long base_clk4;
 	uint32_t scl_low, scl_high;
 
-	if (config->clk_div_mode) {
-		clk_div_reg = sys_read32(config->global_reg + ASPEED_I2CG_CLK_DIV);
+	clk_div_reg = sys_read32(config->global_reg + ASPEED_I2CG_CLK_DIV);
 
-		base_clk = config->clk_src;
-		base_clk1 = (config->clk_src * 10) /
-		((((clk_div_reg & 0xff) + 2) * 10) / 2);
-		LOG_DBG("base_clk1 is %lx", base_clk1);
-		base_clk2 = (config->clk_src * 10) /
-		(((((clk_div_reg >> 8) & 0xff) + 2) * 10) / 2);
-		LOG_DBG("base_clk2 is %lx", base_clk2);
-		base_clk3 = (config->clk_src * 10) /
-		(((((clk_div_reg >> 16) & 0xff) + 2) * 10) / 2);
-		LOG_DBG("base_clk3 is %lx", base_clk3);
-		base_clk4 = (config->clk_src * 10) /
-		(((((clk_div_reg >> 24) & 0xff) + 2) * 10) / 2);
-		LOG_DBG("base_clk4 is %lx", base_clk4);
+	base_clk = config->clk_src;
+	base_clk1 = (config->clk_src * 10) /
+	((((clk_div_reg & 0xff) + 2) * 10) / 2);
+	LOG_DBG("base_clk1 is %lx", base_clk1);
+	base_clk2 = (config->clk_src * 10) /
+	(((((clk_div_reg >> 8) & 0xff) + 2) * 10) / 2);
+	LOG_DBG("base_clk2 is %lx", base_clk2);
+	base_clk3 = (config->clk_src * 10) /
+	(((((clk_div_reg >> 16) & 0xff) + 2) * 10) / 2);
+	LOG_DBG("base_clk3 is %lx", base_clk3);
+	base_clk4 = (config->clk_src * 10) /
+	(((((clk_div_reg >> 24) & 0xff) + 2) * 10) / 2);
+	LOG_DBG("base_clk4 is %lx", base_clk4);
 
-		/* Rounding by ourself */
-		if ((config->clk_src / data->bus_frequency) <= 32) {
-			div = 0;
-			divider_ratio = (base_clk / (unsigned long)(data->bus_frequency));
-			if ((base_clk / divider_ratio) > (unsigned long)data->bus_frequency)
-				divider_ratio++;
-		} else if ((base_clk1 / data->bus_frequency) <= 32) {
-			div = 1;
-			divider_ratio = (base_clk1 / (unsigned long)(data->bus_frequency));
-			if ((base_clk1 / divider_ratio) > (unsigned long)data->bus_frequency)
-				divider_ratio++;
-		} else if ((base_clk2 / data->bus_frequency) <= 32) {
-			div = 2;
-			divider_ratio = (base_clk2 / (unsigned long)(data->bus_frequency));
-			if ((base_clk2 / divider_ratio) > (unsigned long)data->bus_frequency)
-				divider_ratio++;
-		} else if ((base_clk3 / data->bus_frequency) <= 32) {
-			div = 3;
-			divider_ratio = (base_clk3 / (unsigned long)(data->bus_frequency));
-			if ((base_clk3 / divider_ratio) > (unsigned long)data->bus_frequency)
-				divider_ratio++;
-		} else {
-			div = 4;
-			divider_ratio = (base_clk4 / (unsigned long)(data->bus_frequency));
-			inc = 0;
-			while ((divider_ratio + inc) > 32) {
-				inc |= divider_ratio & 0x1;
-				divider_ratio >>= 1;
-				div++;
-			}
-			divider_ratio += inc;
-			if ((base_clk4 / divider_ratio) > (unsigned long)data->bus_frequency)
-				divider_ratio++;
-		}
-
-		LOG_DBG("div %d", div);
-		LOG_DBG("divider_ratio %x", divider_ratio);
-
-		divider_ratio = MIN(divider_ratio, 32);
-		LOG_DBG("divider_ratio min %x", divider_ratio);
-		div &= 0xf;
-
-		/* Set menual scl low length */
-		if (config->manual_scl_low && config->manual_scl_high) {
-			scl_low = config->manual_scl_low;
-			scl_high = config->manual_scl_high;
-			LOG_DBG("maual scl_low min %x", scl_low);
-			LOG_DBG("maual scl_high min %x", scl_high);
-		} else if (config->manual_scl_low || config->manual_scl_high) {
-			if (config->manual_scl_low) {
-				scl_low = config->manual_scl_low;
-				LOG_DBG("maual scl_low min %x", scl_low);
-				scl_high = (divider_ratio - scl_low - 2) & 0xf;
-			} else {
-				scl_high = config->manual_scl_high;
-				LOG_DBG("maual scl_high min %x", scl_high);
-				scl_low = (divider_ratio - scl_high - 2) & 0xf;
-			}
-		} else {
-			scl_low = ((divider_ratio * 9) / 16) - 1;
-			LOG_DBG("default scl_low min%x", scl_low);
-			scl_high = (divider_ratio - scl_low - 2) & 0xf;
-			LOG_DBG("default scl_high min%x", scl_low);
-		}
-
-		scl_low = MIN(scl_low, 0xf);
-		scl_high = MIN(scl_high, 0xf);
-		LOG_DBG("scl_low min %x", scl_low);
-		LOG_DBG("scl_high min %x", scl_high);
-
-		/*Divisor : Base Clock : tCKHighMin : tCK High : tCK Low*/
-		ac_timing = ((scl_high - 1) << 20) | (scl_high << 16) | (scl_low << 12) | (div);
-
-		/* Set time out timer */
-		if (config->smbus_timeout) {
-			ac_timing |= AST_I2CC_toutBaseCLK(I2C_TIMEOUT_CLK);
-			ac_timing |= AST_I2CC_tTIMEOUT(I2C_TIMEOUT_COUNT);
-			LOG_DBG("smbus_timeout enable");
-		}
-
-		/* Manual set the sda hold time */
-		if (config->manual_sda_hold) {
-			LOG_DBG("manual_sda_hold %x", config->manual_sda_hold);
-			if (config->manual_sda_hold < 4)
-				ac_timing |= AST_I2CC_tHDDAT(config->manual_sda_hold);
-			else
-				LOG_DBG("invalid sda hold setting %x", config->manual_sda_hold);
-		}
-
-		LOG_DBG("ac_timing %x", ac_timing);
+	/* Rounding by ourself */
+	if ((config->clk_src / data->bus_frequency) <= 32) {
+		div = 0;
+		divider_ratio = (base_clk / (unsigned long)(data->bus_frequency));
+		if ((base_clk / divider_ratio) > (unsigned long)data->bus_frequency)
+			divider_ratio++;
+	} else if ((base_clk1 / data->bus_frequency) <= 32) {
+		div = 1;
+		divider_ratio = (base_clk1 / (unsigned long)(data->bus_frequency));
+		if ((base_clk1 / divider_ratio) > (unsigned long)data->bus_frequency)
+			divider_ratio++;
+	} else if ((base_clk2 / data->bus_frequency) <= 32) {
+		div = 2;
+		divider_ratio = (base_clk2 / (unsigned long)(data->bus_frequency));
+		if ((base_clk2 / divider_ratio) > (unsigned long)data->bus_frequency)
+			divider_ratio++;
+	} else if ((base_clk3 / data->bus_frequency) <= 32) {
+		div = 3;
+		divider_ratio = (base_clk3 / (unsigned long)(data->bus_frequency));
+		if ((base_clk3 / divider_ratio) > (unsigned long)data->bus_frequency)
+			divider_ratio++;
 	} else {
-		for (i = 0; i < ARRAY_SIZE(aspeed_old_i2c_timing_table); i++) {
-			if ((config->clk_src / aspeed_old_i2c_timing_table[i].divisor) <
-			    data->bus_frequency) {
-				break;
-			}
+		div = 4;
+		divider_ratio = (base_clk4 / (unsigned long)(data->bus_frequency));
+		inc = 0;
+		while ((divider_ratio + inc) > 32) {
+			inc |= divider_ratio & 0x1;
+			divider_ratio >>= 1;
+			div++;
 		}
-		i--;
-		ac_timing = aspeed_old_i2c_timing_table[i].timing;
-	/*LOG_DBG("divisor [%d], timing [%x]\n",*/
-	/*aspeed_old_i2c_timing_table[i].divisor, aspeed_old_i2c_timing_table[i].timing);*/
+		divider_ratio += inc;
+		if ((base_clk4 / divider_ratio) > (unsigned long)data->bus_frequency)
+			divider_ratio++;
 	}
+
+	LOG_DBG("div %d", div);
+	LOG_DBG("divider_ratio %x", divider_ratio);
+
+	divider_ratio = MIN(divider_ratio, 32);
+	LOG_DBG("divider_ratio min %x", divider_ratio);
+	div &= 0xf;
+
+	/* Set menual scl low length */
+	if (config->manual_scl_low && config->manual_scl_high) {
+		scl_low = config->manual_scl_low;
+		scl_high = config->manual_scl_high;
+		LOG_DBG("maual scl_low min %x", scl_low);
+		LOG_DBG("maual scl_high min %x", scl_high);
+	} else if (config->manual_scl_low || config->manual_scl_high) {
+		if (config->manual_scl_low) {
+			scl_low = config->manual_scl_low;
+			LOG_DBG("maual scl_low min %x", scl_low);
+			scl_high = (divider_ratio - scl_low - 2) & 0xf;
+		} else {
+			scl_high = config->manual_scl_high;
+			LOG_DBG("maual scl_high min %x", scl_high);
+			scl_low = (divider_ratio - scl_high - 2) & 0xf;
+		}
+	} else {
+		scl_low = ((divider_ratio * 9) / 16) - 1;
+		LOG_DBG("default scl_low min%x", scl_low);
+		scl_high = (divider_ratio - scl_low - 2) & 0xf;
+		LOG_DBG("default scl_high min%x", scl_low);
+	}
+
+	scl_low = MIN(scl_low, 0xf);
+	scl_high = MIN(scl_high, 0xf);
+	LOG_DBG("scl_low min %x", scl_low);
+	LOG_DBG("scl_high min %x", scl_high);
+
+	/*Divisor : Base Clock : tCKHighMin : tCK High : tCK Low*/
+	ac_timing = ((scl_high - 1) << 20) | (scl_high << 16) | (scl_low << 12) | (div);
+
+	/* Set time out timer */
+	if (config->smbus_timeout) {
+		ac_timing |= AST_I2CC_toutBaseCLK(I2C_TIMEOUT_CLK);
+		ac_timing |= AST_I2CC_tTIMEOUT(I2C_TIMEOUT_COUNT);
+		LOG_DBG("smbus_timeout enable");
+	}
+
+	/* Manual set the sda hold time */
+	if (config->manual_sda_hold) {
+		LOG_DBG("manual_sda_hold %x", config->manual_sda_hold);
+		if (config->manual_sda_hold < 4)
+			ac_timing |= AST_I2CC_tHDDAT(config->manual_sda_hold);
+		else
+			LOG_DBG("invalid sda hold setting %x", config->manual_sda_hold);
+	}
+
+	LOG_DBG("ac_timing %x", ac_timing);
 
 	return ac_timing;
 }
@@ -1896,9 +1741,9 @@ static int i2c_aspeed_init(const struct device *dev)
 
 	config->global_reg = i2c_base & 0xfffff000;
 
-	/*get global control register*/
-	if (sys_read32(config->global_reg + ASPEED_I2CG_CONTROL) & ASPEED_I2CG_NEW_CLK_BIT) {
-		config->clk_div_mode = 1;
+	/* Just support i2c new (package) mode under Zeohyr */
+	if (!(sys_read32(config->global_reg + ASPEED_I2CG_CONTROL) & ASPEED_I2C_NEW_MODE)) {
+		return -ENOTSUP;
 	}
 
 	/* buffer mode base and size */
@@ -1911,8 +1756,8 @@ static int i2c_aspeed_init(const struct device *dev)
 	/* check chip id*/
 	len = hwinfo_get_device_id((uint8_t *)&rev_id, sizeof(rev_id));
 	clock_control_get_rate(config->clock_dev, config->clk_id, &config->clk_src);
-	LOG_INF("clk src %d, div mode %d, multi-master %d, xfer mode %d\n",
-		config->clk_src, config->clk_div_mode, config->multi_master, config->mode);
+	LOG_INF("clk src %d, multi-master %d, xfer mode %d\n",
+		config->clk_src, config->multi_master, config->mode);
 
 	bitrate_cfg = i2c_map_dt_bitrate(config->bitrate);
 	error = pinctrl_apply_state(config->pcfg, PINCTRL_STATE_DEFAULT);
