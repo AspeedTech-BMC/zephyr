@@ -40,3 +40,10 @@
 &ecdsa {
 	status = "okay";
 };
+
+zephyr_udc0: &udc {
+	status = "okay";
+	cdc_acm_uart0: cdc_acm_uart0 {
+		compatible = "zephyr,cdc-acm-uart";
+	};
+};

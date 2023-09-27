@@ -1,0 +1,16 @@
+# Copyright (c) 2021 Aspeed Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+    Aspeed USB Device Controller (UDC)
+
+compatible: "aspeed,udc"
+
+include: [base.yaml, reset-device.yaml, usb-ep.yaml]
+
+properties:
+    reg:
+      required: true
+
+    interrupts:
+      required: true
