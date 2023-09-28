@@ -1,13 +1,13 @@
 &i2c0 {
 	status = "okay";
 
-	eeprom0: eeprom0@40 {
+	eeprom0: eeprom@40 {
 		compatible = "zephyr,i2c-target-eeprom";
 		reg = <0x40>;
 		size = <256>;
 	};
 
-	ipmb0: ipmb0@50 {
+	ipmb0: ipmb@50 {
 		compatible = "aspeed,ipmb";
 		reg = <0x50>;
 		size = <5>;
@@ -17,13 +17,13 @@
 &i2c1 {
 	status = "okay";
 
-	eeprom1: eeprom1@41 {
+	eeprom1: eeprom@41 {
 		compatible = "zephyr,i2c-target-eeprom";
 		reg = <0x41>;
 		size = <256>;
 	};
 
-	ipmb1: ipmb1@51 {
+	ipmb1: ipmb@51 {
 		compatible = "aspeed,ipmb";
 		reg = <0x51>;
 		size = <5>;
@@ -33,13 +33,13 @@
 &i2c2 {
 	status = "okay";
 
-	eeprom2: eeprom2@42 {
+	eeprom2: eeprom@42 {
 		compatible = "zephyr,i2c-target-eeprom";
 		reg = <0x42>;
 		size = <256>;
 	};
 
-	ipmb2: ipmb2@52 {
+	ipmb2: ipmb@52 {
 		compatible = "aspeed,ipmb";
 		reg = <0x52>;
 		size = <5>;
@@ -49,13 +49,13 @@
 &i2c3 {
 	status = "okay";
 
-	eeprom3: eeprom3@43 {
+	eeprom3: eeprom@43 {
 		compatible = "zephyr,i2c-target-eeprom";
 		reg = <0x43>;
 		size = <256>;
 	};
 
-	ipmb3: ipmb3@53 {
+	ipmb3: ipmb@53 {
 		compatible = "aspeed,ipmb";
 		reg = <0x53>;
 		size = <5>;
@@ -65,13 +65,13 @@
 &i2c4 {
 	status = "okay";
 
-	eeprom4: eeprom2@44 {
+	eeprom4: eeprom@44 {
 		compatible = "zephyr,i2c-target-eeprom";
 		reg = <0x44>;
 		size = <256>;
 	};
 
-	ipmb4: ipmb2@54 {
+	ipmb4: ipmb@54 {
 		compatible = "aspeed,ipmb";
 		reg = <0x54>;
 		size = <5>;
@@ -81,13 +81,13 @@
 &i2c5 {
 	status = "okay";
 
-	eeprom5: eeprom2@45 {
+	eeprom5: eeprom@45 {
 		compatible = "zephyr,i2c-target-eeprom";
 		reg = <0x45>;
 		size = <256>;
 	};
 
-	ipmb5: ipmb5@55 {
+	ipmb5: ipmb@55 {
 		compatible = "aspeed,ipmb";
 		reg = <0x55>;
 		size = <5>;
