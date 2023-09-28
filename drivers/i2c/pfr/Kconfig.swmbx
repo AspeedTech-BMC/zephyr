@@ -1,0 +1,10 @@
+# Software Mailbox configuration options
+
+# Copyright (c) 2022 Aspeed Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+config PFR_SW_MAILBOX
+	bool "PFR Software Mail Box driver"
+	default n
+	help
+	  Enable PFR SW Mail Box driver
