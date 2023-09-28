@@ -56,6 +56,8 @@ config WDT_COUNTER_CH_COUNT
 
 endif # WDT_COUNTER
 
+source "drivers/watchdog/Kconfig.aspeed"
+
 source "drivers/watchdog/Kconfig.stm32"
 
 source "drivers/watchdog/Kconfig.cmsdk_apb"

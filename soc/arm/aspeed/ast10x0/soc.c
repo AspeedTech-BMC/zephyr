@@ -194,3 +194,21 @@ void aspeed_soc_show_chip_id(void)
 
 	printk("SOC: %s\n", soc_map_table[i].name);
 }
+
+#if defined(CONFIG_WDT_ASPEED)
+void aspeed_wdt_reboot_device(const struct device *dev, int type);
+
+void sys_arch_reboot(int type)
+{
+	const struct device *dev;
+	const char *name = "wdt1";
+
+	dev = device_get_binding(name);
+	if (!dev) {
+		printk("No device named %s.\n", name);
+		return;
+	}
+
+	aspeed_wdt_reboot_device(dev, type);
+}
+#endif
