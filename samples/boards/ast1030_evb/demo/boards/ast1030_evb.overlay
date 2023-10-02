@@ -26,7 +26,6 @@
 		reg = <0x60>;
 		size = <256>;
 		port = <0>;
-		status = "okay";
 	};
 };
 
@@ -50,7 +49,6 @@
 		reg = <0x61>;
 		size = <256>;
 		port = <0>;
-		status = "okay";
 	};
 };
 
