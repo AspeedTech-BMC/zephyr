@@ -19,7 +19,10 @@ config I2C_TARGET_INIT_PRIORITY
 	help
 	  I2C Target device driver initialization priority.
 
-source "drivers/i2c/target/Kconfig.eeprom"
-source "drivers/i2c/target/Kconfig.ipmb"
+	source "drivers/i2c/target/Kconfig.eeprom"
+	source "drivers/i2c/target/Kconfig.ipmb"
+if PFR_SW_MAILBOX
+	source "drivers/i2c/target/Kconfig.swmbx"
+endif # PFR_SW_MAILBOX
 
 endif # I2C_TARGET

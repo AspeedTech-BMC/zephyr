@@ -1,0 +1,12 @@
+# I2C SW Mailbox Slave configuration options
+
+# Copyright (c) 2022 Aspeed Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+config I2C_SWMBX_SLAVE
+	bool "I2C Slave SW Mailbox driver"
+	default y
+	depends on I2C_TARGET
+	depends on PFR_SW_MAILBOX
+	help
+	  Enable virtual I2C Slave SW Mailbox driver
