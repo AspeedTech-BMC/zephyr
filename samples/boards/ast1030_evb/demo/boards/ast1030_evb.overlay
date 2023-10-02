@@ -2,6 +2,10 @@
 	status = "okay";
 };
 
+&mbxctrl {
+	status = "okay";
+};
+
 &i2c0 {
 	status = "okay";
 
@@ -15,6 +19,14 @@
 		compatible = "aspeed,ipmb";
 		reg = <0x50>;
 		size = <5>;
+	};
+
+	swmbx0: swmbx@60 {
+		compatible = "aspeed,swmbx-dev";
+		reg = <0x60>;
+		size = <256>;
+		port = <0>;
+		status = "okay";
 	};
 };
 
@@ -31,6 +43,14 @@
 		compatible = "aspeed,ipmb";
 		reg = <0x51>;
 		size = <5>;
+	};
+
+	swmbx1: swmbx@61 {
+		compatible = "aspeed,swmbx-dev";
+		reg = <0x61>;
+		size = <256>;
+		port = <0>;
+		status = "okay";
 	};
 };
 
