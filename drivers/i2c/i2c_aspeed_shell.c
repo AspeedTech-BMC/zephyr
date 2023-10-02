@@ -16,6 +16,7 @@
 #include <zephyr/drivers/i2c/target/eeprom.h>
 #include <zephyr/drivers/i2c/target/ipmb.h>
 #include <zephyr/drivers/i2c/pfr/i2c_filter.h>
+#include <zephyr/drivers/i2c/pfr/swmbx.h>
 
 #include <string.h>
 #include <zephyr/sys/util.h>

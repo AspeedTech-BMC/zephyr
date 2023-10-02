@@ -6,16 +6,16 @@
 
 #define DT_DRV_COMPAT aspeed_swmbx_ctrl
 
-#include <sys/util.h>
-#include <sys/slist.h>
-#include <kernel.h>
+#include <zephyr/sys/util.h>
+#include <zephyr/sys/slist.h>
+#include <zephyr/kernel.h>
 #include <errno.h>
-#include <device.h>
+#include <zephyr/device.h>
 #include <string.h>
-#include <drivers/i2c/pfr/swmbx.h>
+#include <zephyr/drivers/i2c/pfr/swmbx.h>
 
 #define LOG_LEVEL CONFIG_I2C_LOG_LEVEL
-#include <logging/log.h>
+#include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(swmbx_ctrl);
 
 struct swmbx_fifo {
