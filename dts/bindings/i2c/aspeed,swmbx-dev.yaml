@@ -1,0 +1,21 @@
+#
+# Copyright (c) ASPEED
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+description: ASPEED SW MailBox Device
+
+compatible: "aspeed,swmbx-dev"
+
+include:
+  - name: i2c-device.yaml
+
+properties:
+    size:
+      type: int
+      required: true
+    port:
+      type: int
+      required: true
+
