@@ -596,7 +596,6 @@ static int swmbx_ctrl_init(const struct device *dev)
 									\
 	static const struct swmbx_ctrl_config			\
 		swmbx_ctrl_##inst##_cfg = {			\
-		.controller_dev_name = DT_INST_PROP(inst, label),		\
 		.buffer_size = DT_INST_PROP(inst, size),		\
 	};								\
 									\
