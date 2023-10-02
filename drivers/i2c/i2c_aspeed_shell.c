@@ -1420,7 +1420,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_iic_cmds,
 					  "pfr demo default",
 					   cmd_i2c_pfr_demo, 0, 0),
 #endif
-#ifdef CONFIG_I2C_SWMBX_SLAVE
+#ifdef CONFIG_I2C_SWMBX_TARGET
 				SHELL_CMD_ARG(slave_swmbx, &dsub_device_name,
 					"Apply sw mbx slave",
 					cmd_i2c_sw_mbx, 0, 0),

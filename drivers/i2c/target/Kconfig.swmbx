@@ -3,7 +3,7 @@
 # Copyright (c) 2022 Aspeed Technology Inc.
 # SPDX-License-Identifier: Apache-2.0
 
-config I2C_SWMBX_SLAVE
+config I2C_SWMBX_TARGET
 	bool "I2C Slave SW Mailbox driver"
 	default y
 	depends on I2C_TARGET
