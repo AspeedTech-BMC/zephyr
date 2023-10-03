@@ -15,7 +15,7 @@ void wdt_demo_background_thread(void)
 	const struct device *wdt2_dev = NULL;
 	struct wdt_timeout_cfg wdt_config;
 
-	wdt2_dev = device_get_binding("wdt2");
+	wdt2_dev = device_get_binding("wdt@2");
 	if (!wdt2_dev) {
 		printk("demo_err: cannot find wdt2 device.\n");
 		return;

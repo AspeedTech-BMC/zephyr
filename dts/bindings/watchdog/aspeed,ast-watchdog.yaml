@@ -27,13 +27,6 @@ child-binding:
       required: true
       description: phandle to SCU device tree node.
 
-    label:
-      type: string
-      required: true
-      description: |
-        Human readable string describing the device
-        (used as device_get_binding() argument).
-
     reset-mask:
       type: array
       required: true

@@ -201,7 +201,7 @@ void aspeed_wdt_reboot_device(const struct device *dev, int type);
 void sys_arch_reboot(int type)
 {
 	const struct device *dev;
-	const char *name = "wdt1";
+	const char *name = "wdt@1";
 
 	dev = device_get_binding(name);
 	if (!dev) {
