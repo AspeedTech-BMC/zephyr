@@ -14,6 +14,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <zephyr/drivers/flash.h>
+#include <zephyr/drivers/spi_nor.h>
+#include <soc.h>
 
 /* Buffer is only needed for bytes that follow command and offset */
 #define BUF_ARRAY_CNT (CONFIG_SHELL_ARGC_MAX - 2)
@@ -28,7 +30,10 @@ BUILD_ASSERT(BUF_ARRAY_CNT >= 1);
 static const struct device *const zephyr_flash_controller =
 	DEVICE_DT_GET_OR_NULL(DT_CHOSEN(zephyr_flash_controller));
 
-static uint8_t __aligned(4) test_arr[CONFIG_FLASH_SHELL_BUFFER_SIZE];
+static uint8_t test_arr[CONFIG_FLASH_SHELL_BUFFER_SIZE] NON_CACHED_BSS_ALIGN16;
+static uint8_t read_back_arr[CONFIG_FLASH_SHELL_BUFFER_SIZE] NON_CACHED_BSS_ALIGN16;
+static uint8_t op_arr[CONFIG_FLASH_SHELL_BUFFER_SIZE] NON_CACHED_BSS_ALIGN16;
+
 
 static int parse_helper(const struct shell *sh, size_t *argc,
 		char **argv[], const struct device * *flash_dev,
@@ -693,6 +698,218 @@ static int cmd_page_info(const struct shell *sh, size_t argc, char *argv[])
 	return 0;
 }
 
+static int do_erase_write_verify(const struct device *flash_device,
+				 uint32_t op_addr, uint8_t *write_buf,
+				 uint8_t *read_back_buf, uint32_t erase_sz)
+{
+	uint32_t ret = 0;
+	uint32_t i;
+
+	ret = flash_erase(flash_device, op_addr, erase_sz);
+	if (ret != 0) {
+		printk("[%s][%d] erase failed at %d.\n",
+			__func__, __LINE__, op_addr);
+		goto end;
+	}
+
+	ret = flash_write(flash_device, op_addr, write_buf, erase_sz);
+	if (ret != 0) {
+		printk("[%s][%d] write failed at %d.\n",
+			__func__, __LINE__, op_addr);
+		goto end;
+	}
+
+	flash_read(flash_device, op_addr, read_back_buf, erase_sz);
+	if (ret != 0) {
+		printk("[%s][%d] write failed at %d.\n",
+			__func__, __LINE__, op_addr);
+		goto end;
+	}
+
+	if (memcmp(write_buf, read_back_buf, erase_sz) != 0) {
+		ret = -EINVAL;
+		printk("ERROR: %s %d fail to write flash at 0x%x\n",
+				__func__, __LINE__, op_addr);
+		printk("to be written:\n");
+		for (i = 0; i < 256; i++) {
+			printk("%x ", write_buf[i]);
+			if (i % 16 == 15)
+				printk("\n");
+		}
+
+		printk("readback:\n");
+		for (i = 0; i < 256; i++) {
+			printk("%x ", read_back_buf[i]);
+			if (i % 16 == 15)
+				printk("\n");
+		}
+
+		goto end;
+	}
+
+end:
+	return ret;
+}
+
+static int do_update(const struct device *flash_device,
+		     off_t offset, uint8_t *buf, size_t len)
+{
+	int ret = 0;
+	uint32_t flash_sz = flash_get_flash_size(flash_device);
+	uint32_t sector_sz = flash_get_write_block_size(flash_device);
+	uint32_t flash_offset = (uint32_t)offset;
+	uint32_t remain, op_addr = 0, end_sector_addr;
+	uint8_t *update_ptr = buf, *op_buf = NULL, *read_back_buf = NULL;
+	bool update_it = false;
+
+	printk("Writing %d bytes to %s (offset: 0x%08lx)...\n",
+	       len, flash_device->name, offset);
+
+	if (flash_sz < flash_offset + len) {
+		printk("ERROR: update boundary exceeds flash size. (%d, %d, %d)\n",
+			flash_sz, flash_offset, len);
+		ret = -EINVAL;
+		goto end;
+	}
+
+	op_buf = (uint8_t *)op_arr;
+	read_back_buf = (uint8_t *)read_back_arr;
+
+	/* initial op_addr */
+	op_addr = (flash_offset / sector_sz) * sector_sz;
+
+	/* handle the start part which is not multiple of sector size */
+	if (flash_offset % sector_sz != 0) {
+		ret = flash_read(flash_device, op_addr, op_buf, sector_sz);
+		if (ret != 0)
+			goto end;
+
+		remain = MIN(sector_sz - (flash_offset % sector_sz), len);
+		memcpy((uint8_t *)op_buf + (flash_offset % sector_sz), update_ptr, remain);
+		ret = do_erase_write_verify(flash_device, op_addr, op_buf,
+					    read_back_buf, sector_sz);
+		if (ret != 0)
+			goto end;
+
+		op_addr += sector_sz;
+		update_ptr += remain;
+	}
+
+	end_sector_addr = (flash_offset + len) / sector_sz * sector_sz;
+	/* handle body */
+	for (; op_addr < end_sector_addr;) {
+		ret = flash_read(flash_device, op_addr, op_buf, sector_sz);
+		if (ret != 0)
+			goto end;
+
+		if (memcmp(op_buf, update_ptr, sector_sz) != 0)
+			update_it = true;
+
+		if (update_it) {
+			ret = do_erase_write_verify(flash_device, op_addr, update_ptr,
+						    read_back_buf, sector_sz);
+			if (ret != 0)
+				goto end;
+		}
+
+		op_addr += sector_sz;
+		update_ptr += sector_sz;
+	}
+
+	/* handle remain part */
+	if (end_sector_addr < flash_offset + len) {
+
+		ret = flash_read(flash_device, op_addr, op_buf, sector_sz);
+		if (ret != 0)
+			goto end;
+
+		remain = flash_offset + len - end_sector_addr;
+		memcpy((uint8_t *)op_buf, update_ptr, remain);
+
+		ret = do_erase_write_verify(flash_device, op_addr, op_buf,
+								read_back_buf, sector_sz);
+		if (ret != 0)
+			goto end;
+
+		op_addr += remain;
+	}
+
+end:
+	printk("Update %s.\n", ret ? "FAILED" : "done");
+
+	return ret;
+}
+
+#define UPDATE_TEST_PATTERN_SIZE (CONFIG_FLASH_SHELL_BUFFER_SIZE - 4)
+
+static int cmd_update_test(const struct shell *shell, size_t argc, char *argv[])
+{
+	int ret = 0;
+	const struct device *flash_dev;
+	uint32_t addr;
+	int cnt;
+	static bool test_repeat = true;
+	uint32_t i;
+
+	ret = parse_helper(shell, &argc, &argv, &flash_dev, &addr);
+	if (ret) {
+		return ret;
+	}
+
+	if (argc > 2) {
+		cnt = strtoul(argv[2], NULL, 16);
+	} else {
+		cnt = 1;
+	}
+
+	while (cnt > 0) {
+		if (test_repeat) {
+			for (i = 0; i < UPDATE_TEST_PATTERN_SIZE; i++) {
+				test_arr[i] = 'a' + (i % 26);
+			}
+		} else {
+			for (i = 0; i < UPDATE_TEST_PATTERN_SIZE; i++) {
+				test_arr[i] = 'z' - (i % 26);
+			}
+		}
+
+		ret = do_update(flash_dev, addr, test_arr, UPDATE_TEST_PATTERN_SIZE);
+		if (ret != 0) {
+			printk("RW test fail\n");
+			break;
+		}
+
+		printk("RW test pass\n");
+
+		test_repeat ^= true;
+		cnt--;
+	}
+
+	return ret;
+}
+
+static int cmd_address_mode_config(const struct shell *shell, size_t argc, char *argv[])
+{
+	int ret = 0;
+	const struct device *flash_dev;
+	uint32_t addr_mode;
+
+	ret = parse_helper(shell, &argc, &argv, &flash_dev, &addr_mode);
+	if (ret)
+		return ret;
+
+	if (addr_mode == 4) {
+		ret = spi_nor_config_4byte_mode(flash_dev, true);
+	} else if (addr_mode == 3) {
+		ret = spi_nor_config_4byte_mode(flash_dev, false);
+	} else {
+		shell_error(shell, "Wrong addrss mode: %d", addr_mode);
+		ret = -EINVAL;
+	}
+
+	return ret;
+}
+
 static void device_name_get(size_t idx, struct shell_static_entry *entry);
 
 SHELL_DYNAMIC_CMD_CREATE(dsub_device_name, device_name_get);
@@ -741,6 +958,12 @@ SHELL_STATIC_SUBCMD_SET_CREATE(flash_cmds,
 		"[<device>] <address> <size> <repeat count>",
 		cmd_erase_write_test, 4, 1),
 #endif
+	SHELL_CMD_ARG(update_test, &dsub_device_name,
+		"[<device>] <address> [<count>]",
+		cmd_update_test, 2, 2),
+	SHELL_CMD_ARG(addr_mode, NULL,
+		"[<device>] <address byte mode>",
+		cmd_address_mode_config, 3, 0),
 
 	SHELL_SUBCMD_SET_END
 );

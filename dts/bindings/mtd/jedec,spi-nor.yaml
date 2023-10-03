@@ -21,3 +21,35 @@ properties:
   reset-gpios:
     type: phandle-array
     description: RESETn pin
+
+  spi-max-buswidth:
+    type: int
+    required: false
+    description: |
+      Assign the mximum bus width used to transmit or receive data
+
+  spi-nor-caps-mask:
+    type: int
+    required: false
+    description: |
+      SPI NOR flash mode/protocol capability configuration.
+
+      bit 0 : disable 1-1-1
+      bit 1 : disable 1-1-1 (fast read)
+      bit 8 : disable 1-1-2
+      bit 9 : disable 1-2-2
+      bit 10: disable 2-2-2
+      bit 16: disable 1-1-4
+      bit 17: disable 1-4-4
+      bit 18: disable 4-4-4
+
+  write-block-size:
+    type: int
+    required: false
+
+  re-init-support:
+    type: boolean
+    required: false
+    description: |
+      User can re-probe SPI flash at any time after
+      booting up to system.

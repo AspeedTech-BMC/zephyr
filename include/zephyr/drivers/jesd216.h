@@ -27,6 +27,8 @@
 #define JESD216_CMD_BURST_SFDP  0x5B
 #define JESD216_OCMD_READ_SFDP  0x5AA5
 
+#define JESD216_MAX_DWORD  20
+
 /* Layout of a JESD216 parameter header. */
 struct jesd216_param_header {
 	uint8_t id_lsb;		/* ID LSB */
@@ -227,22 +229,27 @@ static inline uint64_t jesd216_bfp_density(const struct jesd216_bfp *hp)
  * about instruction support.
  */
 enum jesd216_mode_type {
-	JESD216_MODE_044,	/* implied instruction, execute in place */
-	JESD216_MODE_088,
-	JESD216_MODE_111,
-	JESD216_MODE_112,
-	JESD216_MODE_114,
-	JESD216_MODE_118,
-	JESD216_MODE_122,
-	JESD216_MODE_144,
-	JESD216_MODE_188,
-	JESD216_MODE_222,
-	JESD216_MODE_444,
-	JESD216_MODE_44D4D,
-	JESD216_MODE_888,
-	JESD216_MODE_8D8D8D,
+	JESD216_MODE_044 = 0x00000044,	/* implied instruction, execute in place */
+	JESD216_MODE_088 = 0x00000088,
+	JESD216_MODE_111 = 0x00000111,
+	JESD216_MODE_111_FAST = 0x10000111,
+	JESD216_MODE_112 = 0x00000112,
+	JESD216_MODE_114 = 0x00000114,
+	JESD216_MODE_118 = 0x00000118,
+	JESD216_MODE_122 = 0x00000122,
+	JESD216_MODE_144 = 0x00000144,
+	JESD216_MODE_188 = 0x00000188,
+	JESD216_MODE_222 = 0x00000222,
+	JESD216_MODE_444 = 0x00000444,
+	JESD216_MODE_888 = 0x00000888,
+	JESD216_MODE_44D4D = 0x20000444,
+	JESD216_MODE_8D8D8D = 0x20000888,
 	JESD216_MODE_LIMIT,
 };
+
+#define JESD216_GET_CMD_BUSWIDTH(v) (((v) & 0x00000F00) >> 8)
+#define JESD216_GET_ADDR_BUSWIDTH(v) (((v) & 0x000000F0) >> 4)
+#define JESD216_GET_DATA_BUSWIDTH(v) ((v) & 0x0000000F)
 
 /* Command to use for fast read operations in a specified protocol
  * mode.
@@ -252,6 +259,21 @@ struct jesd216_instr {
 	uint8_t mode_clocks;
 	uint8_t wait_states;
 };
+
+struct jesd216_4bai {
+	uint32_t mode;
+	uint32_t support_bit;
+	uint8_t opcode;
+};
+
+static inline uint32_t jesd216_read_dwd(const struct jesd216_bfp *bfp,
+	uint32_t dwd)
+{
+	if (dwd > JESD216_MAX_DWORD || dwd == 0)
+		return 0;
+
+	return *(uint32_t *)(&bfp->dw1 + (dwd - 1));
+}
 
 /* Determine whether a particular operational mode is supported for
  * read, and possibly what command may be used.
@@ -284,6 +306,17 @@ int jesd216_bfp_read_support(const struct jesd216_param_header *php,
 			     enum jesd216_mode_type mode,
 			     struct jesd216_instr *res);
 
+int jesd216_4bai_read_support(uint32_t *jedec_4bai_dwd,
+			      enum jesd216_mode_type mode,
+			      uint8_t *cmd);
+
+int jesd216_4bai_pp_support(uint32_t *jedec_4bai_dwd,
+			    enum jesd216_mode_type mode,
+			    uint8_t *cmd);
+
+int jesd216_4bai_se_support(uint32_t *jedec_4bai_dwd,
+			    uint8_t se_type, uint8_t *cmd);
+
 /* Description of a supported erase operation. */
 struct jesd216_erase_type {
 	/* The command opcode used for an erase operation. */
@@ -299,6 +332,21 @@ struct jesd216_erase_type {
  * Parameter table.
  */
 #define JESD216_NUM_ERASE_TYPES 4
+
+/* The number of read types defined in a 4-Byte Address Instructions
+ * Parameter table.
+ */
+#define JESD216_4BAI_NUM_READ_TYPES 6
+
+/* The number of write types defined in a 4-Byte Address Instructions
+ * Parameter table.
+ */
+#define JESD216_4BAI_NUM_WRITE_TYPES 3
+
+/* The number of read types defined in a JESD216 Basic Flash
+ * Parameter table.
+ */
+#define JESD216_NUM_READ_TYPES 6
 
 /* Extract a supported erase size and command from BFP DW8 or DW9.
  *
