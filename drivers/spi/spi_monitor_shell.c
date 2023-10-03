@@ -4,14 +4,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <zephyr.h>
-#include <shell/shell.h>
-#include <sys/util.h>
+#include <zephyr/kernel.h>
+#include <zephyr/shell/shell.h>
+#include <zephyr/sys/util.h>
 #include <stdlib.h>
 #include <string.h>
-#include <drivers/misc/aspeed/pfr_aspeed.h>
+#include <zephyr/drivers/misc/aspeed/pfr_aspeed.h>
 #include <soc.h>
-#include <kernel.h>
+#include <zephyr/kernel.h>
 
 static const struct device *spim_device;
 

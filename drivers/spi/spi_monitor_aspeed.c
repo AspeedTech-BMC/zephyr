@@ -7,20 +7,21 @@
 #define DT_DRV_COMPAT aspeed_spi_monitor_controller
 
 #include <zephyr/types.h>
+#include <sys/types.h>
 #include <stddef.h>
-#include <device.h>
-#include <drivers/clock_control.h>
+#include <zephyr/device.h>
+#include <zephyr/drivers/clock_control.h>
 #include <errno.h>
-#include <logging/log.h>
+#include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(spim_aspeed, CONFIG_SPI_LOG_LEVEL);
+#include <zephyr/drivers/spi_nor.h>
 #include "spi_context.h"
-#include <sys/sys_io.h>
-#include <sys/__assert.h>
-#include <sys/util.h>
-#include <drivers/misc/aspeed/pfr_aspeed.h>
+#include <zephyr/sys/sys_io.h>
+#include <zephyr/sys/__assert.h>
+#include <zephyr/sys/util.h>
+#include <zephyr/drivers/misc/aspeed/pfr_aspeed.h>
 #include <soc.h>
-#include <drivers/spi_nor.h>
-#include <drivers/gpio.h>
+#include <zephyr/drivers/gpio.h>
 
 #define CMD_TABLE_VALUE(G, W, R, M, DAT_MODE, DUMMY, PROG_SZ, ADDR_LEN, ADDR_MODE, CMD) \
 	((G) << 29 | (W) << 28 | (R) << 27 | (M) << 26 | (DAT_MODE) << 24 |	\
