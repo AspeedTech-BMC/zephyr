@@ -559,9 +559,9 @@ struct i3c_aspeed_obj {
 
 	union i3c_dev_addr_tbl_ptr_s hw_dat;
 	uint32_t hw_dat_free_pos;
-	uint8_t dev_addr_tbl[32];
+	uint8_t dev_addr_tbl[8];
 
-	struct i3c_dev_desc *dev_descs[32];
+	struct i3c_dev_desc *dev_descs[8];
 
 	/* slave mode data */
 	struct i3c_slave_setup slave_data;
