@@ -277,7 +277,8 @@ union i3c_present_state_s {
 		volatile uint32_t current_master : 1;		/* bit[2] */
 		volatile uint32_t reserved0 : 5;		/* bit[7:3] */
 #define CM_TFR_STS_SLAVE_HALT	0x6
-#define CM_TFR_STS_MASTER_SERV_IBI	0xe
+#define CM_TFR_STS_MASTER_SERV_IBI 0xe
+#define CM_TFR_STS_MASTER_HALT	0xf
 		volatile uint32_t cm_tfr_sts : 6;		/* bit[13:8] */
 		volatile uint32_t reserved1 : 2;		/* bit[15:14] */
 		volatile uint32_t cm_tfr_st_sts : 6;		/* bit[21:16] */
@@ -534,6 +535,13 @@ struct i3c_aspeed_dev_priv {
 	} ibi;
 };
 
+enum i3c_aspeed_reset_type {
+	I3C_ASPEED_RESET_ALL,
+	I3C_ASPEED_RESET_QUEUES,
+	I3C_ASPEED_RESET_XFER_QUEUES,
+	I3C_ASPEED_RESET_IBI_QUEUE,
+};
+
 struct i3c_aspeed_obj {
 	const struct device *dev;
 	struct i3c_aspeed_config *config;
@@ -753,6 +761,106 @@ static void i3c_aspeed_rd_rx_fifo(struct i3c_aspeed_obj *obj, uint8_t *bytes, in
 	}
 }
 
+static int i3c_aspeed_reset_ctrl(struct i3c_aspeed_obj *obj, enum i3c_aspeed_reset_type type)
+{
+	struct i3c_aspeed_config *config = obj->config;
+	struct i3c_register_s *i3c_register = config->base;
+	union i3c_reset_ctrl_s reset_ctrl;
+	int ret;
+
+	reset_ctrl.value = 0;
+
+	switch (type) {
+	case I3C_ASPEED_RESET_IBI_QUEUE:
+		reset_ctrl.fields.ibi_queue_reset = 1;
+		break;
+	case I3C_ASPEED_RESET_ALL:
+		reset_ctrl.fields.core_reset = 1;
+		__fallthrough;
+	case I3C_ASPEED_RESET_QUEUES:
+		reset_ctrl.fields.ibi_queue_reset = 1;
+		__fallthrough;
+	case I3C_ASPEED_RESET_XFER_QUEUES:
+		reset_ctrl.fields.resp_queue_reset = 1;
+		reset_ctrl.fields.cmd_queue_reset = 1;
+		reset_ctrl.fields.tx_queue_reset = 1;
+		reset_ctrl.fields.rx_queue_reset = 1;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	i3c_register->reset_ctrl.value = reset_ctrl.value;
+	ret = reg_read_poll_timeout(i3c_register, reset_ctrl, reset_ctrl, !reset_ctrl.value, 0, 10);
+	if (ret) {
+		LOG_ERR("Reset failed. Reset ctrl: %08x %08x", reset_ctrl.value,
+			i3c_register->reset_ctrl.value);
+	}
+
+	return ret;
+}
+
+static void i3c_aspeed_exit_halt(struct i3c_aspeed_obj *obj)
+{
+	struct i3c_aspeed_config *config = obj->config;
+	struct i3c_register_s *i3c_register = config->base;
+	union i3c_device_ctrl_s ctrl;
+	union i3c_present_state_s state;
+	uint32_t halt_state = CM_TFR_STS_MASTER_HALT;
+	int ret;
+
+	if (obj->config->secondary) {
+		halt_state = CM_TFR_STS_SLAVE_HALT;
+	}
+
+	state.value = i3c_register->present_state.value;
+	if (state.fields.cm_tfr_sts != halt_state) {
+		LOG_DBG("I3C not in halt state, no need for resume");
+		return;
+	}
+
+	ctrl.value = i3c_register->device_ctrl.value;
+	ctrl.fields.resume = 1;
+	i3c_register->device_ctrl.value = ctrl.value;
+
+	ret = reg_read_poll_timeout(i3c_register, present_state, state,
+				    state.fields.cm_tfr_sts != halt_state, 0, 10);
+
+	if (ret) {
+		LOG_ERR("Exit halt state failed: %d %08x %08x", ret, state.value,
+			i3c_register->queue_status_level.value);
+	}
+}
+
+static void i3c_aspeed_enter_halt(struct i3c_aspeed_obj *obj, bool by_sw)
+{
+	struct i3c_aspeed_config *config = obj->config;
+	struct i3c_register_s *i3c_register = config->base;
+	union i3c_device_ctrl_s ctrl;
+	union i3c_present_state_s state;
+	uint32_t halt_state = CM_TFR_STS_MASTER_HALT;
+	int ret;
+
+	if (obj->config->secondary) {
+		halt_state = CM_TFR_STS_SLAVE_HALT;
+	}
+
+	LOG_DBG("present state = %08x\n", i3c_register->present_state.value);
+
+	if (by_sw) {
+		ctrl.value = i3c_register->device_ctrl.value;
+		ctrl.fields.abort = 1;
+		i3c_register->device_ctrl.value = ctrl.value;
+	}
+
+	ret = reg_read_poll_timeout(i3c_register, present_state, state,
+				    state.fields.cm_tfr_sts == halt_state, 0, 1000);
+	if (ret) {
+		LOG_ERR("Enter halt state failed: %d %08x %08x", ret, state.value,
+			i3c_register->queue_status_level.value);
+	}
+}
+
 static void i3c_aspeed_end_xfer(struct i3c_aspeed_obj *obj)
 {
 	struct i3c_register_s *i3c_register = obj->config->base;
@@ -785,15 +893,9 @@ static void i3c_aspeed_end_xfer(struct i3c_aspeed_obj *obj)
 	}
 
 	if (ret) {
-		union i3c_reset_ctrl_s reset_ctrl;
-
-		reset_ctrl.value = 0;
-		reset_ctrl.fields.rx_queue_reset = 1;
-		reset_ctrl.fields.tx_queue_reset = 1;
-		reset_ctrl.fields.resp_queue_reset = 1;
-		reset_ctrl.fields.cmd_queue_reset = 1;
-		i3c_register->reset_ctrl.value = reset_ctrl.value;
-		i3c_register->device_ctrl.fields.resume = 1;
+		i3c_aspeed_enter_halt(obj, false);
+		i3c_aspeed_reset_ctrl(obj, I3C_ASPEED_RESET_XFER_QUEUES);
+		i3c_aspeed_exit_halt(obj);
 	}
 
 	xfer->ret = ret;
@@ -991,7 +1093,8 @@ static void i3c_aspeed_slave_event(const struct device *dev, union i3c_intr_s st
 	if (status.fields.ccc_update) {
 		if (cm_tfr_sts == CM_TFR_STS_SLAVE_HALT) {
 			LOG_DBG("slave halt resume\n");
-			i3c_register->device_ctrl.fields.resume = 1;
+			i3c_aspeed_enter_halt(obj, false);
+			i3c_aspeed_exit_halt(obj);
 		}
 
 		if (i3c_register->slave_event_ctrl.fields.mrl_update) {
@@ -1017,6 +1120,7 @@ static void i3c_aspeed_isr(const struct device *dev)
 	struct i3c_aspeed_obj *obj = DEV_DATA(dev);
 	struct i3c_register_s *i3c_register = config->base;
 	union i3c_intr_s status;
+	uint32_t cm_tfr_sts;
 
 	status.value = i3c_register->intr_status.value;
 	if (config->secondary) {
@@ -1038,8 +1142,10 @@ static void i3c_aspeed_isr(const struct device *dev)
 		}
 	}
 
-	if (status.fields.xfr_error) {
-		i3c_register->device_ctrl.fields.resume = 1;
+	cm_tfr_sts = i3c_register->present_state.fields.cm_tfr_sts;
+	if (cm_tfr_sts == CM_TFR_STS_MASTER_HALT || cm_tfr_sts == CM_TFR_STS_SLAVE_HALT) {
+		LOG_ERR("Un-handled HALT");
+		i3c_aspeed_exit_halt(obj);
 	}
 
 	i3c_register->intr_status.value = status.value;
@@ -1413,7 +1519,12 @@ int i3c_aspeed_master_priv_xfer(struct i3c_dev_desc *i3cdev, struct i3c_priv_xfe
 	i3c_aspeed_start_xfer(obj, &xfer);
 
 	/* wait done, xfer.ret will be changed in ISR */
-	k_sem_take(&xfer.sem, I3C_ASPEED_XFER_TIMEOUT);
+	ret = k_sem_take(&xfer.sem, I3C_ASPEED_XFER_TIMEOUT);
+	if (ret) {
+		i3c_aspeed_enter_halt(obj, true);
+		i3c_aspeed_reset_ctrl(obj, I3C_ASPEED_RESET_XFER_QUEUES);
+		i3c_aspeed_exit_halt(obj);
+	}
 
 	/* report actual read length */
 	for (i = 0; i < nxfers; i++) {
@@ -1858,7 +1969,12 @@ int i3c_aspeed_master_send_ccc(const struct device *dev, struct i3c_ccc_cmd *ccc
 	i3c_aspeed_start_xfer(obj, &xfer);
 
 	/* wait done, xfer.ret will be changed in ISR */
-	k_sem_take(&xfer.sem, I3C_ASPEED_CCC_TIMEOUT);
+	ret = k_sem_take(&xfer.sem, I3C_ASPEED_CCC_TIMEOUT);
+	if (ret) {
+		i3c_aspeed_enter_halt(obj, true);
+		i3c_aspeed_reset_ctrl(obj, I3C_ASPEED_RESET_XFER_QUEUES);
+		i3c_aspeed_exit_halt(obj);
+	}
 
 	ret = xfer.ret;
 
@@ -1908,6 +2024,7 @@ int i3c_aspeed_master_send_entdaa(struct i3c_dev_desc *i3cdev)
 	struct i3c_aspeed_xfer xfer;
 	struct i3c_aspeed_cmd cmd;
 	union i3c_device_cmd_queue_port_s cmd_hi, cmd_lo;
+	int ret;
 
 	cmd_hi.value = 0;
 	cmd_hi.xfer_arg.cmd_attr = COMMAND_PORT_XFER_ARG;
@@ -1933,7 +2050,13 @@ int i3c_aspeed_master_send_entdaa(struct i3c_dev_desc *i3cdev)
 	i3c_aspeed_start_xfer(obj, &xfer);
 
 	/* wait done, xfer.ret will be changed in ISR */
-	k_sem_take(&xfer.sem, I3C_ASPEED_CCC_TIMEOUT);
+	ret = k_sem_take(&xfer.sem, I3C_ASPEED_CCC_TIMEOUT);
+	if (ret) {
+		i3c_aspeed_enter_halt(obj, true);
+		i3c_aspeed_reset_ctrl(obj, I3C_ASPEED_RESET_XFER_QUEUES);
+		i3c_aspeed_exit_halt(obj);
+		return -ETIMEDOUT;
+	}
 
 	if (cmd.rx_length) {
 		LOG_INF("ENTDAA: No more new device. DA 0x%02x at DAT[%d] is not assigned",
@@ -1954,7 +2077,6 @@ static int i3c_aspeed_init(const struct device *dev)
 	struct i3c_aspeed_obj *obj = DEV_DATA(dev);
 	struct i3c_register_s *i3c_register = config->base;
 	const struct device *reset_dev = device_get_binding(ASPEED_RST_CTRL_NAME);
-	union i3c_reset_ctrl_s reset_ctrl;
 	union i3c_intr_s intr_reg;
 	union i3c_dev_addr_tbl_s dat;
 	uint32_t dat_base;
@@ -1968,17 +2090,7 @@ static int i3c_aspeed_init(const struct device *dev)
 	reset_control_deassert(reset_dev, config->reset_id);
 
 	ret = i3c_aspeed_disable(obj);
-
-	reset_ctrl.value = 0;
-	reset_ctrl.fields.core_reset = 1;
-	reset_ctrl.fields.tx_queue_reset = 1;
-	reset_ctrl.fields.rx_queue_reset = 1;
-	reset_ctrl.fields.ibi_queue_reset = 1;
-	reset_ctrl.fields.cmd_queue_reset = 1;
-	reset_ctrl.fields.resp_queue_reset = 1;
-	i3c_register->reset_ctrl.value = reset_ctrl.value;
-
-	ret = reg_read_poll_timeout(i3c_register, reset_ctrl, reset_ctrl, !reset_ctrl.value, 0, 10);
+	ret = i3c_aspeed_reset_ctrl(obj, I3C_ASPEED_RESET_ALL);
 	if (ret) {
 		return ret;
 	}
