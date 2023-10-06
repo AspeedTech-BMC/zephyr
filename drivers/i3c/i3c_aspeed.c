@@ -991,12 +991,17 @@ static void i3c_aspeed_master_rx_ibi(struct i3c_aspeed_obj *obj)
 		return;
 	}
 
+	if (nstatus > 16) {
+		LOG_ERR("The nibi %d surpasses the tolerance level for the IBI buffer", nstatus);
+		goto clear;
+	}
+
 	for (i = 0; i < nstatus; i++) {
 		obj->ibi_status_parser(i3c_register->ibi_queue_status.value, &ibi_status);
 		data_consumed = false;
 		if (ibi_status.ibi_status) {
 			LOG_WRN("IBI NACK\n");
-			goto out;
+			goto clear;
 		}
 
 		if (ibi_status.error) {
@@ -1076,6 +1081,11 @@ out:
 				i3c_aspeed_gen_tbits_low(obj);
 		}
 	}
+	return;
+clear:
+	i3c_aspeed_enter_halt(obj, true);
+	i3c_aspeed_reset_ctrl(obj, I3C_ASPEED_RESET_IBI_QUEUE);
+	i3c_aspeed_exit_halt(obj);
 }
 
 static void i3c_aspeed_slave_event(const struct device *dev, union i3c_intr_s status)
