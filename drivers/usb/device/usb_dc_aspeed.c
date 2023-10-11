@@ -1182,7 +1182,7 @@ int usb_dc_ep_write(const uint8_t ep, const uint8_t *const data,
 		LOG_DBG("trigger tx len: [%d/%d]", tx_len, data_len);
 		dev_data.ep_data[0].tx_last = tx_len;
 
-		cache_instr_invd_range((void *)data, data_len);
+		cache_data_invd_range((void *)data, data_len);
 
 		sys_write32(TO_PHY_ADDR(dev_data.ep_data[0].tx_dma),
 			    dev_data.base + ASPEED_USB_EP0_DATA_BUFF);
@@ -1368,7 +1368,7 @@ int usb_dc_ep_read_wait(uint8_t ep, uint8_t *data, uint32_t max_data_len,
 
 			LOG_DBG("Copy data from rx_dma, %s:0x%x",
 				"data_len", data_len);
-			cache_instr_invd_range(dev_data.ep_data[0].rx_dma, data_len);
+			cache_data_invd_range(dev_data.ep_data[0].rx_dma, data_len);
 			memcpy(data, dev_data.ep_data[0].rx_dma, data_len);
 			memset(dev_data.ep_data[0].rx_dma, 0, RX_DMA_BUFF_SIZE);
 			*read_bytes = data_len;
@@ -1391,7 +1391,7 @@ int usb_dc_ep_read_wait(uint8_t ep, uint8_t *data, uint32_t max_data_len,
 			byte_to_copy = data_len;
 		}
 
-		cache_instr_invd_range(dev_data.ep_data[ep_num].rx_dma, data_len);
+		cache_data_invd_range(dev_data.ep_data[ep_num].rx_dma, data_len);
 		if (byte_to_copy <= RX_DMA_BUFF_SIZE) {
 			memcpy(data, dev_data.ep_data[ep_num].rx_dma,
 				byte_to_copy);
