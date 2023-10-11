@@ -113,6 +113,18 @@ int i3c_ccc_do_rstdaa_all(const struct device *controller)
 	return i3c_do_ccc(controller, &ccc_payload);
 }
 
+int i3c_ccc_do_setaasa_all(const struct device *controller)
+{
+	struct i3c_ccc_payload ccc_payload;
+
+	__ASSERT_NO_MSG(controller != NULL);
+
+	memset(&ccc_payload, 0, sizeof(ccc_payload));
+	ccc_payload.ccc.id = I3C_CCC_SETAASA;
+
+	return i3c_do_ccc(controller, &ccc_payload);
+}
+
 int i3c_ccc_do_setdasa(const struct i3c_device_desc *target)
 {
 	struct i3c_driver_data *bus_data = (struct i3c_driver_data *)target->bus->data;
