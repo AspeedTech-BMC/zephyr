@@ -12,6 +12,7 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/__assert.h>
 #include <zephyr/sys/byteorder.h>
+#include <zephyr/cache.h>
 
 #include "hace_aspeed.h"
 #include "hash_aspeed_priv.h"
@@ -107,6 +108,7 @@ static void aspeed_ahash_fill_padding(struct aspeed_hash_ctx *ctx,
 static int hash_trigger(struct aspeed_hash_ctx *data, int len)
 {
 	struct hace_register_s *hace_register = hace_eng.base;
+	int ret;
 
 	if (hace_register->hace_sts.fields.hash_engine_sts) {
 		LOG_ERR("HACE error: engine busy\n");
@@ -126,7 +128,11 @@ static int hash_trigger(struct aspeed_hash_ctx *data, int len)
 	hace_register->hash_data_len.value = len;
 	hace_register->hash_cmd_reg.value = data->method;
 
-	return aspeed_hash_wait_completion(3000);
+	ret = aspeed_hash_wait_completion(3000);
+
+	cache_data_invd_range(data->digest, 64);
+
+	return ret;
 }
 
 static int aspeed_hash_update(struct hash_ctx *ctx, struct hash_pkt *pkt)
