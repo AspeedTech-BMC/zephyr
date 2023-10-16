@@ -252,6 +252,18 @@ static inline int i3c_target_tx_write(const struct device *dev,
 	return api->target_tx_write(dev, buf, len);
 }
 
+static inline int i3c_target_pending_read_notify(const struct device *dev, uint8_t *buf,
+						 uint16_t len, struct i3c_ibi *notifier)
+{
+	const struct i3c_driver_api *api = (const struct i3c_driver_api *)dev->api;
+
+	if (!api->target_pending_read_notify) {
+		return -ENOSYS;
+	}
+
+	return api->target_pending_read_notify(dev, buf, len, notifier);
+}
+
 /**
  * @brief Registers the provided config as target device of a controller.
  *
