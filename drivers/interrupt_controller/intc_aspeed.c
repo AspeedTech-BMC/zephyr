@@ -51,12 +51,13 @@ static int intc_ast2700_isr(const void *dev)
 	unsigned int status;
 	unsigned int i;
 
+	LOG_DBG("%s\n", __func__);
 	if (intc_num < 0 || intc_num > 9) {
 		LOG_ERR("%s error idx %d\n", __func__, intc_num);
 		return 1;
 	}
 
-	status = sys_read32(base + intc_num * 4 + INTC_RAW);
+	status = sys_read32(base + INTC_RAW);
 	LOG_DBG("intc@%lx: isr status 0x%x\n", base, status);
 	for (i = 0; i < 32; i++) {
 		if (status & BIT(i)) {
@@ -80,6 +81,7 @@ static int intc_ast2700_register_callback(const struct device *dev, intc_callbac
 	int intc_num = config->intc_num;
 	int irqn = (intc_num * 32) + intc_bit;
 
+	LOG_DBG("%s\n", __func__);
 	if (irqn >= MAX_INTC_NUMBER) {
 		LOG_ERR("invalid interrupt id=%u\n", irqn);
 		return 1;
@@ -108,12 +110,16 @@ static int intc_ast2700_irq_mask(const struct device *dev, int intc_bit)
 	int intc_num = config->intc_num;
 	int irqn = (intc_num * 32) + intc_bit;
 
+	LOG_DBG("%s\n", __func__);
 	if (irqn >= MAX_INTC_NUMBER) {
 		LOG_ERR("invalid interrupt id=%u\n", irqn);
 		return 1;
 	}
 
+	LOG_DBG("base=0x%lx\n", base + INTC_IER);
+	LOG_DBG("before mask, value=0x%x\n", sys_read32(base + INTC_IER));
 	sys_write32(sys_read32(base + INTC_IER) & ~BIT(intc_bit), base + INTC_IER);
+	LOG_DBG("after mask, value=0x%x\n", sys_read32(base + INTC_IER));
 
 	return 0;
 }
@@ -130,7 +136,10 @@ static int intc_ast2700_irq_unmask(const struct device *dev, int intc_bit)
 		return 1;
 	}
 
+	LOG_DBG("base=0x%lx\n", base + INTC_IER);
+	LOG_DBG("before unmask, value=0x%x\n", sys_read32(base + INTC_IER));
 	sys_write32(sys_read32(base + INTC_IER) | BIT(intc_bit), base + INTC_IER);
+	LOG_DBG("after unmask, value=0x%x\n", sys_read32(base + INTC_IER));
 
 	return 0;
 }
@@ -142,6 +151,7 @@ static int intc_ast2700_init(const struct device *dev)
 	int intc_num = config->intc_num;
 	int ret = 0;
 
+	LOG_DBG("%s\n", __func__);
 	LOG_DBG("INTC%d init: ", intc_num);
 	LOG_DBG("register base=%lx, irqn=%d\n", base, intc_num + INTC_GIC_BASE);
 
