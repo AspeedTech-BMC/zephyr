@@ -17,7 +17,7 @@
 #include <zephyr/irq.h>
 
 #define LOG_LEVEL CONFIG_INTC_LOG_LEVEL
-LOG_MODULE_REGISTER(intc_ast2700_ic);
+LOG_MODULE_REGISTER(intc_ast2700_ic, LOG_LEVEL_ERR);
 
 #define INTC_GIC_BASE 128
 #define GIC_IRQ_NUM 9 /* INTC0~INTC8 */
@@ -51,14 +51,13 @@ static int intc_ast2700_isr(const void *dev)
 	unsigned int status;
 	unsigned int i;
 
-	LOG_DBG("%s\n", __func__);
 	if (intc_num < 0 || intc_num > 9) {
 		LOG_ERR("%s error idx %d\n", __func__, intc_num);
 		return 1;
 	}
 
 	status = sys_read32(base + INTC_RAW);
-	LOG_DBG("intc@%lx: isr status 0x%x\n", base, status);
+	LOG_DBG("intc base 0x%lx: isr status 0x%x", base, status);
 	for (i = 0; i < 32; i++) {
 		if (status & BIT(i)) {
 			if (!aspeed_intcd[(intc_num * 32) + i].callback) {
@@ -81,7 +80,6 @@ static int intc_ast2700_register_callback(const struct device *dev, intc_callbac
 	int intc_num = config->intc_num;
 	int irqn = (intc_num * 32) + intc_bit;
 
-	LOG_DBG("%s\n", __func__);
 	if (irqn >= MAX_INTC_NUMBER) {
 		LOG_ERR("invalid interrupt id=%u\n", irqn);
 		return 1;
@@ -92,8 +90,8 @@ static int intc_ast2700_register_callback(const struct device *dev, intc_callbac
 		return -1;
 	}
 
-	LOG_DBG("interrupt controller base=%lx\n", base);
-	LOG_DBG("irqn=%d, intc_num=%d, intc_bit=%d\n", irqn, intc_num, intc_bit);
+	LOG_DBG("interrupt controller base=%lx", base);
+	LOG_DBG("irqn=%d, intc_num=%d, intc_bit=%d", irqn, intc_num, intc_bit);
 
 	aspeed_intcd[irqn].callback = cb;
 	aspeed_intcd[irqn].user_data = user_data;
@@ -110,16 +108,15 @@ static int intc_ast2700_irq_mask(const struct device *dev, int intc_bit)
 	int intc_num = config->intc_num;
 	int irqn = (intc_num * 32) + intc_bit;
 
-	LOG_DBG("%s\n", __func__);
 	if (irqn >= MAX_INTC_NUMBER) {
 		LOG_ERR("invalid interrupt id=%u\n", irqn);
 		return 1;
 	}
 
-	LOG_DBG("base=0x%lx\n", base + INTC_IER);
-	LOG_DBG("before mask, value=0x%x\n", sys_read32(base + INTC_IER));
+	LOG_DBG("base=0x%lx", base + INTC_IER);
+	LOG_DBG("before mask, value=0x%x", sys_read32(base + INTC_IER));
 	sys_write32(sys_read32(base + INTC_IER) & ~BIT(intc_bit), base + INTC_IER);
-	LOG_DBG("after mask, value=0x%x\n", sys_read32(base + INTC_IER));
+	LOG_DBG("after mask, value=0x%x", sys_read32(base + INTC_IER));
 
 	return 0;
 }
@@ -136,10 +133,10 @@ static int intc_ast2700_irq_unmask(const struct device *dev, int intc_bit)
 		return 1;
 	}
 
-	LOG_DBG("base=0x%lx\n", base + INTC_IER);
-	LOG_DBG("before unmask, value=0x%x\n", sys_read32(base + INTC_IER));
+	LOG_DBG("base=0x%lx", base + INTC_IER);
+	LOG_DBG("before unmask, value=0x%x", sys_read32(base + INTC_IER));
 	sys_write32(sys_read32(base + INTC_IER) | BIT(intc_bit), base + INTC_IER);
-	LOG_DBG("after unmask, value=0x%x\n", sys_read32(base + INTC_IER));
+	LOG_DBG("after unmask, value=0x%x", sys_read32(base + INTC_IER));
 
 	return 0;
 }
@@ -151,9 +148,8 @@ static int intc_ast2700_init(const struct device *dev)
 	int intc_num = config->intc_num;
 	int ret = 0;
 
-	LOG_DBG("%s\n", __func__);
 	LOG_DBG("INTC%d init: ", intc_num);
-	LOG_DBG("register base=%lx, irqn=%d\n", base, intc_num + INTC_GIC_BASE);
+	LOG_DBG("register base=%lx, irqn=%d", base, intc_num + INTC_GIC_BASE);
 
 	/* Check initial value to 0. */
 	if (sys_read32(base + INTC_RAW)) {
