@@ -1,0 +1,14 @@
+# ASPEED I3C driver configuration options
+
+# Copyright (c) 2021 ASPEED Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+module = I3C_ASPEED
+module-str = i3c-aspeed
+source "subsys/logging/Kconfig.template.log_config"
+
+config I3C_ASPEED
+	bool "ASPEED I3C driver"
+	default y
+	depends on SOC_SERIES_AST10X0 && DT_HAS_ASPEED_I3C_ENABLED
+	help
+	  This option enables the I3C master driver for ASPEED SoCs.

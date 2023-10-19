@@ -29,4 +29,9 @@ zephyr_library_sources_ifdef(
   i3c_cdns.c
 )
 
+zephyr_library_sources_ifdef(
+  CONFIG_I3C_ASPEED
+  i3c_aspeed.c
+)
+
 add_subdirectory(target)
