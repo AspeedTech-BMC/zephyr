@@ -205,7 +205,7 @@ static int i3c_target_mqueue_init(const struct device *dev)
                                                                                                    \
 	static struct i3c_target_mqueue_data i3c_target_mqueue_data_##n;                           \
 	DEVICE_DT_INST_DEFINE(n, i3c_target_mqueue_init, NULL, &i3c_target_mqueue_data_##n,        \
-			      &i3c_target_mqueue_config_##n, POST_KERNEL, 51,                      \
-			      &i3c_target_mqueue_api);
+			      &i3c_target_mqueue_config_##n, POST_KERNEL,                          \
+			      CONFIG_I3C_TARGET_INIT_PRIORITY, &i3c_target_mqueue_api);
 
 DT_INST_FOREACH_STATUS_OKAY(I3C_TARGET_MQUEUE_INIT)
