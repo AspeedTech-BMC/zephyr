@@ -799,7 +799,7 @@ struct i3c_device_desc {
 	const struct device * const dev;
 
 	/** Device Provisioned ID */
-	const uint64_t pid:48;
+	const uint64_t pid;
 
 	/**
 	 * Static address for this target device.
