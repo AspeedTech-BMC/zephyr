@@ -1,0 +1,32 @@
+# Copyright (c) 2023 Aspeed Technology
+#
+# SPDX-License-Identifier: Apache-2.0
+
+description: I3C message queue driver for target mode
+
+compatible: "i3c-target-mqueue"
+
+include:
+  - name: i3c-device.yaml
+    property-blocklist:
+      - label
+
+properties:
+  label:
+    type: string
+
+  msg-size:
+    type: int
+    required: true
+    description: the size of the single message in byte
+
+  num-of-msgs:
+    type: int
+    required: true
+    description: number of the messages
+
+  mandatory-data-byte:
+    type: int
+    required: true
+    description: mandatory data byte (MDB) when sending IBI.
+                 See https://www.mipi.org/MIPI_I3C_mandatory_data_byte_values_public for detail.

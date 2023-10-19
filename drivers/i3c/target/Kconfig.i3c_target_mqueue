@@ -1,0 +1,10 @@
+# I3C Target mqueue configuration options
+
+# Copyright (c) 2023 Aspeed Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+config I3C_TARGET_MQUEUE
+	bool "I3C Target MQueue driver"
+	default y
+	help
+	  Enable I3C target mqueue driver

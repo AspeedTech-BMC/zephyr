@@ -28,3 +28,5 @@ zephyr_library_sources_ifdef(
   CONFIG_I3C_CADENCE
   i3c_cdns.c
 )
+
+add_subdirectory(target)
