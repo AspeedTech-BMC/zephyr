@@ -18,16 +18,16 @@ DfuSeConfig = namedtuple('DfuSeConfig', ['address', 'options'])
 class DfuUtilBinaryRunner(ZephyrBinaryRunner):
     '''Runner front-end for dfu-util.'''
 
-    def __init__(self, cfg, dev_id, alt, img, exe='dfu-util',
+    def __init__(self, cfg, dev_id, alt, img, detach, exe='dfu-util',
                  dfuse_config=None):
 
         super().__init__(cfg)
         self.dev_id = dev_id # Used only for error checking in do_run
         self.alt = alt
         self.img = img
-        self.cmd = [exe, '-d,{}'.format(dev_id)]
+        self.cmd = [exe, '-d {}'.format(dev_id)]
         try:
-            self.list_pattern = ', alt={},'.format(int(self.alt))
+            self.list_pattern = ', alt=0,'
         except ValueError:
             self.list_pattern = ', name="{}",'.format(self.alt)
 
@@ -37,6 +37,9 @@ class DfuUtilBinaryRunner(ZephyrBinaryRunner):
             self.dfuse = True
         self.dfuse_config = dfuse_config
         self.reset = False
+
+        if detach:
+            self.detach = True
 
     @classmethod
     def name(cls):
@@ -52,6 +55,8 @@ class DfuUtilBinaryRunner(ZephyrBinaryRunner):
 
     @classmethod
     def do_add_parser(cls, parser):
+        parser.add_argument("--detach", action='store_true',
+                            help="Detach currently attached DFU capable devices")
         parser.add_argument("--alt", required=True,
                             help="interface alternate setting number or name")
 
@@ -91,7 +96,7 @@ class DfuUtilBinaryRunner(ZephyrBinaryRunner):
         else:
             dcfg = None
 
-        ret = DfuUtilBinaryRunner(cfg, args.dev_id, args.alt, args.img,
+        ret = DfuUtilBinaryRunner(cfg, args.dev_id, args.alt, args.img, args.detach,
                                   exe=args.dfu_util, dfuse_config=dcfg)
         ret.ensure_device()
         return ret
@@ -120,6 +125,9 @@ class DfuUtilBinaryRunner(ZephyrBinaryRunner):
             raise RuntimeError('device not found')
 
         cmd = list(self.cmd)
+        if self.detach:
+            cmd.extend(['-e'])
+
         if self.dfuse:
             # http://dfu-util.sourceforge.net/dfuse.html
             dcfg = self.dfuse_config
