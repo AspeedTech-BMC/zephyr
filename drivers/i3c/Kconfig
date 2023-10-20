@@ -79,6 +79,19 @@ endif # I3C_IBI_WORKQUEUE
 
 endif # I3C_USE_IBI
 
+config I3C_DUMMY_DEVICE
+	bool "Dummy I3C device driver"
+	default y
+	help
+	  This option enables the dummy device driver for I3C devices
+	  that do not have compatible drivers. With this dummy
+	  driver, a device descriptor will be created for the
+	  associated target device. As a result, developers can use
+	  'i3c_transfer' to access the target device. Additionally, it
+	  provides IBI callback functions that simply dump the
+	  received IBI data. This feature is useful for verifying new
+	  I3C target devices.
+
 comment "Initialization Priority"
 
 config I3C_CONTROLLER_INIT_PRIORITY

@@ -1,0 +1,16 @@
+# Copyright (c) 2023 Aspeed Technology
+#
+# SPDX-License-Identifier: Apache-2.0
+
+description: I3C dummy device driver
+
+compatible: "i3c-dummy-device"
+
+include:
+  - name: i3c-device.yaml
+    property-blocklist:
+      - label
+
+properties:
+  label:
+    type: string
