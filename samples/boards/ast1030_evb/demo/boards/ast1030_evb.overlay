@@ -197,3 +197,42 @@
 &wdt4 {
 	status = "okay";
 };
+
+/*
+ * i3c0-to-i3c1 Loopback:
+ * i3c0 plays the role as the bus controller
+ * i3c1 plays the rols as the target device
+ *
+ * In I3C shell command, the following devices will be found:
+ * i3c@7e7a2000 -> i3c0 controller
+ * i3cdev@7ec80011000 -> the i3c device attached to i3c0 controller
+ *
+ * i3c@7e7a2000 -> i3c1 controller
+ * i3c-tmq@7ec80011000 -> i3c target mqueue device
+ */
+&i3c0 {
+	status = "okay";
+	sda-tx-hold-ns = <20>;
+	i3c-pp-scl-hi-period-ns = <250>;
+	i3c-pp-scl-lo-period-ns = <250>;
+
+	i3cdev@7ec80011000 {
+		compatible = "i3c-dummy-device";
+		reg = <0x0 0x7ec 0x80011000>;
+		status = "okay";
+	};
+};
+
+&i3c1 {
+	secondary;
+	status = "okay";
+
+	i3c-tmq@7ec80011000 {
+		compatible = "i3c-target-mqueue";
+		reg = <0x0 0x7ec 0x80011000>;
+		msg-size = <128>;
+		num-of-msgs = <4>;
+		mandatory-data-byte = <0xbf>;
+		status = "okay";
+	};
+};
