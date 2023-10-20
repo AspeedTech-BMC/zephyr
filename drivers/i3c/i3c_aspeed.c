@@ -1083,7 +1083,7 @@ static int aspeed_i3c_do_daa(const struct device *dev)
 	for (i = 0; i < config->common.dev_list.num_i3c; i++) {
 		target = &config->common.dev_list.i3c[i];
 		priv = target->controller_priv;
-		LOG_INF("dev%d: %012llx, addr %02x, DAT pos %d", i, target->pid,
+		LOG_INF("dev%d: %012llx, addr %02x, DAT pos %d", i, (uint64_t)target->pid,
 			target->dynamic_addr, priv->pos);
 	}
 
