@@ -149,6 +149,9 @@ extern "C" {
 /** Set All Addresses to Static Addresses (Broadcast) */
 #define I3C_CCC_SETAASA				0x29U
 
+#define I3C_CCC_SETHID				0x61U
+#define I3C_CCC_DEVCTRL				0x62U
+
 /**
  * Target Reset Action
  *
