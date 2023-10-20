@@ -39,4 +39,9 @@ zephyr_library_sources_ifdef(
   i3c_dummy_device.c
 )
 
+zephyr_library_sources_ifdef(
+  CONFIG_I3C_SHELL
+  i3c_shell.c
+)
+
 add_subdirectory(target)

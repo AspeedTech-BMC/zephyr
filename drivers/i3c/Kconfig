@@ -109,6 +109,14 @@ config I3C_CONTROLLER_INIT_PRIORITY
 	  may not be addressable until addresses are assigned by
 	  the controller.
 
+config I3C_SHELL
+	bool "Enable I3C Shell"
+	default y
+	depends on SHELL
+	select SHELL_GETOPT
+	help
+	  Enable I3C Shell for testing.
+
 comment "Device Drivers"
 
 rsource "Kconfig.nxp"
