@@ -1597,12 +1597,15 @@ static void aspeed_i3c_target_handle_response_ready(struct aspeed_i3c_data *data
 	uintptr_t base = data->config->base;
 	uint32_t reg = sys_read32(base + QUEUE_STATUS_LEVEL);
 	uint32_t nresp = FIELD_GET(QUEUE_STATUS_LEVEL_RESP, reg);
-	const struct i3c_target_callbacks *cbs = data->target_config->callbacks;
+	const struct i3c_target_callbacks *cbs = NULL;
 	int ret, i, j;
 	bool drop_wr_data = true;
 
-	if (cbs && cbs->write_requested_cb) {
-		drop_wr_data = false;
+	if (data->target_config) {
+		cbs = data->target_config->callbacks;
+		if (cbs && cbs->write_requested_cb) {
+			drop_wr_data = false;
+		}
 	}
 
 	for (i = 0; i < nresp; i++) {
@@ -1620,6 +1623,7 @@ static void aspeed_i3c_target_handle_response_ready(struct aspeed_i3c_data *data
 			}
 
 			if (drop_wr_data) {
+				LOG_DBG("drop %d bytes received data", nbytes);
 				aspeed_i3c_drain_rx_queue(data, nbytes);
 			} else {
 				buf = k_calloc(1, nbytes);
