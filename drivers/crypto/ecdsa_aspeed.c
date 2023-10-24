@@ -42,13 +42,37 @@ struct ecdsa_config {
 
 static struct aspeed_ecdsa_drv_state drv_state NON_CACHED_BSS_ALIGN16;
 
+static bool aspeed_ecdsa_is_valid(char *r, char *s)
+{
+	/* Check r */
+	for (int i = 0; i < 48; i++) {
+		if (*r++ != 0x0)
+			break;
+		if (i == 47)
+			return false;
+	}
+
+	/* Check s */
+	for (int i = 0; i < 48; i++) {
+		if (*s++ != 0x0)
+			break;
+		if (i == 47)
+			return false;
+	}
+
+	return true;
+}
+
 static int aspeed_ecdsa_verify_trigger(const struct device *dev,
-									   char *m, char *r, char *s,
-									   char *qx, char *qy)
+				       char *m, char *r, char *s,
+				       char *qx, char *qy)
 {
 	uint32_t sts;
 	int i;
 	int ret;
+
+	if (!aspeed_ecdsa_is_valid(r, s))
+		return -1;
 
 	SEC_WR(0x0100f00b, 0x7c);
 	SEC_WR(0x1, 0xb4);
@@ -131,13 +155,13 @@ int aspeed_ecdsa_verify(struct ecdsa_ctx *ctx, struct ecdsa_pkt *pkt)
 	}
 
 	return aspeed_ecdsa_verify_trigger(ctx->device, pkt->m,
-									   pkt->r, pkt->s,
-									   key->qx, key->qy);
+					   pkt->r, pkt->s,
+					   key->qx, key->qy);
 }
 
 static int aspeed_ecdsa_session_setup(const struct device *dev,
-									  struct ecdsa_ctx *ctx,
-									  struct ecdsa_key *key)
+				      struct ecdsa_ctx *ctx,
+				      struct ecdsa_key *key)
 {
 	struct aspeed_ecdsa_ctx *data;
 
@@ -160,7 +184,7 @@ static int aspeed_ecdsa_session_setup(const struct device *dev,
 }
 
 static int aspeed_ecdsa_session_free(const struct device *dev,
-									 struct ecdsa_ctx *ctx)
+				     struct ecdsa_ctx *ctx)
 {
 	ARG_UNUSED(dev);
 	ARG_UNUSED(ctx);
@@ -191,6 +215,6 @@ static const struct ecdsa_config ecdsa_aspeed_config = {
 };
 
 DEVICE_DT_INST_DEFINE(0, ecdsa_init, NULL,
-					  NULL, &ecdsa_aspeed_config,
-					  POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEVICE,
-					  (void *)&ecdsa_funcs);
+		      NULL, &ecdsa_aspeed_config,
+		      POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEVICE,
+		      (void *)&ecdsa_funcs);
