@@ -42,6 +42,27 @@ struct ecdsa_config {
 
 static struct aspeed_ecdsa_drv_state drv_state NON_CACHED_BSS_ALIGN16;
 
+static bool aspeed_ecdsa_is_valid(char *r, char *s)
+{
+	/* Check r */
+	for (int i = 0; i < 48; i++) {
+		if (*r++ != 0x0)
+			break;
+		if (i == 47)
+			return false;
+	}
+
+	/* Check s */
+	for (int i = 0; i < 48; i++) {
+		if (*s++ != 0x0)
+			break;
+		if (i == 47)
+			return false;
+	}
+
+	return true;
+}
+
 static int aspeed_ecdsa_verify_trigger(const struct device *dev,
 				       char *m, char *r, char *s,
 				       char *qx, char *qy)
@@ -49,6 +70,9 @@ static int aspeed_ecdsa_verify_trigger(const struct device *dev,
 	uint32_t sts;
 	int i;
 	int ret;
+
+	if (!aspeed_ecdsa_is_valid(r, s))
+		return -1;
 
 	SEC_WR(0x0100f00b, 0x7c);
 	SEC_WR(0x1, 0xb4);
