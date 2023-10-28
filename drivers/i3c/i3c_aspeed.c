@@ -1585,7 +1585,7 @@ static int aspeed_i3c_init(const struct device *dev)
 		return ret;
 	}
 
-	ret = i3c_addr_slots_next_free_find(&data->common.attached_dev.addr_slots);
+	ret = i3c_addr_slots_next_free_find(&data->common.attached_dev.addr_slots, 0);
 	if (!data->common.ctrl_config.is_secondary) {
 		reg = FIELD_PREP(DEV_ADDR_DYNAMIC_ADDR, ret) | DEV_ADDR_DYNAMIC_ADDR_VALID;
 		sys_write32(reg, config->base + DEVICE_ADDR);
