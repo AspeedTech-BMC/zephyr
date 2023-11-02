@@ -16,6 +16,7 @@
 LOG_MODULE_REGISTER(ecdsa_aspeed, CONFIG_LOG_DEFAULT_LEVEL);
 
 #define ASPEED_SEC_STS		0x14
+#define ASPEED_ECDSA_CTRL	0xb4
 #define ASPEED_ECDSA_CMD	0xbc
 #define ASPEED_ECDSA_PAR_GX	0xa00
 #define ASPEED_ECDSA_PAR_GY	0xa40
@@ -42,27 +43,6 @@ struct ecdsa_config {
 
 static struct aspeed_ecdsa_drv_state drv_state NON_CACHED_BSS_ALIGN16;
 
-static bool aspeed_ecdsa_is_valid(char *r, char *s)
-{
-	/* Check r */
-	for (int i = 0; i < 48; i++) {
-		if (*r++ != 0x0)
-			break;
-		if (i == 47)
-			return false;
-	}
-
-	/* Check s */
-	for (int i = 0; i < 48; i++) {
-		if (*s++ != 0x0)
-			break;
-		if (i == 47)
-			return false;
-	}
-
-	return true;
-}
-
 static int aspeed_ecdsa_verify_trigger(const struct device *dev,
 				       char *m, char *r, char *s,
 				       char *qx, char *qy)
@@ -71,11 +51,11 @@ static int aspeed_ecdsa_verify_trigger(const struct device *dev,
 	int i;
 	int ret;
 
-	if (!aspeed_ecdsa_is_valid(r, s))
-		return -1;
-
 	SEC_WR(0x0100f00b, 0x7c);
-	SEC_WR(0x1, 0xb4);
+
+	/* reset engine */
+	SEC_WR(0x0, ASPEED_ECDSA_CTRL);
+	SEC_WR(0x1, ASPEED_ECDSA_CTRL);
 	k_usleep(1000);
 
 	/* secp384r1 */
