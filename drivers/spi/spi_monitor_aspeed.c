@@ -306,20 +306,6 @@ end:
 	k_spin_unlock(&data->scu_lock, key);
 }
 
-void spim_push_pull_mode_config(const struct device *dev)
-{
-	const struct aspeed_spim_config *config = dev->config;
-	uint32_t reg_val;
-
-	acquire_spim_device(dev);
-
-	reg_val = sys_read32(config->ctrl_base + SPIM_IO_IRQ_CTRL);
-	reg_val |= SPIM_PUSH_PULL_ENABLED;
-	sys_write32(reg_val, config->ctrl_base + SPIM_IO_IRQ_CTRL);
-
-	release_spim_device(dev);
-}
-
 void spim_scu_ctrl_clear(const struct device *dev, uint32_t clear_bits)
 {
 	const struct aspeed_spim_common_config *config = dev->config;
@@ -1259,6 +1245,28 @@ void spim_release_flash_rst(const struct device *dev)
 	spim_scu_ctrl_set(parent_dev, val, val);
 
 	k_busy_wait(5000); /* 5ms */
+}
+
+void spim_push_pull_mode_config(const struct device *dev)
+{
+	const struct aspeed_spim_config *config = dev->config;
+	uint32_t reg_val;
+
+	acquire_spim_device(dev);
+
+	reg_val = sys_read32(config->ctrl_base + SPIM_IO_IRQ_CTRL);
+	reg_val |= SPIM_PUSH_PULL_ENABLED;
+	sys_write32(reg_val, config->ctrl_base + SPIM_IO_IRQ_CTRL);
+
+	release_spim_device(dev);
+
+	/*
+	 * When AST060 is in unprovision state, except for SPIPF004[31],
+	 * SPIPF000[1] and SCU0F0[11:8] should be set for achieving
+	 * push-pull mode.
+	 */
+	spim_passthrough_config(dev, SPIM_MULTI_PASSTHROUGH, true);
+	spim_scu_monitor_config(dev, true);
 }
 
 void spim_get_log_info(const struct device *dev, struct spim_log_info *info)
