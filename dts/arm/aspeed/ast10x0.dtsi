@@ -105,6 +105,72 @@
 			otpstrap = <>;
 		};
 
+		gpio0: gpio@7e780000 {
+			compatible = "aspeed,gpio";
+			reg = <0x7e780000 0x400>;
+			interrupts = <INTR_GPIO AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_PCLK>;
+			gpio0_a_d: gpio0_a_d {
+				#gpio-cells = <2>;
+				gpio-controller;
+				ngpios = <32>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				gpio-reserved = <0>;
+				pin-offset = <0>;
+			};
+
+			gpio0_e_h: gpio0_e_h {
+				#gpio-cells = <2>;
+				gpio-controller;
+				ngpios = <32>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				gpio-reserved = <0>;
+				pin-offset = <32>;
+			};
+
+			gpio0_i_l: gpio0_i_l {
+				#gpio-cells = <2>;
+				gpio-controller;
+				ngpios = <32>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				gpio-reserved = <0>;
+				pin-offset = <64>;
+			};
+
+			gpio0_m_p: gpio0_m_p {
+				#gpio-cells = <2>;
+				gpio-controller;
+				ngpios = <32>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				gpio-reserved = <0xc0>;
+				pin-offset = <96>;
+			};
+
+			gpio0_q_t: gpio0_q_t {
+				#gpio-cells = <2>;
+				gpio-controller;
+				ngpios = <32>;
+				gpio-reserved = <0xf9f3e0>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				pin-offset = <128>;
+			};
+
+			gpio0_u_v: gpio0_u_v {
+				#gpio-cells = <2>;
+				gpio-controller;
+				ngpios = <8>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				gpio-reserved = <0>;
+				pin-offset = <160>;
+			};
+		};
+
 		uart5: serial@7e784000 {
 			compatible = "ns16550";
 			reg = <0x7e784000 0x1000>;

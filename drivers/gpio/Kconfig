@@ -68,6 +68,7 @@ config GPIO_ENABLE_DISABLE_INTERRUPT
 	  on/off the interrupt signal without changing other registers, such as
 	  pending register, etc. The driver must implement it to work.
 
+source "drivers/gpio/Kconfig.aspeed"
 
 source "drivers/gpio/Kconfig.b91"
 
