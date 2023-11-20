@@ -1852,7 +1852,7 @@ static const struct flash_driver_api spi_nor_api = {
 
 #define SPI_NOR_MULTI_INIT(n)	\
 	static const struct spi_nor_config spi_nor_config_##n = {		\
-		.spi = SPI_DT_SPEC_INST_GET(0, SPI_WORD_SET(8), 0),		\
+		.spi = SPI_DT_SPEC_INST_GET(n, SPI_WORD_SET(8), 0),		\
 		.jedec_id = DT_INST_PROP(n, jedec_id),		\
 		.flash_size = DT_INST_PROP_OR(n, size, 0) / 8,	\
 		.broken_sfdp = DT_PROP(DT_INST(n, DT_DRV_COMPAT), broken_sfdp),	\
