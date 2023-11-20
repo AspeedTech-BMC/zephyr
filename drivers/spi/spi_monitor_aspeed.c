@@ -22,6 +22,7 @@ LOG_MODULE_REGISTER(spim_aspeed, CONFIG_SPI_LOG_LEVEL);
 #include <zephyr/drivers/misc/aspeed/pfr_aspeed.h>
 #include <soc.h>
 #include <zephyr/drivers/gpio.h>
+#include <zephyr/drivers/pinctrl.h>
 
 #define CMD_TABLE_VALUE(G, W, R, M, DAT_MODE, DUMMY, PROG_SZ, ADDR_LEN, ADDR_MODE, CMD) \
 	((G) << 29 | (W) << 28 | (R) << 27 | (M) << 26 | (DAT_MODE) << 24 |	\
@@ -196,6 +197,7 @@ struct aspeed_spim_config {
 	const struct device *flash_dev;
 	struct gpio_dt_spec ext_mux_sel_gpios;
 	uint32_t ext_mux_sel_delay_us;
+	const struct pinctrl_dev_config *pcfg;
 };
 
 struct aspeed_spim_common_config {
@@ -1189,7 +1191,6 @@ void spim_ctrl_monitor_config(const struct device *dev, bool enable)
 
 void spim_monitor_enable(const struct device *dev, bool enable)
 {
-	spim_scu_monitor_config(dev, enable);
 	spim_ctrl_monitor_config(dev, enable);
 }
 
@@ -1265,7 +1266,7 @@ void spim_push_pull_mode_config(const struct device *dev)
 	 * SPIPF000[1] and SCU0F0[11:8] should be set for achieving
 	 * push-pull mode.
 	 */
-	spim_passthrough_config(dev, SPIM_MULTI_PASSTHROUGH, true);
+	spim_passthrough_config(dev, SPIM_SINGLE_PASSTHROUGH, true);
 	spim_scu_monitor_config(dev, true);
 }
 
@@ -1418,6 +1419,13 @@ static int aspeed_spi_monitor_init(const struct device *dev)
 	irq_enable(config->irq_num);
 	spim_irq_enable(dev);
 
+	ret = pinctrl_apply_state(config->pcfg, PINCTRL_STATE_DEFAULT);
+	if (ret != 0) {
+		LOG_ERR("[%s] fail to configure multi function pin",
+			dev->name);
+		return ret;
+	}
+
 	if (config->force_rel_flash_rst)
 		spim_release_flash_rst(dev);
 
@@ -1452,6 +1460,7 @@ static int aspeed_spi_monitor_common_init(const struct device *dev)
 		.ext_mux_sel_gpios = GPIO_DT_SPEC_GET_OR(node_id, ext_mux_sel_gpios, {0}), \
 		.ext_mux_sel_delay_us = DT_PROP_OR(node_id, ext_mux_sel_delay_us, 0), \
 		.force_rel_flash_rst = DT_PROP(node_id, force_release_flash_reset),	\
+		.pcfg = PINCTRL_DT_DEV_CONFIG_GET(node_id),	\
 },
 
 #define ASPEED_SPIM_DEV_DATA(node_id) {	\
@@ -1473,8 +1482,11 @@ static int aspeed_spi_monitor_common_init(const struct device *dev)
 					&aspeed_spim_config[node_id],	\
 					POST_KERNEL, 71, NULL);
 
+#define ASPEED_PINCTRL_DT_INST_DEFINE(node_id)	PINCTRL_DT_DEFINE(node_id);
+
 /* common node define */
 #define ASPEED_SPI_MONITOR_COMMON_INIT(n)	\
+	DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n), ASPEED_PINCTRL_DT_INST_DEFINE)	\
 	static struct aspeed_spim_common_config aspeed_spim_common_config_##n = { \
 		.scu_base = DT_REG_ADDR_BY_IDX(DT_INST_PHANDLE_BY_IDX(n, aspeed_scu, 0), 0), \
 	};								\
@@ -1492,6 +1504,6 @@ static int aspeed_spi_monitor_common_init(const struct device *dev)
 	static struct aspeed_spim_data aspeed_spim_data[] = {			\
 		DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n), ASPEED_SPIM_DEV_DATA)};	\
 	enum {DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n), SPIM_ENUM)};	\
-	DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n), ASPEED_SPIM_DT_DEFINE)
+	DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n), ASPEED_SPIM_DT_DEFINE)	\
 
 DT_INST_FOREACH_STATUS_OKAY(ASPEED_SPI_MONITOR_COMMON_INIT)

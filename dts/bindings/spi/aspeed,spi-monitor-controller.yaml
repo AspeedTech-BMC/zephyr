@@ -5,7 +5,9 @@ description: ASPEED SPI Monitor common controller node
 
 compatible: "aspeed,spi-monitor-controller"
 
-include: [base.yaml]
+include:
+  - base.yaml
+  - pinctrl-device.yaml
 
 properties:
   reg:
@@ -24,15 +26,22 @@ child-binding:
       required: true
       description: Record the index(number) of SPI monitor controller.
 
+    pinctrl-0:
+      type: phandles
+      description: |
+        Pin configuration/s for the first state. Content is specific to the
+        selected pin controller driver implementation.
+
+    pinctrl-names:
+      type: string-array
+      description: |
+        Names for the provided states. The number of names needs to match the
+        number of states.
+
     interrupts:
       type: array
       required: false
       description: interrupts for device
-
-    label:
-      type: string
-      required: true
-      description: Human readable string describing the device (used as device_get_binding() argument)
 
     allow-cmds:
       type: uint8-array
@@ -80,9 +89,6 @@ child-binding:
       type: boolean
       required: false
       description: Block a invalid access by an extra clock.
-
-    pinctrl-0:
-      required: true
 
     flash-device:
       type: phandle

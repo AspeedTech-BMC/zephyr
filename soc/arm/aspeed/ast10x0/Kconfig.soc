@@ -9,6 +9,9 @@ choice
 config SOC_AST1030
 	bool "AST1030"
 
+config SOC_AST1060
+	bool "AST1060"
+
 endchoice
 
 config SRAM_NC_SIZE

@@ -1,0 +1,67 @@
+#
+# Copyright (c) 2019 Nordic Semiconductor ASA
+# Copyright (c) 2021 ASPEED Technology Inc.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+description: |
+    This binding provides resources required to build and run the
+    samples/ast1060_evb/demo in Zephyr.
+
+compatible: "demo-gpio-basic-api"
+
+properties:
+    bmc-srst-ctrl-out-gpios:
+        type: phandle-array
+        required: false
+        description: Control BMC SRST# signal.
+
+    bmc-extrst-ctrl-out-gpios:
+        type: phandle-array
+        required: false
+        description: Control BMC EXTRST# signal.
+
+    bmc-rst-ind-in-gpios:
+        type: phandle-array
+        required: false
+        description: Detect or monitor BMC reset indicator.
+
+    bmc-cpu1-mux-sel-out-gpios:
+        type: phandle-array
+        required: false
+        description: |
+          Control the MUX selection pin which determains
+          SPI flash signal from BMC or CPU1.
+          0: CPU1
+          1: BMC or BIC
+
+    bic-rst-ind-in-gpios:
+        type: phandle-array
+        required: false
+        description: Detect or monitor BIC reset indicator.
+
+    pch-rst-ctrl-out-gpios:
+        type: phandle-array
+        required: false
+        description: Control PCH reset signal.
+
+    cpu0-rst-ind-in-gpios:
+        type: phandle-array
+        required: false
+        description: Detect CPU0 reset indicator.
+
+    cpu1-rst-ind-in-gpios:
+        type: phandle-array
+        required: false
+        description: Detect CPU1 reset indicator.
+
+    cpu0-flash-pwr-out-gpios:
+        type: phandle-array
+        required: false
+        description: PCH CPU0 SPI flash power control.
+
+    cpu1-flash-pwr-out-gpios:
+        type: phandle-array
+        required: false
+        description: PCH CPU1 SPI flash power control.

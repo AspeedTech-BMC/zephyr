@@ -20,6 +20,11 @@ extern char __bss_nc_end__[];
 /* SCU registers */
 #define JTAG_PINMUX_REG		0x41c
 
+/* GPIO_I_L*/
+#define GPIO_I_L_DAT_VAL_REG   0x7e780070
+#define GPIO_I_L_DIR_REG       0x7e780074
+#define GPIO_I_L_DAT_READ_REG  0x7e7800c8
+
 /* ASPEED System reset contrl/status register */
 #define SYS_WDT4_SW_RESET	BIT(31)
 #define SYS_WDT4_ARM_RESET	BIT(30)
@@ -101,6 +106,17 @@ void z_arm_platform_init(void)
 	}
 
 	sys_cache_instr_enable();
+
+#if defined(CONFIG_ASPEED_DC_SCM)
+	sys_write32(sys_read32(GPIO_I_L_DIR_REG) | BIT(26) | BIT(27),
+				GPIO_I_L_DIR_REG);
+	sys_write32((sys_read32(GPIO_I_L_DAT_READ_REG) | BIT(26) | BIT(27)),
+				GPIO_I_L_DAT_VAL_REG);
+
+	if ((sys_read32(GPIO_I_L_DAT_READ_REG) & (BIT(26) | BIT(27))) !=
+	    (BIT(26) | BIT(27)))
+		printk("Fail to enable flash power\n");
+#endif
 }
 
 void aspeed_print_abr_wdt_mode(void)

@@ -1532,17 +1532,15 @@
 	};
 	/omit-if-no-ref/ pinctrl_spi2_default: spi2_default {
 		group0 {
-			pinmux = <&pin_spi2cs0>, <&pin_spi2ck>, <&pin_spi2dq0>, <&pin_spi2dq1>;
+			pinmux = <&pin_spi2cs0>, <&pin_spi2ck>, <&pin_spi2dq0>, <&pin_spi2dq1>,
+					 <&pin_spi2cs1>;
 		};
 	};
-	/omit-if-no-ref/ pinctrl_spi2_cs1: spi2_cs1 {
-		group0 {
-			pinmux = <&pin_spi2cs1>;
-		};
-	};
+
 	/omit-if-no-ref/ pinctrl_spi2_quad: spi2_quad {
 		group0 {
-			pinmux = <&pin_spi2dq2>, <&pin_spi2dq3>;
+			pinmux = <&pin_spi2cs0>, <&pin_spi2ck>, <&pin_spi2dq0>, <&pin_spi2dq1>,
+					 <&pin_spi2cs1>, <&pin_spi2dq2>, <&pin_spi2dq3>;
 		};
 	};
 
@@ -1556,164 +1554,99 @@
 		};
 	};
 
-	/omit-if-no-ref/ pinctrl_spim1_cs: spim1_cs {
+	/omit-if-no-ref/ pinctrl_spim1_default: spim1_default {
 		group0 {
-			pinmux = <&pin_spim1csin>, <&pin_spim1csout>;
+			pinmux = <&pin_spim1csin>, <&pin_spim1clkin>,
+					 <&pin_spim1mosiin>, <&pin_spim1misoin>,
+					 <&pin_spim1csout>, <&pin_spim1clkout>,
+					 <&pin_spim1mosiout>, <&pin_spim1misoout>,
+					 <&pin_spim1spirstin>, <&pin_spim1spirstout>,
+					 <&pin_spim1muxsel>;
 		};
 	};
-	/omit-if-no-ref/ pinctrl_spim1_in_default: spim1_in_default {
+
+	/omit-if-no-ref/ pinctrl_spim1_quad_default: spim1_quad_default {
 		group0 {
-			pinmux = <&pin_spim1clkin>, <&pin_spim1mosiin>, <&pin_spim1misoin>;
+			pinmux = <&pin_spim1csin>, <&pin_spim1clkin>,
+					 <&pin_spim1mosiin>, <&pin_spim1misoin>,
+					 <&pin_spim1csout>, <&pin_spim1clkout>,
+					 <&pin_spim1mosiout>, <&pin_spim1misoout>,
+					 <&pin_spim1spirstin>, <&pin_spim1spirstout>,
+					 <&pin_spim1muxsel>, <&pin_spim1io2in>,
+					 <&pin_spim1io3in>, <&pin_spim1io2out>,
+					 <&pin_spim1io3out>;
 		};
 	};
-	/omit-if-no-ref/ pinctrl_spim1_out_default: spim1_out_default {
+
+	/omit-if-no-ref/ pinctrl_spim2_default: spim2_default {
 		group0 {
-			pinmux = <&pin_spim1clkout>, <&pin_spim1mosiout>, <&pin_spim1misoout>;
+			pinmux = <&pin_spim2csin>, <&pin_spim2clkin>,
+					 <&pin_spim2mosiin>, <&pin_spim2misoin>,
+					 <&pin_spim2csout>, <&pin_spim2clkout>,
+					 <&pin_spim2mosiout>, <&pin_spim2misoout>,
+					 <&pin_spim2spirstin>, <&pin_spim2spirstout>,
+					 <&pin_spim2muxsel>;
 		};
 	};
-	/omit-if-no-ref/ pinctrl_spim1_qspi_in_default: spim1_qspi_in_default {
+
+	/omit-if-no-ref/ pinctrl_spim2_quad_default: spim2_quad_default {
 		group0 {
-			pinmux = <&pin_spim1io2in>, <&pin_spim1io3in>;
+			pinmux = <&pin_spim2csin>, <&pin_spim2clkin>,
+					 <&pin_spim2mosiin>, <&pin_spim2misoin>,
+					 <&pin_spim2csout>, <&pin_spim2clkout>,
+					 <&pin_spim2mosiout>, <&pin_spim2misoout>,
+					 <&pin_spim2spirstin>, <&pin_spim2spirstout>,
+					 <&pin_spim2muxsel>, <&pin_spim2io2in>,
+					 <&pin_spim2io3in>, <&pin_spim2io2out>,
+					 <&pin_spim2io3out>;
 		};
 	};
-	/omit-if-no-ref/ pinctrl_spim1_qspi_out_default: spim1_qspi_out_default {
+
+	/omit-if-no-ref/ pinctrl_spim3_default: spim3_default {
 		group0 {
-			pinmux = <&pin_spim1io2out>, <&pin_spim1io3out>;
+			pinmux = <&pin_spim3csin>, <&pin_spim3clkin>,
+					 <&pin_spim3mosiin>, <&pin_spim3misoin>,
+					 <&pin_spim3csout>, <&pin_spim3clkout>,
+					 <&pin_spim3mosiout>, <&pin_spim3misoout>,
+					 <&pin_spim3spirstin>, <&pin_spim3spirstout>,
+					 <&pin_spim3muxsel>;
 		};
 	};
-	/omit-if-no-ref/ pinctrl_spim1_rst_in: spim1_rst_in {
+
+	/omit-if-no-ref/ pinctrl_spim3_quad_default: spim3_quad_default {
 		group0 {
-			pinmux = <&pin_spim1spirstin>;
+			pinmux = <&pin_spim3csin>, <&pin_spim3clkin>,
+					 <&pin_spim3mosiin>, <&pin_spim3misoin>,
+					 <&pin_spim3csout>, <&pin_spim3clkout>,
+					 <&pin_spim3mosiout>, <&pin_spim3misoout>,
+					 <&pin_spim3spirstin>, <&pin_spim3spirstout>,
+					 <&pin_spim3muxsel>, <&pin_spim3io2in>,
+					 <&pin_spim3io3in>, <&pin_spim3io2out>,
+					 <&pin_spim3io3out>;
 		};
 	};
-	/omit-if-no-ref/ pinctrl_spim1_rst_out: spim1_rst_out {
+
+	/omit-if-no-ref/ pinctrl_spim4_default: spim4_default {
 		group0 {
-			pinmux = <&pin_spim1spirstout>;
+			pinmux = <&pin_spim4csin>, <&pin_spim4clkin>,
+					 <&pin_spim4mosiin>, <&pin_spim4misoin>,
+					 <&pin_spim4csout>, <&pin_spim4clkout>,
+					 <&pin_spim4mosiout>, <&pin_spim4misoout>,
+					 <&pin_spim4spirstin>, <&pin_spim4spirstout>,
+					 <&pin_spim4muxsel>;
 		};
 	};
-	/omit-if-no-ref/ pinctrl_spim1_muxsel: spim1_muxsel {
+
+	/omit-if-no-ref/ pinctrl_spim4_quad_default: spim4_quad_default {
 		group0 {
-			pinmux = <&pin_spim1muxsel>;
-		};
-	};
-	/omit-if-no-ref/ pinctrl_spim2_cs: spim2_cs {
-		group0 {
-			pinmux = <&pin_spim2csin>, <&pin_spim2csout>;
-		};
-	};
-	/omit-if-no-ref/ pinctrl_spim2_in_default: spim2_in_default {
-		group0 {
-			pinmux = <&pin_spim2clkin>, <&pin_spim2mosiin>, <&pin_spim2misoin>;
-		};
-	};
-	/omit-if-no-ref/ pinctrl_spim2_out_default: spim2_out_default {
-		group0 {
-			pinmux = <&pin_spim2clkout>, <&pin_spim2mosiout>, <&pin_spim2misoout>;
-		};
-	};
-	/omit-if-no-ref/ pinctrl_spim2_qspi_in_default: spim2_qspi_in_default {
-		group0 {
-			pinmux = <&pin_spim2io2in>, <&pin_spim2io3in>;
-		};
-	};
-	/omit-if-no-ref/ pinctrl_spim2_qspi_out_default: spim2_qspi_out_default {
-		group0 {
-			pinmux = <&pin_spim2io2out>, <&pin_spim2io3out>;
-		};
-	};
-	/omit-if-no-ref/ pinctrl_spim2_rst_in: spim2_rst_in {
-		group0 {
-			pinmux = <&pin_spim2spirstin>;
-		};
-	};
-	/omit-if-no-ref/ pinctrl_spim2_rst_out: spim2_rst_out {
-		group0 {
-			pinmux = <&pin_spim2spirstout>;
-		};
-	};
-	/omit-if-no-ref/ pinctrl_spim2_muxsel: spim2_muxsel {
-		group0 {
-			pinmux = <&pin_spim2muxsel>;
-		};
-	};
-	/omit-if-no-ref/ pinctrl_spim3_cs: spim3_cs {
-		group0 {
-			pinmux = <&pin_spim3csin>, <&pin_spim3csout>;
-		};
-	};
-	/omit-if-no-ref/ pinctrl_spim3_in_default: spim3_in_default {
-		group0 {
-			pinmux = <&pin_spim3clkin>, <&pin_spim3mosiin>, <&pin_spim3misoin>;
-		};
-	};
-	/omit-if-no-ref/ pinctrl_spim3_out_default: spim3_out_default {
-		group0 {
-			pinmux = <&pin_spim3clkout>, <&pin_spim3mosiout>, <&pin_spim3misoout>;
-		};
-	};
-	/omit-if-no-ref/ pinctrl_spim3_qspi_in_default: spim3_qspi_in_default {
-		group0 {
-			pinmux = <&pin_spim3io2in>, <&pin_spim3io3in>;
-		};
-	};
-	/omit-if-no-ref/ pinctrl_spim3_qspi_out_default: spim3_qspi_out_default {
-		group0 {
-			pinmux = <&pin_spim3io2out>, <&pin_spim3io3out>;
-		};
-	};
-	/omit-if-no-ref/ pinctrl_spim3_rst_in: spim3_rst_in {
-		group0 {
-			pinmux = <&pin_spim3spirstin>;
-		};
-	};
-	/omit-if-no-ref/ pinctrl_spim3_rst_out: spim3_rst_out {
-		group0 {
-			pinmux = <&pin_spim3spirstout>;
-		};
-	};
-	/omit-if-no-ref/ pinctrl_spim3_muxsel: spim3_muxsel {
-		group0 {
-			pinmux = <&pin_spim3muxsel>;
-		};
-	};
-	/omit-if-no-ref/ pinctrl_spim4_cs: spim4_cs {
-		group0 {
-			pinmux = <&pin_spim4csin>, <&pin_spim4csout>;
-		};
-	};
-	/omit-if-no-ref/ pinctrl_spim4_in_default: spim4_in_default {
-		group0 {
-			pinmux = <&pin_spim4clkin>, <&pin_spim4mosiin>, <&pin_spim4misoin>;
-		};
-	};
-	/omit-if-no-ref/ pinctrl_spim4_out_default: spim4_out_default {
-		group0 {
-			pinmux = <&pin_spim4clkout>, <&pin_spim4mosiout>, <&pin_spim4misoout>;
-		};
-	};
-	/omit-if-no-ref/ pinctrl_spim4_qspi_in_default: spim4_qspi_in_default {
-		group0 {
-			pinmux = <&pin_spim4io2in>, <&pin_spim4io3in>;
-		};
-	};
-	/omit-if-no-ref/ pinctrl_spim4_qspi_out_default: spim4_qspi_out_default {
-		group0 {
-			pinmux = <&pin_spim4io2out>, <&pin_spim4io3out>;
-		};
-	};
-	/omit-if-no-ref/ pinctrl_spim4_rst_in: spim4_rst_in {
-		group0 {
-			pinmux = <&pin_spim4spirstin>;
-		};
-	};
-	/omit-if-no-ref/ pinctrl_spim4_rst_out: spim4_rst_out {
-		group0 {
-			pinmux = <&pin_spim4spirstout>;
-		};
-	};
-	/omit-if-no-ref/ pinctrl_spim4_muxsel: spim4_muxsel {
-		group0 {
-			pinmux = <&pin_spim4muxsel>;
+			pinmux = <&pin_spim4csin>, <&pin_spim4clkin>,
+					 <&pin_spim4mosiin>, <&pin_spim4misoin>,
+					 <&pin_spim4csout>, <&pin_spim4clkout>,
+					 <&pin_spim4mosiout>, <&pin_spim4misoout>,
+					 <&pin_spim4spirstin>, <&pin_spim4spirstout>,
+					 <&pin_spim4muxsel>, <&pin_spim4io2in>,
+					 <&pin_spim4io3in>, <&pin_spim4io2out>,
+					 <&pin_spim4io3out>;
 		};
 	};
 };

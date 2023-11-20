@@ -312,9 +312,7 @@
 			reg-names = "ctrl_reg", "spi_mmap";
 			interrupts = <INTR_SPI2 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_HCLK>;
-			pinctrl-0 = <&pinctrl_spi2_default
-						 &pinctrl_spi2_cs1
-						 &pinctrl_spi2_quad>;
+			pinctrl-0 = <&pinctrl_spi2_quad>;
 			pinctrl-names = "default";
 			num-cs = <2>;
 			ctrl-type = "nspi";
@@ -358,6 +356,51 @@
 				spi-max-buswidth = <4>;
 				spi-max-frequency = <50000000>;
 				jedec-id = [];
+				status = "disabled";
+			};
+		};
+
+		spim0: spim_common@7e791000 {
+			compatible = "aspeed,spi-monitor-controller";
+			reg = <0x7e791000 0x4000>;
+			aspeed,scu = <&syscon>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "disabled";
+
+			spim1: spim@1 {
+				interrupts = <INTR_SPIM1 AST10X0_IRQ_DEFAULT_PRIORITY>;
+				reg = <1>;
+				allow-cmds = [];
+				read-forbidden-regions = <>;
+				write-forbidden-regions = <>;
+				status = "disabled";
+			};
+
+			spim2: spim@2 {
+				interrupts = <INTR_SPIM2 AST10X0_IRQ_DEFAULT_PRIORITY>;
+				reg = <2>;
+				allow-cmds = [];
+				read-forbidden-regions = <>;
+				write-forbidden-regions = <>;
+				status = "disabled";
+			};
+
+			spim3: spim@3 {
+				interrupts = <INTR_SPIM3 AST10X0_IRQ_DEFAULT_PRIORITY>;
+				reg = <3>;
+				allow-cmds = [];
+				read-forbidden-regions = <>;
+				write-forbidden-regions = <>;
+				status = "disabled";
+			};
+
+			spim4: spim@4 {
+				interrupts = <INTR_SPIM4 AST10X0_IRQ_DEFAULT_PRIORITY>;
+				reg = <4>;
+				allow-cmds = [];
+				read-forbidden-regions = <>;
+				write-forbidden-regions = <>;
 				status = "disabled";
 			};
 		};

@@ -1,0 +1,142 @@
+/ {
+	resources {
+		compatible = "demo-gpio-basic-api";
+		bmc-srst-ctrl-out-gpios = <&gpio0_m_p 5 0>; /* GPIO_M5 */
+		bmc-extrst-ctrl-out-gpios = <&gpio0_e_h 26 0>; /* GPIO_H2 */
+		bmc-rst-ind-in-gpios = <&gpio0_m_p 19 0>; /* GPIO_O3 */
+		bmc-cpu1-mux-sel-out-gpios = <&gpio0_a_d 26 0>; /* GPIO_D2 */
+		bic-rst-ind-in-gpios = <&gpio0_a_d 16 0>; /* GPIO_C0 */
+		pch-rst-ctrl-out-gpios = <&gpio0_m_p 2 0>; /* GPIO_M2 */
+		cpu0-rst-ind-in-gpios = <&gpio0_q_t 26 0>; /* GPIO_T2 */
+		cpu1-rst-ind-in-gpios = <&gpio0_q_t 28 0>; /* GPIO_T4 */
+		cpu0-flash-pwr-out-gpios = <&gpio0_i_l 26 0>; /* GPIO_L2 */
+		cpu1-flash-pwr-out-gpios = <&gpio0_i_l 27 0>; /* GPIO_L3 */
+	};
+};
+
+&wdt0 {
+	status = "okay";
+};
+
+&wdt1 {
+	status = "okay";
+};
+
+&wdt2 {
+	status = "okay";
+};
+
+&wdt3 {
+	status = "okay";
+};
+
+&wdt4 {
+	status = "okay";
+};
+
+&fmc {
+	status = "okay";
+};
+
+&fmc_cs0 {
+	status = "okay";
+	spi-max-buswidth = <4>;
+	spi-max-frequency = <50000000>;
+
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		boot_partition: partition@0 {
+			label = "image-0";
+			reg = <0x0 0x80000>;
+		};
+		dfu_partition: partition@1 {
+		       label = "image-1";
+		       reg = <0x80000 0x80000>;
+	       };
+	};
+};
+
+&fmc_cs1 {
+	status = "okay";
+	spi-max-buswidth = <4>;
+	spi-max-frequency = <50000000>;
+};
+
+&spi1 {
+	status = "okay";
+	num-cs = <1>;
+};
+
+&spi1_cs0 {
+	spi-max-buswidth = <4>;
+	spi-max-frequency = <50000000>;
+	status = "okay";
+};
+
+/* Use AST1060 SPI2 as the internal SPI master to
+ * to access the SPI flashes connected to SPI monitors
+ * Here,
+ * "SPI2_CS1" is used to access flash connected to SPI_Monitor_3,
+ * "SPI2_CS2" is used to access flash connected to SPI_Monitor_4,
+ */
+
+&spi2_cs0 {
+	spi-max-buswidth = <1>;
+	spi-max-frequency = <25000000>;
+	status = "okay";
+};
+
+&spi2_cs1 {
+	spi-max-buswidth = <1>;
+	spi-max-frequency = <25000000>;
+	status = "okay";
+};
+
+&spi2 {
+	internal-mux-master = <2>;
+	spi-monitor-output-base = <3>;
+	spi-monitor-common-ctrl = <&spim0>;
+
+	num-cs = <2>;
+	status = "okay";
+
+	spim-proprietary-config-enable;
+};
+
+&spim0 {
+	status = "okay";
+};
+
+&spim1 {
+	allow-cmds = [03 13 0b 0c 6b 6c 01 05 35 06 04 20 21 9f 5a b7 e9 32 34 d8 dc 02 12 3b 3c 70 50 eb ec];
+	log-ram-size = <0x200>;
+	pinctrl-0 = <&pinctrl_spim1_quad_default>;
+	pinctrl-names = "default";
+	flash-device = <&spi1_cs0>;
+	ext-mux-sel = <1>;
+	status = "okay";
+};
+
+&spim3 {
+	allow-cmds = [03 13 0b 0c 6b 6c 01 05 35 06 04 20 21 9f 5a b7 e9 32 34 d8 dc 02 12 3b 3c 70 50 eb ec];
+	log-ram-size = <0x200>;
+	pinctrl-0 = <&pinctrl_spim3_quad_default>;
+	pinctrl-names = "default";
+	flash-device = <&spi2_cs0>;
+	ext-mux-sel = <1>;
+	status = "okay";
+};
+
+&spim4 {
+	allow-cmds = [03 13 0b 0c 6b 6c 01 05 35 06 04 20 21 9f 5a b7 e9 32 34 d8 dc 02 12 3b 3c 70 50 eb ec];
+	log-ram-size = <0x200>;
+	pinctrl-0 = <&pinctrl_spim4_quad_default>;
+	pinctrl-names = "default";
+
+	flash-device = <&spi2_cs1>;
+	ext-mux-sel = <1>;
+	status = "okay";
+};
+
