@@ -1263,7 +1263,7 @@ void spim_push_pull_mode_config(const struct device *dev)
 
 	/*
 	 * When AST060 is in unprovision state, except for SPIPF004[31],
-	 * SPIPF000[1] and SCU0F0[11:8] should be set for achieving
+	 * SPIPF000[0] and SCU0F0[11:8] should be set for achieving
 	 * push-pull mode.
 	 */
 	spim_passthrough_config(dev, SPIM_SINGLE_PASSTHROUGH, true);
