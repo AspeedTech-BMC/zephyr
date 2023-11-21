@@ -37,6 +37,14 @@
 				#clock-cells = <1>;
 			};
 
+			adc_clk: adc_clk {
+				#clock-cells = <0>;
+				compatible = "fixed-factor-clock";
+				clocks = <&sysclk ASPEED_CLK_PCLK>;
+				clock-mult = <1>;
+				clock-div = <2>;
+			};
+
 			sysrst: sysrst {
 				compatible = "aspeed,ast10x0-reset";
 				#reset-cells = <1>;
@@ -49,6 +57,30 @@
 			pinmux: pinmux {
 				compatible = "aspeed,pinmux";
 			};
+		};
+
+		adc0: adc@7e6e9000 {
+			compatible = "aspeed,adc";
+			reg = <0x7e6e9000 0x100>;
+			clocks = <&adc_clk>;
+			resets = <&sysrst ASPEED_RESET_ADC>;
+			interrupts = <46 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			#io-channel-cells = <1>;
+			aspeed,scu = <&syscon>;
+			aspeed,trim-data-locate = <0x5BC 0x3c000>;
+			status = "disabled";
+		};
+
+		adc1: adc@7e6e9100 {
+			compatible = "aspeed,adc";
+			reg = <0x7e6e9100 0x100>;
+			clocks = <&adc_clk>;
+			resets = <&sysrst ASPEED_RESET_ADC>;
+			interrupts = <46 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			#io-channel-cells = <1>;
+			aspeed,scu = <&syscon>;
+			aspeed,trim-data-locate = <0x5D0 0xf00>;
+			status = "disabled";
 		};
 
 		udc: udc@7e6a2000 {

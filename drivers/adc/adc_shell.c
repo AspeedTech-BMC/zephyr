@@ -37,6 +37,8 @@
 #define DT_DRV_COMPAT nxp_vf610_adc
 #elif DT_HAS_COMPAT_STATUS_OKAY(st_stm32_adc)
 #define DT_DRV_COMPAT st_stm32_adc
+#elif DT_HAS_COMPAT_STATUS_OKAY(aspeed_adc)
+#define DT_DRV_COMPAT aspeed_adc
 #elif DT_HAS_COMPAT_STATUS_OKAY(nuvoton_npcx_adc)
 #define DT_DRV_COMPAT nuvoton_npcx_adc
 #elif DT_HAS_COMPAT_STATUS_OKAY(ti_cc32xx_adc)
