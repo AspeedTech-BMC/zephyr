@@ -2,6 +2,7 @@
 
 zephyr_library()
 
+zephyr_library_sources(clock_fixed_factor.c)
 zephyr_library_sources_ifdef(CONFIG_CLOCK_CONTROL_BEETLE              beetle_clock_control.c)
 zephyr_library_sources_ifdef(CONFIG_CLOCK_CONTROL_ADSP                clock_control_adsp.c)
 zephyr_library_sources_ifdef(CONFIG_CLOCK_CONTROL_ESP32               clock_control_esp32.c)
