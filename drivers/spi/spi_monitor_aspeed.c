@@ -1307,7 +1307,7 @@ void spim_isr(const void *param)
 	uint32_t sts_backup;
 	k_spinlock_key_t key = k_spin_lock(&data->irq_ctrl_lock);
 
-	if (!data->isr_callback)
+	if (data->isr_callback)
 		data->isr_callback(dev);
 
 	/* ack */
