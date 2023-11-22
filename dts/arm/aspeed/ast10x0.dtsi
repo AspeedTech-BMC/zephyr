@@ -83,6 +83,18 @@
 			status = "disabled";
 		};
 
+		pwm_tach: pwm_tach@7e610000 {
+			reg = <0x7e610000 0x100>;
+			pwm: pwm {
+				compatible = "aspeed,pwm";
+				#pwm-cells = <3>;
+				npwms = <16>;
+				clocks = <&sysclk ASPEED_CLK_HCLK>;
+				resets = <&sysrst ASPEED_RESET_PWM_TACH>;
+				status = "disabled";
+			};
+		};
+
 		udc: udc@7e6a2000 {
 			compatible = "aspeed,udc";
 			reg = <0x7e6a2000 0x1000>;
