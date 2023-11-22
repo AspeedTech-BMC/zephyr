@@ -825,7 +825,7 @@ static int i2c_aspeed_transfer(const struct device *dev, struct i2c_msg *msgs,
 	/* cache flush for read buffer */
 	if (msgs->flags & I2C_MSG_READ) {
 		if (config->mode == DMA_MODE) {
-			cache_instr_invd_range(&msgs->buf,
+			cache_data_invd_range(&msgs->buf,
 			msgs->len);
 		}
 	}
@@ -979,7 +979,8 @@ void do_i2cm_rx(const struct device *dev)
 	if (data->master_xfer_cnt == msg->len) {
 		/*TODO dma unmap*/
 		/*Assure cache coherency after DMA write operation*/
-		cache_instr_invd_range(msg->buf, (size_t)(msg->len));
+		cache_data_invd_range(msg->buf, (size_t)(msg->len));
+
 		for (i = 0; i < msg->len; i++) {
 			LOG_DBG("M: r %d:[%x]\n", i, msg->buf[i]);
 		}
@@ -1227,7 +1228,7 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 				AST_I2C_GET_RX_DMA_LEN(sys_read32(i2c_base + AST_I2CS_DMA_LEN_STS));
 
 				/*aspeed_cache_invalid_data*/
-				cache_instr_invd_range((&data->slave_dma_buf[0])
+				cache_data_invd_range((&data->slave_dma_buf[0])
 				, slave_rx_len);
 
 				if (slave_cb->write_received) {
@@ -1294,7 +1295,7 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 			AST_I2C_GET_RX_DMA_LEN(sys_read32(i2c_base + AST_I2CS_DMA_LEN_STS));
 
 			/*aspeed_cache_invalid_data*/
-			cache_instr_invd_range((&data->slave_dma_buf[0])
+			cache_data_invd_range((&data->slave_dma_buf[0])
 			, slave_rx_len);
 
 			if (slave_cb->write_received) {
@@ -1357,7 +1358,7 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 			AST_I2C_GET_RX_DMA_LEN(sys_read32(i2c_base + AST_I2CS_DMA_LEN_STS));
 
 			for (i = 0; i < slave_rx_len; i++) {
-				cache_instr_invd_range((&data->slave_dma_buf[i])
+				cache_data_invd_range((&data->slave_dma_buf[i])
 				, 1);
 				LOG_DBG("rx [%02x]", data->slave_dma_buf[i]);
 				if (slave_cb->write_received) {
