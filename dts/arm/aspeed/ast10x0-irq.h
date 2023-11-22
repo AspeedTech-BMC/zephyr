@@ -30,6 +30,7 @@
 #define INTR_WDT			24
 
 #define INTR_ESPI			42
+#define INTR_TACH			44
 
 #define INTR_UART1			47
 #define INTR_UART2			48

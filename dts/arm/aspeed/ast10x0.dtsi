@@ -93,6 +93,15 @@
 				resets = <&sysrst ASPEED_RESET_PWM_TACH>;
 				status = "disabled";
 			};
+			tach: tach {
+				compatible = "aspeed,tach";
+				#address-cells = <1>;
+				#size-cells = <0>;
+				clocks = <&sysclk ASPEED_CLK_HCLK>;
+				resets = <&sysrst ASPEED_RESET_PWM_TACH>;
+				interrupts = <INTR_TACH AST10X0_IRQ_DEFAULT_PRIORITY>;
+				status = "disabled";
+			};
 		};
 
 		udc: udc@7e6a2000 {

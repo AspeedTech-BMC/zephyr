@@ -271,3 +271,128 @@
 			&pinctrl_pwm14_default &pinctrl_pwm15_default>;
 
 };
+
+&tach {
+	status = "okay";
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_tach0_default &pinctrl_tach1_default
+			&pinctrl_tach2_default &pinctrl_tach3_default
+			&pinctrl_tach4_default &pinctrl_tach5_default
+			&pinctrl_tach6_default &pinctrl_tach7_default
+			&pinctrl_tach8_default &pinctrl_tach9_default
+			&pinctrl_tach10_default &pinctrl_tach11_default
+			&pinctrl_tach12_default &pinctrl_tach13_default
+			&pinctrl_tach14_default &pinctrl_tach15_default>;
+	fan@0 {
+		reg = <0>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@1 {
+		reg = <1>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@2 {
+		reg = <2>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@3 {
+		reg = <3>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@4 {
+		reg = <4>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@5 {
+		reg = <5>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@6 {
+		reg = <6>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@7 {
+		reg = <7>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@8 {
+		reg = <8>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@9 {
+		reg = <9>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@a {
+		reg = <0xa>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@b {
+		reg = <0xb>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@c {
+		reg = <0xc>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@d {
+		reg = <0xd>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@e {
+		reg = <0xe>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@f {
+		reg = <0xf>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+};
