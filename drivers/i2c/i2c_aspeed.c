@@ -599,6 +599,33 @@ static int i2c_aspeed_configure(const struct device *dev,
 	return 0;
 }
 
+static int i2c_aspeed_get_configure(const struct device *dev,
+				uint32_t *dev_config_raw)
+{
+	struct i2c_aspeed_data *data = DEV_DATA(dev);
+
+	/* NULL pointer */
+	if (!dev_config_raw) {
+		return -EINVAL;
+	}
+
+	switch (data->bus_frequency) {
+	case KHZ(100):
+		*dev_config_raw = I2C_SPEED_SET(I2C_SPEED_STANDARD);
+		break;
+	case KHZ(400):
+		*dev_config_raw = I2C_SPEED_SET(I2C_SPEED_FAST);
+		break;
+	case MHZ(1):
+		*dev_config_raw = I2C_SPEED_SET(I2C_SPEED_FAST_PLUS);
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static void aspeed_new_i2c_do_start(const struct device *dev)
 {
 	struct i2c_aspeed_config *config = DEV_CFG(dev);
@@ -1849,6 +1876,7 @@ static int i2c_aspeed_slave_unregister(const struct device *dev,
 
 static const struct i2c_driver_api i2c_aspeed_driver_api = {
 	.configure = i2c_aspeed_configure,
+	.get_config = i2c_aspeed_get_configure,
 	.transfer = i2c_aspeed_transfer,
 #ifdef CONFIG_I2C_TARGET
 	.target_register = i2c_aspeed_slave_register,
