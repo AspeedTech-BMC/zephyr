@@ -9,12 +9,13 @@ include: base.yaml
 
 child-binding:
   description: Aspeed pin configuration nodes
-  child-binding:
-    include:
-      - name: pincfg-node.yaml
+  include:
+    - name: pincfg-node.yaml
 
-    properties:
-      pinmux:
-        required: true
-        type: phandles
-        description: Configurations of pinmux selection
+  properties:
+    sig_descs:
+      required: true
+      type: array
+    ball:
+      required: true
+      type: int
