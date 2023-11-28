@@ -584,6 +584,7 @@
 			manual-high-count = <0>;
 			manual-low-count = <0>;
 			manual-sda-delay = <0>;
+			pinctrl-0 = <&pinctrl_i2c0_default>;
 			status = "disabled";
 			label = "I2C_0";
 		};
@@ -602,6 +603,7 @@
 			manual-high-count = <0>;
 			manual-low-count = <0>;
 			manual-sda-delay = <0>;
+			pinctrl-0 = <&pinctrl_i2c1_default>;
 			status = "disabled";
 			label = "I2C_1";
 		};
@@ -620,6 +622,7 @@
 			manual-high-count = <0>;
 			manual-low-count = <0>;
 			manual-sda-delay = <0>;
+			pinctrl-0 = <&pinctrl_i2c2_default>;
 			status = "disabled";
 			label = "I2C_2";
 		};
@@ -638,6 +641,7 @@
 			manual-high-count = <0>;
 			manual-low-count = <0>;
 			manual-sda-delay = <0>;
+			pinctrl-0 = <&pinctrl_i2c3_default>;
 			status = "disabled";
 			label = "I2C_3";
 		};
@@ -656,6 +660,7 @@
 			manual-high-count = <0>;
 			manual-low-count = <0>;
 			manual-sda-delay = <0>;
+			pinctrl-0 = <&pinctrl_i2c4_default>;
 			status = "disabled";
 			label = "I2C_4";
 		};
@@ -674,6 +679,7 @@
 			manual-high-count = <0>;
 			manual-low-count = <0>;
 			manual-sda-delay = <0>;
+			pinctrl-0 = <&pinctrl_i2c5_default>;
 			status = "disabled";
 			label = "I2C_5";
 		};
@@ -692,6 +698,7 @@
 			manual-high-count = <0>;
 			manual-low-count = <0>;
 			manual-sda-delay = <0>;
+			pinctrl-0 = <&pinctrl_i2c6_default>;
 			status = "disabled";
 			label = "I2C_6";
 		};
@@ -710,6 +717,7 @@
 			manual-high-count = <0>;
 			manual-low-count = <0>;
 			manual-sda-delay = <0>;
+			pinctrl-0 = <&pinctrl_i2c7_default>;
 			status = "disabled";
 			label = "I2C_7";
 		};
@@ -728,6 +736,7 @@
 			manual-high-count = <0>;
 			manual-low-count = <0>;
 			manual-sda-delay = <0>;
+			pinctrl-0 = <&pinctrl_i2c8_default>;
 			status = "disabled";
 			label = "I2C_8";
 		};
@@ -746,6 +755,7 @@
 			manual-high-count = <0>;
 			manual-low-count = <0>;
 			manual-sda-delay = <0>;
+			pinctrl-0 = <&pinctrl_i2c9_default>;
 			status = "disabled";
 			label = "I2C_9";
 		};
@@ -764,6 +774,7 @@
 			manual-high-count = <0>;
 			manual-low-count = <0>;
 			manual-sda-delay = <0>;
+			pinctrl-0 = <&pinctrl_i2c10_default>;
 			status = "disabled";
 			label = "I2C_10";
 		};
@@ -782,6 +793,7 @@
 			manual-high-count = <0>;
 			manual-low-count = <0>;
 			manual-sda-delay = <0>;
+			pinctrl-0 = <&pinctrl_i2c11_default>;
 			status = "disabled";
 			label = "I2C_11";
 		};
@@ -800,6 +812,7 @@
 			manual-high-count = <0>;
 			manual-low-count = <0>;
 			manual-sda-delay = <0>;
+			pinctrl-0 = <&pinctrl_i2c12_default>;
 			status = "disabled";
 			label = "I2C_12";
 		};
@@ -818,44 +831,9 @@
 			manual-high-count = <0>;
 			manual-low-count = <0>;
 			manual-sda-delay = <0>;
+			pinctrl-0 = <&pinctrl_i2c13_default>;
 			status = "disabled";
 			label = "I2C_13";
-		};
-
-		i2c14: i2c@7e7b0780 {
-			compatible = "aspeed,i2c";
-			clock-frequency = <I2C_BITRATE_FAST>;
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <0x7e7b0780 0x80>;
-			interrupts = <INTR_I2C14 AST10X0_IRQ_DEFAULT_PRIORITY>;
-			clocks = <&sysclk ASPEED_CLK_PCLK>;
-			xfer-mode = "DMA";
-			multi-master = <1>;
-			smbus-timeout = <1>;
-			manual-high-count = <0>;
-			manual-low-count = <0>;
-			manual-sda-delay = <0>;
-			status = "disabled";
-			label = "I2C_14";
-		};
-
-		i2c15: i2c@7e7b0800 {
-			compatible = "aspeed,i2c";
-			clock-frequency = <I2C_BITRATE_FAST>;
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <0x7e7b0800 0x80>;
-			interrupts = <INTR_I2C15 AST10X0_IRQ_DEFAULT_PRIORITY>;
-			clocks = <&sysclk ASPEED_CLK_PCLK>;
-			xfer-mode = "DMA";
-			multi-master = <1>;
-			smbus-timeout = <1>;
-			manual-high-count = <0>;
-			manual-low-count = <0>;
-			manual-sda-delay = <0>;
-			status = "disabled";
-			label = "I2C_15";
 		};
 
 		espi: espi@7e6ee000 {
