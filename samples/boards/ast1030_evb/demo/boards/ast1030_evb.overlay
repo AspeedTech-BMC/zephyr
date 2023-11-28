@@ -180,7 +180,6 @@
 
 &i2c0 {
 	status = "okay";
-	pinctrl-0 = <&pinctrl_i2c0_default>;
 
 	eeprom0: eeprom0@40 {
 		compatible = "atmel,at24";
@@ -216,7 +215,6 @@
 };
 
 &i2c1 {
-	pinctrl-0 = <&pinctrl_i2c1_default>;
 	status = "okay";
 
 	eeprom1: eeprom1@41 {
@@ -253,7 +251,6 @@
 };
 
 &i2c2 {
-	pinctrl-0 = <&pinctrl_i2c2_default>;
 	status = "okay";
 
 	eeprom2: eeprom2@42 {
@@ -282,7 +279,6 @@
 };
 
 &i2c3 {
-	pinctrl-0 = <&pinctrl_i2c3_default>;
 	status = "okay";
 
 	eeprom3: eeprom3@43 {
@@ -311,7 +307,6 @@
 };
 
 &i2c4 {
-	pinctrl-0 = <&pinctrl_i2c4_default>;
 	status = "okay";
 
 	eeprom4: eeprom4@44 {
@@ -340,7 +335,6 @@
 };
 
 &i2c5 {
-	pinctrl-0 = <&pinctrl_i2c5_default>;
 	status = "okay";
 
 	eeprom5: eeprom5@45 {
