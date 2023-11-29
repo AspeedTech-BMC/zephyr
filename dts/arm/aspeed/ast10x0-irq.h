@@ -29,7 +29,7 @@
 
 #define INTR_WDT			24
 #define INTR_JTAGM0			27
-
+#define INTR_PECI			38
 #define INTR_ESPI			42
 #define INTR_TACH			44
 
