@@ -66,7 +66,5 @@
 		__ret;								    \
 	})
 
-/* Common reset control device name for all ASPEED SOC family */
-#define ASPEED_RST_CTRL_NAME DT_INST_RESETS_LABEL(0)
 #define	DEBUG_HALT()	{ volatile int halt = 1; while (halt) { __asm__ volatile("nop"); } }
 #endif

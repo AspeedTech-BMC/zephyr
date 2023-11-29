@@ -28,6 +28,7 @@
 #define INTR_TIMER7			23
 
 #define INTR_WDT			24
+#define INTR_JTAGM0			27
 
 #define INTR_ESPI			42
 #define INTR_TACH			44
@@ -38,7 +39,7 @@
 #define INTR_UART4			50
 
 #define INTR_SGPIOM			51
-
+#define INTR_JTAGM1			53
 #define INTR_MBOX			54
 
 #define INTR_UARTDMA			56

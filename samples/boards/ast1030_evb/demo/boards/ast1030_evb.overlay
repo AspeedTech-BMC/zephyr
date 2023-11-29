@@ -202,6 +202,14 @@
 	status = "okay";
 };
 
+&jtag0 {
+	status = "okay";
+};
+
+&jtag1 {
+	status = "okay";
+};
+
 /*
  * i3c0-to-i3c1 Loopback:
  * i3c0 plays the role as the bus controller
