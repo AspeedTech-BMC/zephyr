@@ -60,14 +60,6 @@
 	spi-max-frequency = <50000000>;
 };
 
-&i2cfilter {
-	status = "okay";
-};
-
-&mbxctrl {
-	status = "okay";
-};
-
 &i2c0 {
 	status = "okay";
 
@@ -77,17 +69,10 @@
 		size = <256>;
 	};
 
-	ipmb0: ipmb@50 {
+	ipmb0: ipmb@60 {
 		compatible = "aspeed,ipmb";
-		reg = <0x50>;
-		size = <5>;
-	};
-
-	swmbx0: swmbx@60 {
-		compatible = "aspeed,swmbx-dev";
 		reg = <0x60>;
-		size = <256>;
-		port = <0>;
+		size = <5>;
 	};
 };
 
@@ -100,17 +85,10 @@
 		size = <256>;
 	};
 
-	ipmb1: ipmb@51 {
+	ipmb1: ipmb@61 {
 		compatible = "aspeed,ipmb";
-		reg = <0x51>;
-		size = <5>;
-	};
-
-	swmbx1: swmbx@61 {
-		compatible = "aspeed,swmbx-dev";
 		reg = <0x61>;
-		size = <256>;
-		port = <0>;
+		size = <5>;
 	};
 };
 
@@ -123,9 +101,9 @@
 		size = <256>;
 	};
 
-	ipmb2: ipmb@52 {
+	ipmb2: ipmb@62 {
 		compatible = "aspeed,ipmb";
-		reg = <0x52>;
+		reg = <0x62>;
 		size = <5>;
 	};
 };
@@ -139,9 +117,9 @@
 		size = <256>;
 	};
 
-	ipmb3: ipmb@53 {
+	ipmb3: ipmb@63 {
 		compatible = "aspeed,ipmb";
-		reg = <0x53>;
+		reg = <0x63>;
 		size = <5>;
 	};
 };
@@ -155,9 +133,9 @@
 		size = <256>;
 	};
 
-	ipmb4: ipmb@54 {
+	ipmb4: ipmb@64 {
 		compatible = "aspeed,ipmb";
-		reg = <0x54>;
+		reg = <0x64>;
 		size = <5>;
 	};
 };
@@ -171,9 +149,9 @@
 		size = <256>;
 	};
 
-	ipmb5: ipmb@55 {
+	ipmb5: ipmb@65 {
 		compatible = "aspeed,ipmb";
-		reg = <0x55>;
+		reg = <0x65>;
 		size = <5>;
 	};
 };
