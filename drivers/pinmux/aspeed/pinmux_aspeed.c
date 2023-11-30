@@ -102,6 +102,9 @@ const bool aspeed_fun_en_table[] = {
 };
 #undef FUN_DEFINE
 
+#define SCU618 0x618
+#define DIS_GPIO_J0_K7_INTERNAL_PU GENMASK(23, 8)
+
 struct pinmux_aspeed_config {
 	uintptr_t base;
 };
@@ -282,6 +285,13 @@ static int aspeed_pinctrl_fn_group_request(const struct device *dev, uint32_t fu
 static int pinmux_aspeed_init(const struct device *dev)
 {
 	uint32_t fun_id;
+	uint32_t scu_base = DEV_CFG(dev)->base;
+
+#if CONFIG_SOC_SERIES_AST10X0
+	/* Disable internal pull up for i2c/i3c pin*/
+	sys_write32((sys_read32(scu_base + SCU618) | DIS_GPIO_J0_K7_INTERNAL_PU),
+		    scu_base + SCU618);
+#endif
 
 	for (fun_id = 0; fun_id < MAX_FUN_ID; fun_id++) {
 		if (aspeed_fun_en_table[fun_id]) {
