@@ -577,6 +577,11 @@ static const struct hash_testvec sha256_tv_template[] = {
 	}
 };
 
+static uint32_t get_hw_compatibility(void)
+{
+	return CAP_SYNC_OPS | CAP_SEPARATE_IO_BUFS;
+}
+
 static int _sha_test(const struct shell *shell, const struct hash_testvec *tv, int tv_len,
 		     enum hash_algo algo)
 {
@@ -591,6 +596,7 @@ static int _sha_test(const struct shell *shell, const struct hash_testvec *tv, i
 	for (i = 0; i < tv_len; i++) {
 		shell_fprintf(shell, SHELL_NORMAL, "tv[%d]:", i);
 
+		ini.flags = get_hw_compatibility();
 		pkt.in_buf = (uint8_t *)tv[i].plaintext;
 		pkt.in_len = tv[i].psize;
 		pkt.out_buf = digest;
