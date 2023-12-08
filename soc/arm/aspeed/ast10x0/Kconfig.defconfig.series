@@ -19,4 +19,7 @@ choice CACHE_TYPE
 	default EXTERNAL_CACHE
 endchoice
 
+config LINKER_LAST_SECTION_ID
+	default n
+
 endif # SOC_SERIES_AST10X0

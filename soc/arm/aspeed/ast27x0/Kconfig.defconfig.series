@@ -22,4 +22,7 @@ endchoice
 config XIP
 	default y
 
+config LINKER_LAST_SECTION_ID
+	default n
+
 endif # SOC_SERIES_AST27X0
