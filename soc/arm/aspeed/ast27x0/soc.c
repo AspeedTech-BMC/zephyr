@@ -15,6 +15,11 @@
 
 extern char __bss_nc_start__[];
 extern char __bss_nc_end__[];
+#ifdef CONFIG_XIP
+extern char _flash_used[];
+#else
+extern char __data_region_end[];
+#endif
 
 /* secure boot header : provide image size to bootROM for SPI boot */
 struct sb_header {
@@ -28,7 +33,11 @@ struct sb_header {
 };
 
 struct sb_header sbh __attribute((used, section(".sboot"))) = {
-	.img_size = (uint32_t)&__bss_start,
+#ifdef CONFIG_XIP
+	.img_size = (uint32_t)&_flash_used,
+#else
+	.img_size = (uint32_t)&__data_region_end,
+#endif
 };
 
 void z_arm_platform_init(void)
