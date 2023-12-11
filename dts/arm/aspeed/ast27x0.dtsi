@@ -51,7 +51,7 @@
 			compatible = "ns16550";
 			reg = <0x72c1a000 0x1000>;
 			interrupts = <8 0>;
-			//clocks = <&sysclk1 ASPEED_CLK_UART5>;
+			clocks = <&cpu_clk AST2700_CPU_CLK_GATE_UART4CLK>;
 			status = "disabled";
 			reg-shift = <2>;
 		};
@@ -80,6 +80,15 @@
 			compatible = "ns16550";
 			reg = <0x74c33000 0x1000>;
 			interrupts = <263 0>;
+			status = "disabled";
+			reg-shift = <2>;
+		};
+
+		uart6: serial@74c33500 {
+			compatible = "ns16550";
+			reg = <0x74c33500 0x1000>;
+			interrupts = <140 0>;
+			clocks = <&io_clk AST2700_IO_CLK_GATE_UART6CLK>;
 			status = "disabled";
 			reg-shift = <2>;
 		};
