@@ -755,7 +755,7 @@ static void i3c_aspeed_rd_rx_fifo(struct i3c_aspeed_obj *obj, uint8_t *bytes, in
 	if (obj->config->priv_xfer_pec) {
 		ret = pec_valid(obj->dev, bytes, nbytes);
 		if (ret) {
-			LOG_ERR("PEC error\n");
+			LOG_ERR("PEC error");
 			memset(bytes, 0, nbytes);
 		}
 	}
@@ -845,7 +845,7 @@ static void i3c_aspeed_enter_halt(struct i3c_aspeed_obj *obj, bool by_sw)
 		halt_state = CM_TFR_STS_SLAVE_HALT;
 	}
 
-	LOG_DBG("present state = %08x\n", i3c_register->present_state.value);
+	LOG_DBG("present state = %08x", i3c_register->present_state.value);
 
 	if (by_sw) {
 		ctrl.value = i3c_register->device_ctrl.value;
@@ -916,13 +916,13 @@ static void i3c_aspeed_slave_resp_handler(struct i3c_aspeed_obj *obj, union i3c_
 
 		resp.value = i3c_register->resp_queue_port.value;
 		if (resp.fields.err_status) {
-			LOG_ERR("Respons Error: 0x%x\n", resp.fields.err_status);
+			LOG_ERR("Respons Error: 0x%x", resp.fields.err_status);
 		}
 
 		if (resp.fields.data_length && !resp.fields.err_status &&
 		    resp.fields.tid == SLAVE_TID_MASTER_WRITE_DATA) {
 			if (!cb) {
-				__ASSERT(0, "flush rx fifo is TBD\n");
+				__ASSERT(0, "flush rx fifo is TBD");
 				continue;
 			}
 			if (cb->write_requested) {
@@ -1000,39 +1000,40 @@ static void i3c_aspeed_master_rx_ibi(struct i3c_aspeed_obj *obj)
 		obj->ibi_status_parser(i3c_register->ibi_queue_status.value, &ibi_status);
 		data_consumed = false;
 		if (ibi_status.ibi_status) {
-			LOG_WRN("IBI NACK\n");
+			LOG_WRN("IBI NACK");
 			goto clear;
 		}
 
 		if (ibi_status.error) {
-			LOG_ERR("IBI error\n");
+			LOG_ERR("IBI error");
 			goto out;
 		}
 
 		if ((ibi_status.id >> 1) != 0x2 && !(ibi_status.id & 0x1)) {
-			LOG_INF("Receive Controller Role Request event (Not supported for now)\n");
+			LOG_INF("Receive Controller Role Request event (Not supported for now)");
 			goto out;
 		}
 
 		if ((ibi_status.id >> 1) == 0x2 && !(ibi_status.id & 0x1)) {
-			LOG_INF("Receive Hot-join event (Not supported for now)\n");
+			LOG_INF("Receive Hot-join event (Not supported for now)");
 			goto out;
 		}
 
 		pos = i3c_aspeed_get_pos(obj, ibi_status.id >> 1);
 		if (pos < 0) {
-			LOG_ERR("unregistered IBI source: 0x%x\n", ibi_status.id >> 1);
+			LOG_ERR("unregistered IBI source: 0x%x", ibi_status.id >> 1);
 			goto out;
 		}
 
 		if (pos > ARRAY_SIZE(obj->dev_descs)) {
-			LOG_ERR("pos(%d) exceeds the max device(%ld)\n", pos, ARRAY_SIZE(obj->dev_descs));
+			LOG_ERR("pos(%d) exceeds the max device(%ld)", pos,
+				ARRAY_SIZE(obj->dev_descs));
 			goto out;
 		}
 
 		i3cdev = obj->dev_descs[pos];
 		if (!i3cdev) {
-			LOG_ERR("device descriptor not found\n");
+			LOG_ERR("device descriptor not found");
 			goto out;
 		}
 
@@ -1047,7 +1048,7 @@ static void i3c_aspeed_master_rx_ibi(struct i3c_aspeed_obj *obj)
 		nbytes = ibi_status.length;
 		nwords = nbytes >> 2;
 		if ((payload->size + ibi_status.length) > payload->max_payload_size) {
-			LOG_ERR("IBI length exceeds the max size (%d bytes)\n",
+			LOG_ERR("IBI length exceeds the max size (%d bytes)",
 				payload->max_payload_size);
 			goto out;
 		}
@@ -1096,27 +1097,27 @@ static void i3c_aspeed_slave_event(const struct device *dev, union i3c_intr_s st
 	uint32_t cm_tfr_sts = i3c_register->present_state.fields.cm_tfr_sts;
 
 	if (status.fields.dyn_addr_assign) {
-		LOG_DBG("dynamic address assigned\n");
+		LOG_DBG("dynamic address assigned");
 		k_work_submit(&obj->work);
 	}
 
 	if (status.fields.ccc_update) {
 		if (cm_tfr_sts == CM_TFR_STS_SLAVE_HALT) {
-			LOG_DBG("slave halt resume\n");
+			LOG_DBG("slave halt resume");
 			i3c_aspeed_enter_halt(obj, false);
 			i3c_aspeed_exit_halt(obj);
 		}
 
 		if (i3c_register->slave_event_ctrl.fields.mrl_update) {
-			LOG_DBG("master sets MRL %d\n", i3c_register->slave_max_len.fields.mrl);
+			LOG_DBG("master sets MRL %d", i3c_register->slave_max_len.fields.mrl);
 		}
 
 		if (i3c_register->slave_event_ctrl.fields.mwl_update) {
-			LOG_DBG("master sets MWL %d\n", i3c_register->slave_max_len.fields.mwl);
+			LOG_DBG("master sets MWL %d", i3c_register->slave_max_len.fields.mwl);
 		}
 
 		if (i3c_register->slave_event_ctrl.fields.sir_allowed) {
-			LOG_DBG("master allows slave sending sir\n");
+			LOG_DBG("master allows slave sending sir");
 		}
 
 		/* W1C the slave events */
@@ -1135,7 +1136,7 @@ static void i3c_aspeed_isr(const struct device *dev)
 	status.value = i3c_register->intr_status.value;
 	if (config->secondary) {
 		if (status.fields.read_q_recv)
-			LOG_WRN("Master read when CMDQ is empty\n");
+			LOG_WRN("Master read when CMDQ is empty");
 
 		if (status.fields.resp_q_ready) {
 			i3c_aspeed_slave_resp_handler(obj, status);
@@ -1197,8 +1198,8 @@ static void i3c_aspeed_init_clock(struct i3c_aspeed_obj *obj)
 	clock_control_get_rate(config->clock_dev, config->clock_id, &core_rate);
 	config->core_period = DIV_ROUND_UP(1000000000, core_rate);
 
-	LOG_INF("core_rate %d hz (%d ns)\n", core_rate, config->core_period);
-	LOG_INF("i2c-scl = %d, i3c-scl = %d\n", config->i2c_scl_hz, config->i3c_scl_hz);
+	LOG_INF("core_rate %d hz (%d ns)", core_rate, config->core_period);
+	LOG_INF("i2c-scl = %d, i3c-scl = %d", config->i2c_scl_hz, config->i3c_scl_hz);
 
 	if (config->i2c_scl_hz) {
 		calc_i2c_clk(config->i2c_scl_hz, &hi_ns, &lo_ns);
@@ -1425,7 +1426,7 @@ static void i3c_aspeed_wr_tx_fifo(struct i3c_aspeed_obj *obj, uint8_t *bytes, in
 	int i;
 
 	for (i = 0; i < nwords; i++) {
-		LOG_DBG("tx data: %x\n", *src);
+		LOG_DBG("tx data: %x", *src);
 		i3c_register->rx_tx_data_port = *src++;
 	}
 
@@ -1433,7 +1434,7 @@ static void i3c_aspeed_wr_tx_fifo(struct i3c_aspeed_obj *obj, uint8_t *bytes, in
 		uint32_t tmp = 0;
 
 		memcpy(&tmp, bytes + (nbytes & ~0x3), nbytes & 3);
-		LOG_DBG("tx data: %x\n", tmp);
+		LOG_DBG("tx data: %x", tmp);
 		i3c_register->rx_tx_data_port = tmp;
 	}
 }
@@ -1462,7 +1463,7 @@ static void i3c_aspeed_start_xfer(struct i3c_aspeed_obj *obj, struct i3c_aspeed_
 		cmd = &xfer->cmds[i];
 		i3c_register->cmd_queue_port.value = cmd->cmd_hi;
 		i3c_register->cmd_queue_port.value = cmd->cmd_lo;
-		LOG_DBG("cmd_hi: %08x cmd_lo: %08x\n", cmd->cmd_hi, cmd->cmd_lo);
+		LOG_DBG("cmd_hi: %08x cmd_lo: %08x", cmd->cmd_hi, cmd->cmd_lo);
 	}
 
 	k_spin_unlock(&obj->lock, key);
@@ -1489,7 +1490,7 @@ int i3c_aspeed_master_priv_xfer(struct i3c_dev_desc *i3cdev, struct i3c_priv_xfe
 	}
 
 	cmds = (struct i3c_aspeed_cmd *)k_calloc(sizeof(struct i3c_aspeed_cmd), nxfers);
-	__ASSERT(cmds, "failed to allocat cmd\n");
+	__ASSERT(cmds, "failed to allocat cmd");
 
 	xfer.ncmds = nxfers;
 	xfer.cmds = cmds;
@@ -1621,7 +1622,7 @@ int i3c_aspeed_master_attach_device(const struct device *dev, struct i3c_dev_des
 
 	pos = i3c_aspeed_get_pos(obj, slave->info.dynamic_addr);
 	if (pos >= 0) {
-		LOG_WRN("addr %x has been registered at %d\n", slave->info.dynamic_addr, pos);
+		LOG_WRN("addr %x has been registered at %d", slave->info.dynamic_addr, pos);
 		return pos;
 	}
 	obj->dev_addr_tbl[i] = slave->info.dynamic_addr;
@@ -1629,7 +1630,7 @@ int i3c_aspeed_master_attach_device(const struct device *dev, struct i3c_dev_des
 
 	/* allocate private data of the device */
 	priv = (struct i3c_aspeed_dev_priv *)k_calloc(sizeof(struct i3c_aspeed_dev_priv), 1);
-	__ASSERT(priv, "failed to allocat device private data\n");
+	__ASSERT(priv, "failed to allocat device private data");
 
 	priv->pos = i;
 	slave->priv_data = priv;
@@ -1757,12 +1758,12 @@ int i3c_aspeed_slave_put_read_data(const struct device *dev, struct i3c_slave_pa
 
 	if (ibi_notify) {
 		if (i3c_register->slave_event_ctrl.fields.sir_allowed == 0) {
-			LOG_ERR("SIR is not enabled by the main master\n");
+			LOG_ERR("SIR is not enabled by the main master");
 			return -EACCES;
 		}
 
 		if (obj->sir_allowed_by_sw == 0) {
-			LOG_ERR("SIR is not allowed by software\n");
+			LOG_ERR("SIR is not allowed by software");
 			return -EACCES;
 		}
 
@@ -1805,7 +1806,7 @@ int i3c_aspeed_slave_put_read_data(const struct device *dev, struct i3c_slave_pa
 		flag_ret = osEventFlagsWait(obj->ibi_event, events.value, osFlagsWaitAll,
 					    K_SECONDS(1).ticks);
 		if (flag_ret & osFlagsError) {
-			LOG_WRN("SIR timeout: reset i3c controller\n");
+			LOG_WRN("SIR timeout: reset i3c controller");
 			i3c_aspeed_init(dev);
 			ret = -EIO;
 			goto ibi_err;
@@ -1816,7 +1817,7 @@ int i3c_aspeed_slave_put_read_data(const struct device *dev, struct i3c_slave_pa
 	flag_ret =
 		osEventFlagsWait(obj->data_event, events.value, osFlagsWaitAny, K_SECONDS(3).ticks);
 	if (flag_ret & osFlagsError) {
-		LOG_WRN("Wait master read timeout: reset queue\n");
+		LOG_WRN("Wait master read timeout: reset queue");
 		ret = i3c_aspeed_slave_reset_queue(dev);
 	}
 ibi_err:
@@ -1838,7 +1839,7 @@ int i3c_aspeed_slave_send_sir(const struct device *dev, struct i3c_ibi_payload *
 	__ASSERT_NO_MSG(payload->size);
 
 	if (i3c_register->slave_event_ctrl.fields.sir_allowed == 0) {
-		LOG_ERR("SIR is not enabled by the main master\n");
+		LOG_ERR("SIR is not enabled by the main master");
 		return -EACCES;
 	}
 
@@ -2009,21 +2010,21 @@ static uint16_t parse_extra_gpio(const struct extra_gpio *extra_gpios, int size)
 		gpio_dev = device_get_binding(extra_gpios[i].port);
 		ret = gpio_pin_configure(gpio_dev, extra_gpios[i].pin, extra_gpios[i].flags | GPIO_INPUT);
 		if (ret < 0) {
-			LOG_ERR("pin %s:%d:%d configure failed %d\n", extra_gpios[i].port,
+			LOG_ERR("pin %s:%d:%d configure failed %d", extra_gpios[i].port,
 				extra_gpios[i].pin, extra_gpios[i].flags | GPIO_INPUT, ret);
 			result = 0;
 			break;
 		}
 		ret = gpio_pin_get(gpio_dev, extra_gpios[i].pin);
 		if (ret < 0) {
-			LOG_ERR("pin %s:%d get value failed %d\n", extra_gpios[i].port,
+			LOG_ERR("pin %s:%d get value failed %d", extra_gpios[i].port,
 				extra_gpios[i].pin, ret);
 			result = 0;
 			break;
 		}
 		result |= ret << i;
 	}
-	LOG_DBG("extra val = %x\n", result);
+	LOG_DBG("extra val = %x", result);
 	return result;
 }
 
