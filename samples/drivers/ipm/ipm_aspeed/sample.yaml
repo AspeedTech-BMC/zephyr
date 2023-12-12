@@ -1,0 +1,12 @@
+sample:
+  description: the sample reads the received data from the Messaging Unit
+    using the IPM and transmits it back unchanged
+  name: Aspeed IPM sample
+tests:
+  sample.ipm.ipm_aspeed:
+    build_only: true
+    filter: CONFIG_SOC_FAMILY_ASPEED
+    platform_allow: ast2600_evb
+    integration_platforms:
+      - ast2600_evb
+    tags: samples ipm
