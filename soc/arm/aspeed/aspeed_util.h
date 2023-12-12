@@ -24,6 +24,8 @@
 #if (CONFIG_SRAM_NC_SIZE > 0)
 #define NON_CACHED_BSS                  __section(".nocache.bss")
 #define NON_CACHED_BSS_ALIGN16          __section_aligned16(".nocache.bss")
+#define NON_CACHED_SHM_RX               __section_aligned16(".nocache.shm.rx")
+#define NON_CACHED_SHM_TX               __section_aligned16(".nocache.shm.tx")
 #else
 #define NON_CACHED_BSS
 #define NON_CACHED_BSS_ALIGN16          __aligned(16)
