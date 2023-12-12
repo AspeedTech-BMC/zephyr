@@ -360,7 +360,7 @@ static int cmd_mem_wr(const struct shell *shell, size_t argc, char **argv)
 	if (argc > 2) {
 		addr = strtoul(argv[1], &endptr, 16);
 		data = strtoul(argv[2], &endptr, 16);
-		*(uint32_t *)addr = data;
+		sys_write32(data, addr);
 	} else {
 		return -EINVAL;
 	}
@@ -382,12 +382,14 @@ static int cmd_mem_md(const struct shell *shell, size_t argc, char **argv)
 		length = strtoul(argv[2], &endptr, 16);
 
 	for (i = 0; i < length; i++) {
-		if ((i & 0x3) == 0)
-			printf("\n[%08x] ", addr + (i << 2));
-		printf("%08x ", *(uint32_t *)(addr + (i << 2)));
+		if ((i & 0x3) == 0x0) {
+			shell_fprintf(shell, SHELL_NORMAL, "[%08x] ", addr + (i << 2));
+		}
+		shell_fprintf(shell, SHELL_NORMAL, "%08x ", sys_read32(addr + (i << 2)));
+		if ((i & 0x3) == 0x3) {
+			shell_fprintf(shell, SHELL_NORMAL, "\n");
+		}
 	}
-
-	shell_print(shell, "\n");
 
 	return 0;
 }
