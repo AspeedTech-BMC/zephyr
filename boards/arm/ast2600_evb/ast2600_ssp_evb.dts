@@ -1,0 +1,29 @@
+/*
+ * Copyright (c) 2021 ASPEED Technology Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+#include <aspeed/ast26xx.dtsi>
+
+/ {
+	model = "Aspeed AST2600 Evaluation board";
+	compatible = "aspeed,bmc-ast2600", "aspeed,ast2600";
+
+	chosen {
+		zephyr,console = &uart11;
+		zephyr,shell-uart = &uart11;
+		zephyr,sram = &sdram0;
+	};
+};
+
+&sdram0 {
+	reg = <0 DT_SIZE_M(16)>, <0x1000000 DT_SIZE_M(16)>;
+};
+
+&uart11 {
+	clock-frequency = <1846153>;
+	current-speed = <115200>;
+	status = "okay";
+};

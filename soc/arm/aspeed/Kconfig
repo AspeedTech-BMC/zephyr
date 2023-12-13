@@ -16,6 +16,10 @@ if SOC_SERIES_AST10X0
 source "soc/arm/aspeed/ast10x0/Kconfig.soc"
 endif
 
+if SOC_SERIES_AST26XX
+source "soc/arm/aspeed/ast26xx/Kconfig.soc"
+endif
+
 if SOC_SERIES_AST27X0
 source "soc/arm/aspeed/ast27x0/Kconfig.soc"
 endif

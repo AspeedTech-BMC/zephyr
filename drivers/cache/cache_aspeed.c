@@ -9,6 +9,23 @@
 #include <zephyr/drivers/syscon.h>
 #include <zephyr/sys/barrier.h>
 
+#ifdef CONFIG_SOC_SERIES_AST26XX
+/*
+ * cache area control: each bit controls 16MB cache area
+ *	1: cacheable
+ *	0: no-cache
+ *
+ *	bit[0]: 1st 16MB from 0x0000_0000 to 0x00ff_ffff
+ *	bit[1]: 2nd 16MB from 0x0100_0000 to 0x01ff_ffff
+ *	...
+ *	bit[30]: 31th 16MB from 0x1e00_0000 to 0x1eff_ffff
+ *	bit[31]: 32th 16MB from 0x1f00_0000 to 0x1fff_ffff
+ */
+#define CACHE_AREA_CTRL_REG	0xa40
+#define CACHE_INVALID_REG	0xa44
+#define CACHE_FUNC_CTRL_REG	0xa48
+#define CACHE_AREA_SIZE_LOG2	24
+#elif defined(CONFIG_SOC_SERIES_AST10X0)
 /*
  * cache area control: each bit controls 32KB cache area
  *	1: cacheable
@@ -23,12 +40,14 @@
 #define CACHE_AREA_CTRL_REG	0xa50
 #define CACHE_INVALID_REG	0xa54
 #define CACHE_FUNC_CTRL_REG	0xa58
+#define CACHE_AREA_SIZE_LOG2	15
+#else
+#error "Unsupported SOC series"
+#endif
 
 #define CACHED_SRAM_ADDR	CONFIG_SRAM_BASE_ADDRESS
 #define CACHED_SRAM_SIZE	KB(CONFIG_SRAM_SIZE)
 #define CACHED_SRAM_END		(CACHED_SRAM_ADDR + CACHED_SRAM_SIZE - 1)
-
-#define CACHE_AREA_SIZE_LOG2	15
 #define CACHE_AREA_SIZE		(1 << CACHE_AREA_SIZE_LOG2)
 
 #define DCACHE_INVALID(addr)	(BIT(31) | ((addr & GENMASK(10, 0)) << 16))

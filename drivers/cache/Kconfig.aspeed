@@ -4,8 +4,8 @@
 
 config CACHE_ASPEED
 bool "ASPEED external cache driver"
-	depends on SOC_SERIES_AST10X0
+	depends on SOC_SERIES_AST10X0 || SOC_SERIES_AST26XX
 	depends on SYSCON
 	select CACHE_HAS_DRIVER
 	help
-	  This option enables the CACHE driver for ASPEED AST10X0 series SOC.
+	  This option enables the CACHE driver for ASPEED AST10X0 & AST26XX series SOC.

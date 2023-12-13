@@ -8,7 +8,11 @@
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/pinctrl.h>
 #include <zephyr/drivers/syscon.h>
+#ifdef CONFIG_SOC_SERIES_AST10X0
 #include <zephyr/dt-bindings/pinctrl/ast10x0-pinctrl.h>
+#else
+#include <zephyr/dt-bindings/pinctrl/ast26xx-pinctrl.h>
+#endif
 #include <pinctrl_soc.h>
 #include <zephyr/logging/log.h>
 

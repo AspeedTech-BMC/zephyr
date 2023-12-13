@@ -8,6 +8,13 @@ config CLOCK_CONTROL_AST10X0
 	help
 	  This option enables the clock driver for ASPEED AST10X0 series SOC.
 
+config CLOCK_CONTROL_AST26XX
+	bool "ASPEED clock control driver"
+	default y
+	depends on DT_HAS_ASPEED_AST26XX_CLOCK_ENABLED
+	help
+	  This option enables the clock driver for ASPEED AST26XX series SOC.
+
 config CLOCK_CONTROL_AST27XX
 	bool "AST2700 clock control driver"
 	default y
