@@ -19,7 +19,7 @@
 };
 
 &sdram0 {
-	reg = <0 DT_SIZE_M(16)>, <0x1000000 DT_SIZE_M(16)>;
+	reg = <0 DT_SIZE_K(16384)>, <0x1000000 DT_SIZE_K(16384)>;
 };
 
 &uart11 {
