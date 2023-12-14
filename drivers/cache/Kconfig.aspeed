@@ -9,3 +9,10 @@ bool "ASPEED external cache driver"
 	select CACHE_HAS_DRIVER
 	help
 	  This option enables the CACHE driver for ASPEED AST10X0 & AST26XX series SOC.
+
+config CACHE_AST27X0
+bool "ASPEED AST27X0 external cache driver"
+	depends on SOC_SERIES_AST27X0
+	select CACHE_HAS_DRIVER
+	help
+	  This option enables the CACHE driver for ASPEED AST27X0 series SOC.

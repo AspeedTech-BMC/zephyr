@@ -4,4 +4,5 @@ zephyr_library()
 zephyr_library_property(ALLOW_EMPTY TRUE)
 
 zephyr_library_sources_ifdef(CONFIG_CACHE_ASPEED	cache_aspeed.c)
+zephyr_library_sources_ifdef(CONFIG_CACHE_AST27X0	cache_ast27x0.c)
 zephyr_library_sources_ifdef(CONFIG_USERSPACE		cache_handlers.c)
