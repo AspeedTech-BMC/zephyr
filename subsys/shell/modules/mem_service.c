@@ -43,7 +43,7 @@ static int cmd_mem_md(const struct shell *shell, size_t argc, char **argv)
 			shell_fprintf(shell, SHELL_NORMAL, "[%08x] ", addr + (i << 2));
 		}
 		shell_fprintf(shell, SHELL_NORMAL, "%08x ", sys_read32(addr + (i << 2)));
-		if ((i & 0x3) == 0x3) {
+		if ((i & 0x3) == 0x3 || i == length - 1) {
 			shell_fprintf(shell, SHELL_NORMAL, "\n");
 		}
 	}
