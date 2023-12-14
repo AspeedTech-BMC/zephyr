@@ -12,9 +12,9 @@
 	compatible = "aspeed,ast2700-evb";
 
 	chosen {
-		zephyr,console =&uart4;
-		zephyr,shell-uart =&uart4;
-		zephyr,sram =&sram0;
+		zephyr,console = &uart4;
+		zephyr,shell-uart = &uart4;
+		zephyr,sram = &sram0;
 	};
 };
 

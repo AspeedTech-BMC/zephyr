@@ -41,37 +41,37 @@
 };
 
 &intc0 {
-status = "okay";
+	status = "okay";
 };
 
 &intc1 {
-status = "okay";
+	status = "okay";
 };
 
 &intc2 {
-status = "okay";
+	status = "okay";
 };
 
 &intc3 {
-status = "okay";
+	status = "okay";
 };
 
 &intc4 {
-status = "okay";
+	status = "okay";
 };
 
 &intc5 {
-status = "okay";
+	status = "okay";
 };
 
 &intc6 {
-status = "okay";
+	status = "okay";
 };
 
 &intc7 {
-status = "okay";
+	status = "okay";
 };
 
 &intc8 {
-status = "okay";
+	status = "okay";
 };
