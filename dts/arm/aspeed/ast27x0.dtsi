@@ -40,6 +40,16 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 
+			ssp_cache: cache-controller@120 {
+				reg = <0x120 0x40>;
+				status = "disabled";
+			};
+
+			tsp_cache: cache-controller@160 {
+				reg = <0x160 0x40>;
+				status = "disabled";
+			};
+
 			sysrst0: reset-controller@200 {
 				compatible = "aspeed,ast27xx-reset";
 				reg = <0x200 0x40>;

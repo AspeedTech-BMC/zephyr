@@ -1,6 +1,16 @@
 /dts-v1/;
 #include <aspeed/ast27x0.dtsi>
 
+/ {
+	aliases {
+		cache = &ssp_cache;
+	};
+};
+
+&ssp_cache {
+	status = "okay";
+};
+
 &ipc {
 	ipc0: ipc@0 {
 		compatible = "aspeed,ast2700-ipc";
