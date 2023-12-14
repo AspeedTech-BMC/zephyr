@@ -79,10 +79,12 @@ static const struct reset_driver_api ast27xx_reset_api = {
 	.line_toggle = ast27xx_reset_line_toggle
 };
 
-static const struct reset_ast27xx_config reset_ast27xx_config = {
-	.base = DT_INST_REG_ADDR(0),
-};
+#define RESET_AST27XX_INIT(n)                                                                      \
+	static const struct reset_ast27xx_config reset_ast27xx_config_##n = {                      \
+		.base = DT_REG_ADDR(DT_INST_PARENT(n)) + DT_INST_REG_ADDR(n),                      \
+	};                                                                                         \
+                                                                                                   \
+	DEVICE_DT_INST_DEFINE(n, NULL, NULL, NULL, &reset_ast27xx_config_##n, PRE_KERNEL_1,        \
+			      CONFIG_RESET_INIT_PRIORITY, &ast27xx_reset_api);
 
-DEVICE_DT_INST_DEFINE(0, NULL, NULL, NULL, &reset_ast27xx_config, PRE_KERNEL_1,
-		      CONFIG_RESET_INIT_PRIORITY, &ast27xx_reset_api);
-
+DT_INST_FOREACH_STATUS_OKAY(RESET_AST27XX_INIT)

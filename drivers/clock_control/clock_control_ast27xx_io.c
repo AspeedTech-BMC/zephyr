@@ -104,7 +104,7 @@ static const struct clock_control_driver_api aspeed_clk_io_api = {
 };
 
 static const struct clock_ast27xx_io_config clock_ast27xx_io_config = {
-	.base = DT_INST_REG_ADDR(0),
+	.base = DT_REG_ADDR(DT_INST_PARENT(0)) + DT_INST_REG_ADDR(0),
 };
 
 DEVICE_DT_INST_DEFINE(0, NULL, NULL, NULL, &clock_ast27xx_io_config, PRE_KERNEL_1,

@@ -34,24 +34,31 @@
 			ranges = <0x0 0x72100000 0x4000>;
 		};
 
-		reset0: reset-controller@72c02200 {
-			compatible = "aspeed,ast27xx-reset";
-			reg = <0x72c02200 0x80>;
-			#reset-cells = <1>;
-		};
+		syscon0: syscon@72c02000 {
+			compatible = "syscon";
+			reg = <0x72c02000 0x1000>;
+			#address-cells = <1>;
+			#size-cells = <1>;
 
-		cpu_clk: clk@72c02240 {
-			compatible = "aspeed,ast27xx-cpu-clock";
-			reg = <0x72c02240 0x1c0>;
-			#clock-cells = <1>;
-			status = "okay";
+			sysrst0: reset-controller@200 {
+				compatible = "aspeed,ast27xx-reset";
+				reg = <0x200 0x40>;
+				#reset-cells = <1>;
+			};
+
+			sysclk0: system-clock@240 {
+				compatible = "aspeed,ast27xx-cpu-clock";
+				reg = <0x240 0x1c0>;
+				#clock-cells = <1>;
+				status = "okay";
+			};
 		};
 
 		uart4: serial@72c1a000 {
 			compatible = "ns16550";
 			reg = <0x72c1a000 0x1000>;
 			interrupts = <8 0>;
-			clocks = <&cpu_clk AST2700_CPU_CLK_GATE_UART4CLK>;
+			clocks = <&sysclk0 AST2700_CPU_CLK_GATE_UART4CLK>;
 			status = "disabled";
 			reg-shift = <2>;
 		};
@@ -63,17 +70,23 @@
 			ranges = <0 0x72c1c000 0x1000>;
 		};
 
-		reset1: reset-controller@74c02200 {
-			compatible = "aspeed,ast27xx-reset";
-			reg = <0x74c02200 0x80>;
-			#reset-cells = <1>;
-		};
+		syscon1: syscon@74c02000 {
+			compatible = "syscon";
+			reg = <0x74c02000 0x1000>;
+			#address-cells = <1>;
+			#size-cells = <1>;
 
-		io_clk: clk@74c02240 {
-			compatible = "aspeed,ast27xx-io-clock";
-			reg = <0x74c02240 0x1c0>;
-			#clock-cells = <1>;
-			status = "okay";
+			sysrst1: reset-controller@200 {
+				compatible = "aspeed,ast27xx-reset";
+				reg = <0x200 0x40>;
+				#reset-cells = <1>;
+			};
+
+			sysclk1: system-clock@240 {
+				compatible = "aspeed,ast27xx-io-clock";
+				reg = <0x240 0x1c0>;
+				#clock-cells = <1>;
+			};
 		};
 
 		uart0: serial@74c33000 {
@@ -88,7 +101,7 @@
 			compatible = "ns16550";
 			reg = <0x74c33500 0x1000>;
 			interrupts = <140 0>;
-			clocks = <&io_clk AST2700_IO_CLK_GATE_UART6CLK>;
+			clocks = <&sysclk1 AST2700_IO_CLK_GATE_UART6CLK>;
 			status = "disabled";
 			reg-shift = <2>;
 		};
