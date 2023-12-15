@@ -1,15 +1,10 @@
 / {
 	chosen {
 		zephyr,ipc = &ipc;
-		zephyr,ipc_shm = &shm_size;
-	};
-
-	shm_size: shm@0 {
-		compatible = "mmio-sram";
-		reg = <0 DT_SIZE_K(4)>;
 	};
 };
 
 &ipc {
 	status = "okay";
+	shm-size = <DT_SIZE_K(4)>;
 };

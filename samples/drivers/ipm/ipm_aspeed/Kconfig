@@ -4,12 +4,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # Workaround for not being able to have commas in macro arguments
-DT_CHOSEN_Z_IPC_SHM := zephyr,ipc_shm
 DT_CHOSEN_Z_IPC := zephyr,ipc
 
 config IPC_SHM_SIZE
 	hex
-	default "$(dt_chosen_reg_size_hex,$(DT_CHOSEN_Z_IPC_SHM))"
+	default $(dt_node_int_prop_hex,$(dt_chosen_path,$(DT_CHOSEN_Z_IPC)),shm-size)
 	help
 	  This option specifies size of the memory region to be used
 	  for the OpenAMP IPC shared memory

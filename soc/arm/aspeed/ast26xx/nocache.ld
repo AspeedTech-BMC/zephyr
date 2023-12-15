@@ -11,6 +11,7 @@
 	__bss_nc_end__ = .;
 } > SRAM_NC
 
+#ifdef CONFIG_IPC_SHM_SIZE
 .bss_shm_rx (NOLOAD) :
 {
 	__bss_shm_rx_start__ = .;
@@ -26,3 +27,4 @@
 	. = ALIGN(4);
 	__bss_shm_tx_end__ = .;
 } > SRAM_NC_SHM_TX
+#endif
