@@ -18,17 +18,3 @@ config SRAM_RO_SIZE
 	 option allows you to configure the size of the read-only region, while
 	 the size of the read-write region is determined by subtracting
 	 SRAM_RO_SIZE from the total SRAM_SIZE.
-
-config SRAM_NC_SIZE
-	int "noncached SRAM Size in kB"
-	help
-	  The non-cached SRAM size in kB. The default value comes from reg[1]
-	  of /chosen/zephyr,sram in devicetree. The user should generally avoid
-	  changing it via menuconfig or in configuration files.
-
-config SRAM_NC_BASE_ADDRESS
-	hex "noncached SRAM Base Address"
-	help
-	  The non-cached SRAM base address. The default value comes from from
-	  reg[1] of /chosen/zephyr,sram in devicetree. The user should
-	  generally avoid changing it via menuconfig or in configuration files.

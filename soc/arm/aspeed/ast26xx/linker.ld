@@ -53,7 +53,6 @@ MEMORY
     LINKER_DT_REGIONS()
     /* Used by and documented in include/linker/intlist.ld */
     IDT_LIST (wx) : ORIGIN = 0xFFFFF7FF, LENGTH = 2K
-    SRAM_NC (wx) : ORIGIN = CONFIG_SRAM_NC_BASE_ADDRESS, LENGTH = CONFIG_SRAM_NC_SIZE * 1K
     }
 
 ENTRY(CONFIG_KERNEL_ENTRY)

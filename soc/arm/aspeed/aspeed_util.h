@@ -21,13 +21,8 @@
 #define __section_aligned16(name)       __attribute__(ALIGNED16_SECTION(name))
 
 /* non-cached (DMA) memory */
-#if (CONFIG_SRAM_NC_SIZE > 0)
-#define NON_CACHED_BSS                  __section(".nocache.bss")
-#define NON_CACHED_BSS_ALIGN16          __section_aligned16(".nocache.bss")
-#else
-#define NON_CACHED_BSS
-#define NON_CACHED_BSS_ALIGN16          __aligned(16)
-#endif
+#define NON_CACHED_BSS                  __section("RAM_NC")
+#define NON_CACHED_BSS_ALIGN16          __section_aligned16("RAM_NC")
 
 /* 64-bit Aspeed SOC ID */
 #define ASPEED_SOC_ID_AST1030A0		0x8000000080000000

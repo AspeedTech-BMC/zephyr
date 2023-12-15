@@ -20,8 +20,9 @@
 		};
 	};
 
-	sram0: memory@0 {
-		compatible = "mmio-sram";
+	sdram0: memory@0 {
+		compatible = "mmio-dram";
+		device_type = "memory";
 	};
 
 	soc {

@@ -14,8 +14,8 @@
 #include <zephyr/drivers/hwinfo.h>
 #include <soc.h>
 
-extern char __bss_nc_start__[];
-extern char __bss_nc_end__[];
+extern char __RAM_NC_start[];
+extern char __RAM_NC_end[];
 #ifdef CONFIG_XIP
 extern char _flash_used[];
 #else
@@ -52,9 +52,7 @@ void z_arm_platform_init(void)
 	cache_instr_enable();
 
 	/* clear non-cached .bss */
-	if (CONFIG_SRAM_NC_SIZE > 0) {
-		(void)memset(__bss_nc_start__, 0, __bss_nc_end__ - __bss_nc_start__);
-	}
+	(void)memset(__RAM_NC_start, 0, __RAM_NC_end - __RAM_NC_start);
 }
 
 void sys_arch_reboot(int type)
