@@ -14,7 +14,7 @@ properties:
     interrupts:
       required: true
 
-    shm-size:
+    shm_size:
       type: int
       description: shared memory size
       required: false

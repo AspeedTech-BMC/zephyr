@@ -8,7 +8,7 @@ DT_CHOSEN_Z_IPC := zephyr,ipc
 
 config IPC_SHM_SIZE
 	hex
-	default $(dt_node_int_prop_hex,$(dt_chosen_path,$(DT_CHOSEN_Z_IPC)),shm-size)
+	default $(dt_node_int_prop_hex,$(dt_chosen_path,$(DT_CHOSEN_Z_IPC)),shm_size)
 	help
 	  This option specifies size of the memory region to be used
 	  for the OpenAMP IPC shared memory
