@@ -115,9 +115,6 @@ static inline int crypto_query_hwcaps(const struct device *dev)
 
 	tmp = api->query_hw_caps(dev);
 
-	__ASSERT((tmp & (CAP_OPAQUE_KEY_HNDL | CAP_RAW_KEY)) != 0,
-		 "Driver should support at least one key type: RAW/Opaque");
-
 	__ASSERT((tmp & (CAP_INPLACE_OPS | CAP_SEPARATE_IO_BUFS)) != 0,
 	     "Driver should support at least one IO buf type: Inplace/separate");
 

@@ -19,6 +19,8 @@
 
 LOG_MODULE_DECLARE(hace_global, CONFIG_CRYPTO_LOG_LEVEL);
 
+#define ASPEED_HASH_CAPS_SUPPORT	(CAP_SEPARATE_IO_BUFS | CAP_SYNC_OPS)
+
 static const uint32_t sha1_iv[8] = {
 	0x01234567UL, 0x89abcdefUL, 0xfedcba98UL, 0x76543210UL,
 	0xf0e1d2c3UL, 0, 0, 0
@@ -453,10 +455,15 @@ static int aspeed_hash_session_free(const struct device *dev,
 	return 0;
 }
 
+static int aspeed_hash_query_hw_caps(const struct device *dev)
+{
+	return ASPEED_HASH_CAPS_SUPPORT;
+}
+
 static struct crypto_driver_api hash_funcs = {
 	.hash_begin_session = aspeed_hash_session_setup,
 	.hash_free_session = aspeed_hash_session_free,
-	.query_hw_caps = NULL,
+	.query_hw_caps = aspeed_hash_query_hw_caps,
 };
 
 DEVICE_DEFINE(hash_aspeed, CONFIG_CRYPTO_ASPEED_HASH_DRV_NAME,
