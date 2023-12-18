@@ -110,12 +110,12 @@ static void aspeed_ahash_fill_padding(struct aspeed_hash_ctx *ctx,
 static int hash_trigger(struct aspeed_hash_ctx *data, int len)
 {
 	struct hace_register_s *hace_register = hace_eng.base;
-	int ret;
 
 	if (hace_register->hace_sts.fields.hash_engine_sts) {
 		LOG_ERR("HACE error: engine busy\n");
 		return -EBUSY;
 	}
+
 	/* Clear pending completion status */
 	hace_register->hace_sts.value = HACE_HASH_ISR;
 
@@ -128,13 +128,19 @@ static int hash_trigger(struct aspeed_hash_ctx *data, int len)
 	hace_register->hash_key_buf.value = (uint32_t)data->digest;
 
 	hace_register->hash_data_len.value = len;
+
+	cache_data_flush_range((uint8_t *)hace_register->hash_data_src.value,
+			       hace_register->hash_data_len.value);
+
 	hace_register->hash_cmd_reg.value = data->method;
 
-	ret = aspeed_hash_wait_completion(3000);
+	LOG_DBG("src:0x%x, dst:0x%x len:%d, cmd:0x%x\n",
+		hace_register->hash_data_src.value,
+		hace_register->hash_dgst_dst.value,
+		hace_register->hash_data_len.value,
+		hace_register->hash_cmd_reg.value);
 
-	cache_data_invd_range(data->digest, 64);
-
-	return ret;
+	return aspeed_hash_wait_completion(3000);
 }
 
 static int aspeed_hash_update(struct hash_ctx *ctx, struct hash_pkt *pkt)
@@ -144,8 +150,9 @@ static int aspeed_hash_update(struct hash_ctx *ctx, struct hash_pkt *pkt)
 	int rc;
 	int remainder;
 	int total_len;
-	int i;
+	int i = 0;
 
+	LOG_DBG("%s\n", __func__);
 	data->digcnt[0] += pkt->in_len;
 	if (data->digcnt[0] < pkt->in_len)
 		data->digcnt[1]++;
@@ -155,9 +162,10 @@ static int aspeed_hash_update(struct hash_ctx *ctx, struct hash_pkt *pkt)
 		data->bufcnt += pkt->in_len;
 		return 0;
 	}
+
 	remainder = (pkt->in_len + data->bufcnt) % data->block_size;
 	total_len = pkt->in_len + data->bufcnt - remainder;
-	i = 0;
+
 	if (data->bufcnt != 0) {
 		sg[0].addr = (uint32_t)data->buffer;
 		sg[0].len = data->bufcnt;
@@ -172,14 +180,11 @@ static int aspeed_hash_update(struct hash_ctx *ctx, struct hash_pkt *pkt)
 	}
 
 	rc = hash_trigger(data, total_len);
-	if (remainder != 0) {
-		memcpy(data->buffer, pkt->in_buf + (total_len - data->bufcnt), remainder);
-		data->bufcnt = remainder;
-	}
-	if (rc)
-		return rc;
 
-	return 0;
+	memcpy(data->buffer, pkt->in_buf + (total_len - data->bufcnt), remainder);
+	data->bufcnt = remainder;
+
+	return rc;
 }
 
 static int aspeed_hash_final(struct hash_ctx *ctx, struct hash_pkt *pkt)
@@ -188,6 +193,7 @@ static int aspeed_hash_final(struct hash_ctx *ctx, struct hash_pkt *pkt)
 	struct aspeed_sg *sg = data->sg;
 	int rc;
 
+	LOG_DBG("%s\n", __func__);
 	aspeed_ahash_fill_padding(data, 0);
 
 	sg[0].addr = (uint32_t)data->buffer;
@@ -197,6 +203,8 @@ static int aspeed_hash_final(struct hash_ctx *ctx, struct hash_pkt *pkt)
 	if (rc) {
 		return rc;
 	}
+
+	cache_data_invd_all();
 	memcpy(pkt->out_buf, data->digest, ctx->digest_size);
 
 	return 0;
@@ -266,6 +274,7 @@ static int aspeed_hash_digest_hmac(struct hash_ctx *ctx, struct hash_pkt *pkt)
 		goto end;
 	}
 
+	cache_data_invd_all();
 	memcpy(pkt->out_buf, data->digest, ds);
 
 end:
@@ -296,6 +305,7 @@ static int aspeed_hash_digest(struct hash_ctx *ctx, struct hash_pkt *pkt)
 		return rc;
 	}
 
+	cache_data_invd_all();
 	memcpy(pkt->out_buf, data->digest, ctx->digest_size);
 
 	return 0;
@@ -428,6 +438,7 @@ static int aspeed_hash_session_setup(const struct device *dev,
 	ctx->hash_hndlr = aspeed_hash_compute;
 
 	memcpy(data->digest, data->iv, data->iv_size);
+	cache_data_flush_range(data->digest, data->iv_size);
 
 	data->bufcnt = 0;
 	data->digcnt[0] = 0;
