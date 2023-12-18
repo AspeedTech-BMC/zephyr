@@ -14,6 +14,7 @@
 #include <zephyr/crypto/crypto.h>
 #include <zephyr/crypto/hash.h>
 #include <zephyr/shell/shell.h>
+#include <zephyr/random/rand32.h>
 
 #ifdef CONFIG_CRYPTO_ASPEED
 #define HASH_DRV_NAME CONFIG_CRYPTO_ASPEED_HASH_DRV_NAME
@@ -581,12 +582,12 @@ static int _sha_test(const struct shell *shell, const struct hash_testvec *tv, i
 		     enum hash_algo algo)
 {
 	const struct device *dev = device_get_binding(HASH_DRV_NAME);
-	int ret;
-	int i;
-	uint8_t digest[64];
-
 	struct hash_ctx ini;
 	struct hash_pkt pkt;
+	uint8_t digest[64];
+	int rnd_size, remains;
+	int ret, total;
+	int i;
 
 	for (i = 0; i < tv_len; i++) {
 		shell_fprintf(shell, SHELL_NORMAL, "tv[%d]:", i);
@@ -602,10 +603,22 @@ static int _sha_test(const struct shell *shell, const struct hash_testvec *tv, i
 			return ret;
 		}
 
-		ret = hash_update(&ini, &pkt);
-		if (ret) {
-			shell_print(shell, "hash_update error");
-			goto out;
+		total = 0;
+		while (total < tv[i].psize) {
+			remains = tv[i].psize - total;
+
+			rnd_size = sys_rand32_get() % remains + 1;
+
+			pkt.in_buf = (uint8_t *)tv[i].plaintext + total;
+			pkt.in_len = rnd_size;
+
+			ret = hash_update(&ini, &pkt);
+			if (ret) {
+				shell_print(shell, "hash_update error");
+				goto out;
+			}
+
+			total += rnd_size;
 		}
 
 		/* final */
@@ -619,8 +632,16 @@ static int _sha_test(const struct shell *shell, const struct hash_testvec *tv, i
 
 		if (!memcmp(digest, tv[i].digest, ini.digest_size))
 			shell_fprintf(shell, SHELL_NORMAL, "PASS\n");
-		else
+		else {
 			shell_fprintf(shell, SHELL_NORMAL, "FAIL\n");
+			shell_hexdump(shell, digest, ini.digest_size);
+
+			shell_fprintf(shell, SHELL_NORMAL, "Should be:\n");
+			shell_hexdump(shell, tv[i].digest, ini.digest_size);
+			ret = -1;
+
+			goto out;
+		}
 	}
 
 	return 0;
@@ -652,18 +673,28 @@ static int sha256_test(const struct shell *shell, size_t argc, char **argv)
 
 static int sha_test(const struct shell *shell, size_t argc, char **argv)
 {
+	int ret;
+
 	shell_print(shell, "sha256_test");
-	_sha_test(shell, sha256_tv_template, ARRAY_SIZE(sha256_tv_template),
-		  CRYPTO_HASH_ALGO_SHA256);
+	ret = _sha_test(shell, sha256_tv_template, ARRAY_SIZE(sha256_tv_template),
+			CRYPTO_HASH_ALGO_SHA256);
+	if (ret)
+		goto end;
 
 	shell_print(shell, "sha384_test");
-	_sha_test(shell, sha384_tv_template, ARRAY_SIZE(sha384_tv_template),
-		  CRYPTO_HASH_ALGO_SHA384);
+	ret = _sha_test(shell, sha384_tv_template, ARRAY_SIZE(sha384_tv_template),
+			CRYPTO_HASH_ALGO_SHA384);
+	if (ret)
+		goto end;
 
 	shell_print(shell, "sha512_test");
-	_sha_test(shell, sha512_tv_template, ARRAY_SIZE(sha512_tv_template),
-		  CRYPTO_HASH_ALGO_SHA512);
-	return 0;
+	ret = _sha_test(shell, sha512_tv_template, ARRAY_SIZE(sha512_tv_template),
+			CRYPTO_HASH_ALGO_SHA512);
+	if (ret)
+		goto end;
+
+end:
+	return ret;
 }
 
 SHELL_STATIC_SUBCMD_SET_CREATE(hash_cmds,
