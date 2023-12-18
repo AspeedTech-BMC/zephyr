@@ -31,9 +31,9 @@ static int pinctrl_configure_pin(const pinctrl_soc_pin_t *pin)
 	int i, ret = 0;
 
 #ifdef CONFIG_PINCTRL_ASPEED_STRING_NAME
-	LOG_INF("name %s, ball %d", pin->name, pin->ball);
+	LOG_DBG("name %s, ball %d", pin->name, pin->ball);
 #else
-	LOG_INF("ball %d", pin->ball);
+	LOG_DBG("ball %d", pin->ball);
 #endif
 
 	for (i = 0; i < pin->num_of_descs; i++) {
