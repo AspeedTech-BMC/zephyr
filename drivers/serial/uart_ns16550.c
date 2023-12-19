@@ -29,6 +29,7 @@
 #include <zephyr/linker/sections.h>
 #include <zephyr/drivers/uart.h>
 #include <zephyr/drivers/clock_control.h>
+#include <zephyr/drivers/reset.h>
 #include <zephyr/pm/policy.h>
 #include <zephyr/sys/sys_io.h>
 #include <zephyr/spinlock.h>
@@ -213,6 +214,7 @@ struct uart_ns16550_device_config {
 	uint32_t sys_clk_freq;
 	const struct device *clock_dev;
 	clock_control_subsys_t clock_subsys;
+	struct reset_dt_spec reset;
 #if defined(CONFIG_UART_INTERRUPT_DRIVEN) || defined(CONFIG_UART_ASYNC_API)
 	uart_irq_config_func_t	irq_config_func;
 #endif
@@ -591,6 +593,20 @@ static int uart_ns16550_init(const struct device *dev)
 		{
 #endif
 			DEVICE_MMIO_MAP(dev, K_MEM_CACHE_NONE);
+		}
+	}
+
+	if (dev_cfg->clock_dev) {
+		ret = clock_control_on(dev_cfg->clock_dev, dev_cfg->clock_subsys);
+		if (ret != 0) {
+			return ret;
+		}
+	}
+
+	if (dev_cfg->reset.dev) {
+		ret = reset_line_deassert_dt(&dev_cfg->reset);
+		if (ret != 0) {
+			return ret;
 		}
 	}
 
@@ -1266,6 +1282,9 @@ static const struct uart_driver_api uart_ns16550_driver_api = {
 								0, clocks, clkid),   \
 			)                                                            \
 		)                                                                    \
+		IF_ENABLED(DT_INST_NODE_HAS_PROP(n, resets),                         \
+			(.reset.dev = DEVICE_DT_GET(DT_INST_RESET_CTLR(n)),          \
+			 .reset.id = DT_RESET_CELL(DT_DRV_INST(n), id),))            \
 		DEV_CONFIG_IRQ_FUNC_INIT(n)                                          \
 		DEV_CONFIG_PCP_INIT(n)                                               \
 		.reg_interval = (1 << DT_INST_PROP(n, reg_shift)),                   \
