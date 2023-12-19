@@ -19,8 +19,8 @@
 #include <zephyr/linker/linker-tool.h>
 
 /* physical address of RAM */
-#define ROMABLE_REGION SRAM_RX
-#define RAMABLE_REGION SRAM_RW
+#define ROMABLE_REGION RAM_RX
+#define RAMABLE_REGION RAM_RW
 
 #define ROM_ADDR CONFIG_SRAM_BASE_ADDRESS
 #define ROM_SIZE (CONFIG_SRAM_RO_SIZE * 1K)
@@ -48,8 +48,8 @@ _region_min_align = 4;
 
 MEMORY
     {
-    SRAM_RX (rx) : ORIGIN = ROM_ADDR, LENGTH = ROM_SIZE
-    SRAM_RW (rw) : ORIGIN = RAM_ADDR, LENGTH = RAM_SIZE
+    RAM_RX (rx) : ORIGIN = ROM_ADDR, LENGTH = ROM_SIZE
+    RAM_RW (rw) : ORIGIN = RAM_ADDR, LENGTH = RAM_SIZE
     LINKER_DT_REGIONS()
     /* Used by and documented in include/linker/intlist.ld */
     IDT_LIST (wx) : ORIGIN = 0xFFFFF7FF, LENGTH = 2K
