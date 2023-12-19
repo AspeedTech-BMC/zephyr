@@ -40,7 +40,7 @@
 #define ASPEED_SOC_ID_AST2600A3		0x0503030305030303
 #define ASPEED_SOC_ID_AST2620A3		0x0503020305030203
 
-#define reg_read_poll_timeout(map, reg, val, cond, sleep_ms, timeout_ms)	    \
+#define reg_read_poll_timeout(map, reg, val, cond, sleep_us, timeout_ms)	    \
 	({									    \
 		uint32_t __timeout_tick = Z_TIMEOUT_MS(timeout_ms).ticks;	    \
 		uint32_t __start = sys_clock_tick_get_32();			    \
@@ -54,8 +54,8 @@
 				__ret = -ETIMEDOUT;				    \
 				break;						    \
 			}							    \
-			if (sleep_ms) {						    \
-				k_msleep(sleep_ms);				    \
+			if (sleep_us) {						    \
+				k_usleep(sleep_us);				    \
 			}							    \
 		}								    \
 		__ret;								    \
