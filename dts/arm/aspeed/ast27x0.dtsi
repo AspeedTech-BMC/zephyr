@@ -7,6 +7,7 @@
 #include <arm/armv7-m.dtsi>
 #include <mem.h>
 #include <zephyr/dt-bindings/clock/ast27xx_clock.h>
+#include <zephyr/dt-bindings/reset/ast27xx_reset.h>
 
 / {
 	cpus {
@@ -61,7 +62,6 @@
 				compatible = "aspeed,ast27xx-cpu-clock";
 				reg = <0x240 0x1c0>;
 				#clock-cells = <1>;
-				status = "okay";
 			};
 		};
 
@@ -113,6 +113,7 @@
 			reg = <0x74c33500 0x1000>;
 			interrupts = <140 0>;
 			clocks = <&sysclk1 AST2700_IO_CLK_GATE_UART6CLK>;
+			resets = <&sysrst1 ASPEED_RESET_UART6>;
 			status = "disabled";
 			reg-shift = <2>;
 		};
