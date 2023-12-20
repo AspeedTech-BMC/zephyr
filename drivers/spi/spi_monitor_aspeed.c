@@ -223,6 +223,11 @@ struct aspeed_spim_cs_pd_info {
 	uint32_t bit;
 };
 
+struct aspeed_spim_miso_pin_info {
+	uint32_t off;
+	uint32_t bit;
+};
+
 static void acquire_spim_device(const struct device *dev)
 {
 	if (IS_ENABLED(CONFIG_MULTITHREADING)) {
@@ -306,6 +311,35 @@ void spim_disable_cs_internal_pd(const struct device *dev, uint32_t idx)
 
 end:
 	k_spin_unlock(&data->scu_lock, key);
+}
+
+void spim_miso_multi_func_adjust(const struct device *dev, bool enable)
+{
+	const struct aspeed_spim_config *config = dev->config;
+	const struct device *parent_dev = config->parent;
+	const struct aspeed_spim_common_config *parent_config = parent_dev->config;
+	mm_reg_t scu_base = parent_config->scu_base;
+	struct aspeed_spim_common_data *const parent_data = parent_dev->data;
+	uint32_t reg_val;
+	struct aspeed_spim_miso_pin_info miso_info[4] = {
+		{0x690, BIT(3)},
+		{0x690, BIT(17)},
+		{0x690, BIT(31)},
+		{0x694, BIT(13)},
+	};
+	k_spinlock_key_t key = k_spin_lock(&parent_data->scu_lock);
+
+	reg_val = sys_read32(scu_base +
+			     miso_info[config->ctrl_idx - 1].off);
+	if (enable)
+		reg_val |= miso_info[config->ctrl_idx - 1].bit;
+	else
+		reg_val &= ~(miso_info[config->ctrl_idx - 1].bit);
+
+	sys_write32(reg_val,
+		    scu_base + miso_info[config->ctrl_idx - 1].off);
+
+	k_spin_unlock(&parent_data->scu_lock, key);
 }
 
 void spim_scu_ctrl_clear(const struct device *dev, uint32_t clear_bits)
@@ -1191,7 +1225,11 @@ void spim_ctrl_monitor_config(const struct device *dev, bool enable)
 
 void spim_monitor_enable(const struct device *dev, bool enable)
 {
+	bool pt_en = enable ? false : true;
+
 	spim_ctrl_monitor_config(dev, enable);
+	spim_miso_multi_func_adjust(dev, enable);
+	spim_passthrough_config(dev, SPIM_SINGLE_PASSTHROUGH, pt_en);
 }
 
 void spim_rst_flash(const struct device *dev, uint32_t rst_duration_ms)
