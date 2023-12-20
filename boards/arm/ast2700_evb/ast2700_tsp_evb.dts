@@ -12,8 +12,8 @@
 	compatible = "aspeed,ast2700-evb";
 
 	chosen {
-		zephyr,console = &uart6;
-		zephyr,shell-uart = &uart6;
+		zephyr,console = &uart4;
+		zephyr,shell-uart = &uart4;
 		zephyr,sram = &sdram0;
 	};
 
@@ -30,8 +30,7 @@
 	reg = <0 DT_SIZE_K(768)>;
 };
 
-&uart6 {
-	clock-frequency = <1846153>;
+&uart4 {
 	current-speed = <115200>;
 	status = "okay";
 };
