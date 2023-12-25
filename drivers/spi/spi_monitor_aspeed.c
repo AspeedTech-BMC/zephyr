@@ -195,7 +195,8 @@ struct aspeed_spim_config {
 	bool force_rel_flash_rst;
 	const struct device *parent;
 	const struct device *flash_dev;
-	struct gpio_dt_spec ext_mux_sel_gpios;
+	const struct gpio_dt_spec *ext_mux_sel_gpios;
+	uint32_t ext_mux_sel_gpio_num;
 	uint32_t ext_mux_sel_delay_us;
 	const struct pinctrl_dev_config *pcfg;
 };
@@ -414,31 +415,36 @@ void spim_ext_mux_config(const struct device *dev,
 	enum spim_ext_mux_sel mux_sel)
 {
 	const struct aspeed_spim_config *config = dev->config;
+	uint32_t i;
+	int value;
 
 	if (mux_sel > SPIM_EXT_MUX_SEL_1) {
 		LOG_ERR("wrong ext mux selection (%d)", mux_sel);
 		return;
 	}
 
-	if (config->ext_mux_sel_gpios.port) {
-		if (!device_is_ready(config->ext_mux_sel_gpios.port)) {
-			LOG_ERR("device %s is not ready",
-				config->ext_mux_sel_gpios.port->name);
-			return;
-		}
+	if (config->ext_mux_sel_gpio_num) {
+		for (i = 0;  i < config->ext_mux_sel_gpio_num; i++) {
+			if (!device_is_ready(config->ext_mux_sel_gpios[i].port)) {
+				LOG_ERR("device %s is not ready",
+					config->ext_mux_sel_gpios[i].port->name);
+				continue;
+			}
 
-		if (mux_sel == SPIM_EXT_MUX_SEL_1) {
-			gpio_pin_set(config->ext_mux_sel_gpios.port,
-				     config->ext_mux_sel_gpios.pin, 1);
-		} else {
-			gpio_pin_set(config->ext_mux_sel_gpios.port,
-				     config->ext_mux_sel_gpios.pin, 0);
-		}
+			if (mux_sel == SPIM_EXT_MUX_SEL_1)
+				value = 1;
+			else
+				value = 0;
 
-		if (gpio_pin_configure_dt(&config->ext_mux_sel_gpios, GPIO_OUTPUT)) {
-			LOG_ERR("[%s %d]: set output failed", config->ext_mux_sel_gpios.port->name,
-				config->ext_mux_sel_gpios.pin);
-			return;
+			gpio_pin_set(config->ext_mux_sel_gpios[i].port,
+				     config->ext_mux_sel_gpios[i].pin,
+				     value);
+			if (gpio_pin_configure_dt(&config->ext_mux_sel_gpios[i], GPIO_OUTPUT)) {
+				LOG_ERR("[%s %d]: set output %d failed",
+					config->ext_mux_sel_gpios[i].port->name,
+					config->ext_mux_sel_gpios[i].pin,
+					value);
+			}
 		}
 	} else {
 		if (mux_sel == SPIM_EXT_MUX_SEL_1)
@@ -1484,6 +1490,15 @@ static int aspeed_spi_monitor_common_init(const struct device *dev)
 }
 
 #define SPIM_ENUM(node_id) node_id,
+#define SPIM_EXT_MUX_SEL_GPIOS(node_id)	\
+	static const struct gpio_dt_spec spim_ext_mux_sel_gpios_##node_id[] = {	\
+		COND_CODE_1(DT_NODE_HAS_PROP(node_id, ext_mux_sel_gpios),	\
+			    (DT_FOREACH_PROP_ELEM_SEP(node_id,			\
+						      ext_mux_sel_gpios,	\
+						      GPIO_DT_SPEC_GET_BY_IDX,	\
+						      (,))),			\
+			    (0))						\
+	};
 
 #define ASPEED_SPIM_DEV_CFG(node_id) {	\
 		.ctrl_base = DT_REG_ADDR(DT_PARENT(node_id)) +		\
@@ -1495,8 +1510,9 @@ static int aspeed_spi_monitor_common_init(const struct device *dev)
 		.parent = DEVICE_DT_GET(DT_PARENT(node_id)),	\
 		.flash_dev = DEVICE_DT_GET(DT_PHANDLE(node_id, flash_device)),	\
 		.ext_mux_sel_default = DT_PROP_OR(node_id, ext_mux_sel, 0),	\
-		.ext_mux_sel_gpios = GPIO_DT_SPEC_GET_OR(node_id, ext_mux_sel_gpios, {0}), \
-		.ext_mux_sel_delay_us = DT_PROP_OR(node_id, ext_mux_sel_delay_us, 0), \
+		.ext_mux_sel_gpios = spim_ext_mux_sel_gpios_##node_id,	\
+		.ext_mux_sel_delay_us = DT_PROP_OR(node_id, ext_mux_sel_delay_us, 0),	\
+		.ext_mux_sel_gpio_num = DT_PROP_LEN_OR(node_id, ext_mux_sel_gpios, 0),	\
 		.force_rel_flash_rst = DT_PROP(node_id, force_release_flash_reset),	\
 		.pcfg = PINCTRL_DT_DEV_CONFIG_GET(node_id),	\
 },
@@ -1537,6 +1553,7 @@ static int aspeed_spi_monitor_common_init(const struct device *dev)
 			    70,		\
 			    NULL);		\
 	/* handle child node */	\
+	DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n), SPIM_EXT_MUX_SEL_GPIOS)	\
 	static const struct aspeed_spim_config aspeed_spim_config[] = {	\
 		DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n), ASPEED_SPIM_DEV_CFG)};		\
 	static struct aspeed_spim_data aspeed_spim_data[] = {			\
