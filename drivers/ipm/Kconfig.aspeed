@@ -1,6 +1,13 @@
 # Copyright (c) 2023 ASPEED Technology Inc.
 # SPDX-License-Identifier: Apache-2.0
 
+config IPM_AST2600
+	bool "ASPEED AST2600 IPM driver"
+	default y
+	depends on DT_HAS_ASPEED_AST2600_IPC_ENABLED
+	help
+	  This option enables the IPM driver for ASPEED AST2600 series SOC.
+
 config IPM_AST2700
 	bool "ASPEED AST2700 IPM driver"
 	default y
