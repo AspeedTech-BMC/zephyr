@@ -23,6 +23,8 @@
 /* non-cached (DMA) memory */
 #define NON_CACHED_BSS                  __section("RAM_NC")
 #define NON_CACHED_BSS_ALIGN16          __section_aligned16("RAM_NC")
+#define NON_CACHED_SHM_RX               __section_aligned16("RAM_NC_SHM_RX")
+#define NON_CACHED_SHM_TX               __section_aligned16("RAM_NC_SHM_TX")
 
 /* 64-bit Aspeed SOC ID */
 #define ASPEED_SOC_ID_AST1030A0		0x8000000080000000

@@ -1,0 +1,25 @@
+# Copyright (c) 2022 ASPEED Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+description: ASPEED IPC (Interprocessor Communication) in AST2600 SOC
+
+compatible: "aspeed,ast2600-ipc"
+
+include: base.yaml
+
+properties:
+    reg:
+      required: true
+
+    interrupts:
+      required: true
+
+    tx-region:
+      description: phandle to the shared memory region used for data transmission
+      required: true
+      type: phandle
+
+    rx-region:
+      description: phandle to the shared memory region used for data reception
+      required: true
+      type: phandle

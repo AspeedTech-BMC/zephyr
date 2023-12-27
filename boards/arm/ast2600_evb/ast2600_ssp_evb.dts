@@ -20,7 +20,7 @@
 	sdram1: memory@1000000 {
 		compatible = "zephyr,memory-region", "mmio-dram";
 		device_type = "memory";
-		reg = <0x1000000 DT_SIZE_K(16384)>;
+		reg = <0x1000000 DT_SIZE_K(16380)>;
 		zephyr,memory-region = "RAM_NC";
 		zephyr,memory-region-mpu = "RAM";
 	};
