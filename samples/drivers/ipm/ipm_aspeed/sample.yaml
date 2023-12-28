@@ -6,7 +6,7 @@ tests:
   sample.ipm.ipm_aspeed:
     build_only: true
     filter: CONFIG_SOC_FAMILY_ASPEED
-    platform_allow: ast2700_fpga
+    platform_allow: ast2700_evb
     integration_platforms:
-      - ast2700_fpga
+      - ast2700_evb
     tags: samples ipm

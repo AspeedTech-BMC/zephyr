@@ -4,8 +4,10 @@
 
 #if defined(CONFIG_SOC_AST2600)
 extern uint8_t *shm_rx, *shm_tx;
-#else
+#elif defined(CONFIG_SOC_AST2700)
 #define DEFAULT_LINE_LENGTH_BYTES (16)
+#else
+#error "Unsupported SoC"
 #endif
 static void test_ipm_cb(const struct device *ipmdev, void *user_data,
 			       uint32_t id, volatile void *data)
@@ -31,7 +33,7 @@ static void test_ipm_cb(const struct device *ipmdev, void *user_data,
 
 	/* Write back to CM3 TX from CM3 RX data. */
 	ipm_send(ipmdev, 1, 0, (void *)shared_memory_rx, CONFIG_IPC_SHM_TX_SIZE);
-#else
+#elif defined(CONFIG_SOC_AST2700)
 	int i;
 	int check = 0;
 	int width = 4;
@@ -67,67 +69,96 @@ void main(void)
 {
 	int rc;
 	const struct device *ipmdev;
+	char ipc_name[16];
 
 #if defined(CONFIG_SOC_AST2600)
 	/* setup IPM */
-	ipmdev = device_get_binding("ipc@7e6c0000");
+	strcpy(ipc_name, "ipc@7e6c0000");
+	ipmdev = device_get_binding(&ipc_name[0]);
 	if (!ipmdev) {
-		printk("device_get_binding failed to find device\n");
+		printk("%s: device_get_binding failed to find device\n", ipc_name);
 		return;
 	}
-#elif defined(CONFIG_SOC_AST2700)
-#if defined(CONFIG_BOARD_AST2700_SSP_FPGA)
-	printk("SSP alive.\n");
-	ipmdev = device_get_binding("ipc@0");
-	if (!device_is_ready(ipmdev)) {
-		while (1) {
-		}
-	}
-	ipm_register_callback(ipmdev, test_ipm_cb, NULL);
-	ipm_set_enabled(ipmdev, 1);
 
-	ipmdev = device_get_binding("ipc@200");
-	if (!device_is_ready(ipmdev)) {
-		while (1) {
-		}
-	}
-	ipm_register_callback(ipmdev, test_ipm_cb, NULL);
-	ipm_set_enabled(ipmdev, 1);
-#elif defined(CONFIG_BOARD_AST2700_TSP_FPGA)
-	printk("TSP alive.\n");
-	ipmdev = device_get_binding("ipc@400");
-	if (!device_is_ready(ipmdev)) {
-		while (1) {
-		}
-	}
-	ipm_register_callback(ipmdev, test_ipm_cb, NULL);
-	ipm_set_enabled(ipmdev, 1);
-
-	ipmdev = device_get_binding("ipc@600");
-	if (!device_is_ready(ipmdev)) {
-		while (1) {
-		}
-	}
-	ipm_register_callback(ipmdev, test_ipm_cb, NULL);
-	ipm_set_enabled(ipmdev, 1);
-#endif
-	ipmdev = device_get_binding("ipc@800");
-	if (!device_is_ready(ipmdev)) {
-		while (1) {
-		}
-	}
-#endif
 	/* setup callback function with received data processing. */
 	ipm_register_callback(ipmdev, test_ipm_cb, NULL);
 
 	/* enable ipm. */
 	rc = ipm_set_enabled(ipmdev, 1);
 	if (rc) {
-		printk("cannot ipm_set_enabled\n");
+		printk("%s: cannot ipm_set_enabled\n", ipc_name);
+		return;
+	}
+#elif defined(CONFIG_SOC_AST2700)
+#if defined(CONFIG_BOARD_AST2700_SSP_EVB)
+	printk("SSP alive.\n");
+	strcpy(ipc_name, "ipc@0");
+	ipmdev = device_get_binding(&ipc_name[0]);
+	if (!ipmdev) {
+		printk("%s: device_get_binding failed to find device\n", ipc_name);
+		return;
+	}
+	ipm_register_callback(ipmdev, test_ipm_cb, NULL);
+	rc = ipm_set_enabled(ipmdev, 1);
+	if (rc) {
+		printk("%s: cannot ipm_set_enabled\n", ipc_name);
 		return;
 	}
 
-	printk("IPM initialized\n");
+	strcpy(ipc_name, "ipc@200");
+	ipmdev = device_get_binding(&ipc_name[0]);
+	if (!ipmdev) {
+		printk("%s: device_get_binding failed to find device\n", ipc_name);
+		return;
+	}
+	ipm_register_callback(ipmdev, test_ipm_cb, NULL);
+	rc = ipm_set_enabled(ipmdev, 1);
+	if (rc) {
+		printk("%s: cannot ipm_set_enabled\n", ipc_name);
+		return;
+	}
+#elif defined(CONFIG_BOARD_AST2700_TSP_EVB)
+	printk("TSP alive.\n");
+	strcpy(ipc_name, "ipc@400");
+	ipmdev = device_get_binding(&ipc_name[0]);
+	if (!ipmdev) {
+		printk("%s: device_get_binding failed to find device\n", ipc_name);
+		return;
+	}
+	ipm_register_callback(ipmdev, test_ipm_cb, NULL);
+	rc = ipm_set_enabled(ipmdev, 1);
+	if (rc) {
+		printk("%s: cannot ipm_set_enabled\n", ipc_name);
+		return;
+	}
+
+	strcpy(ipc_name, "ipc@600");
+	ipmdev = device_get_binding(&ipc_name[0]);
+	if (!ipmdev) {
+		printk("%s: device_get_binding failed to find device\n", ipc_name);
+		return;
+	}
+	ipm_register_callback(ipmdev, test_ipm_cb, NULL);
+	rc = ipm_set_enabled(ipmdev, 1);
+	if (rc) {
+		printk("%s: cannot ipm_set_enabled\n", ipc_name);
+		return;
+	}
+#endif
+	strcpy(ipc_name, "ipc@800");
+	ipmdev = device_get_binding(&ipc_name[0]);
+	if (!ipmdev) {
+		printk("%s: device_get_binding failed to find device\n", ipc_name);
+		return;
+	}
+	ipm_register_callback(ipmdev, test_ipm_cb, NULL);
+	rc = ipm_set_enabled(ipmdev, 1);
+	if (rc) {
+		printk("%s: cannot ipm_set_enabled\n", ipc_name);
+		return;
+	}
+#endif
+	printk("All IPMs initialized\n");
 
 	while (1) {
 		k_msleep(1000);
