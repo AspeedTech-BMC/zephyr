@@ -16,10 +16,10 @@ properties:
 
     tx-region:
       description: phandle to the shared memory region used for data transmission
-      required: true
+      required: false
       type: phandle
 
     rx-region:
       description: phandle to the shared memory region used for data reception
-      required: true
+      required: false
       type: phandle

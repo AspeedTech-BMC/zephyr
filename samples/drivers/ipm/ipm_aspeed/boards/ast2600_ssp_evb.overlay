@@ -28,6 +28,10 @@
 	};
 };
 
+&sdram1 {
+	reg = <0x1000000 DT_SIZE_K(16380)>;
+};
+
 &ipc {
 	tx-region = <&sram_ipc0_tx>;
 	rx-region = <&sram_ipc0_rx>;
