@@ -11,6 +11,6 @@ config IPM_AST2600
 config IPM_AST2700
 	bool "ASPEED AST2700 IPM driver"
 	default y
-	depends on DT_HAS_ASPEED_AST2700_IPC_ENABLED
+	depends on DT_HAS_ASPEED_AST2700_IPC_ENABLED || DT_HAS_ASPEED_AST2700_IPC_V2_ENABLED
 	help
 	  This option enables the IPM driver for ASPEED AST2700 series SOC.

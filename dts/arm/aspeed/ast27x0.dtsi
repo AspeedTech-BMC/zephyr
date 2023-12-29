@@ -74,7 +74,7 @@
 			reg-shift = <2>;
 		};
 
-		ipc: bus@72c1c000 {
+		ipc_v2: bus@72c1c000 {
 			compatible = "simple-bus";
 			#address-cells = <1>;
 			#size-cells = <1>;

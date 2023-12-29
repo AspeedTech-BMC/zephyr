@@ -3,7 +3,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-#define DT_DRV_COMPAT aspeed_ast2700_ipc
+#define DT_DRV_COMPAT aspeed_ast2700_ipc_v2
 
 #include <zephyr/drivers/ipm.h>
 #include <zephyr/sys/util.h>
