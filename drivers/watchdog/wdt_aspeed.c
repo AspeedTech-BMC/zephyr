@@ -58,8 +58,6 @@ LOG_MODULE_REGISTER(wdt_ast, CONFIG_WDT_LOG_LEVEL);
 
 struct aspeed_wdt_common_config {
 	mm_reg_t ctrl_base;
-	uint32_t irq_num;
-	uint32_t irq_priority;
 };
 
 struct aspeed_wdt_common_data {
@@ -346,17 +344,13 @@ end:
 
 static int aspeed_wdt_common_init(const struct device *dev)
 {
-	const struct aspeed_wdt_common_config *config = dev->config;
 	struct aspeed_wdt_common_data *const data = dev->data;
 	uint32_t i;
 
-	/* irq init */
-	irq_connect_dynamic(config->irq_num, config->irq_priority,
-		wdt_common_isr, dev, 0);
-	irq_enable(config->irq_num);
+	for (i = 0; i < WDT_CTRL_NUM; i++) {
 
-	for (i = 0; i < WDT_CTRL_NUM; i++)
 		data->wdt_timeout_sts[i] = 0;
+	}
 
 	data->pre_wdt_timeout_idx = 0;
 
@@ -394,27 +388,38 @@ static const struct wdt_driver_api wdt_aspeed_driver_api = {
 					POST_KERNEL, 81, &wdt_aspeed_driver_api);
 
 /* common node define */
-#define ASPEED_WDT_COMMON_INIT(n)	\
-	static struct aspeed_wdt_common_config aspeed_wdt_common_config_##n = { \
-		.ctrl_base = DT_INST_REG_ADDR(n),	\
-		.irq_num = DT_INST_IRQN(n),		\
-		.irq_priority = DT_INST_IRQ(n, priority),	\
-	};								\
-	static struct aspeed_wdt_common_data aspeed_wdt_common_data_##n;	\
-		\
-	DEVICE_DT_INST_DEFINE(n, &aspeed_wdt_common_init,			\
-			    NULL,					\
-			    &aspeed_wdt_common_data_##n,			\
-			    &aspeed_wdt_common_config_##n, POST_KERNEL,	\
-			    80,		\
-			    NULL);		\
-	/* handle child node */	\
-	static const struct aspeed_wdt_config aspeed_wdt_config[] = {	\
-		DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n), ASPEED_WDT_DEV_CFG)};		\
-	static struct aspeed_wdt_data aspeed_wdt_data[] = {			\
-		DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n), ASPEED_WDT_DEV_DATA)};	\
-		\
-	enum {DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n), WDT_ENUM)};	\
+#define ASPEED_WDT_IRQ_CONNECT(index, inst)                                                        \
+	do {                                                                                       \
+		IRQ_CONNECT(DT_INST_IRQN_BY_IDX(inst, index),                                      \
+			    DT_INST_IRQ_BY_IDX(inst, index, priority), wdt_common_isr,             \
+			    DEVICE_DT_INST_GET(inst), 0);                                          \
+		irq_enable(DT_INST_IRQN_BY_IDX(inst, index));                                      \
+	} while (false);
+
+#define ASPEED_WDT_COMMON_INIT(n)                                                                  \
+	static int aspeed_wdt_config_func_##n(const struct device *dev);                           \
+	static struct aspeed_wdt_common_config aspeed_wdt_common_config_##n = {                    \
+		.ctrl_base = DT_INST_REG_ADDR(n),                                                  \
+	};                                                                                         \
+	static struct aspeed_wdt_common_data aspeed_wdt_common_data_##n;                           \
+                                                                                                   \
+	DEVICE_DT_INST_DEFINE(n, &aspeed_wdt_config_func_##n, NULL, &aspeed_wdt_common_data_##n,   \
+			      &aspeed_wdt_common_config_##n, POST_KERNEL, 80, NULL);               \
+	static int aspeed_wdt_config_func_##n(const struct device *dev)                            \
+	{                                                                                          \
+		aspeed_wdt_common_init(dev);                                                       \
+		LISTIFY(DT_NUM_IRQS(DT_DRV_INST(n)), ASPEED_WDT_IRQ_CONNECT, (), n);               \
+		return 0;                                                                          \
+	}                                                                                          \
+	/* handle child node */                                                                    \
+	static const struct aspeed_wdt_config aspeed_wdt_config[] = {                              \
+		DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n), ASPEED_WDT_DEV_CFG)};                 \
+	static struct aspeed_wdt_data aspeed_wdt_data[] = {                                        \
+		DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n), ASPEED_WDT_DEV_DATA)};                \
+                                                                                                   \
+	enum {                                                                                     \
+		DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n), WDT_ENUM)                             \
+	};                                                                                         \
 	DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n), ASPEED_WDT_DT_DEFINE)
 
 DT_INST_FOREACH_STATUS_OKAY(ASPEED_WDT_COMMON_INIT)
