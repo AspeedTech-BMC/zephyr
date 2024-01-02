@@ -5,6 +5,6 @@
 
 config WDT_ASPEED
 	bool "ASPEED WDT Driver"
-	default n
+	default DT_HAS_ASPEED_AST_WATCHDOG_ENABLED
 	help
 	  Enable ASPEED WDT controller driver.
