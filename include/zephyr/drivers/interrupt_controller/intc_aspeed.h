@@ -33,7 +33,7 @@ extern "C" {
  *
  * These callbacks execute in interrupt context. Therefore, use only
  * interrupt-safe APIS. Registration of callbacks is done via
- * @a intc_register_callback
+ * @a intc_request_irq
  *
  * @param intcdev Driver instance
  * @param user_data Pointer to some private data provided at registration
@@ -42,29 +42,29 @@ extern "C" {
 typedef void (*intc_callback_t)(const struct device *intcdev, void *user_data);
 
 /**
- * @typedef intc_register_callback_t
+ * @typedef intc_api_request_irq
  * @brief Callback API upon registration
  *
- * See @a intc_register_callback() for argument definitions.
+ * See @a intc_request_irq() for argument definitions.
  */
-typedef int (*intc_register_callback_t)(const struct device *port,
-					intc_callback_t cb,
-					void *user_data,
-					int intc_bit);
+typedef int (*intc_api_request_irq)(const struct device *port, intc_callback_t cb, void *user_data,
+				    int intc_bit);
 
 /**
- * @typedef intc_set_mask_t
+ * @typedef intc_api_disable_irq
  * @brief Callback API upon mask of interrupts
  *
- * See @a intc_set_mask() for argument definitions.
+ * See @a intc_disable_irq() for argument definitions.
  */
-typedef int (*intc_set_irq_mask_t)(const struct device *intcdev, int index);
-typedef int (*intc_set_irq_unmask_t)(const struct device *intcdev, int index);
+typedef int (*intc_api_disable_irq)(const struct device *intcdev, int index);
+typedef int (*intc_api_enable_irq)(const struct device *intcdev, int index);
+typedef int (*intc_api_irq_is_enabled)(const struct device *intcdev, int index);
 
 __subsystem struct intc_driver_api {
-	intc_register_callback_t register_callback;
-	intc_set_irq_mask_t set_irq_mask;
-	intc_set_irq_unmask_t set_irq_unmask;
+	intc_api_request_irq request_irq;
+	intc_api_disable_irq disable_irq;
+	intc_api_enable_irq enable_irq;
+	intc_api_irq_is_enabled irq_enabled;
 };
 
 /**
@@ -75,32 +75,39 @@ __subsystem struct intc_driver_api {
  * @param user_data Application-specific data pointer which will be passed
  *        to the callback function when executed.
  */
-static inline void intc_register_callback(const struct device *intcdev,
-					  intc_callback_t cb, void *user_data, int intc_bit)
+static inline void intc_request_irq(const struct device *intcdev, intc_callback_t cb,
+				    void *user_data, int intc_bit)
 {
 	const struct intc_driver_api *api = (const struct intc_driver_api *)intcdev->api;
 
-	api->register_callback(intcdev, cb, user_data, intc_bit);
+	api->request_irq(intcdev, cb, user_data, intc_bit);
 }
 
 /**
- * @typedef intc_set_mask_t
+ * @typedef intc_api_disable_irq
  * @brief Callback API upon mask of interrupts
  *
- * See @a intc_set_mask() for argument definitions.
+ * See @a intc_disable_irq() for argument definitions.
  */
-static inline int intc_set_irq_mask(const struct device *intcdev, int intc_bit)
+static inline int intc_disable_irq(const struct device *intcdev, int intc_bit)
 {
 	const struct intc_driver_api *api = (const struct intc_driver_api *)intcdev->api;
 
-	return api->set_irq_mask(intcdev, intc_bit);
+	return api->disable_irq(intcdev, intc_bit);
 }
 
-static inline int intc_set_irq_unmask(const struct device *intcdev, int intc_bit)
+static inline int intc_enable_irq(const struct device *intcdev, int intc_bit)
 {
 	const struct intc_driver_api *api = (const struct intc_driver_api *)intcdev->api;
 
-	return api->set_irq_unmask(intcdev, intc_bit);
+	return api->enable_irq(intcdev, intc_bit);
+}
+
+static inline int intc_irq_is_enabled(const struct device *intcdev, int intc_bit)
+{
+	const struct intc_driver_api *api = (const struct intc_driver_api *)intcdev->api;
+
+	return api->irq_enabled(intcdev, intc_bit);
 }
 
 #ifdef __cplusplus

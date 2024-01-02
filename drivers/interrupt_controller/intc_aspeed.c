@@ -141,6 +141,21 @@ static int intc_ast2700_irq_unmask(const struct device *dev, int intc_bit)
 	return 0;
 }
 
+static int intc_ast2700_irq_is_enabled(const struct device *dev, int intc_bit)
+{
+	const struct intc_ast2700_config *config = ((const struct device *)dev)->config;
+	uintptr_t base = config->base;
+	int intc_num = config->intc_num;
+	int irqn = (intc_num * 32) + intc_bit;
+
+	if (irqn >= MAX_INTC_NUMBER) {
+		LOG_ERR("invalid interrupt id=%u\n", irqn);
+		return 1;
+	}
+
+	return (!!(sys_read32(base + INTC_IER) & BIT(intc_bit)));
+}
+
 static int intc_ast2700_init(const struct device *dev)
 {
 	const struct intc_ast2700_config *config = ((const struct device *)dev)->config;
@@ -162,9 +177,10 @@ static int intc_ast2700_init(const struct device *dev)
 }
 
 static const struct intc_driver_api intc_ast2700_driver_api = {
-	.register_callback	= intc_ast2700_register_callback,
-	.set_irq_mask		= intc_ast2700_irq_mask,
-	.set_irq_unmask		= intc_ast2700_irq_unmask,
+	.request_irq	= intc_ast2700_register_callback,
+	.disable_irq	= intc_ast2700_irq_mask,
+	.enable_irq	= intc_ast2700_irq_unmask,
+	.irq_enabled	= intc_ast2700_irq_is_enabled,
 };
 
 #define INTC_AST2700_INIT(n)                                                                       \
