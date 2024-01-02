@@ -146,10 +146,10 @@ static const struct ipm_driver_api ipm_ast2600_driver_api = {
 
 #define IPM_AST2600_IRQ_CONNECT(index, inst)                                                       \
 	do {                                                                                       \
-		IRQ_CONNECT(DT_INST_IRQ_BY_IDX(inst, index, irq),                                  \
+		IRQ_CONNECT(DT_INST_IRQN_BY_IDX(inst, index),                                      \
 			    DT_INST_IRQ_BY_IDX(inst, index, priority), ipc_ast2600_isr,            \
 			    DEVICE_DT_INST_GET(inst), 0);                                          \
-		irq_enable(DT_INST_IRQN(inst));                                                    \
+		irq_enable(DT_INST_IRQN_BY_IDX(inst, index));                                      \
 	} while (false);
 
 #define IPM_AST2600_INIT(n)                                                                        \
