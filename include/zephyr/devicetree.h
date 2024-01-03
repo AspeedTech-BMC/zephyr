@@ -2379,6 +2379,22 @@
 #define DT_IRQ(node_id, cell) DT_IRQ_BY_IDX(node_id, 0, cell)
 
 /**
+ * DT helper macro to get the as-seen interrupt number in devicetree,
+ * or ARM GIC IRQ encoded output from `gen_defines.py`
+ */
+#define DT_IRQN_BY_IDX_INTERNAL(node_id, idx) DT_IRQ_BY_IDX(node_id, idx, irq)
+
+/**
+ * @brief Get the node's Zephyr interrupt number at index
+ * If @kconfig{CONFIG_MULTI_LEVEL_INTERRUPTS} is enabled, the interrupt number at index will be
+ * multi-level encoded
+ * @param node_id node identifier
+ * @param idx logical index into the interrupt specifier array
+ * @return the Zephyr interrupt number
+ */
+#define DT_IRQN_BY_IDX(node_id, idx) DT_IRQN_BY_IDX_INTERNAL(node_id, idx)
+
+/**
  * @brief Get a node's (only) irq number
  *
  * Equivalent to DT_IRQ(node_id, irq). This is provided as a convenience
@@ -3738,6 +3754,14 @@
  * @return the interrupt number for the node's only interrupt
  */
 #define DT_INST_IRQN(inst) DT_INST_IRQ(inst, irq)
+
+/**
+ * @brief Get a `DT_DRV_COMPAT`'s irq number at index
+ * @param inst instance number
+ * @param idx logical index into the interrupt specifier array
+ * @return the interrupt number for the node's idx-th interrupt
+ */
+#define DT_INST_IRQN_BY_IDX(inst, idx) DT_IRQN_BY_IDX(DT_DRV_INST(inst), idx)
 
 /**
  * @brief Get a `DT_DRV_COMPAT`'s bus node identifier
