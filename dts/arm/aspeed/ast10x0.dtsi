@@ -235,6 +235,7 @@
 				interrupt-controller;
 				#interrupt-cells = <2>;
 				pin-offset = <0>;
+				status = "disabled";
 			};
 
 			sgpiom_e_h: sgpiom_e_h {
@@ -244,6 +245,7 @@
 				interrupt-controller;
 				#interrupt-cells = <2>;
 				pin-offset = <32>;
+				status = "disabled";
 			};
 
 			sgpiom_i_l: sgpiom_i_l {
@@ -253,6 +255,7 @@
 				interrupt-controller;
 				#interrupt-cells = <2>;
 				pin-offset = <64>;
+				status = "disabled";
 			};
 
 			sgpiom_m_p: sgpiom_m_p {
@@ -262,6 +265,7 @@
 				interrupt-controller;
 				#interrupt-cells = <2>;
 				pin-offset = <96>;
+				status = "disabled";
 			};
 		};
 

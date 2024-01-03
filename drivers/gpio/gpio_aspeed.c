@@ -598,7 +598,7 @@ struct device_cont {
 
 #define ASPEED_GPIO_DEVICE_INIT(inst)                                                              \
 	static struct device_array child_dev_##inst[] = {                                          \
-		DT_FOREACH_CHILD(DT_DRV_INST(inst), GPIO_ASPEED_DEV_DECLARE)};                     \
+		DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(inst), GPIO_ASPEED_DEV_DECLARE)};         \
 	static void gpio_aspeed_irq_config_func_##inst(const struct device *dev)                   \
 	{                                                                                          \
 		ARG_UNUSED(dev);                                                                   \
@@ -619,16 +619,16 @@ struct device_cont {
 			      &gpio_aspeed_parent_cfg_##inst, POST_KERNEL,                         \
 			      CONFIG_GPIO_ASPEED_INIT_PRIORITY, NULL);                             \
 	static const struct gpio_aspeed_config gpio_aspeed_cfg_##inst[] = {                        \
-		DT_FOREACH_CHILD(DT_DRV_INST(inst), GPIO_ASPEED_DEV_CFG)};                         \
+		DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(inst), GPIO_ASPEED_DEV_CFG)};             \
 	static struct gpio_aspeed_data gpio_aspeed_data_##inst[] = {                               \
-		DT_FOREACH_CHILD(DT_DRV_INST(inst), GPIO_ASPEED_DEV_DATA)};                        \
+		DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(inst), GPIO_ASPEED_DEV_DATA)};            \
 	static const struct device_cont DT_DRV_INST(inst) = {                                      \
 		.cfg = gpio_aspeed_cfg_##inst,                                                     \
 		.data = gpio_aspeed_data_##inst,                                                   \
 	};                                                                                         \
 	enum {                                                                                     \
-		DT_FOREACH_CHILD(DT_DRV_INST(inst), GPIO_ENUM)                                     \
+		DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(inst), GPIO_ENUM)                         \
 	};                                                                                         \
-	DT_FOREACH_CHILD(DT_DRV_INST(inst), GPIO_ASPEED_DT_DEFINE)
+	DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(inst), GPIO_ASPEED_DT_DEFINE)
 
 DT_INST_FOREACH_STATUS_OKAY(ASPEED_GPIO_DEVICE_INIT)

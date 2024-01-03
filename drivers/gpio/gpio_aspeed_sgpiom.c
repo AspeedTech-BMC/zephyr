@@ -330,7 +330,7 @@ struct device_cont {
 #define ASPEED_SGPIOM_DEVICE_INIT(inst)                                                            \
 	PINCTRL_DT_INST_DEFINE(inst);                                                              \
 	static struct device_array child_dev_##inst[] = {                                          \
-		DT_FOREACH_CHILD(DT_DRV_INST(inst), SGPIOM_ASPEED_DEV_DECLARE)};                   \
+		DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(inst), SGPIOM_ASPEED_DEV_DECLARE)};       \
 	static const struct sgpiom_aspeed_parent_config sgpiom_aspeed_parent_cfg_##inst = {        \
 		.base = (struct sgpiom_register_s *)DT_INST_REG_ADDR(inst),                        \
 		.clk_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(inst)),                               \
@@ -347,16 +347,16 @@ struct device_cont {
 			      &sgpiom_aspeed_parent_cfg_##inst, POST_KERNEL,                       \
 			      CONFIG_GPIO_ASPEED_SGPIOM_INIT_PRIORITY, NULL);                      \
 	static const struct sgpiom_aspeed_config sgpiom_aspeed_cfg_##inst[] = {                    \
-		DT_FOREACH_CHILD(DT_DRV_INST(inst), SGPIOM_ASPEED_DEV_CFG)};                       \
+		DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(inst), SGPIOM_ASPEED_DEV_CFG)};           \
 	static struct sgpiom_aspeed_data sgpiom_aspeed_data_##inst[] = {                           \
-		DT_FOREACH_CHILD(DT_DRV_INST(inst), SGPIOM_ASPEED_DEV_DATA)};                      \
+		DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(inst), SGPIOM_ASPEED_DEV_DATA)};          \
 	static const struct device_cont DT_DRV_INST(inst) = {                                      \
 		.cfg = sgpiom_aspeed_cfg_##inst,                                                   \
 		.data = sgpiom_aspeed_data_##inst,                                                 \
 	};                                                                                         \
 	enum {                                                                                     \
-		DT_FOREACH_CHILD(DT_DRV_INST(inst), SGPIOM_ENUM)                                   \
+		DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(inst), SGPIOM_ENUM)                       \
 	};                                                                                         \
-	DT_FOREACH_CHILD(DT_DRV_INST(inst), SGPIOM_ASPEED_DT_DEFINE)
+	DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(inst), SGPIOM_ASPEED_DT_DEFINE)
 
 DT_INST_FOREACH_STATUS_OKAY(ASPEED_SGPIOM_DEVICE_INIT)

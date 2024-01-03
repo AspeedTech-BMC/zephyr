@@ -158,6 +158,18 @@
 
 &sgpiom {
 	status = "okay";
+	sgpiom_a_d {
+		status = "okay";
+	};
+	sgpiom_e_h {
+		status = "okay";
+	};
+	sgpiom_i_l {
+		status = "okay";
+	};
+	sgpiom_m_p {
+		status = "okay";
+	};
 };
 
 &wdt0 {
