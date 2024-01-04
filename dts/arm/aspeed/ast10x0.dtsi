@@ -107,7 +107,6 @@
 			interrupts = <INTR_USBDEV AST10X0_IRQ_DEFAULT_PRIORITY>;
 			num-bidir-endpoints = <5>;
 			resets = <&sysrst ASPEED_RESET_USB>;
-			label = "UDC";
 			status = "disabled";
 		};
 
