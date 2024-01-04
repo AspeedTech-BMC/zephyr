@@ -51,7 +51,7 @@
 			label = "image-0";
 			reg = <0x0 0x80000>;
 		};
-		dfu_partition: partition@1 {
+		dfu_partition: partition@80000 {
 		       label = "image-1";
 		       reg = <0x80000 0x80000>;
 	       };
