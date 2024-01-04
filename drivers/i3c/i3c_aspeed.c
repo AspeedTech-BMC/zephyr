@@ -1035,6 +1035,25 @@ static uint64_t bytes_to_pid(uint8_t *bytes)
 	return pid;
 }
 
+static struct i3c_device_desc *aspeed_i3c_device_find_by_addr(const struct device *dev,
+							      uint8_t addr)
+{
+	const struct aspeed_i3c_config *config = dev->config;
+	struct i3c_device_desc *target;
+	struct aspeed_i3c_priv *priv;
+	int i;
+
+	for (i = 0; i < config->common.dev_list.num_i3c; i++) {
+		target = &config->common.dev_list.i3c[i];
+		priv = target->controller_priv;
+		if (priv->addr == addr) {
+			return target;
+		}
+	}
+
+	return 0;
+}
+
 static int aspeed_i3c_do_daa(const struct device *dev)
 {
 	struct aspeed_i3c_data *data = dev->data;
@@ -1082,10 +1101,39 @@ static int aspeed_i3c_do_daa(const struct device *dev)
 		if (target) {
 			LOG_INF("Device %012llx DA %02x assigned (was %02x)", pid, addr,
 				target->dynamic_addr);
+			/*
+			 * It's possible that the DA is assigned to a device different from its
+			 * intended assignment. For instance:
+			 *
+			 * In the device list:
+			 *   DAT[0] with address 0x8 --> reserved for device_A
+			 *   DAT[1] with address 0x9 --> reserved for device_B
+			 *
+			 * If device_A isn't activated, then device_B will acknowledge the ENTDAA
+			 * CCC and will be assigned to DAT[0] with address 0x8.
+			 *
+			 * To resolve this, we simply swap the DAT pointer in the device list as
+			 * follows:
+			 *
+			 *   DAT[0] with address 0x8 --> device_B
+			 *   DAT[1] with address 0x9 --> device_A (Reserving this slot for device_A)
+			 */
 			priv = target->controller_priv;
+			if (pos != priv->pos) {
+				struct i3c_device_desc *old_desc;
+				struct aspeed_i3c_priv *old_priv;
+
+				old_desc = aspeed_i3c_device_find_by_addr(dev, addr);
+				old_priv = old_desc->controller_priv;
+
+				old_desc->controller_priv = priv;
+				target->controller_priv = old_priv;
+				priv = target->controller_priv;
+			}
+
+			priv->pos = pos;
 			priv->addr = addr;
 			target->dynamic_addr = addr;
-			priv->pos = pos;
 		} else {
 			LOG_INF("Unregistered device with PID = %012llx", pid);
 		}
