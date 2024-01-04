@@ -703,7 +703,7 @@ static int aspeed_i3c_ibi_enable(const struct device *dev,
 	sys_write32(dat, dat_addr);
 
 	sir_reject = sys_read32(base + IBI_SIR_REQ_REJECT);
-	sir_reject &= BIT(pos);
+	sir_reject &= ~BIT(pos);
 	sys_write32(sir_reject, base + IBI_SIR_REQ_REJECT);
 
 	reg = sys_read32(base + INTR_STATUS_EN);
