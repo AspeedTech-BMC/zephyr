@@ -135,7 +135,7 @@ static const char tmq_xfer_helper[] =
 	"i3c tmq <dev> -b 1               | register i3c-target-mqueue driver\n"
 	"i3c tmq <dev> -b 0               | unregister i3c-target-mqueue driver\n"
 	"i3c tmq <dev> -w <b0, b1,... bn> | write byte stream\n"
-	"i3c tmq <dev> -r <length>        | read length of byte from mqueue\n";
+	"i3c tmq <dev> -r <length>        | read length of byte from mqueue";
 
 static int cmd_tmq_xfer(const struct shell *shell, size_t argc, char **argv)
 {
@@ -194,8 +194,26 @@ static int cmd_tmq_xfer(const struct shell *shell, size_t argc, char **argv)
 	return 0;
 }
 
+static const char do_daa_helper[] = "i3c daa <dev>                    | do DAA process";
+static int cmd_do_daa(const struct shell *shell, size_t argc, char **argv)
+{
+	const struct device *dev;
+	int ret;
+
+	dev = device_get_binding(argv[1]);
+	if (!dev) {
+		shell_error(shell, "I3C: Device %s not found.", argv[1]);
+		return -ENODEV;
+	}
+
+	ret = i3c_do_daa(dev);
+
+	return ret;
+}
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_i3c_cmds,
 			       SHELL_CMD(xfer, &dsub_device_name, priv_xfer_helper, cmd_priv_xfer),
 			       SHELL_CMD(tmq, &dsub_device_name, tmq_xfer_helper, cmd_tmq_xfer),
+			       SHELL_CMD(daa, &dsub_device_name, do_daa_helper, cmd_do_daa),
 			       SHELL_SUBCMD_SET_END);
 SHELL_CMD_REGISTER(i3c, &sub_i3c_cmds, "I3C commands", NULL);
