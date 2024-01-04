@@ -1782,7 +1782,7 @@ static int i2c_aspeed_init(const struct device *dev)
 	/* check chip id*/
 	len = hwinfo_get_device_id((uint8_t *)&rev_id, sizeof(rev_id));
 	clock_control_get_rate(config->clock_dev, config->clk_id, &config->clk_src);
-	LOG_INF("clk src %d, multi-master %d, xfer mode %d\n",
+	LOG_INF("clk src %d, multi-master %d, xfer mode %d",
 		config->clk_src, config->multi_master, config->mode);
 
 	bitrate_cfg = i2c_map_dt_bitrate(config->bitrate);
