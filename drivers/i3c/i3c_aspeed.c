@@ -971,6 +971,17 @@ static int aspeed_i3c_do_ccc(const struct device *dev, struct i3c_ccc_payload *p
 		aspeed_i3c_exit_halt(data);
 	}
 
+	if (xfer.ret == RESPONSE_ERROR_IBA_NACK) {
+		/*
+		 * Here, we should ideally return M2_ERROR. However, the I3C subsystem currently
+		 * does not define this error code. For now, returning 0 maintains the I3C
+		 * controller's enabled state, allowing us the opportunity to redo CCCs when the
+		 * target devices activate later.
+		 */
+		LOG_INF("do_ccc: target devices not activated for now");
+		return 0;
+	}
+
 	return xfer.ret;
 }
 
