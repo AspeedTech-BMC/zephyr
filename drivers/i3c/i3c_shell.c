@@ -139,6 +139,7 @@ static const char tmq_xfer_helper[] =
 
 static int cmd_tmq_xfer(const struct shell *shell, size_t argc, char **argv)
 {
+#ifdef CONFIG_I3C_TARGET_MQUEUE
 	const struct device *dev;
 	struct getopt_state *state;
 	int c, len, ret;
@@ -190,7 +191,7 @@ static int cmd_tmq_xfer(const struct shell *shell, size_t argc, char **argv)
 			break;
 		}
 	}
-
+#endif
 	return 0;
 }
 
