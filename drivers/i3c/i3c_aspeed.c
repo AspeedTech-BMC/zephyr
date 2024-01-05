@@ -1063,6 +1063,7 @@ static int aspeed_i3c_do_daa(const struct device *dev)
 	struct aspeed_i3c_priv *priv;
 	struct i3c_ccc_address expected;
 	uint64_t pid;
+	uint32_t need_da = data->need_da;
 	int ret, i, pos = 0;
 	uint8_t addr;
 
@@ -1071,7 +1072,7 @@ static int aspeed_i3c_do_daa(const struct device *dev)
 	memset(&getpid.pid, 0, sizeof(getpid.pid));
 
 	do {
-		if ((BIT(pos) & data->need_da) == 0) {
+		if ((BIT(pos) & need_da) == 0) {
 			goto find_next;
 		}
 
@@ -1133,8 +1134,8 @@ static int aspeed_i3c_do_daa(const struct device *dev)
 					i3c_addr_slots_set(&data->common.attached_dev.addr_slots,
 							   expected.addr,
 							   I3C_ADDR_SLOT_STATUS_I3C_DEV);
-					data->need_da &= ~BIT(priv->pos);
-					data->need_da |= BIT(pos);
+					need_da &= ~BIT(priv->pos);
+					need_da |= BIT(pos);
 					LOG_INF("Device %012llx new DA %02x assigned (was %02x)",
 						pid, target->dynamic_addr, addr);
 				} else {
@@ -1143,7 +1144,7 @@ static int aspeed_i3c_do_daa(const struct device *dev)
 						expected.addr, (uint64_t)target->pid);
 				}
 			} else {
-				data->need_da &= ~BIT(pos);
+				need_da &= ~BIT(pos);
 			}
 		} else {
 			struct i3c_device_desc unsolicited;
@@ -1166,9 +1167,9 @@ find_next:
 		if (++pos == data->maxdevs) {
 			pos = 0;
 		}
-	} while (data->need_da);
+	} while (need_da);
 
-	LOG_DBG("need_da %08x", data->need_da);
+	LOG_DBG("need_da %08x", need_da);
 
 	for (i = 0; i < config->common.dev_list.num_i3c; i++) {
 		target = &config->common.dev_list.i3c[i];
@@ -1644,6 +1645,10 @@ static int aspeed_i3c_init(const struct device *dev)
 		}
 	}
 
+	/* Enable Hot-Join now */
+	sys_write32(sys_read32(config->base + DEVICE_CTRL) & ~DEV_CTRL_HOT_JOIN_NACK,
+		    config->base + DEVICE_CTRL);
+
 	return 0;
 }
 
@@ -1782,6 +1787,8 @@ static void aspeed_i3c_handle_ibis(struct aspeed_i3c_data *data)
 		reg = sys_read32(base + IBI_QUEUE_STATUS);
 		if (IBI_TYPE_SIRQ(reg)) {
 			aspeed_i3c_handle_ibi_sir(data, reg);
+		} else if (IBI_TYPE_HJ(reg)) {
+			i3c_ibi_work_enqueue_hotjoin(data->dev);
 		} else {
 			len = FIELD_GET(IBI_QUEUE_STATUS_DATA_LEN, reg);
 			aspeed_i3c_drain_ibi_queue(data, len);
