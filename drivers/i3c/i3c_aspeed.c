@@ -1163,6 +1163,10 @@ static int aspeed_i3c_priv_xfer(const struct device *dev, struct i3c_device_desc
 		return 0;
 	}
 
+	if (!target->dynamic_addr) {
+		return -EINVAL;
+	}
+
 	pos = priv->pos;
 	cmds = (struct aspeed_i3c_cmd *)k_calloc(sizeof(struct aspeed_i3c_cmd), num_msgs);
 
