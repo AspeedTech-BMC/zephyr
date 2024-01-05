@@ -1035,23 +1035,21 @@ static uint64_t bytes_to_pid(uint8_t *bytes)
 	return pid;
 }
 
-static struct i3c_device_desc *aspeed_i3c_device_find_by_addr(const struct device *dev,
-							      uint8_t addr)
+static void aspeed_i3c_handle_unsolicited(const struct device *dev,
+					  struct i3c_device_desc *unsolicited)
 {
-	const struct aspeed_i3c_config *config = dev->config;
-	struct i3c_device_desc *target;
-	struct aspeed_i3c_priv *priv;
-	int i;
+	struct aspeed_i3c_data *data = dev->data;
+	struct i3c_ccc_address expected;
+	int ret;
 
-	for (i = 0; i < config->common.dev_list.num_i3c; i++) {
-		target = &config->common.dev_list.i3c[i];
-		priv = target->controller_priv;
-		if (priv->addr == addr) {
-			return target;
-		}
+	expected.addr = i3c_addr_slots_next_free_find(&data->common.attached_dev.addr_slots, 0);
+	ret = i3c_ccc_do_setnewda(unsolicited, expected);
+	if (ret) {
+		LOG_ERR("Failed to assign DA %02x to unsolicited device", expected.addr);
 	}
 
-	return 0;
+	i3c_addr_slots_set(&data->common.attached_dev.addr_slots, expected.addr,
+			   I3C_ADDR_SLOT_STATUS_I3C_DEV);
 }
 
 static int aspeed_i3c_do_daa(const struct device *dev)
@@ -1063,24 +1061,29 @@ static int aspeed_i3c_do_daa(const struct device *dev)
 	struct i3c_ccc_target_payload ccc_tgt_payload;
 	struct i3c_device_desc *target;
 	struct aspeed_i3c_priv *priv;
+	struct i3c_ccc_address expected;
 	uint64_t pid;
-	int ret, i, pos;
+	int ret, i, pos = 0;
 	uint8_t addr;
 
 	memset(&ccc_payload, 0, sizeof(ccc_payload));
 	memset(&ccc_tgt_payload, 0, sizeof(ccc_tgt_payload));
 	memset(&getpid.pid, 0, sizeof(getpid.pid));
 
-	for (pos = 0; pos < data->maxdevs; pos++) {
+	do {
 		if ((BIT(pos) & data->need_da) == 0) {
-			continue;
+			goto find_next;
 		}
 
 		addr = data->addrs[pos];
 		ret = aspeed_i3c_do_entdaa(data, pos);
 		if (ret) {
-			/* TBD: free the address slot? */
-			continue;
+			/* No more devices need for DA, break the loop */
+			if (ret == RESPONSE_ERROR_IBA_NACK) {
+				break;
+			}
+			/* Some error occurs but we keep doing */
+			goto find_next;
 		}
 
 		/* DA has been assigned. Retrieve the PID */
@@ -1110,39 +1113,75 @@ static int aspeed_i3c_do_daa(const struct device *dev)
 			 *   DAT[1] with address 0x9 --> reserved for device_B
 			 *
 			 * If device_A isn't activated, then device_B will acknowledge the ENTDAA
-			 * CCC and will be assigned to DAT[0] with address 0x8.
+			 * CCC assigned to DAT[0] with address 0x8, resulting in:
+			 *   DAT[0] with address 0x8 --> assigned to device_B
+			 *   DAT[1] with address 0x9 --> reserved for device_B
 			 *
-			 * To resolve this, we simply swap the DAT pointer in the device list as
-			 * follows:
-			 *
-			 *   DAT[0] with address 0x8 --> device_B
-			 *   DAT[1] with address 0x9 --> device_A (Reserving this slot for device_A)
+			 * To resolve this, we utilize the SETNEWDA CCC to change device_B's DA to
+			 * its expected address (priv->addr). Subsequently, we can later assign
+			 * device_A's DA with its expected value.
 			 */
-			priv = target->controller_priv;
-			if (pos != priv->pos) {
-				struct i3c_device_desc *old_desc;
-				struct aspeed_i3c_priv *old_priv;
-
-				old_desc = aspeed_i3c_device_find_by_addr(dev, addr);
-				old_priv = old_desc->controller_priv;
-
-				old_desc->controller_priv = priv;
-				target->controller_priv = old_priv;
-				priv = target->controller_priv;
-			}
-
-			priv->pos = pos;
-			priv->addr = addr;
 			target->dynamic_addr = addr;
+			priv = target->controller_priv;
+			if (addr != priv->addr) {
+				expected.addr = priv->addr;
+				i3c_addr_slots_set(&data->common.attached_dev.addr_slots,
+						   expected.addr, I3C_ADDR_SLOT_STATUS_FREE);
+				ret = i3c_ccc_do_setnewda(target, expected);
+				if (ret == 0) {
+					target->dynamic_addr = expected.addr;
+					i3c_addr_slots_set(&data->common.attached_dev.addr_slots,
+							   expected.addr,
+							   I3C_ADDR_SLOT_STATUS_I3C_DEV);
+					data->need_da &= ~BIT(priv->pos);
+					data->need_da |= BIT(pos);
+					LOG_INF("Device %012llx new DA %02x assigned (was %02x)",
+						pid, target->dynamic_addr, addr);
+				} else {
+					LOG_ERR("Failed to assign expected address %02x to device "
+						"%012llx",
+						expected.addr, (uint64_t)target->pid);
+				}
+			} else {
+				data->need_da &= ~BIT(pos);
+			}
 		} else {
-			LOG_INF("Unregistered device with PID = %012llx", pid);
+			struct i3c_device_desc unsolicited;
+
+			LOG_WRN("Unsolicited device with PID = %012llx", pid);
+
+			memcpy(&unsolicited, &config->common.dev_list.i3c[pos],
+			       sizeof(struct i3c_device_desc));
+			unsolicited.dynamic_addr = addr;
+			aspeed_i3c_handle_unsolicited(dev, &unsolicited);
+
+			/*
+			 * The unsolicited device is assigned to some DA else, re-do the same
+			 * position/address
+			 */
+			continue;
 		}
-	}
+
+find_next:
+		if (++pos == data->maxdevs) {
+			pos = 0;
+		}
+	} while (data->need_da);
+
+	LOG_DBG("need_da %08x", data->need_da);
 
 	for (i = 0; i < config->common.dev_list.num_i3c; i++) {
 		target = &config->common.dev_list.i3c[i];
 		priv = target->controller_priv;
-		LOG_INF("dev%d: %012llx, addr %02x, DAT pos %d", i, (uint64_t)target->pid,
+
+		if (target->dynamic_addr) {
+			i3c_device_basic_info_get(target);
+			if (target->ibi_cb) {
+				i3c_ibi_enable(target);
+			}
+		}
+
+		LOG_INF("dev%d: %012llx, assigned-DA %02x, DAT pos %d", i, (uint64_t)target->pid,
 			target->dynamic_addr, priv->pos);
 	}
 
