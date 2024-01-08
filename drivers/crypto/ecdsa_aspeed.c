@@ -189,8 +189,8 @@ static struct ecdsa_driver_api ecdsa_funcs = {
 };
 
 static const struct ecdsa_config ecdsa_aspeed_config = {
-	.base = DT_REG_ADDR_BY_IDX(DT_NODELABEL(ecdsa), 0),
-	.sbase = DT_REG_ADDR_BY_IDX(DT_NODELABEL(ecdsa), 1),
+	.base = DT_REG_ADDR_BY_IDX(DT_PARENT(DT_DRV_INST(0)), 0),
+	.sbase = DT_REG_ADDR_BY_IDX(DT_PARENT(DT_DRV_INST(0)), 1),
 };
 
 DEVICE_DT_INST_DEFINE(0, ecdsa_init, NULL,

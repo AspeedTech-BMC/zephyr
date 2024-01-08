@@ -11,8 +11,5 @@ compatible: "aspeed,rsa"
 include: base.yaml
 
 properties:
-    reg:
-      required: true
-
     clocks:
       required: true

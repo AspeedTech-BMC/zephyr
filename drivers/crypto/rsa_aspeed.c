@@ -175,8 +175,8 @@ static struct rsa_driver_api rsa_funcs = {
 };
 
 static const struct rsa_config rsa_aspeed_config = {
-	.base = DT_REG_ADDR_BY_IDX(DT_NODELABEL(rsa), 0),
-	.sbase = DT_REG_ADDR_BY_IDX(DT_NODELABEL(rsa), 1),
+	.base = DT_REG_ADDR_BY_IDX(DT_PARENT(DT_DRV_INST(0)), 0),
+	.sbase = DT_REG_ADDR_BY_IDX(DT_PARENT(DT_DRV_INST(0)), 1),
 	.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(0)),
 	.clk_id = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(0, clk_id),
 };

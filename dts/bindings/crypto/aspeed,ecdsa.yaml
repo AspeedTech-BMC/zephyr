@@ -9,7 +9,3 @@ description: ASPEED ECDSA Engine
 compatible: "aspeed,ecdsa"
 
 include: base.yaml
-
-properties:
-    reg:
-      required: true
