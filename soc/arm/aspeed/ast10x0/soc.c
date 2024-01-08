@@ -52,32 +52,39 @@ extern char __data_region_end[];
 #define SYS_EXT_RESET		BIT(1)
 #define SYS_PWR_RESET_FLAG	BIT(0)
 
-#define BIT_WDT_SOC(x)	SYS_WDT ## x ## _SOC_RESET
-#define BIT_WDT_FULL(x)	SYS_WDT ## x ## _FULL_RESET
-#define BIT_WDT_ARM(x)	SYS_WDT ## x ## _ARM_RESET
-#define BIT_WDT_SW(x)	SYS_WDT ## x ## _SW_RESET
+#define SYS_RESET_LOG_CLEAR(_bitmask, _reg)                                                        \
+	COND_CODE_0(CONFIG_HWINFO_ASPEED, (sys_write32(_bitmask, _reg);), ());
 
-#define HANDLE_WDTx_RESET(x, event_log, event_log_reg) \
-	if (event_log & (BIT_WDT_SOC(x) | BIT_WDT_FULL(x) | BIT_WDT_ARM(x) | BIT_WDT_SW(x))) { \
-		printk("RST: WDT%d ", x); \
-		if (event_log & BIT_WDT_SOC(x)) { \
-			printk("SOC "); \
-			sys_write32(BIT_WDT_SOC(x), event_log_reg); \
-		} \
-		if (event_log & BIT_WDT_FULL(x)) { \
-			printk("FULL "); \
-			sys_write32(BIT_WDT_FULL(x), event_log_reg); \
-		} \
-		if (event_log & BIT_WDT_ARM(x)) { \
-			printk("ARM "); \
-			sys_write32(BIT_WDT_ARM(x), event_log_reg); \
-		} \
-		if (event_log & BIT_WDT_SW(x)) { \
-			printk("SW "); \
-			sys_write32(BIT_WDT_SW(x), event_log_reg); \
-		} \
-		printk("\n"); \
-	} \
+#define BIT_WDT_SOC(x)		SYS_WDT##x##_SOC_RESET
+#define BIT_WDT_FULL(x)		SYS_WDT##x##_FULL_RESET
+#define BIT_WDT_ARM(x)		SYS_WDT##x##_ARM_RESET
+#define BIT_WDT_SW(x)		SYS_WDT##x##_SW_RESET
+
+#define HANDLE_WDTx_RESET(x, event_log, event_log_reg)                                             \
+	if ((event_log) & (BIT_WDT_SOC(x) | BIT_WDT_FULL(x) | BIT_WDT_ARM(x) | BIT_WDT_SW(x))) {   \
+		printk("RST: WDT%d ", x);                                                          \
+		if ((event_log) & BIT_WDT_SOC(x)) {                                                \
+			printk("SOC ");                                                            \
+			COND_CODE_0(CONFIG_HWINFO_ASPEED,                                          \
+				    (sys_write32(BIT_WDT_SOC(x), event_log_reg);), ());            \
+		}                                                                                  \
+		if ((event_log) & BIT_WDT_FULL(x)) {                                               \
+			printk("FULL ");                                                           \
+			COND_CODE_0(CONFIG_HWINFO_ASPEED,                                          \
+				    (sys_write32(BIT_WDT_FULL(x), event_log_reg);), ());           \
+		}                                                                                  \
+		if ((event_log) & BIT_WDT_ARM(x)) {                                                \
+			printk("ARM ");                                                            \
+			COND_CODE_0(CONFIG_HWINFO_ASPEED,                                          \
+				    (sys_write32(BIT_WDT_ARM(x), event_log_reg);), ());            \
+		}                                                                                  \
+		if ((event_log) & BIT_WDT_SW(x)) {                                                 \
+			printk("SW ");                                                             \
+			COND_CODE_0(CONFIG_HWINFO_ASPEED,                                          \
+				    (sys_write32(BIT_WDT_SW(x), event_log_reg);), ());             \
+		}                                                                                  \
+		printk("\n");                                                                      \
+	}                                                                                          \
 	(void)(x)
 
 /* secure boot header : provide image size to bootROM for SPI boot */
@@ -155,7 +162,7 @@ void aspeed_print_sysrst_info(void)
 
 	if (rest1 & SYS_PWR_RESET_FLAG) {
 		printk("RST: Power On\n");
-		sys_write32(rest1, SYS_RESET_LOG_REG1);
+		SYS_RESET_LOG_CLEAR(rest1, SYS_RESET_LOG_REG1);
 	} else {
 		HANDLE_WDTx_RESET(4, rest1, SYS_RESET_LOG_REG1);
 		HANDLE_WDTx_RESET(3, rest1, SYS_RESET_LOG_REG1);
@@ -164,12 +171,12 @@ void aspeed_print_sysrst_info(void)
 
 		if (rest1 & SYS_FLASH_ABR_RESET) {
 			printk("RST: SYS_FLASH_ABR_RESET\n");
-			sys_write32(SYS_FLASH_ABR_RESET, SYS_RESET_LOG_REG1);
+			SYS_RESET_LOG_CLEAR(SYS_FLASH_ABR_RESET, SYS_RESET_LOG_REG1);
 		}
 
 		if (rest1 & SYS_EXT_RESET) {
 			printk("RST: External\n");
-			sys_write32(SYS_EXT_RESET, SYS_RESET_LOG_REG1);
+			SYS_RESET_LOG_CLEAR(SYS_EXT_RESET, SYS_RESET_LOG_REG1);
 		}
 	}
 
@@ -197,23 +204,29 @@ static struct soc_id soc_map_table[] = {
 
 void aspeed_soc_show_chip_id(void)
 {
-	uint64_t rev_id;
-	size_t len;
 	int i;
 
-	len = hwinfo_get_device_id((uint8_t *)&rev_id, sizeof(rev_id));
-	if (len < 0) {
-		return;
-	}
+	if (IS_ENABLED(CONFIG_HWINFO_ASPEED)) {
+		uint64_t rev_id;
+		size_t len;
 
-	for (i = 0; i < ARRAY_SIZE(soc_map_table); i++) {
-		if (rev_id == soc_map_table[i].rev_id) {
-			break;
+		len = hwinfo_get_device_id((uint8_t *)&rev_id, sizeof(rev_id));
+		if (len < 0) {
+			return;
 		}
-	}
 
-	if (i == ARRAY_SIZE(soc_map_table) && i > 0)
-		i--;
+		for (i = 0; i < ARRAY_SIZE(soc_map_table); i++) {
+			if (rev_id == soc_map_table[i].rev_id) {
+				break;
+			}
+		}
+
+		if (i == ARRAY_SIZE(soc_map_table) && i > 0) {
+			i--;
+		}
+	} else {
+		i = ARRAY_SIZE(soc_map_table) -  1;
+	}
 
 	printk("SOC: %s\n", soc_map_table[i].name);
 }
