@@ -1077,6 +1077,23 @@ static int aspeed_i3c_do_daa(const struct device *dev)
 		}
 
 		addr = data->addrs[pos];
+		target = i3c_dev_list_i3c_addr_find(&data->common.attached_dev, addr);
+		if (target) {
+			/*
+			 * If target != NULL, it implies that the target has been assigned a DA.
+			 * Here we check if it is active.
+			 */
+			union i3c_ccc_getstatus status;
+
+			ret = i3c_ccc_do_getstatus_fmt1(target, &status);
+			if (ret == 0) {
+				LOG_DBG("Device %012llx already has DA %02x (DAT pos %d)",
+					target->pid, target->dynamic_addr, pos);
+				need_da &= ~BIT(pos);
+				goto find_next;
+			}
+		}
+
 		ret = aspeed_i3c_do_entdaa(data, pos);
 		if (ret) {
 			/* No more devices need for DA, break the loop */
