@@ -1508,7 +1508,7 @@ static struct otp_driver_api otp_funcs = {
 };
 
 static struct otp_aspeed_config otp_aspeed_config = {
-	.base = DT_REG_ADDR(DT_DRV_INST(0)),
+	.base = DT_REG_ADDR(DT_PARENT(DT_DRV_INST(0))),
 	.otpcfg_dt_setting_list = DT_PROP(DT_DRV_INST(0), otpcfg),
 	.otpcfg_dt_setting_num = DT_PROP_LEN(DT_DRV_INST(0), otpcfg),
 	.otpstrap_dt_setting_list = DT_PROP(DT_DRV_INST(0), otpstrap),
