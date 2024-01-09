@@ -111,9 +111,8 @@ struct hash_ctx {
 	 */
 	uint16_t flags;
 
-	/** Place for driver to return function pointers to be invoked per
-	 * cipher operation. To be populated by crypto driver on return from
-	 * begin_session() based on the algo/mode chosen by the app.
+	/*
+	 * Extra operations for hmac.
 	 */
 	struct hash_ops ops;
 

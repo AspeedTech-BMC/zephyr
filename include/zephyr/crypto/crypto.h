@@ -488,4 +488,34 @@ static inline int hash_update(struct hash_ctx *ctx, struct hash_pkt *pkt)
  * @}
  */
 
+/**
+ * @brief Perform Hmac set key
+ *
+ * @param  ctx   Pointer to the hash context of this op.
+ * @param  pkt   Structure holding the input/output buffer pointers.
+ *
+ * @return 0 on success, negative errno code on fail.
+ */
+static inline int hash_setkey(struct hash_ctx *ctx, struct hash_pkt *pkt)
+{
+	pkt->ctx = ctx;
+
+	return ctx->ops.setkey_hndlr(ctx, pkt);
+}
+
+/**
+ * @brief Perform Hmac digest
+ *
+ * @param  ctx   Pointer to the hash context of this op.
+ * @param  pkt   Structure holding the input/output buffer pointers.
+ *
+ * @return 0 on success, negative errno code on fail.
+ */
+static inline int hash_digest_hmac(struct hash_ctx *ctx, struct hash_pkt *pkt)
+{
+	pkt->ctx = ctx;
+
+	return ctx->ops.digest_hmac_hndlr(ctx, pkt);
+}
+
 #endif /* ZEPHYR_INCLUDE_CRYPTO_H_ */

@@ -26,6 +26,114 @@ struct hash_testvec {
 	unsigned int psize;
 };
 
+struct hmac_testvec {
+	const char *plaintext;
+	const char *key;
+	const char *hmac;
+	unsigned int psize;
+	unsigned int ksize;
+};
+
+static const struct hmac_testvec hmac_sha256_tv_template[] = {
+	{
+		.plaintext =
+		"\x92\x7C\xFD\x5C\x4A\xA8\xE0\xD6\xE0\xAE\x08\xF0\xC9\x0D\x76\xA3",
+		.psize	= 16,
+		.key =
+		"\xC8\x69\xA5\x0E\xBD\x27\xF5\x02\xFF\x88\xDF\xD3\xA4\x87\xD1\x2E"
+		"\x3C\x13\xDB\xC7\xA4\xF0\x36\xFF\x3C\xFF\xE0\x5E\x56\xB5\x0E\x10"
+		"\x91\xB1\x90\xA3\x71\x40\xC6\x6D\x43\xA1\x4C\x81",
+		.ksize = 44,
+		.hmac =
+		"\x76\x6b\x44\x9b\xab\xe6\xcd\x11\x8c\xaa\x39\xf9\x46\xb9\x0c\x66"
+		"\x06\x6d\xc6\x33\xf7\x8f\xe5\x34\xa4\x1f\xc9\xde\x2f\x08\x14\x48",
+	},
+	{
+		.plaintext =
+		"\xC5\x66\xEE\x2B\x09\x13\x18\xFD\xAA\x42\x50\x4C\x3A\x2F\xA6\x50",
+		.psize	= 16,
+		.key =
+		"\xAE\x35\xB8\xED\x22\xB2\xD1\x07\xAE\x6B\x1F\x83\x7F\xC3\xB7\xAC"
+		"\x99\x5C\x54\x11\x2F\xEF\x79\xDC\xA2\xAA\xEE\x76\x6E\x19\x3F\xEF"
+		"\xF0\x1A\x62\x4E\x90\xCE\xFB\x19\x78\x1D\x1A\x82\xAE\x35\xB8\xED"
+		"\x22\xB2\xD1\x07\xAE\x6B\x1F\x83\x7F\xC3\xB7\xAC\x99\x5C\x54\x11"
+		"\x2F\xEF\x79\xDC\xA2\xAA\xEE\x76\x6E\x19\x3F\xEF\xF0\x1A\x62\x4E"
+		"\x90\xCE\xFB\x19\x78\x1D\x1A\x82",
+		.ksize = 88,
+		.hmac =
+		"\x58\x03\x1f\x26\xe4\x9a\xb4\x45\xd3\xa7\x42\xd8\xf0\x0a\x0c\x12"
+		"\x46\x03\x8f\x81\xb6\x83\x9b\x0d\x31\xea\x71\x82\xce\x68\xf3\x69",
+	},
+};
+
+static const struct hmac_testvec hmac_sha384_tv_template[] = {
+	{
+		.plaintext =
+		"\xCD\xC7\xBB\xC7\x02\x19\xA3\xD1\x14\xAA\xA4\x55\x6E\xEE\x1D\xC2",
+		.psize	= 16,
+		.key =
+		"\x27\x1F\x83\x28\x62\x33\x78\xFA\xE5\x9D\x15\x1D\x7F\x4C\x36\xB6"
+		"\x58\x6E\x92\xFB\x38\xA0\xAD\x9C\xA0\xE9\x7E\x9C\xD4\x88\xCA\x2B"
+		"\x5D\x34\x1E\x12\x39\xB4\x59\x5F\xC2\xF3\x67\xB0\xB6\x44\xBA\x93"
+		"\x46\x79\xDD\x39\x19",
+		.ksize = 53,
+		.hmac =
+		"\x3b\xb9\xac\xfe\xd9\x64\xce\x26\xcb\xb6\xe1\x94\x42\x6e\xb9\xca"
+		"\x1e\x52\xf3\xca\x2c\xe9\x3a\x98\x4d\x0f\x19\x72\x6a\xea\xaa\x3e"
+		"\x8b\x7b\x87\x80\x7b\x54\x07\xa4\xeb\x75\x5b\xc8\x15\x7b\x40\x4c",
+	},
+	{
+		.plaintext =
+		"\xAA\x0D\x80\xD3\x3D\xC8\x3F\x70\x46\x23\x50\x5F\xEE\x56\x5D\xB7",
+		.psize	= 16,
+		.key =
+		"\xE9\x3E\xFB\x86\xB4\xB7\x78\xC1\xB9\x2B\xDC\xA9\xEC\xF6\x13\x78"
+		"\x3B\x1D\xE8\xB1\x65\xAC\x12\x08\xEB\x5A\x52\x63\x5C\xC6\x41\xFB"
+		"\xCC\x5D\x7C\x16\xC9\xE5\x47\x92\xBF\xE6\x7F\x50\xD0\x2A\xCA\x98"
+		"\x87\xAC\x26\x30\x51\x29\x14\x66",
+		.ksize = 56,
+		.hmac =
+		"\x0f\x76\xc7\xa5\x31\x75\x09\xac\xce\xaa\xeb\x55\x28\x77\x98\xd8"
+		"\x8b\x5f\x7f\x15\x3f\xaa\xc8\xf6\x7d\x16\x92\x4c\x55\x9c\x66\xa4"
+		"\x1e\xc2\x0b\xec\xda\xf4\xd1\xb9\x54\x39\x7a\x36\x6e\x4c\xb7\xd1",
+	},
+};
+
+static const struct hmac_testvec hmac_sha512_tv_template[] = {
+	{
+		.plaintext =
+		"\x0B\x0E\xF0\x01\x88\x58\xBC\xAA\xD3\x33\x26\x6B\x1F\x24\x1E\xB7",
+		.psize	= 16,
+		.key =
+		"\x79\x58\x5E\xF7\x8C\xF6\x64\xFB\x69\xB1\x4F\xD8\xD1\x21\xE9\x5C"
+		"\xAC\x5D\xB6\x18\x51\x3E\x77\x0B\x80\xCF\x70\xB3\x3B\xE8\xCD\x69"
+		"\x0E\xDF\x8D\x83\x25\x99\x73\xC1",
+		.ksize = 40,
+		.hmac =
+		"\x4a\x93\x61\xfa\xc6\x60\x90\xa1\x7a\x16\x16\x84\x12\x04\x3a\xb8"
+		"\xa7\x52\x11\xd0\x90\x1c\xd7\x03\x23\x24\xde\xe2\x34\x91\xe5\xb0"
+		"\x95\x48\x43\xb1\x02\xc5\x8a\xae\x5a\x98\x8e\x22\xca\x5b\x13\xca"
+		"\x33\xff\xf5\x19\xe9\x37\x5c\x75\x0e\xb6\x3f\xfb\x34\x18\xd6\x7d",
+	},
+	{
+		.plaintext =
+		"\x0B\x0E\xF0\x01\x88\x58\xBC\xAA\xD3\x33\x26\x6B\x1F\x24\x1E\xB7",
+		.psize	= 16,
+		.key =
+		"\x79\x58\x5E\xF7\x8C\xF6\x64\xFB\x69\xB1\x4F\xD8\xD1\x21\xE9\x5C"
+		"\xAC\x5D\xB6\x18\x51\x3E\x77\x0B\x80\xCF\x70\xB3\x3B\xE8\xCD\x69"
+		"\x0E\xDF\x8D\x83\x25\x99\x73\xC1\x79\x58\x5E\xF7\x8C\xF6\x64\xFB"
+		"\x69\xB1\x4F\xD8\xD1\x21\xE9\x5C\xAC\x5D\xB6\x18\x51\x3E\x77\x0B"
+		"\x80\xCF\x70\xB3\x3B\xE8\xCD\x69\x0E\xDF\x8D\x83\x25\x99\x73\xC1",
+		.ksize = 80,
+		.hmac =
+		"\xe3\xdc\x90\x40\x83\x16\xe9\x8e\x2b\xa0\xf7\xc1\x38\x23\x9b\x8a"
+		"\x35\x03\xb4\x3c\x25\xf4\x5b\xeb\x93\x39\x5b\x88\xec\x0c\x59\xc3"
+		"\x4d\x08\x0c\x18\xc4\x0c\xcb\x6f\x1a\x6e\x74\xca\x08\x83\x99\x4a"
+		"\x27\x1b\x70\x47\x80\x0e\xc0\x3d\x5c\x21\xfe\x64\x09\xbb\xd9\x3e",
+	},
+};
+
 static const struct hash_testvec sha512_tv_template[] = {
 	{
 		.plaintext = "",
@@ -650,6 +758,89 @@ out:
 	return ret;
 }
 
+static int hmac_sha_test(const struct shell *shell, const struct hmac_testvec *tv,
+			 int tv_len, enum hash_algo algo)
+{
+	const struct device *dev = device_get_binding(HASH_DRV_NAME);
+	struct hash_ctx ini;
+	struct hash_pkt pkt;
+	uint8_t digest[64];
+	int ret;
+
+	for (int i = 0; i < tv_len; i++) {
+		shell_fprintf(shell, SHELL_NORMAL, "tv[%d]:", i);
+
+		ini.flags = crypto_query_hwcaps(dev);
+		pkt.key_buf = (uint8_t *)tv[i].key;
+		pkt.key_len = tv[i].ksize;
+		pkt.in_buf = (uint8_t *)tv[i].plaintext;
+		pkt.in_len = tv[i].psize;
+		pkt.out_buf = digest;
+
+		ret = hash_begin_session(dev, &ini, algo);
+		if (ret) {
+			shell_print(shell, "hash_begin_session error");
+			goto out;
+		}
+
+		ret = hash_setkey(&ini, &pkt);
+		if (ret) {
+			shell_print(shell, "hash_setkey error");
+			goto out;
+		}
+
+		ret = hash_digest_hmac(&ini, &pkt);
+		if (ret) {
+			shell_print(shell, "hash_digest error");
+			goto out;
+		}
+
+		hash_free_session(dev, &ini);
+
+		if (!memcmp(digest, tv[i].hmac, ini.digest_size))
+			shell_fprintf(shell, SHELL_NORMAL, "PASS\n");
+		else {
+			shell_fprintf(shell, SHELL_NORMAL, "FAIL\n");
+			shell_hexdump(shell, digest, ini.digest_size);
+
+			shell_fprintf(shell, SHELL_NORMAL, "Should be:\n");
+			shell_hexdump(shell, tv[i].hmac, ini.digest_size);
+			ret = -1;
+
+			goto out;
+		}
+	}
+
+	return 0;
+out:
+	hash_free_session(dev, &ini);
+	return ret;
+}
+
+static int hmac_sha256_test(const struct shell *shell, size_t argc, char **argv)
+{
+	shell_print(shell, "hmac_sha256_test");
+	return hmac_sha_test(shell, hmac_sha256_tv_template,
+			     ARRAY_SIZE(hmac_sha256_tv_template),
+			     CRYPTO_HASH_ALGO_SHA256);
+}
+
+static int hmac_sha384_test(const struct shell *shell, size_t argc, char **argv)
+{
+	shell_print(shell, "hmac_sha384_test");
+	return hmac_sha_test(shell, hmac_sha384_tv_template,
+			     ARRAY_SIZE(hmac_sha384_tv_template),
+			     CRYPTO_HASH_ALGO_SHA384);
+}
+
+static int hmac_sha512_test(const struct shell *shell, size_t argc, char **argv)
+{
+	shell_print(shell, "hmac_sha512_test");
+	return hmac_sha_test(shell, hmac_sha512_tv_template,
+			     ARRAY_SIZE(hmac_sha512_tv_template),
+			     CRYPTO_HASH_ALGO_SHA512);
+}
+
 static int sha512_test(const struct shell *shell, size_t argc, char **argv)
 {
 	shell_print(shell, "sha512_test");
@@ -693,15 +884,41 @@ static int sha_test(const struct shell *shell, size_t argc, char **argv)
 	if (ret)
 		goto end;
 
+	shell_print(shell, "hmac_sha256_test");
+	ret = hmac_sha_test(shell, hmac_sha256_tv_template,
+			    ARRAY_SIZE(hmac_sha256_tv_template),
+			    CRYPTO_HASH_ALGO_SHA256);
+	if (ret)
+		goto end;
+
+	shell_print(shell, "hmac_sha384_test");
+	ret = hmac_sha_test(shell, hmac_sha384_tv_template,
+			    ARRAY_SIZE(hmac_sha384_tv_template),
+			    CRYPTO_HASH_ALGO_SHA384);
+	if (ret)
+		goto end;
+
+	shell_print(shell, "hmac_sha512_test");
+	ret = hmac_sha_test(shell, hmac_sha512_tv_template,
+			    ARRAY_SIZE(hmac_sha512_tv_template),
+			    CRYPTO_HASH_ALGO_SHA512);
+
 end:
 	return ret;
 }
 
 SHELL_STATIC_SUBCMD_SET_CREATE(hash_cmds,
-			       SHELL_CMD_ARG(sha512, NULL, "", sha512_test, 1, 0),
-			       SHELL_CMD_ARG(sha384, NULL, "", sha384_test, 1, 0),
-			       SHELL_CMD_ARG(sha256, NULL, "", sha256_test, 1, 0),
-			       SHELL_CMD_ARG(test, NULL, "", sha_test, 1, 0),
-			       SHELL_SUBCMD_SET_END);
+	/* hash */
+	SHELL_CMD_ARG(sha512, NULL, "", sha512_test, 1, 0),
+	SHELL_CMD_ARG(sha384, NULL, "", sha384_test, 1, 0),
+	SHELL_CMD_ARG(sha256, NULL, "", sha256_test, 1, 0),
+
+	/* hmac */
+	SHELL_CMD_ARG(hmac-sha256, NULL, "", hmac_sha256_test, 1, 0),
+	SHELL_CMD_ARG(hmac-sha384, NULL, "", hmac_sha384_test, 1, 0),
+	SHELL_CMD_ARG(hmac-sha512, NULL, "", hmac_sha512_test, 1, 0),
+
+	SHELL_CMD_ARG(test, NULL, "", sha_test, 1, 0),
+	SHELL_SUBCMD_SET_END);
 
 SHELL_CMD_REGISTER(hash, &hash_cmds, "Hash shell commands", NULL);

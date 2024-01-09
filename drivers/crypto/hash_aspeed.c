@@ -246,6 +246,7 @@ static int aspeed_hash_digest_hmac(struct hash_ctx *ctx, struct hash_pkt *pkt)
 
 	/* Use Initial Vector */
 	memcpy(data->digest, data->iv, data->iv_size);
+	cache_data_flush_range(data->digest, data->iv_size);
 
 	/* Direct Access Mode / ACC Mode */
 	data->method &= ~(HACE_SG_EN);
@@ -254,6 +255,7 @@ static int aspeed_hash_digest_hmac(struct hash_ctx *ctx, struct hash_pkt *pkt)
 		LOG_ERR("%s: hash 1 failed, rc=%d\n", __func__, rc);
 		goto end;
 	}
+	cache_data_invd_all();
 
 	/* H(opad + hash sum 1) */
 	data->digcnt[0] = bs + ds;
@@ -267,6 +269,7 @@ static int aspeed_hash_digest_hmac(struct hash_ctx *ctx, struct hash_pkt *pkt)
 
 	/* Use Initial Vector */
 	memcpy(data->digest, data->iv, data->iv_size);
+	cache_data_flush_range(data->digest, data->iv_size);
 
 	rc = hash_trigger(data, data->bufcnt);
 	if (rc) {
@@ -432,10 +435,9 @@ static int aspeed_hash_session_setup(const struct device *dev,
 		return -EINVAL;
 	}
 
+	ctx->hash_hndlr = aspeed_hash_compute;
 	ctx->ops.setkey_hndlr = aspeed_hash_setkey;
 	ctx->ops.digest_hmac_hndlr = aspeed_hash_digest_hmac;
-
-	ctx->hash_hndlr = aspeed_hash_compute;
 
 	memcpy(data->digest, data->iv, data->iv_size);
 	cache_data_flush_range(data->digest, data->iv_size);
