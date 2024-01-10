@@ -508,7 +508,7 @@ void aspeed_spi_dma_isr(const void *param)
 	sys_write32(data->cmd_mode[cs].normal_read,
 		config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
 
-	spi_context_complete(ctx, 0);
+	spi_context_complete(ctx, dev, 0);
 }
 
 static void aspeed_spi_read_dma(const struct device *dev,
@@ -530,13 +530,13 @@ static void aspeed_spi_read_dma(const struct device *dev,
 	if (op_info.data_len > data->decode_addr[cs].len) {
 		LOG_WRN("Inavlid read len(0x%08x, 0x%08x)",
 			op_info.data_len, data->decode_addr[cs].len);
-		spi_context_complete(ctx, 0);
+		spi_context_complete(ctx, dev, 0);
 		return;
 	}
 
 	if ((op_info.addr % 4) != 0 || ((uint32_t)(op_info.buf) % 4) != 0) {
 		LOG_WRN("Address should be 4-byte aligned");
-		spi_context_complete(ctx, 0);
+		spi_context_complete(ctx, dev, 0);
 		return;
 	}
 
@@ -600,13 +600,13 @@ static void aspeed_spi_write_dma(const struct device *dev,
 	if (op_info.data_len > data->decode_addr[cs].len) {
 		LOG_WRN("Inavlid write len(0x%08x, 0x%08x)",
 			op_info.data_len, data->decode_addr[cs].len);
-		spi_context_complete(ctx, 0);
+		spi_context_complete(ctx, dev, 0);
 		return;
 	}
 
 	if ((op_info.addr % 4) != 0 || ((uint32_t)(op_info.buf) % 4) != 0) {
 		LOG_WRN("Address should be 4-byte aligned");
-		spi_context_complete(ctx, 0);
+		spi_context_complete(ctx, dev, 0);
 		return;
 	}
 
