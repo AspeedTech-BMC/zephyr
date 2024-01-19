@@ -243,7 +243,7 @@ static int aspeed_i3c_init(const struct device *dev);
 #define SLV_CHAR_CTRL			0x78
 #define   SLV_DCR			GENMASK(15, 8)
 #define   SLV_BCR			GENMASK(7, 0)
-#define     SLV_BCR_DEVICE_ROLE		GENMASK(7, 6)c
+#define     SLV_BCR_DEVICE_ROLE		GENMASK(7, 6)
 
 #define SLV_MAX_LEN			0x7c
 #define   SLV_MAX_RD_LEN		GENMASK(31, 16)
