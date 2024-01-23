@@ -131,6 +131,10 @@ void z_arm_platform_init(void)
 	    (BIT(26) | BIT(27)))
 		printk("Fail to enable flash power\n");
 #endif
+
+	/* restore UART routing to align datasheet default value */
+	sys_write32(0xa30, LPC_HICR9);
+	sys_write32(0x0, LPC_HICRA);
 }
 
 void aspeed_print_abr_wdt_mode(void)

@@ -23,6 +23,9 @@
 #define HW_STRAP2_SCU510		0x7e6e2510
 #define ASPEED_FMC_WDT2_CTRL		0x7e620064
 
+#define LPC_HICR9			0x7e789098
+#define LPC_HICRA			0x7e78909c
+
 void aspeed_print_sysrst_info(void);
 void aspeed_soc_show_chip_id(void);
 

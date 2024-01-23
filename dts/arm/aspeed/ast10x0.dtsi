@@ -301,13 +301,138 @@
 			status = "disabled";
 		};
 
+		uart1: serial@7e783000 {
+			compatible = "aspeed,uart";
+			reg = <0x7e783000 0x1000>;
+			interrupts = <INTR_UART1 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_UART1>;
+			pinctrl-0 = <pinctrl_uart1_default>;
+			status = "disabled";
+		};
+
+		uart2: serial@7e78d000 {
+			compatible = "aspeed,uart";
+			reg = <0x7e78d000 0x100>;
+			interrupts = <INTR_UART2 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_UART2>;
+			pinctrl-0 = <pinctrl_uart2_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+		};
+
+		uart3: serial@7e78e000 {
+			compatible = "aspeed,uart";
+			reg = <0x7e78e000 0x100>;
+			interrupts = <INTR_UART3 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_UART3>;
+			pinctrl-0 = <pinctrl_uart3_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+		};
+
+		uart4: serial@7e78f000 {
+			compatible = "aspeed,uart";
+			reg = <0x7e78f000 0x100>;
+			interrupts = <INTR_UART4 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_UART4>;
+			pinctrl-0 = <pinctrl_uart4_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+		};
+
 		uart5: serial@7e784000 {
 			compatible = "ns16550";
 			reg = <0x7e784000 0x1000>;
-			interrupts = <8 0>;
+			reg-shift = <2>;
+			interrupts = <INTR_UART5 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_UART5>;
 			status = "disabled";
-			reg-shift = <2>;
+		};
+
+		uart6: serial@7e790000 {
+			compatible = "aspeed,uart";
+			reg = <0x7e790000 0x100>;
+			interrupts = <INTR_UART6 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_UART6>;
+			pinctrl-0 = <pinctrl_uart6_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+		};
+
+		uart7: serial@7e790100 {
+			compatible = "aspeed,uart";
+			reg = <0x7e790100 0x100>;
+			interrupts = <INTR_UART7 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_UART7>;
+			pinctrl-0 = <pinctrl_uart7_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+		};
+
+		uart8: serial@7e790200 {
+			compatible = "aspeed,uart";
+			reg = <0x7e790200 0x100>;
+			interrupts = <INTR_UART8 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_UART8>;
+			pinctrl-0 = <pinctrl_uart8_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+		};
+
+		uart9: serial@7e790300 {
+			compatible = "aspeed,uart";
+			reg = <0x7e790300 0x100>;
+			interrupts = <INTR_UART9 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_UART9>;
+			pinctrl-0 = <pinctrl_uart9_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+		};
+
+		uart10: serial@7e790400 {
+			compatible = "aspeed,uart";
+			reg = <0x7e790400 0x100>;
+			interrupts = <INTR_UART10 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_UART10>;
+			pinctrl-0 = <pinctrl_uart10_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+		};
+
+		uart11: serial@7e790500 {
+			compatible = "aspeed,uart";
+			reg = <0x7e790500 0x100>;
+			interrupts = <INTR_UART11 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_UART11>;
+			pinctrl-0 = <pinctrl_uart11_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+		};
+
+		uart12: serial@7e790600 {
+			compatible = "aspeed,uart";
+			reg = <0x7e790600 0x100>;
+			interrupts = <INTR_UART12 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_UART12>;
+			pinctrl-0 = <pinctrl_uart12_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+		};
+
+		uart13: serial@7e790700 {
+			compatible = "aspeed,uart";
+			reg = <0x7e790700 0x100>;
+			interrupts = <INTR_UART13 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk ASPEED_CLK_UART13>;
+			pinctrl-0 = <pinctrl_uart13_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+		};
+
+		udma: udma@7e79e000 {
+			compatible = "aspeed,udma";
+			interrupts = <INTR_UARTDMA AST10X0_IRQ_DEFAULT_PRIORITY>;
+			reg = <0x7e79e000 0x1000>;
 		};
 
 		lpc: lpc@7e789000 {

@@ -9,6 +9,7 @@ config UART_ASPEED
 	select SERIAL_SUPPORT_INTERRUPT
 	select UART_INTERRUPT_DRIVEN
 	depends on SOC_FAMILY_ASPEED
+	depends on DT_HAS_ASPEED_UART_ENABLED
 	help
 	  This option enables the UART driver for ASPEED family of
 	  processors.
