@@ -961,6 +961,7 @@ static int aspeed_spi_nor_transceive(const struct device *dev,
 						const struct spi_config *spi_cfg,
 						struct spi_nor_op_info op_info)
 {
+	const struct aspeed_spi_config *config = dev->config;
 	struct aspeed_spi_data *data = dev->data;
 	struct spi_context *ctx = &data->ctx;
 	int ret = 0;
@@ -971,7 +972,8 @@ static int aspeed_spi_nor_transceive(const struct device *dev,
 
 #ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
 	if (op_info.data_direct == SPI_NOR_DATA_DIRECT_IN) {
-		if (op_info.data_len > SPI_DMA_TRIGGER_LEN &&
+		if (!config->pure_spi_mode_only &&
+		    op_info.data_len > SPI_DMA_TRIGGER_LEN &&
 		    (op_info.addr % 4) == 0 &&
 		    ((uint32_t)(&((uint8_t *)op_info.buf)[0]) % 4) == 0) {
 			aspeed_spi_read_dma(dev, spi_cfg, op_info);
@@ -980,7 +982,8 @@ static int aspeed_spi_nor_transceive(const struct device *dev,
 		}
 	} else if (op_info.data_direct == SPI_NOR_DATA_DIRECT_OUT) {
 #ifdef CONFIG_SPI_DMA_WRITE_SUPPORT_ASPEED
-		if (op_info.data_len > SPI_DMA_TRIGGER_LEN &&
+		if (!config->pure_spi_mode_only &&
+		    op_info.data_len > SPI_DMA_TRIGGER_LEN &&
 		    (op_info.addr % 4) == 0 &&
 		    ((uint32_t)(&((uint8_t *)op_info.buf)[0]) % 4) == 0) {
 			aspeed_spi_write_dma(dev, spi_cfg, op_info);
