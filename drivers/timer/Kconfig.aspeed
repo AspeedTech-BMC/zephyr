@@ -1,0 +1,19 @@
+# ASPEED timer driver configuration options
+
+# Copyright (c) 2024 ASPEED Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+config TIMER_ASPEED
+	bool "Aspeed general purpose timer"
+	depends on DT_HAS_ASPEED_TIMER_ENABLED
+	default y
+	help
+	  Say "y" to enable the driver of the Aspeed general purpose timer.
+
+if TIMER_ASPEED
+config TIMER_ASPEED_SHELL
+	bool "Shell commands for Aspeed timer"
+	default y
+	help
+	  Say "y" to enanle the shell commands for the Aspeed general purpose timer
+endif
