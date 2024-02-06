@@ -995,6 +995,7 @@ static int aspeed_spi_nor_transceive(const struct device *dev,
 #endif
 	}
 #else
+	ARG_UNUSED(config);
 	aspeed_spi_nor_transceive_user(dev, spi_cfg, op_info);
 #endif
 
