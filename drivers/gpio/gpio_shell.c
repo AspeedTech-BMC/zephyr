@@ -173,12 +173,32 @@ static int cmd_gpio_blink(const struct shell *sh,
 	return 0;
 }
 
+#ifdef CONFIG_GPIO_ASPEED_SGPIOM
+static int cmd_sgpio_passthrough(const struct shell *sh, size_t argc, char **argv)
+{
+	const struct device *dev;
+	int ret;
+	gpio_port_pins_t mask = shell_strtoul(argv[args_indx.index], 16, &ret);
+
+	dev = device_get_binding(argv[args_indx.port]);
+	if (dev) {
+		return sgpio_passthrough(dev, mask);
+	}
+
+	return 0;
+}
+#endif
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_gpio,
 			       SHELL_CMD_ARG(conf, NULL, "Configure GPIO", cmd_gpio_conf, 4, 0),
 			       SHELL_CMD_ARG(get, NULL, "Get GPIO value", cmd_gpio_get, 3, 0),
 			       SHELL_CMD_ARG(set, NULL, "Set GPIO", cmd_gpio_set, 4, 0),
 			       SHELL_CMD_ARG(blink, NULL, "Blink GPIO", cmd_gpio_blink, 3, 0),
+#ifdef CONFIG_GPIO_ASPEED_SGPIOM
+			       SHELL_CMD_ARG(passthrough, NULL, "SGPIO passthough",
+					     cmd_sgpio_passthrough, 3, 0),
+#endif
 			       SHELL_SUBCMD_SET_END /* Array terminated. */
-			       );
+);
 
 SHELL_CMD_REGISTER(gpio, &sub_gpio, "GPIO commands", NULL);

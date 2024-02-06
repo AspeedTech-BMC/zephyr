@@ -255,6 +255,16 @@ static int sgpiom_aspeed_config(const struct device *dev,
 	return ret;
 }
 
+static int sgpiom_aspeed_passthrough(const struct device *dev, gpio_port_pins_t mask)
+{
+	gpio_port_value_t val;
+
+	sgpiom_aspeed_port_get_raw(dev, &val);
+	sgpiom_aspeed_port_set_masked_raw(dev, mask, val);
+
+	return 0;
+}
+
 /* GPIO driver registration */
 static const struct gpio_driver_api sgpiom_aspeed_driver = {
 	.pin_configure = sgpiom_aspeed_config,
@@ -265,6 +275,7 @@ static const struct gpio_driver_api sgpiom_aspeed_driver = {
 	.port_toggle_bits = sgpiom_aspeed_port_toggle_bits,
 	.pin_interrupt_configure = sgpiom_aspeed_pin_interrupt_configure,
 	.manage_callback = sgpiom_aspeed_manage_callback,
+	.sgpio_passthrough = sgpiom_aspeed_passthrough,
 };
 
 int sgpiom_aspeed_init(const struct device *device)

@@ -571,6 +571,9 @@ __subsystem struct gpio_driver_api {
 	int (*port_get_direction)(const struct device *port, gpio_port_pins_t map,
 				  gpio_port_pins_t *inputs, gpio_port_pins_t *outputs);
 #endif /* CONFIG_GPIO_GET_DIRECTION */
+#ifdef CONFIG_GPIO_ASPEED_SGPIOM
+	int (*sgpio_passthrough)(const struct device *port, gpio_port_pins_t mask);
+#endif
 };
 
 /**
@@ -1562,6 +1565,21 @@ static inline int z_impl_gpio_get_pending_int(const struct device *dev)
 
 	return api->get_pending_int(dev);
 }
+
+__syscall int sgpio_passthrough(const struct device *dev, gpio_port_pins_t mask);
+
+#ifdef CONFIG_GPIO_ASPEED_SGPIOM
+static inline int z_impl_sgpio_passthrough(const struct device *port, gpio_port_pins_t mask)
+{
+	const struct gpio_driver_api *api =
+		(const struct gpio_driver_api *)port->api;
+
+	if (!api->sgpio_passthrough)
+		return -ENOSYS;
+
+	return api->sgpio_passthrough(port, mask);
+}
+#endif
 
 /**
  * @}
