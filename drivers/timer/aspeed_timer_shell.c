@@ -7,7 +7,7 @@
 #include <zephyr/device.h>
 #include <zephyr/drivers/timer/aspeed_timer.h>
 
-#define TIMER_DEVICE_PREFIX		"TIMER"
+#define TIMER_DEVICE_PREFIX		"timer"
 
 static const char start_helper[] = "timer start <dev> -p <period> -t <type>";
 static const char stop_helper[] = "timer stop <dev>";
