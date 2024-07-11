@@ -1407,9 +1407,20 @@ static int spi_nor_process_4bai(const struct device *dev,
 
 	data->cmd_info.read_opcode = cmd;
 
-	rv = jesd216_4bai_pp_support(jedec_4bai, data->cmd_info.pp_mode, &cmd);
-	if (rv < 0)
-		goto end;
+	if (data->cap_mask & SPI_NOR_MODE_1_1_4_CAP) {
+		rv = jesd216_4bai_pp_support(jedec_4bai, JESD216_MODE_114, &cmd);
+		if (rv == 0) {
+			spi_nor_assign_pp_cmd(data, JESD216_MODE_114, SPI_NOR_CMD_PP_1_1_4_4B);
+		} else {
+			rv = jesd216_4bai_pp_support(jedec_4bai, data->cmd_info.pp_mode, &cmd);
+			if (rv < 0)
+				goto end;
+		}
+	} else {
+		rv = jesd216_4bai_pp_support(jedec_4bai, data->cmd_info.pp_mode, &cmd);
+		if (rv < 0)
+			goto end;
+	}
 
 	data->cmd_info.pp_opcode = cmd;
 
