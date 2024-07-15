@@ -98,6 +98,13 @@ int i3c_slave_mqueue_read(const struct device *dev, uint8_t *dest, int budget)
 	return ret;
 }
 
+const struct device *i3c_slave_mqueue_get_controller(const struct device *dev)
+{
+	struct i3c_slave_mqueue_obj *obj = DEV_DATA(dev);
+
+	return obj->i3c_controller;
+}
+
 int i3c_slave_mqueue_write(const struct device *dev, uint8_t *src, int size)
 {
 	struct i3c_slave_mqueue_config *config = DEV_CFG(dev);
