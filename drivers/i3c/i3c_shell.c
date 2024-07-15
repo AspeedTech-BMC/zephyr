@@ -350,6 +350,7 @@ static int cmd_entdaa(const struct shell *shell, size_t argc, char **argv)
 #ifdef CONFIG_I3C_SLAVE_MQUEUE
 int i3c_slave_mqueue_read(const struct device *dev, uint8_t *dest, int budget);
 int i3c_slave_mqueue_write(const struct device *dev, uint8_t *src, int size);
+const struct device *i3c_slave_mqueue_get_controller(const struct device *dev);
 
 static const char smq_xfer_helper[] = "i3c smq <dev> -w <wdata> -r <read length>";
 static int cmd_smq_xfer(const struct shell *shell, size_t argc, char **argv)
@@ -406,31 +407,44 @@ K_KERNEL_STACK_MEMBER(stack1, I3C_SHELL_STACK1_SIZE);
 
 k_tid_t tid[2];
 struct k_thread thread[2];
+#define STRESS_DATA_LEN	64
 static const char do_stress_helper[] = "i3c stress <dev> -l <loop count>";
 
 static void i3c_stress_target_thread(void *arg0, void *arg1, void *arg2)
 {
 	const struct device *dev = arg0;
+	const struct device *i3c = i3c_slave_mqueue_get_controller(dev);
 	const struct shell *shell = arg1;
 	int loop_cnt = POINTER_TO_INT(arg2);
+	int ret;
 
-	int i, ret;
-	uint8_t data[16];
+	uint8_t data[STRESS_DATA_LEN], dyn_addr;
 	bool do_forever = !loop_cnt;
 
 	shell_print(shell, "I3C target thread start");
 
-	do {
-		ret = i3c_slave_mqueue_read(dev, data, 16);
-		if (ret > 0) {
-			shell_hexdump(shell, data, 16);
-		}
-		k_usleep(10);
+	/* Issue hot-join to request the dynamic address */
+	i3c_slave_hj_req(i3c);
 
-		for (i = 0; i < 16; i++) {
-			data[i] = 16 - i;
+	/* Check whether the dynamic address is assigned by the bus controller */
+	while (i3c_slave_get_dynamic_addr(i3c, &dyn_addr) < 0) {
+		k_msleep(1);
+	}
+
+	shell_print(shell, "Dynamic address: %02x\n", dyn_addr);
+
+	do {
+		while (1) {
+			ret = i3c_slave_mqueue_read(dev, data, STRESS_DATA_LEN);
+			if (ret > 0)
+				break;
+
+			k_msleep(1);
 		}
-		i3c_slave_mqueue_write(dev, data, 16);
+
+		shell_hexdump(shell, data, ret);
+
+		i3c_slave_mqueue_write(dev, data, ret);
 
 		if (!do_forever && --loop_cnt == 0) {
 			break;
