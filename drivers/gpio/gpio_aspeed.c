@@ -367,11 +367,60 @@ static int gpio_aspeed_deb_en(const struct device *dev, gpio_pin_t pin, bool en)
 	return 0;
 }
 
+#ifdef CONFIG_SOC_SERIES_AST10X0
+/* For GPIOL0 to GPIOL7 */
+#define PINCTRL_SCU418		0x7e6e2418
+#define PINCTRL_SCU51C		0x7e6e251C
+/* For GPIOM0 to GPIOM5 and GPION4 to GPIOO3 */
+#define PINCTRL_SCU41C		0x7e6e241c
+/* For GPIT0 to GPIT7 */
+#define PINCTRL_SCU430		0x7e6e2430
+/* For GPIU0 to GPIU7 */
+#define PINCTRL_SCU434          0x7e6e2434
+#endif
+
 static int gpio_aspeed_config(const struct device *dev,
 			      gpio_pin_t pin, gpio_flags_t flags)
 {
 	int ret = 0;
 	uint32_t io_flags;
+#ifdef CONFIG_SOC_SERIES_AST10X0
+	uint8_t pin_number = DEV_CFG(dev)->pin_offset + pin;
+	uint32_t scu_reg;
+
+	/* GPIOL0 to GPIOL7 */
+	if (pin_number >= ASPEED_GPIO(L, 0) && pin_number <= ASPEED_GPIO(L, 7)) {
+		scu_reg = sys_read32(PINCTRL_SCU418);
+		scu_reg &= ~(BIT(pin_number & 0x1f));
+		sys_write32(scu_reg, PINCTRL_SCU418);
+		if (pin_number == ASPEED_GPIO(L, 0) || pin_number == ASPEED_GPIO(L, 1)) {
+			scu_reg = sys_read32(PINCTRL_SCU51C);
+			scu_reg &= ~(BIT(8));
+			sys_write32(scu_reg, PINCTRL_SCU51C);
+		}
+	}
+
+	/* GPIOM0 to GPIOM5 and GPION4 to GPIOO3 */
+	if ((pin_number >= ASPEED_GPIO(M, 0) && pin_number <= ASPEED_GPIO(M, 5)) ||
+	    (pin_number >= ASPEED_GPIO(N, 4) && pin_number <= ASPEED_GPIO(O, 3))) {
+		scu_reg = sys_read32(PINCTRL_SCU41C);
+		scu_reg &= ~(BIT(pin_number & 0x1f));
+		sys_write32(scu_reg, PINCTRL_SCU41C);
+	}
+
+	/* GPIT */
+	if (pin_number >= ASPEED_GPIO(T, 0) && pin_number <= ASPEED_GPIO(T, 7)) {
+		scu_reg = sys_read32(PINCTRL_SCU430);
+		scu_reg |= (BIT(pin_number - ASPEED_GPIO(T, 0)) << 24);
+		sys_write32(scu_reg, PINCTRL_SCU430);
+	}
+	/* GPIU */
+	if (pin_number >= ASPEED_GPIO(U, 0) && pin_number <= ASPEED_GPIO(U, 7)) {
+		scu_reg = sys_read32(PINCTRL_SCU434);
+		scu_reg |= BIT(pin_number - ASPEED_GPIO(U, 0));
+		sys_write32(scu_reg, PINCTRL_SCU434);
+	}
+#endif
 
 	/* Does not support disconnected pin, and
 	 * not supporting both input/output at same time.
