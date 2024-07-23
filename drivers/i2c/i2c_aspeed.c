@@ -1869,6 +1869,7 @@ static int i2c_aspeed_init(const struct device *dev)
 	size_t len;
 
 	k_sem_init(&data->sync_sem, 0, UINT_MAX);
+	k_mutex_init(&data->trans_mutex);
 
 	config->global_reg = i2c_base & 0xfffff000;
 
