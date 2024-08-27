@@ -262,3 +262,6 @@ int i3c_jesd403_write(struct i3c_dev_desc *slave, uint8_t *addr, int addr_size, 
 		      int data_size);
 int i3c_i2c_read(struct i3c_dev_desc *slave, uint8_t addr, uint8_t *buf, int length);
 int i3c_i2c_write(struct i3c_dev_desc *slave, uint8_t addr, uint8_t *buf, int length);
+typedef void (*i3c_rst_cb_t)(const struct device *dev);
+void i3c_aspeed_hook_rst_cb(const struct device *dev, i3c_rst_cb_t cb);
+#define i3c_hook_rst_cb          i3c_aspeed_hook_rst_cb

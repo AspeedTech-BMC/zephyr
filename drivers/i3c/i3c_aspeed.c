@@ -554,6 +554,7 @@ struct i3c_aspeed_obj {
 	struct k_spinlock lock;
 	struct i3c_aspeed_xfer *curr_xfer;
 	struct k_work work;
+	struct k_work rst_work;
 	bool sir_allowed_by_sw;
 	struct {
 		uint32_t ibi_status_correct : 1;
@@ -574,6 +575,7 @@ struct i3c_aspeed_obj {
 	osEventFlagsId_t ibi_event;
 	osEventFlagsId_t data_event;
 	uint16_t extra_val;
+	i3c_rst_cb_t rst_cb;
 };
 
 #define I3CG_REG1(x)			((x * 0x10) + 0x14)
@@ -923,6 +925,7 @@ static void i3c_aspeed_slave_resp_handler(struct i3c_aspeed_obj *obj, union i3c_
 		resp.value = i3c_register->resp_queue_port.value;
 		if (resp.fields.err_status) {
 			LOG_ERR("Respons Error: 0x%x", resp.fields.err_status);
+			k_work_submit(&obj->rst_work);
 		}
 
 		if (resp.fields.data_length && !resp.fields.err_status &&
@@ -1818,7 +1821,7 @@ int i3c_aspeed_slave_put_read_data(const struct device *dev, struct i3c_slave_pa
 					    K_SECONDS(1).ticks);
 		if (flag_ret & osFlagsError) {
 			LOG_WRN("SIR timeout: reset i3c controller");
-			i3c_aspeed_init(dev);
+			k_work_submit(&obj->rst_work);
 			ret = -EIO;
 			goto ibi_err;
 		}
@@ -1928,6 +1931,13 @@ int i3c_aspeed_set_pid_extra_info(const struct device *dev, uint16_t extra_info)
 	return i3c_aspeed_enable(obj);
 }
 
+void i3c_aspeed_hook_rst_cb(const struct device *dev, i3c_rst_cb_t cb)
+{
+	struct i3c_aspeed_obj *obj = DEV_DATA(dev);
+
+	obj->rst_cb = cb;
+}
+
 int i3c_aspeed_slave_get_dynamic_addr(const struct device *dev, uint8_t *dynamic_addr)
 {
 	struct i3c_aspeed_config *config = DEV_CFG(dev);
@@ -2035,6 +2045,15 @@ static void sir_allowed_worker(struct k_work *work)
 
 	k_msleep(1000);
 	obj->sir_allowed_by_sw = 1;
+}
+
+static void i3c_rst_worker(struct k_work *work)
+{
+	struct i3c_aspeed_obj *obj = CONTAINER_OF(work, struct i3c_aspeed_obj, rst_work);
+
+	i3c_aspeed_init(obj->dev);
+	if (obj->rst_cb)
+		obj->rst_cb(obj->dev);
 }
 
 int i3c_aspeed_master_send_entdaa(struct i3c_dev_desc *i3cdev)
@@ -2154,6 +2173,7 @@ static int i3c_aspeed_init(const struct device *dev)
 		}
 		obj->sir_allowed_by_sw = 0;
 		k_work_init(&obj->work, sir_allowed_worker);
+		k_work_init(&obj->rst_work, i3c_rst_worker);
 	} else {
 		union i3c_device_addr_s reg;
 
