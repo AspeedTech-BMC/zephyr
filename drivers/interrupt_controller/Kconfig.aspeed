@@ -1,0 +1,17 @@
+# ASPEED driver configuration options
+
+# Copyright (c) 2020 ASPEED Technology Corporation.
+# SPDX-License-Identifier: Apache-2.0
+
+config ASPEED_INTC
+	bool "Aspeed interrupt controller driver"
+	depends on MULTI_LEVEL_INTERRUPTS
+	depends on ARM
+	default DT_HAS_ASPEED_AST2700_INTC_IC_ENABLED
+	help
+	  This option enables the interrupt controller
+
+if ASPEED_INTC
+config SYSCON_INIT_PRIORITY
+	default INTC_INIT_PRIORITY
+endif

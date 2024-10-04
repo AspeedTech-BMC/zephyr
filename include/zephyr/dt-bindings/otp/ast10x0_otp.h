@@ -1,0 +1,153 @@
+/*
+ * Copyright (c) 2022 ASPEED
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#ifndef ZEPHYR_INCLUDE_DT_BINDINGS_OTP_AST10X0_H_
+#define ZEPHYR_INCLUDE_DT_BINDINGS_OTP_AST10X0_H_
+
+#define OTP_DISABLE			0x0
+#define OTP_ENABLE			0x1
+
+/* OTPCFG */
+#define OTPCFG0				0
+#define OTPCFG1				1
+#define OTPCFG2				2
+#define OTPCFG3				3
+#define OTPCFG4				4
+#define OTPCFG5				5
+#define OTPCFG6				6
+#define OTPCFG7				7
+#define OTPCFG8				8
+#define OTPCFG9				9
+#define OTPCFG10			10
+#define OTPCFG11			11
+#define OTPCFG12			12
+#define OTPCFG13			13
+#define OTPCFG14			14
+#define OTPCFG15			15
+
+/* OTPCFG0 */
+#define OTP_DIS_OTP_MEM_BIST		0
+#define OTP_EN_SEC_BOOT			1
+#define OTP_EN_USER_REGION_ECC		3
+#define OTP_EN_SEC_REGION_ECC		4
+#define OTP_DIS_LOW_SEC_KEY0		5
+#define OTP_IGNORE_SEC_BOOT_HW_STRAP	6
+#define OTP_DIS_UART_MSG_SBE		9
+#define OTP_SIGNATURE_SCHEME		10
+#define OTP_DIS_OTP_PATCH_CODE		14
+#define OTP_DIS_BOOT_FROM_UART		15
+#define OTP_SEC_REGION_SIZE		16
+#define OTP_WR_PROT_SEC_REGION		22
+#define OTP_WR_PROT_USER_REGION		23
+#define OTP_WR_PROT_CONF_REGION		24
+#define OTP_WR_PROT_STRAP_REGION	25
+#define OTP_DIS_COPY_TO_SRAM		26
+#define OTP_EN_IMAGE_ENCRYPTION		27
+#define OTP_WR_PROT_KEY_RETIRE_BITS	29
+#define OTP_EN_MEM_LOCK			31
+
+/* OTP_SIGNATURE_SCHEME */
+#define ECDSA384			0
+#define ECDSA384_RSA2048		1
+#define ECDSA384_RSA3072		2
+#define ECDSA384_RSA4096		3
+#define RSAPSS_2048_SHA256		4
+#define RSAPSS_3072_SHA384		8
+#define RSAPSS_4096_SHA512		12
+#define RSAPKCS1_2048_SHA256		5
+#define RSAPKCS1_3072_SHA384		10
+#define RSAPKCS1_4096_SHA512		15
+
+/* OTPCFG2 */
+#define OTP_VENDOR_ID			0
+#define OTP_KEY_REVISION		16
+
+/* OTPCFG3 */
+#define OTP_HEADER_OFFSET		0
+#define OTP_BOOT_FROM_UART_SEL		16
+#define OTP_DIS_BOOT_FROM_UART5		17
+#define OTP_DIS_BOOT_FROM_UART1		18
+#define OTP_EXTRA_SEC_REGION_SIZE	24
+#define OTP_GEN_CDI			31
+
+/* OTPCFG4 */
+#define OTP_KEY_RETIRE_BITS		0
+
+/* OTPCFG10 */
+/* OTPCFG11 */
+#define OTP_HW_REVISION			0
+
+/* OTPCFG14 */
+#define OTP_PATCH_CODE_LOCATION		0
+#define OTP_PATCH_CODE_SIZE		11
+
+/* OTPSTRAP */
+#define OTPSTRAP0			0
+#define OTPSTRAP1			1
+#define OTPSTRAP2			2
+#define OTPSTRAP3			3
+#define OTPSTRAP4			4
+#define OTPSTRAP5			5
+#define OTPSTRAP6			6
+#define OTPSTRAP7			7
+#define OTPSTRAP8			8
+#define OTPSTRAP9			9
+#define OTPSTRAP10			10
+#define OTPSTRAP11			11
+#define OTPSTRAP12			12
+#define OTPSTRAP13			13
+#define OTPSTRAP14			14
+#define OTPSTRAP15			15
+#define OTPSTRAP16			16
+#define OTPSTRAP17			17
+#define OTPSTRAP18			18
+#define OTPSTRAP19			19
+#define OTPSTRAP20			20
+#define OTPSTRAP21			21
+#define OTPSTRAP22			22
+#define OTPSTRAP23			23
+#define OTPSTRAP24			24
+#define OTPSTRAP25			25
+#define OTPSTRAP26			26
+#define OTPSTRAP27			27
+#define OTPSTRAP28			28
+#define OTPSTRAP29			29
+#define OTPSTRAP30			30
+#define OTPSTRAP31			31
+#define OTPSTRAP32			32
+#define OTPSTRAP33			33
+#define OTPSTRAP34			34
+#define OTPSTRAP35			35
+#define OTPSTRAP36			36
+#define OTPSTRAP37			37
+#define OTPSTRAP38			38
+#define OTPSTRAP39			39
+#define OTPSTRAP40			40
+#define OTPSTRAP41			41
+#define OTPSTRAP42			42
+#define OTPSTRAP43			43
+#define OTPSTRAP44			44
+#define OTPSTRAP45			45
+#define OTPSTRAP46			46
+#define OTPSTRAP47			47
+#define OTPSTRAP48			48
+#define OTPSTRAP49			49
+#define OTPSTRAP50			50
+#define OTPSTRAP51			51
+#define OTPSTRAP52			52
+#define OTPSTRAP53			53
+#define OTPSTRAP54			54
+#define OTPSTRAP55			55
+#define OTPSTRAP56			56
+#define OTPSTRAP57			57
+#define OTPSTRAP58			58
+#define OTPSTRAP59			59
+#define OTPSTRAP60			60
+#define OTPSTRAP61			61
+#define OTPSTRAP62			62
+#define OTPSTRAP63			63
+
+#endif /* ZEPHYR_INCLUDE_DT_BINDINGS_OTP_AST10X0_H_ */

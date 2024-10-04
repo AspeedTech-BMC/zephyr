@@ -89,6 +89,8 @@ LOG_MODULE_REGISTER(usb_dfu, CONFIG_USB_DEVICE_LOG_LEVEL);
 					 DFU_DESC_ATTRIBUTES_MANIF_TOL |\
 					 DFU_DESC_ATTRIBUTES_WILL_DETACH)
 
+#define CONFIG_DFU_MODE_AT_INIT		0
+
 static struct k_poll_event dfu_event;
 static struct k_poll_signal dfu_signal;
 static struct k_work_delayable dfu_timer_work;
@@ -365,7 +367,7 @@ static void dfu_reset_counters(void)
 {
 	dfu_data.bytes_sent = 0U;
 	dfu_data.block_nr = 0U;
-	if (flash_img_init(&dfu_data.ctx)) {
+	if (flash_img_init_id(&dfu_data.ctx, dfu_data.flash_area_id)) {
 		LOG_ERR("flash img init error");
 		dfu_data.state = dfuERROR;
 		dfu_data.status = errUNKNOWN;
@@ -386,12 +388,13 @@ static void dfu_flash_write(uint8_t *data, size_t len)
 		dfu_data.state = dfuERROR;
 		dfu_data.status = errWRITE;
 	} else if (!len) {
+#if !CONFIG_USB_ASPEED
 		const bool should_confirm = IS_ENABLED(CONFIG_USB_DFU_PERMANENT_DOWNLOAD);
-
+#endif
 		LOG_DBG("flash write done");
 		dfu_data.state = dfuMANIFEST_SYNC;
 		dfu_reset_counters();
-
+#if !CONFIG_USB_ASPEED
 		LOG_DBG("Should confirm: %d", should_confirm);
 		if (boot_request_upgrade(should_confirm)) {
 			dfu_data.state = dfuERROR;
@@ -399,6 +402,7 @@ static void dfu_flash_write(uint8_t *data, size_t len)
 		}
 
 		k_poll_signal_raise(&dfu_signal, 0);
+#endif
 	} else {
 		dfu_data.state = dfuDNLOAD_IDLE;
 	}
@@ -647,14 +651,14 @@ static int dfu_class_handle_to_device(struct usb_setup_packet *setup,
 			LOG_DBG("DFU_DNLOAD start");
 			dfu_reset_counters();
 			k_poll_signal_reset(&dfu_signal);
-
+#ifndef CONFIG_USB_ASPEED
 			if (dfu_data.flash_area_id != DOWNLOAD_FLASH_AREA_ID) {
 				dfu_data.status = errWRITE;
 				dfu_data.state = dfuERROR;
 				LOG_ERR("This area can not be overwritten");
 				break;
 			}
-
+#endif
 			dfu_data.state = dfuDNBUSY;
 			dfu_data_worker.worker_state = dfuIDLE;
 			dfu_data_worker.worker_len  = setup->wLength;
@@ -832,6 +836,9 @@ static int dfu_custom_handle_req(struct usb_setup_packet *setup,
 		dfu_data.flash_upload_size = fa->fa_size;
 		flash_area_close(fa);
 		dfu_data.alt_setting = setup->wValue;
+		*data_len = 0;
+
+		return 0;
 	}
 
 	/* Never handled by us */
@@ -922,6 +929,25 @@ static int usb_dfu_init(void)
 	dfu_data.flash_upload_size = fa->fa_size;
 	flash_area_close(fa);
 
+#if CONFIG_DFU_MODE_AT_INIT
+	/* Let ASPEED DFU only run in DFU mode */
+#if CONFIG_USB_ASPEED
+	if (dfu_data.state == appIDLE) {
+		dfu_data.state = dfuIDLE;
+
+		/* Set the DFU mode descriptors to be used for Windows
+		 * host cannot send reset after DFU_DETACH request
+		 */
+		/* Trigger to fix the wTotalLength in configuration descriptor */
+		usb_get_device_descriptor();
+		dfu_config.usb_device_description =
+			(uint8_t *)&dfu_mode_desc;
+		if (usb_set_config(dfu_config.usb_device_description)) {
+			LOG_ERR("usb_set_config failed");
+		}
+	}
+#endif
+#endif
 	return 0;
 }
 

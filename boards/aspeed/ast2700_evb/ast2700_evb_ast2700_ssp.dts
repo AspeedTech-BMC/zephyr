@@ -1,0 +1,97 @@
+/*
+ * Copyright (c) 2023 Aspeed Technology Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+#include <aspeed/ast27x0_ssp.dtsi>
+
+/ {
+	model = "Aspeed AST2700-SSP Evaluation board";
+	compatible = "aspeed,ast2700-evb";
+
+	chosen {
+		zephyr,console = &uart4;
+		zephyr,shell-uart = &uart4;
+		zephyr,flash = &dram_ro_region;
+		zephyr,sram = &dram_rw_region;
+	};
+
+	/* .data, .bss, heap and stack sections */
+	dram_rw_region: memory@20000 {
+		device_type = "memory";
+		reg = <0x20000 DT_SIZE_K(640)>;
+	};
+
+	/* non-cached DMA memory */
+	dram_nc_region: memory@c0000 {
+		compatible = "zephyr,memory-region";
+		device_type = "memory";
+		reg = <0xc0000 DT_SIZE_K(256)>;
+		zephyr,memory-region = "RAM_NC";
+	};
+};
+
+/* .text and .rodata sections */
+&dram_ro_region {
+	reg = <0x00000000 DT_SIZE_K(128)>;
+};
+
+&uart4 {
+	clock-frequency = <1846153>;
+	current-speed = <115200>;
+	status = "okay";
+};
+
+&soc0_ipc0_v2 {
+	status = "okay";
+};
+
+&soc0_ipc1_v2 {
+	status = "okay";
+};
+
+&soc0_ipc2_v2 {
+	status = "okay";
+};
+
+&intc0 {
+	status = "okay";
+};
+
+&intc1 {
+	status = "okay";
+};
+
+&intc2 {
+	status = "okay";
+};
+
+&intc3 {
+	status = "okay";
+};
+
+&intc4 {
+	status = "okay";
+};
+
+&intc5 {
+	status = "okay";
+};
+
+&intc6 {
+	status = "okay";
+};
+
+&intc7 {
+	status = "okay";
+};
+
+&intc8 {
+	status = "okay";
+};
+
+&timer0 {
+	status = "okay";
+};

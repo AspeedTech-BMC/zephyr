@@ -158,4 +158,8 @@ source "drivers/spi/Kconfig.grlib_spimctrl"
 
 source "drivers/spi/Kconfig.max32"
 
+source "drivers/spi/Kconfig.aspeed"
+
+source "drivers/spi/Kconfig.spi_monitor_aspeed"
+
 endif # SPI

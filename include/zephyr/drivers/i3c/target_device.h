@@ -209,6 +209,19 @@ struct i3c_target_callbacks {
 	 * @return Ignored.
 	 */
 	int (*stop_cb)(struct i3c_target_config *config);
+
+	/**
+	 * @brief Function called when a reset condition is observed.
+	 *
+	 * This function is invoked by the controller when a bus error occurs,
+	 * leading to the need to reset the I3C target controller.
+	 *
+	 * @param config Configuration structure associated with the
+	 *               device to which the operation is addressed.
+	 *
+	 * @return Ignored.
+	 */
+	int (*rst_cb)(struct i3c_target_config *config);
 };
 
 __subsystem struct i3c_target_driver_api {
@@ -250,6 +263,18 @@ static inline int i3c_target_tx_write(const struct device *dev,
 	}
 
 	return api->target_tx_write(dev, buf, len);
+}
+
+static inline int i3c_target_pending_read_notify(const struct device *dev, uint8_t *buf,
+						 uint16_t len, struct i3c_ibi *notifier)
+{
+	const struct i3c_driver_api *api = (const struct i3c_driver_api *)dev->api;
+
+	if (!api->target_pending_read_notify) {
+		return -ENOSYS;
+	}
+
+	return api->target_pending_read_notify(dev, buf, len, notifier);
 }
 
 /**

@@ -150,6 +150,9 @@ extern "C" {
 /** Set All Addresses to Static Addresses (Broadcast) */
 #define I3C_CCC_SETAASA				0x29U
 
+#define I3C_CCC_SETHID				0x61U
+#define I3C_CCC_DEVCTRL				0x62U
+
 /**
  * Target Reset Action
  *
@@ -1362,6 +1365,17 @@ int i3c_ccc_do_rstact_all(const struct device *controller,
  * @return @see i3c_do_ccc
  */
 int i3c_ccc_do_rstdaa_all(const struct device *controller);
+
+/**
+ * @brief Broadcast SETAASA to assign dynamic addresses for all targets.
+ *
+ * Helper function to assign dynamic addresses of all connected targets.
+ *
+ * @param[in] controller Pointer to the controller device driver instance.
+ *
+ * @return @see i3c_do_ccc
+ */
+int i3c_ccc_do_setaasa_all(const struct device *controller);
 
 /**
  * @brief Set Dynamic Address from Static Address for a target

@@ -1,0 +1,42 @@
+/*
+ * Copyright (c) 2021 ASPEED Technology Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+#include <aspeed/ast26xx.dtsi>
+
+/ {
+	model = "Aspeed AST2600 Evaluation board";
+	compatible = "aspeed,bmc-ast2600", "aspeed,ast2600";
+
+	chosen {
+		zephyr,console = &uart11;
+		zephyr,shell-uart = &uart11;
+		zephyr,flash = &dram_ro_region;
+		zephyr,sram = &dram_rw_region;
+	};
+
+	dram_rw_region: memory@20000 {
+		device_type = "memory";
+		reg = <0x20000 DT_SIZE_K(16384 - 128)>;
+	};
+
+	dram_nc_region: memory@1000000 {
+		compatible = "zephyr,memory-region";
+		device_type = "memory";
+		reg = <0x1000000 DT_SIZE_K(16384)>;
+		zephyr,memory-region = "RAM_NC";
+	};
+};
+
+/* .text and .rodata sections */
+&dram_ro_region {
+	reg = <0x0 DT_SIZE_K(128)>;
+};
+
+&uart11 {
+	current-speed = <115200>;
+	status = "okay";
+};

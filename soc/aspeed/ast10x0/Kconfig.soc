@@ -14,8 +14,15 @@ config SOC_AST1030
 	help
 	  AST1030
 
+config SOC_AST1060
+	bool
+	select SOC_SERIES_AST10X0
+	help
+	  AST1060
+
 config SOC_SERIES
 	default "ast10x0" if SOC_SERIES_AST10X0
 
 config SOC
 	default "ast1030" if SOC_AST1030
+	default "ast1060" if SOC_AST1060

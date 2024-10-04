@@ -1,0 +1,16 @@
+# Copyright (c) 2021 ASPEED Technology Inc. <chin-ting_kuo@aspeedtech.com>
+# SPDX-License-Identifier: Apache-2.0
+
+config WDT_DEMO_ASPEED
+	default n
+	bool "ASPEED WDT demo"
+	help
+	  Enable ASPEED WDT demo behaviors.
+
+config ASPEED_DC_SCM
+	default y
+	bool "ASPEED DC-SCM board"
+	help
+	  Enable ASPEED DC-SCM board basic settings.
+
+source "Kconfig.zephyr"

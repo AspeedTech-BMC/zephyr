@@ -76,6 +76,7 @@ static struct adc_hdl {
 } adc_list[] = {
 	/* zephyr-keep-sorted-start */
 	DT_FOREACH_STATUS_OKAY(adi_ad559x_adc, ADC_HDL_LIST_ENTRY)
+	DT_FOREACH_STATUS_OKAY(aspeed_adc, ADC_HDL_LIST_ENTRY)
 	DT_FOREACH_STATUS_OKAY(atmel_sam0_adc, ADC_HDL_LIST_ENTRY)
 	DT_FOREACH_STATUS_OKAY(atmel_sam_adc, ADC_HDL_LIST_ENTRY)
 	DT_FOREACH_STATUS_OKAY(atmel_sam_afec, ADC_HDL_LIST_ENTRY)

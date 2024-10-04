@@ -251,8 +251,11 @@ int boot_erase_img_bank(uint8_t area_id)
 	if (rc) {
 		return rc;
 	}
-
+#if CONFIG_USB_ASPEED
+	rc = flash_area_erase(fa, 0, fa->fa_size);
+#else
 	rc = flash_area_flatten(fa, 0, fa->fa_size);
+#endif
 
 	flash_area_close(fa);
 

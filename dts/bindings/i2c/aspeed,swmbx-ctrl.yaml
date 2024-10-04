@@ -1,0 +1,17 @@
+#
+# Copyright (c) ASPEED
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+description: ASPEED I2C SW MailBox Controller
+
+compatible: "aspeed,swmbx-ctrl"
+
+include: base.yaml
+
+properties:
+    size:
+      type: int
+      required: true
+

@@ -1,0 +1,24 @@
+# I3C Target configuration options
+
+# Copyright (c) 2023 ASPEED Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+#
+# I3C target options
+#
+menuconfig I3C_TARGET
+	bool "I3C Target Drivers"
+	help
+	  Enable I3C Target Driver Configuration
+
+if I3C_TARGET
+
+config I3C_TARGET_INIT_PRIORITY
+	int "Init priority"
+	default 60
+	help
+	  I3C TARGET device driver initialization priority.
+
+	source "drivers/i3c/target/Kconfig.i3c_target_mqueue"
+
+endif # I3C_TARGET

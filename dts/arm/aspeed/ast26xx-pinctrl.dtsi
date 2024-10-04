@@ -1,0 +1,17 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Copyright (c) 2023 ASPEED Technology Inc.
+ */
+#include <zephyr/dt-bindings/pinctrl/ast26xx-pinctrl.h>
+
+&pinctrl {
+	/omit-if-no-ref/ pin_txd11: pin_txd11 {
+		ball = <P23>;
+		sig_descs = <SIG_DESC_SET(0x430, 22)>;
+	};
+	/omit-if-no-ref/ pin_rxd11: pin_rxd11 {
+		ball = <T24>;
+		sig_descs = <SIG_DESC_SET(0x430, 23)>;
+	};
+};

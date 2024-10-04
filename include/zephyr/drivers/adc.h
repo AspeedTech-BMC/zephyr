@@ -170,6 +170,12 @@ struct adc_channel_cfg {
 	 */
 	uint32_t vbias_pins;
 #endif /* CONFIG_ADC_CONFIGURABLE_VBIAS_PIN */
+
+#ifdef CONFIG_ADC_ASPEED
+	uint16_t upper_bound;
+	uint16_t lower_bound;
+	bool deglitch_en;
+#endif
 };
 
 /**
@@ -695,6 +701,12 @@ typedef int (*adc_api_read_async)(const struct device *dev,
 				  struct k_poll_signal *async);
 
 /**
+ * @brief Type definition of ADC API function for getting refenence voltage
+ * See adc_get_ref() for argument descriptions.
+ */
+typedef uint16_t (*adc_api_get_ref)(const struct device *dev);
+
+/**
  * @brief ADC driver API
  *
  * This is the mandatory API any ADC driver needs to expose.
@@ -702,6 +714,7 @@ typedef int (*adc_api_read_async)(const struct device *dev,
 __subsystem struct adc_driver_api {
 	adc_api_channel_setup channel_setup;
 	adc_api_read          read;
+	adc_api_get_ref       get_ref;
 #ifdef CONFIG_ADC_ASYNC
 	adc_api_read_async    read_async;
 #endif

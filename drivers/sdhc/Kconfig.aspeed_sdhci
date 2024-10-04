@@ -1,0 +1,9 @@
+# Copyright (c) 2023 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+config ASPEED_SDHCI
+	bool "ASPEED SDHCI"
+	default y
+	select SDHC_SUPPORTS_NATIVE_MODE
+	help
+		Enable Aspeed SDHCI Host Controller.

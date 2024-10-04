@@ -6,7 +6,6 @@
 zephyr_sources(soc.c)
 zephyr_include_directories(.)
 zephyr_linker_sources(ROM_START SORT_KEY 0x1sboot sboot.ld)
-zephyr_linker_sources(RAM_SECTIONS nocache.ld)
 
 string(TOUPPER "${SOC_NAME}" soc_name_upper)
 set_property(GLOBAL APPEND PROPERTY extra_post_build_commands

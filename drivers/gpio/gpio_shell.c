@@ -655,6 +655,24 @@ static int cmd_gpio_info(const struct shell *sh, size_t argc, char **argv)
 	return 0;
 }
 
+#ifdef CONFIG_GPIO_ASPEED_SGPIOM
+static int cmd_sgpio_passthrough(const struct shell *sh, size_t argc, char **argv)
+{
+	const struct gpio_ctrl *ctrl = get_gpio_ctrl(argv[ARGV_DEV]);
+	int ret;
+	gpio_port_pins_t mask = shell_strtoul(argv[ARGV_PIN], 16, &ret);
+
+	if (!ctrl) {
+		/* No device specified */
+		print_ordered_info(sh);
+		return 0;
+	}
+
+	return sgpio_passthrough(ctrl->dev, mask);
+
+}
+#endif
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_gpio,
 	SHELL_CMD_ARG(conf, &sub_gpio_dev,
 		"Configure GPIO pin\n"
@@ -684,6 +702,11 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_gpio,
 	SHELL_COND_CMD_ARG(CONFIG_GPIO_SHELL_INFO_CMD, info, &sub_gpio_dev,
 		"GPIO Information\n"
 		"Usage: gpio info [device]", cmd_gpio_info, 1, 1),
+#ifdef CONFIG_GPIO_ASPEED_SGPIOM
+	SHELL_COND_CMD_ARG(CONFIG_GPIO_ASPEED_SGPIOM, passthrough, &sub_gpio_dev,
+		"SGPIO passthough\n"
+		"Usage: gpio passthrough <device> <mask>", cmd_sgpio_passthrough, 3, 0),
+#endif
 	SHELL_SUBCMD_SET_END /* Array terminated. */
 );
 

@@ -85,6 +85,7 @@ struct i3c_ctrl {
 	I3C_LIST_DEV_GET_FN(node_id)
 
 /* zephyr-keep-sorted-start */
+DT_FOREACH_STATUS_OKAY(aspeed_i3c, I3C_CTRL_FN)
 DT_FOREACH_STATUS_OKAY(cdns_i3c, I3C_CTRL_FN)
 DT_FOREACH_STATUS_OKAY(nuvoton_npcx_i3c, I3C_CTRL_FN)
 DT_FOREACH_STATUS_OKAY(nxp_mcux_i3c, I3C_CTRL_FN)
@@ -99,6 +100,7 @@ DT_FOREACH_STATUS_OKAY(nxp_mcux_i3c, I3C_CTRL_FN)
 
 const struct i3c_ctrl i3c_list[] = {
 	/* zephyr-keep-sorted-start */
+	DT_FOREACH_STATUS_OKAY(aspeed_i3c, I3C_CTRL_LIST_ENTRY)
 	DT_FOREACH_STATUS_OKAY(cdns_i3c, I3C_CTRL_LIST_ENTRY)
 	DT_FOREACH_STATUS_OKAY(nuvoton_npcx_i3c, I3C_CTRL_LIST_ENTRY)
 	DT_FOREACH_STATUS_OKAY(nxp_mcux_i3c, I3C_CTRL_LIST_ENTRY)
@@ -1343,6 +1345,24 @@ static int cmd_i3c_i2c_detach(const struct shell *shell_ctx, size_t argc, char *
 	return ret;
 }
 
+static int cmd_i3c_hj_request(const struct shell *shell_ctx, size_t argc, char **argv)
+{
+	const struct device *dev;
+	struct i3c_ibi request;
+	int ret;
+
+	dev = device_get_binding(argv[ARGV_DEV]);
+	if (!dev) {
+		shell_error(shell_ctx, "I3C: Device driver %s not found.", argv[ARGV_DEV]);
+		return -ENODEV;
+	}
+
+	request.ibi_type = I3C_IBI_HOTJOIN;
+	ret = i3c_ibi_raise(dev, &request);
+
+	return ret;
+}
+
 static void i3c_device_list_target_name_get(size_t idx, struct shell_static_entry *entry)
 {
 	if (idx < ARRAY_SIZE(i3c_list)) {
@@ -1522,6 +1542,10 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 		      "Send I3C CCC\n"
 		      "Usage: ccc <sub cmd>",
 		      NULL, 3, 0),
+	SHELL_CMD_ARG(hj_req, &dsub_i3c_device_name,
+		      "Send I3C Hot-Join request\n"
+		      "Usage: hj_req <device>",
+		      cmd_i3c_hj_request, 2, 0),
 	SHELL_SUBCMD_SET_END /* Array terminated. */
 );
 

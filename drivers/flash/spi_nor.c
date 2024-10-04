@@ -655,7 +655,7 @@ static int mxicy_rdcr(const struct device *dev)
 	uint16_t cr = -ENOSYS;
 
 	if (cfg->mxicy_mx25r_power_mode_exist) {
-		int ret = spi_nor_cmd_read(dev, CMD_RDCR, &cr, sizeof(cr));
+		int ret = spi_nor_cmd_read(dev, SPI_NOR_CMD_RDCR, &cr, sizeof(cr));
 
 		if (ret < 0) {
 			return ret;

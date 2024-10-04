@@ -1,0 +1,4 @@
+&espi {
+	status = "okay";
+	flash,safs-mode = <0x1>;
+};

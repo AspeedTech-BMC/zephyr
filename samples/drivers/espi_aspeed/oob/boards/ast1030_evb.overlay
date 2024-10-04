@@ -1,0 +1,3 @@
+&espi {
+	status = "okay";
+};

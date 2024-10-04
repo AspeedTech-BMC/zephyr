@@ -99,6 +99,7 @@ source "drivers/i2c/Kconfig.cc13xx_cc26xx"
 source "drivers/i2c/Kconfig.dw"
 source "drivers/i2c/Kconfig.esp32"
 source "drivers/i2c/target/Kconfig"
+source "drivers/i2c/pfr/Kconfig"
 source "drivers/i2c/Kconfig.gpio"
 source "drivers/i2c/Kconfig.xec"
 source "drivers/i2c/Kconfig.nrfx"
@@ -112,6 +113,7 @@ source "drivers/i2c/Kconfig.sam_twihs"
 source "drivers/i2c/Kconfig.litex"
 source "drivers/i2c/Kconfig.lpc11u6x"
 source "drivers/i2c/Kconfig.npcx"
+source "drivers/i2c/Kconfig.aspeed"
 source "drivers/i2c/Kconfig.test"
 source "drivers/i2c/Kconfig.rcar"
 source "drivers/i2c/Kconfig.tca954x"
@@ -129,6 +131,17 @@ source "drivers/i2c/Kconfig.numaker"
 source "drivers/i2c/Kconfig.mcux"
 source "drivers/i2c/Kconfig.ene"
 source "drivers/i2c/Kconfig.max32"
+
+if I2C_ASPEED
+
+config I2C_ASPEED_SHELL
+	bool "Enable ASPEED I2C Shell"
+	default y
+	depends on SHELL
+	help
+	  Enable I2C Shell for ASPEED MCU I2C Usage.
+
+endif # I2C_ASPEED
 
 config I2C_INIT_PRIORITY
 	int "Init priority"

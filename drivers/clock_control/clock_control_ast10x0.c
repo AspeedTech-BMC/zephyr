@@ -6,6 +6,7 @@
 
 #define DT_DRV_COMPAT aspeed_ast10x0_clock
 #include <errno.h>
+#include <soc.h>
 #include <zephyr/dt-bindings/clock/ast10x0_clock.h>
 #include <zephyr/drivers/clock_control.h>
 #include <zephyr/drivers/syscon.h>
@@ -128,6 +129,10 @@ static int aspeed_clock_control_get_rate(const struct device *dev,
 	case ASPEED_CLK_UART2:
 	case ASPEED_CLK_UART3:
 	case ASPEED_CLK_UART4:
+		reg = sys_read32(LPC_HICR9);
+		reg &= ~(BIT(clk_id - ASPEED_CLK_UART1 + 4));
+		sys_write32(reg, LPC_HICR9);
+		__fallthrough;
 	case ASPEED_CLK_UART5:
 	case ASPEED_CLK_UART6:
 	case ASPEED_CLK_UART7:
@@ -157,6 +162,6 @@ static const struct clock_control_driver_api aspeed_clk_api = {
 		.syscon = DEVICE_DT_GET(DT_NODELABEL(syscon)),                                     \
 	};                                                                                         \
 	DEVICE_DT_INST_DEFINE(n, NULL, NULL, NULL, &clock_aspeed_cfg_##n, PRE_KERNEL_1,            \
-			      CONFIG_KERNEL_INIT_PRIORITY_DEVICE, &aspeed_clk_api);
+			      CONFIG_CLOCK_CONTROL_INIT_PRIORITY, &aspeed_clk_api);
 
 DT_INST_FOREACH_STATUS_OKAY(ASPEED_CLOCK_INIT)

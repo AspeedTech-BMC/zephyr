@@ -1,0 +1,10 @@
+board:
+  name: ast2700_evb
+  vendor: aspeed
+  socs:
+  - name: ast2700
+    variants:
+    - name: ddr
+      cpucluster: ssp
+    - name: ddr
+      cpucluster: tsp

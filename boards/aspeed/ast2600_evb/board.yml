@@ -1,0 +1,8 @@
+board:
+  name: ast2600_evb
+  vendor: aspeed
+  socs:
+  - name: ast2600
+    variants:
+    - name: ddr
+      cpucluster: ssp

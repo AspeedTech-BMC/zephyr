@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Copyright (c) 2023 ASPEED Technology Inc.
+
+config SOC_SERIES_AST26XX
+	bool
+	select SOC_FAMILY_ASPEED
+	help
+	  Enable support for ASPEED AST26XX series
+
+config SOC_AST2600
+	bool
+	select SOC_SERIES_AST26XX
+	help
+	  AST2600
+
+config SOC_SERIES
+	default "ast26xx" if SOC_SERIES_AST26XX
+
+config SOC
+	default "ast2600" if SOC_AST2600

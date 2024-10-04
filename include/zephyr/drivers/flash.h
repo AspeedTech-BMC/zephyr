@@ -75,6 +75,7 @@ struct flash_parameters {
 	/** @endcond */
 	/** Value the device is filled in erased areas */
 	uint8_t erase_value;
+	size_t flash_size; /* Byte value of flash size */
 };
 
 /** Set for ordinary Flash where erase is needed before write of random data */
@@ -531,6 +532,16 @@ static inline size_t z_impl_flash_get_write_block_size(const struct device *dev)
 		(const struct flash_driver_api *)dev->api;
 
 	return api->get_parameters(dev)->write_block_size;
+}
+
+__syscall size_t flash_get_flash_size(const struct device *dev);
+
+static inline size_t z_impl_flash_get_flash_size(const struct device *dev)
+{
+	const struct flash_driver_api *api =
+		(const struct flash_driver_api *)dev->api;
+
+	return api->get_parameters(dev)->flash_size;
 }
 
 

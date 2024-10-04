@@ -28,6 +28,8 @@
 /** Cipher Algorithm */
 enum cipher_algo {
 	CRYPTO_CIPHER_ALGO_AES = 1,
+	CRYPTO_CIPHER_ALGO_DES = 2,
+	CRYPTO_CIPHER_ALGO_TDES = 3,
 };
 
 /** Cipher Operation */
@@ -47,6 +49,8 @@ enum cipher_mode {
 	CRYPTO_CIPHER_MODE_CTR = 3,
 	CRYPTO_CIPHER_MODE_CCM = 4,
 	CRYPTO_CIPHER_MODE_GCM = 5,
+	CRYPTO_CIPHER_MODE_CFB = 6,
+	CRYPTO_CIPHER_MODE_OFB = 7,
 };
 
 /* Forward declarations */

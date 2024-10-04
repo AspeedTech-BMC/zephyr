@@ -1,0 +1,63 @@
+# Copyright (c) 2021, ASPEED
+# SPDX-License-Identifier: Apache-2.0
+
+description: ASPEED eSPI for AST2700
+
+compatible: "aspeed,espi-v2"
+
+include: espi-controller.yaml
+
+properties:
+    reg:
+      description: mmio register space
+      required: true
+
+    perif-dma-mode:
+      type: boolean
+      required: false
+      description: enable DMA for peripheral channel
+
+    perif-mcyc-enable:
+      type: boolean
+      required: false
+      description: enable memory cycle for peripheral channel
+
+    perif-mcyc-src-addr:
+      type: int
+      required: false
+      description: host side decoding address of memory cycle
+
+    perif-mcyc-size:
+      type: int
+      required: false
+      description: region size for memory cycle
+
+    vw-gpio-hw-mode:
+      type: boolean
+      required: false
+      description: select vGPIO SW/HW mode
+
+    vw-gpio-group:
+      type: int
+      required: false
+      description: select vGPIO HW group
+
+    vw-gpio-direction:
+      type: array
+      required: false
+      description: select vGPIO direction
+
+    oob-dma-mode:
+      type: boolean
+      required: false
+      description: enable DMA for OOB channel
+
+    flash-dma-mode:
+      type: boolean
+      required: false
+      description: enable DMA for flash channel
+
+    flash-edaf-mode:
+      type: int
+      required: false
+      description: select the eDAF mode (0->mix, 1->hw, 2->sw)

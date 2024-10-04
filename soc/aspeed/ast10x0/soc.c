@@ -12,12 +12,23 @@
 #include <zephyr/device.h>
 #include <zephyr/cache.h>
 #include <soc.h>
+#include <zephyr/drivers/hwinfo.h>
 
-extern char __bss_nc_start__[];
-extern char __bss_nc_end__[];
+extern char __RAM_NC_start[];
+extern char __RAM_NC_end[];
+#ifdef CONFIG_XIP
+extern char _flash_used[];
+#else
+extern char __data_region_end[];
+#endif
 
 /* SCU registers */
 #define JTAG_PINMUX_REG		0x41c
+
+/* GPIO_I_L*/
+#define GPIO_I_L_DAT_VAL_REG   0x7e780070
+#define GPIO_I_L_DIR_REG       0x7e780074
+#define GPIO_I_L_DAT_READ_REG  0x7e7800c8
 
 /* ASPEED System reset contrl/status register */
 #define SYS_WDT4_SW_RESET	BIT(31)
@@ -41,32 +52,39 @@ extern char __bss_nc_end__[];
 #define SYS_EXT_RESET		BIT(1)
 #define SYS_PWR_RESET_FLAG	BIT(0)
 
-#define BIT_WDT_SOC(x)	SYS_WDT ## x ## _SOC_RESET
-#define BIT_WDT_FULL(x)	SYS_WDT ## x ## _FULL_RESET
-#define BIT_WDT_ARM(x)	SYS_WDT ## x ## _ARM_RESET
-#define BIT_WDT_SW(x)	SYS_WDT ## x ## _SW_RESET
+#define SYS_RESET_LOG_CLEAR(_bitmask, _reg)                                                        \
+	COND_CODE_1(CONFIG_HWINFO_ASPEED, (sys_write32(_bitmask, _reg);), ());
 
-#define HANDLE_WDTx_RESET(x, event_log, event_log_reg) \
-	if (event_log & (BIT_WDT_SOC(x) | BIT_WDT_FULL(x) | BIT_WDT_ARM(x) | BIT_WDT_SW(x))) { \
-		printk("RST: WDT%d ", x); \
-		if (event_log & BIT_WDT_SOC(x)) { \
-			printk("SOC "); \
-			sys_write32(BIT_WDT_SOC(x), event_log_reg); \
-		} \
-		if (event_log & BIT_WDT_FULL(x)) { \
-			printk("FULL "); \
-			sys_write32(BIT_WDT_FULL(x), event_log_reg); \
-		} \
-		if (event_log & BIT_WDT_ARM(x)) { \
-			printk("ARM "); \
-			sys_write32(BIT_WDT_ARM(x), event_log_reg); \
-		} \
-		if (event_log & BIT_WDT_SW(x)) { \
-			printk("SW "); \
-			sys_write32(BIT_WDT_SW(x), event_log_reg); \
-		} \
-		printk("\n"); \
-	} \
+#define BIT_WDT_SOC(x)		SYS_WDT##x##_SOC_RESET
+#define BIT_WDT_FULL(x)		SYS_WDT##x##_FULL_RESET
+#define BIT_WDT_ARM(x)		SYS_WDT##x##_ARM_RESET
+#define BIT_WDT_SW(x)		SYS_WDT##x##_SW_RESET
+
+#define HANDLE_WDTx_RESET(x, event_log, event_log_reg)                                             \
+	if ((event_log) & (BIT_WDT_SOC(x) | BIT_WDT_FULL(x) | BIT_WDT_ARM(x) | BIT_WDT_SW(x))) {   \
+		printk("RST: WDT%d ", x);                                                          \
+		if ((event_log) & BIT_WDT_SOC(x)) {                                                \
+			printk("SOC ");                                                            \
+			COND_CODE_1(CONFIG_HWINFO_ASPEED,                                          \
+				    (sys_write32(BIT_WDT_SOC(x), event_log_reg);), ());            \
+		}                                                                                  \
+		if ((event_log) & BIT_WDT_FULL(x)) {                                               \
+			printk("FULL ");                                                           \
+			COND_CODE_1(CONFIG_HWINFO_ASPEED,                                          \
+				    (sys_write32(BIT_WDT_FULL(x), event_log_reg);), ());           \
+		}                                                                                  \
+		if ((event_log) & BIT_WDT_ARM(x)) {                                                \
+			printk("ARM ");                                                            \
+			COND_CODE_1(CONFIG_HWINFO_ASPEED,                                          \
+				    (sys_write32(BIT_WDT_ARM(x), event_log_reg);), ());            \
+		}                                                                                  \
+		if ((event_log) & BIT_WDT_SW(x)) {                                                 \
+			printk("SW ");                                                             \
+			COND_CODE_1(CONFIG_HWINFO_ASPEED,                                          \
+				    (sys_write32(BIT_WDT_SW(x), event_log_reg);), ());             \
+		}                                                                                  \
+		printk("\n");                                                                      \
+	}                                                                                          \
 	(void)(x)
 
 /* secure boot header : provide image size to bootROM for SPI boot */
@@ -81,7 +99,11 @@ struct sb_header {
 };
 
 struct sb_header sbh __attribute((used, section(".sboot"))) = {
-	.img_size = (uint32_t)&__bss_start,
+#ifdef CONFIG_XIP
+	.img_size = (uint32_t)&_flash_used,
+#else
+	.img_size = (uint32_t)&__data_region_end,
+#endif
 };
 
 void z_arm_platform_init(void)
@@ -95,11 +117,24 @@ void z_arm_platform_init(void)
 	sys_write32(jtag_pinmux, base + JTAG_PINMUX_REG);
 
 	/* clear non-cached .bss */
-	if (CONFIG_SRAM_NC_SIZE > 0) {
-		(void)memset(__bss_nc_start__, 0, __bss_nc_end__ - __bss_nc_start__);
-	}
+	(void)memset(__RAM_NC_start, 0, __RAM_NC_end - __RAM_NC_start);
 
 	sys_cache_instr_enable();
+
+#if defined(CONFIG_ASPEED_DC_SCM)
+	sys_write32(sys_read32(GPIO_I_L_DIR_REG) | BIT(26) | BIT(27),
+				GPIO_I_L_DIR_REG);
+	sys_write32((sys_read32(GPIO_I_L_DAT_READ_REG) | BIT(26) | BIT(27)),
+				GPIO_I_L_DAT_VAL_REG);
+
+	if ((sys_read32(GPIO_I_L_DAT_READ_REG) & (BIT(26) | BIT(27))) !=
+	    (BIT(26) | BIT(27)))
+		printk("Fail to enable flash power\n");
+#endif
+
+	/* restore UART routing to align datasheet default value */
+	sys_write32(0xa30, LPC_HICR9);
+	sys_write32(0x0, LPC_HICRA);
 }
 
 void aspeed_print_abr_wdt_mode(void)
@@ -131,7 +166,7 @@ void aspeed_print_sysrst_info(void)
 
 	if (rest1 & SYS_PWR_RESET_FLAG) {
 		printk("RST: Power On\n");
-		sys_write32(rest1, SYS_RESET_LOG_REG1);
+		SYS_RESET_LOG_CLEAR(rest1, SYS_RESET_LOG_REG1);
 	} else {
 		HANDLE_WDTx_RESET(4, rest1, SYS_RESET_LOG_REG1);
 		HANDLE_WDTx_RESET(3, rest1, SYS_RESET_LOG_REG1);
@@ -140,12 +175,12 @@ void aspeed_print_sysrst_info(void)
 
 		if (rest1 & SYS_FLASH_ABR_RESET) {
 			printk("RST: SYS_FLASH_ABR_RESET\n");
-			sys_write32(SYS_FLASH_ABR_RESET, SYS_RESET_LOG_REG1);
+			SYS_RESET_LOG_CLEAR(SYS_FLASH_ABR_RESET, SYS_RESET_LOG_REG1);
 		}
 
 		if (rest1 & SYS_EXT_RESET) {
 			printk("RST: External\n");
-			sys_write32(SYS_EXT_RESET, SYS_RESET_LOG_REG1);
+			SYS_RESET_LOG_CLEAR(SYS_EXT_RESET, SYS_RESET_LOG_REG1);
 		}
 	}
 
@@ -153,3 +188,67 @@ void aspeed_print_sysrst_info(void)
 
 	aspeed_print_abr_wdt_mode();
 }
+
+#define SOC_ID(str, rev) { .name = str, .rev_id = rev, }
+
+struct soc_id {
+	const char *name;
+	uint64_t rev_id;
+};
+
+static struct soc_id soc_map_table[] = {
+	SOC_ID("AST1030-A0", ASPEED_SOC_ID_AST1030A0),
+	SOC_ID("AST1030-A1", ASPEED_SOC_ID_AST1030A1),
+	SOC_ID("AST1035-A1", ASPEED_SOC_ID_AST1035A1),
+	SOC_ID("AST1060-A1", ASPEED_SOC_ID_AST1060A1),
+	SOC_ID("AST1060-A2", ASPEED_SOC_ID_AST1060A2),
+	SOC_ID("AST1060-A2-ENG", ASPEED_SOC_ID_AST1060A2_ENG),
+	SOC_ID("Unknown",    0x0000000000000000),
+};
+
+void aspeed_soc_show_chip_id(void)
+{
+	int i;
+
+	if (IS_ENABLED(CONFIG_HWINFO_ASPEED)) {
+		uint64_t rev_id;
+		size_t len;
+
+		len = hwinfo_get_device_id((uint8_t *)&rev_id, sizeof(rev_id));
+		if (len < 0) {
+			return;
+		}
+
+		for (i = 0; i < ARRAY_SIZE(soc_map_table); i++) {
+			if (rev_id == soc_map_table[i].rev_id) {
+				break;
+			}
+		}
+
+		if (i == ARRAY_SIZE(soc_map_table) && i > 0) {
+			i--;
+		}
+	} else {
+		i = ARRAY_SIZE(soc_map_table) -  1;
+	}
+
+	printk("SOC: %s\n", soc_map_table[i].name);
+}
+
+#if defined(CONFIG_WDT_ASPEED)
+void aspeed_wdt_reboot_device(const struct device *dev, int type);
+
+void sys_arch_reboot(int type)
+{
+	const struct device *dev;
+	const char *name = "wdt@1";
+
+	dev = device_get_binding(name);
+	if (!dev) {
+		printk("No device named %s.\n", name);
+		return;
+	}
+
+	aspeed_wdt_reboot_device(dev, type);
+}
+#endif

@@ -1,0 +1,12 @@
+# Copyright (c) 2023 Aspeed Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+identifier: ast2700_ssp_evb
+name: Aspeed AST2700-SSP Evaluation board
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+ram: 768
+flash: 1024
+supported:
+  - serial

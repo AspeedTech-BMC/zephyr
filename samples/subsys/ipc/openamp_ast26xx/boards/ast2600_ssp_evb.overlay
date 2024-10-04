@@ -1,0 +1,9 @@
+/ {
+	chosen {
+		zephyr,ipc = &ipc;
+	};
+};
+
+&ipc {
+	status = "okay";
+};

@@ -15,15 +15,43 @@
 		zephyr,console = &uart5;
 		zephyr,shell-uart = &uart5;
 		zephyr,sram = &sram0;
+		zephyr,entropy = &rng;
+		zephyr,code-partition = &slot0_partition;
+	};
+
+	sram1: memory@70000 {
+		compatible = "zephyr,memory-region", "mmio-sram";
+		device_type = "memory";
+		reg = <0x70000 DT_SIZE_K(320)>;
+		zephyr,memory-region = "RAM_NC";
 	};
 };
 
 &sram0 {
-	reg = <0 DT_SIZE_K(448)>, <0x70000 DT_SIZE_K(320)>;
+	reg = <0 DT_SIZE_K(448)>;
 };
 
 &uart5 {
 	clock-frequency = <1846153>;
 	current-speed = <115200>;
 	status = "okay";
+};
+
+&hace {
+	status = "okay";
+};
+
+&rsa {
+	status = "okay";
+};
+
+&ecdsa {
+	status = "okay";
+};
+
+zephyr_udc0: &udc {
+	status = "okay";
+	cdc_acm_uart0: cdc_acm_uart0 {
+		compatible = "zephyr,cdc-acm-uart";
+	};
 };

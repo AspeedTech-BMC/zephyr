@@ -1,0 +1,44 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+
+#include <zephyr/dt-bindings/memory-attr/memory-attr-arm.h>
+
+/ {
+	chosen {
+		zephyr,ipc = &ipc;
+		zephyr,ipc_shm_rx = &sram_ipc0_rx;
+		zephyr,ipc_shm_tx = &sram_ipc0_rx;
+	};
+
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+		/* SRAM allocated to shared memory */
+		sram_ipc0_rx: memory@1fff000 {
+			compatible = "zephyr,memory-region", "mmio-dram";
+			reg = <0x1fff000 DT_SIZE_K(2)>;
+			zephyr,memory-region = "RAM_NC_SHM_RX";
+			zephyr,memory-attr = <( DT_MEM_ARM(ATTR_MPU_RAM_NOCACHE) )>;
+		};
+
+		/* SRAM allocated to shared memory */
+		sram_ipc0_tx: memory@1fff800 {
+			compatible = "zephyr,memory-region", "mmio-dram";
+			device_type = "memory";
+			reg = <0x1fff800 DT_SIZE_K(2)>;
+			zephyr,memory-region = "RAM_NC_SHM_TX";
+			zephyr,memory-attr = <( DT_MEM_ARM(ATTR_MPU_RAM_NOCACHE) )>;
+		};
+	};
+};
+
+&dram_nc_region {
+	reg = <0x1000000 DT_SIZE_K(16380)>;
+};
+
+&ipc {
+	tx-region = <&sram_ipc0_tx>;
+	rx-region = <&sram_ipc0_rx>;
+	mbox-names = "rx", "tx";
+	status = "okay";
+};

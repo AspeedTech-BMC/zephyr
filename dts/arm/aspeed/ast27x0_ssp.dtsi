@@ -1,0 +1,147 @@
+/dts-v1/;
+#include <aspeed/ast27x0.dtsi>
+
+/ {
+	aliases {
+		cache = &ssp_cache;
+		intc = &intc_global;
+	};
+
+	soc {
+		intc0: interrupt-controller@72102000 {
+			#address-cells = <1>;
+			#interrupt-cells = <2>;
+			interrupt-controller;
+			compatible = "aspeed,ast2700-intc-ic";
+			reg = <0x72102000 0x10>;
+			interrupt-parent = <&nvic>;
+			interrupts = <128 1>;
+			status = "disabled";
+		};
+
+		intc1: interrupt-controller@72102100 {
+			#address-cells = <1>;
+			#interrupt-cells = <2>;
+			interrupt-controller;
+			compatible = "aspeed,ast2700-intc-ic";
+			reg = <0x72102100 0x10>;
+			interrupt-parent = <&nvic>;
+			interrupts = <129 1>;
+			status = "disabled";
+		};
+
+		intc2: interrupt-controller@72102200 {
+			#address-cells = <1>;
+			#interrupt-cells = <2>;
+			interrupt-controller;
+			compatible = "aspeed,ast2700-intc-ic";
+			reg = <0x72102200 0x10>;
+			interrupt-parent = <&nvic>;
+			interrupts = <130 1>;
+			status = "disabled";
+		};
+
+		intc3: interrupt-controller@72102300 {
+			#address-cells = <1>;
+			compatible = "aspeed,ast2700-intc-ic";
+			reg = <0x72102300 0x10>;
+			interrupt-parent = <&nvic>;
+			interrupts = <131 1>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
+			status = "disabled";
+		};
+
+		intc4: interrupt-controller@72102400 {
+			#address-cells = <1>;
+			#interrupt-cells = <2>;
+			interrupt-controller;
+			compatible = "aspeed,ast2700-intc-ic";
+			reg = <0x72102400 0x10>;
+			interrupt-parent = <&nvic>;
+			interrupts = <132 1>;
+			status = "disabled";
+		};
+
+		intc5: interrupt-controller@72102500 {
+			#address-cells = <1>;
+			#interrupt-cells = <2>;
+			interrupt-controller;
+			compatible = "aspeed,ast2700-intc-ic";
+			reg = <0x72102500 0x10>;
+			interrupt-parent = <&nvic>;
+			interrupts = <133 1>;
+			status = "disabled";
+		};
+
+		intc6: interrupt-controller@72102600 {
+			#address-cells = <1>;
+			#interrupt-cells = <2>;
+			interrupt-controller;
+			compatible = "aspeed,ast2700-intc-ic";
+			reg = <0x72102600 0x10>;
+			interrupt-parent = <&nvic>;
+			interrupts = <134 1>;
+			status = "disabled";
+		};
+
+		intc7: interrupt-controller@72102700 {
+			#address-cells = <1>;
+			#interrupt-cells = <2>;
+			interrupt-controller;
+			compatible = "aspeed,ast2700-intc-ic";
+			reg = <0x72102700 0x10>;
+			interrupt-parent = <&nvic>;
+			interrupts = <135 1>;
+			status = "disabled";
+		};
+
+		intc8: interrupt-controller@72102800 {
+			#address-cells = <1>;
+			#interrupt-cells = <2>;
+			interrupt-controller;
+			compatible = "aspeed,ast2700-intc-ic";
+			reg = <0x72102800 0x10>;
+			interrupt-parent = <&nvic>;
+			interrupts = <136 1>;
+			status = "disabled";
+		};
+	};
+};
+
+&ssp_cache {
+	status = "okay";
+};
+
+&intc_global {
+	irq-route-select = "ssp";
+};
+
+&soc0_ipc_v2 {
+	soc0_ipc0_v2: soc0_ipc_v2@0 {
+		compatible = "aspeed,ast2700-ipc-v2";
+		reg = <0x0 0x200>;
+		reg-tx-offset = <0x100>;
+		reg-rx-offset = <0>;
+		interrupts = <100 1>;
+		status = "disabled";
+	};
+
+	soc0_ipc1_v2: soc0_ipc_v2@200 {
+		compatible = "aspeed,ast2700-ipc-v2";
+		reg = <0x200 0x200>;
+		reg-tx-offset = <0x100>;
+		reg-rx-offset = <0>;
+		interrupts = <102 1>;
+		status = "disabled";
+	};
+
+	soc0_ipc2_v2: soc0_ipc_v2@800 {
+		compatible = "aspeed,ast2700-ipc-v2";
+		reg = <0x800 0x200>;
+		reg-tx-offset = <0x0>;
+		reg-rx-offset = <0x100>;
+		interrupts = <109 1>;
+		status = "disabled";
+	};
+};

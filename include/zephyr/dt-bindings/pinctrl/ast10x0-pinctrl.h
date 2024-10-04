@@ -1,0 +1,186 @@
+/*
+ * Copyright (c) 2023 ASPEED Technology Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+#ifndef ZEPHYR_INCLUDE_DT_BINDINGS_PINCTRL_AST10X0_H_
+#define ZEPHYR_INCLUDE_DT_BINDINGS_PINCTRL_AST10X0_H_
+
+/*
+ * bit[31] op
+ * bit[27:20] bit index
+ * bit[19:0] SCU register offset
+ */
+#define SIG_DESC_SET(reg, bit)	((reg) | ((bit) << 20))
+#define SIG_DESC_CLR(reg, bit)	((reg) | ((bit) << 20) | (1 << 31))
+
+/* The phyisical ball IDs */
+#define N4	0
+#define P4	1
+#define P1	2
+#define P5	3
+#define P2	4
+#define P3	5
+#define R1	6
+#define R2	7
+#define T1	8
+#define R3	9
+#define T2	10
+#define T3	11
+#define N5	12
+#define P6	13
+#define M5	14
+#define R4	15
+#define R5	16
+#define T4	17
+#define P7	18
+#define N6	19
+#define P8	20
+#define T5	21
+#define R6	22
+#define T6	23
+#define R7	24
+#define T7	25
+#define R8	26
+#define T8	27
+#define K1	28
+#define L3	29
+#define L4	30
+#define M4	31
+#define L2	32
+#define L1	33
+#define M3	34
+#define M2	35
+#define M1	36
+#define N3	37
+#define N2	38
+#define N1	39
+#define T9	40
+#define P9	41
+#define R9	42
+#define T10	43
+#define R10	44
+#define P10	45
+#define T11	46
+#define N11	47
+#define R11	48
+#define T12	49
+#define R12	50
+#define T13	51
+#define P11	52
+#define R13	53
+#define T14	54
+#define T15	55
+#define R14	56
+#define M12	57
+#define N12	58
+#define P14	59
+#define R15	60
+#define P12	61
+#define P13	62
+#define N14	63
+#define T16	64
+#define R16	65
+#define P15	66
+#define P16	67
+#define M13	68
+#define N15	69
+#define N16	70
+#define M14	71
+#define M15	72
+#define M16	73
+#define L14	74
+#define L15	75
+#define L16	76
+#define K16	77
+#define K14	78
+#define K15	79
+#define J16	80
+#define J15	81
+#define J14	82
+#define H16	83
+#define H15	84
+#define G15	85
+#define J13	86
+#define G16	87
+#define F12	88
+#define E12	89
+#define D15	90
+#define D16	91
+#define C16	92
+#define C15	93
+#define B16	94
+#define F11	95
+#define B15	96
+#define E11	97
+#define D14	98
+#define C14	99
+#define A16	100
+#define A15	101
+#define D13	102
+#define A14	103
+#define B14	104
+#define C13	105
+#define D12	106
+#define C12	107
+#define G14	108
+#define F16	109
+#define F15	110
+#define F14	111
+#define E16	112
+#define E15	113
+#define E14	114
+#define E13	115
+#define B13	116
+#define A13	117
+#define D11	118
+#define C11	119
+#define B12	120
+#define A12	121
+#define D10	122
+#define C10	123
+#define A11	124
+#define B11	125
+#define A10	126
+#define B10	127
+#define A9	128
+#define B9	129
+#define C9	130
+#define D9	131
+#define A8	132
+#define F7	133
+#define E7	134
+#define C5	135
+#define C8	136
+#define UNUSED0	137
+#define D8	138
+#define D5	139
+#define A7	140
+#define B6	141
+#define A5	142
+#define A6	143
+#define B5	144
+#define A4	145
+#define B4	146
+#define D4	147
+#define C3	148
+#define B3	149
+#define A3	150
+#define A2	151
+#define B2	152
+#define B1	153
+#define C1	154
+#define D3	155
+#define C2	156
+#define D1	157
+#define D2	158
+#define E3	159
+#define K2	160
+#define K4	161
+#define K3	162
+#define J1	163
+#define J2	164
+#define J4	165
+#define H1	166
+#define H2	167
+#endif /* ZEPHYR_INCLUDE_DT_BINDINGS_PINCTRL_AST10X0_H_ */

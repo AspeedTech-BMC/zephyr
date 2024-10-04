@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Copyright (c) 2023 ASPEED Technology Inc.
+
+if SOC_SERIES_AST26XX
+
+rsource "Kconfig.defconfig.ast2600"
+
+config SOC_SERIES
+	default "ast26xx"
+
+config ICACHE_LINE_SIZE
+	default 32
+
+config DCACHE_LINE_SIZE
+	default 32
+
+choice CACHE_TYPE
+	default EXTERNAL_CACHE
+endchoice
+
+config XIP
+	default y
+
+config SYS_CLOCK_HW_CYCLES_PER_SEC
+	default 200000000
+
+config LINKER_LAST_SECTION_ID
+	default n
+
+config CLOCK_CONTROL_INIT_PRIORITY
+	default SYSCON_INIT_PRIORITY
+
+config RESET_INIT_PRIORITY
+	default SYSCON_INIT_PRIORITY
+
+endif # SOC_SERIES_AST26XX

@@ -1,0 +1,30 @@
+# Copyright (c) 2023 ASPEED Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+description: ASPEED CPU interrupt controller in AST2700 SOC
+
+compatible: "aspeed,ast2700-intc-global"
+
+include: base.yaml
+
+properties:
+  reg:
+    required: true
+
+  irq-route-select:
+    required: true
+    type: string
+    enum:
+      - "psp"
+      - "ssp"
+      - "tsp"
+
+  tx-region:
+    description: phandle to the shared memory region used for data transmission
+    required: false
+    type: phandle
+
+  rx-region:
+    description: phandle to the shared memory region used for data reception
+    required: false
+    type: phandle

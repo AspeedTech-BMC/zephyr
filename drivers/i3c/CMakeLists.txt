@@ -45,3 +45,20 @@ zephyr_library_sources_ifdef(
   CONFIG_I3C_TEST
   i3c_test.c
 )
+
+zephyr_library_sources_ifdef(
+  CONFIG_I3C_ASPEED
+  i3c_aspeed.c
+)
+
+zephyr_library_sources_ifdef(
+  CONFIG_I3C_DUMMY_DEVICE
+  i3c_dummy_device.c
+)
+
+zephyr_library_sources_ifdef(
+  CONFIG_I3C_SHELL
+  i3c_shell.c
+)
+
+add_subdirectory(target)

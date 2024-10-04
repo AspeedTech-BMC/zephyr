@@ -869,6 +869,25 @@ __subsystem struct i3c_driver_api {
 	 */
 	int (*target_tx_write)(const struct device *dev,
 				 uint8_t *buf, uint16_t len);
+
+	/**
+	 * Write to the TX FIFO and raise an IBI
+	 *
+	 * This writes to the target tx fifo and raise an IBI to notify the
+	 * bus controller that there are pending data to be read
+	 *
+	 * Target device only API.
+	 *
+	 * @see i3c_target_pending_read_notify
+	 *
+	 * @param dev Pointer to the controller device driver instance.
+	 * @param buf Pointer to the buffer
+	 * @param len Length of the buffer
+	 *
+	 * @return @see i3c_target_pending_read_notify
+	 */
+	int (*target_pending_read_notify)(const struct device *dev, uint8_t *buf, uint16_t len,
+					  struct i3c_ibi *notifier);
 };
 
 /**
@@ -929,7 +948,7 @@ struct i3c_device_desc {
 	const struct device * const dev;
 
 	/** Device Provisioned ID */
-	const uint64_t pid:48;
+	const uint64_t pid;
 
 	/**
 	 * Static address for this target device.

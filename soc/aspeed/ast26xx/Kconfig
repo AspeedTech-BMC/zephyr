@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Copyright (c) 2023 ASPEED Technology Inc.
+
+config SOC_SERIES_AST26XX
+	select ARM
+	select CPU_CORTEX_M3
+	select SYSCON
+	select CACHE
+	select CPU_HAS_DCACHE
+	select CPU_HAS_ICACHE
+	select CACHE_MANAGEMENT
+	select CACHE_ASPEED

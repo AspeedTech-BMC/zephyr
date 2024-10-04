@@ -241,6 +241,14 @@ config USB_NATIVE_POSIX_HS
 	help
 	  Enable high speed support in the Native Posix USB device controller driver.
 
+config USB_ASPEED
+	bool "ASPEED USB Device Controller Driver"
+	default y
+	depends on DT_HAS_ASPEED_UDC_ENABLED
+	select USB_DC_HAS_HS_SUPPORT
+	help
+	  ASPEED USB Device Controller Driver
+
 module = USB_DRIVER
 module-str = usb driver
 source "subsys/logging/Kconfig.template.log_config"

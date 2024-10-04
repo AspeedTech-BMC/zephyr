@@ -1,0 +1,16 @@
+&espi {
+	status = "okay";
+	perif,memcyc-src-addr = <0x98000000>;
+	perif,memcyc-size = <0x10000>;
+	flash,safs-mode = <0x2>;
+};
+
+&pcc {
+	status = "okay";
+	addr = <0x80>;
+	addr-xbit = <0x3>;
+	addr-hbit-sel = <0x1>;
+	rec-mode = <0x1>;
+	dma-mode;
+	dma-ringbuf-size = <0x4000>;
+};
