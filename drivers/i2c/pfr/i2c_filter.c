@@ -416,7 +416,7 @@ struct filter_info {
 			      NULL, \
 			      NULL, \
 			      &ast_i2c_filter_##inst##_cfg, \
-			      POST_KERNEL, \
+			      PRE_KERNEL_2, \
 			      CONFIG_KERNEL_INIT_PRIORITY_DEVICE, \
 			      NULL); \
 	enum { DT_FOREACH_CHILD(DT_DRV_INST(inst), FILTER_ENUM) }; \
