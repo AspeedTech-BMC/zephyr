@@ -1,0 +1,6 @@
+/ {
+	chosen {
+		/delete-property/ zephyr,entropy;
+		/delete-property/ zephyr,code-partition;
+	};
+};
