@@ -1230,14 +1230,8 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 	sts &= ~(AST_I2CS_PKT_DONE | AST_I2CS_PKT_ERROR);
 
 	switch (sts) {
-	case AST_I2CS_SLAVE_MATCH:
-	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE:
-		if (slave_cb->write_requested) {
-			slave_cb->write_requested(data->slave_cfg);
-		}
-		break;
-	case AST_I2CS_SLAVE_MATCH | AST_I2CS_Wait_RX_DMA:
 	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE | AST_I2CS_Wait_RX_DMA: /* re-trigger? */
+	case AST_I2CS_SLAVE_MATCH | AST_I2CS_Wait_RX_DMA:
 		if (sys_read32(i2c_base + AST_I2CM_ISR)) {
 			LOG_DBG("S : Sw|D - Wait normal\n");
 		} else {
@@ -1288,15 +1282,17 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 		if (slave_cb->stop) {
 			slave_cb->stop(data->slave_cfg);
 		}
+		sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE)
+		, i2c_base + AST_I2CS_DMA_LEN);
 		aspeed_i2c_trigger_package_cmd(i2c_base, config->mode);
 		break;
+	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE_NAK | AST_I2CS_RX_DONE | AST_I2CS_STOP:
+	case AST_I2CS_SLAVE_MATCH | AST_I2CS_Wait_RX_DMA | AST_I2CS_RX_DONE | AST_I2CS_STOP:
+	case AST_I2CS_RX_DONE_NAK | AST_I2CS_RX_DONE | AST_I2CS_STOP:
+	case AST_I2CS_RX_DONE | AST_I2CS_Wait_RX_DMA | AST_I2CS_STOP:
 	case AST_I2CS_RX_DONE | AST_I2CS_STOP:
 	case AST_I2CS_RX_DONE | AST_I2CS_Wait_RX_DMA: /* wait for last package received data done */
-	case AST_I2CS_RX_DONE | AST_I2CS_Wait_RX_DMA | AST_I2CS_STOP:
-	case AST_I2CS_RX_DONE_NAK | AST_I2CS_RX_DONE | AST_I2CS_STOP:
 	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE | AST_I2CS_STOP:
-	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE | AST_I2CS_Wait_RX_DMA | AST_I2CS_STOP:
-	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE_NAK | AST_I2CS_RX_DONE | AST_I2CS_STOP:
 		if (sts & AST_I2CS_STOP) {
 			if (sts & AST_I2CS_SLAVE_MATCH) {
 				LOG_DBG("S : Sw|D|P\n");
@@ -1329,7 +1325,6 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 				}
 			}
 
-			sys_write32(0, i2c_base + AST_I2CS_DMA_LEN_STS);
 			sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE)
 			, i2c_base + AST_I2CS_DMA_LEN);
 		} else if (config->mode == BUFF_MODE) {
@@ -1512,9 +1507,6 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 
 	case AST_I2CS_TX_NAK | AST_I2CS_STOP:
 		LOG_DBG("S: AST_I2CS_TX_NAK\n");
-	case AST_I2CS_STOP:
-		/*it just tx complete*/
-		LOG_DBG("S: AST_I2CS_STOP\n");
 		cmd = SLAVE_TRIGGER_CMD;
 		if (slave_cb->stop) {
 			slave_cb->stop(data->slave_cfg);
@@ -1532,6 +1524,20 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 			cmd &= ~AST_I2CS_PKT_MODE_EN;
 		}
 		sys_write32(cmd, i2c_base + AST_I2CS_CMD_STS);
+		break;
+
+	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE:
+		if (slave_cb->write_requested) {
+			slave_cb->write_requested(data->slave_cfg);
+		}
+		break;
+
+	case AST_I2CS_STOP:
+		/*it just tx complete*/
+		LOG_DBG("S: AST_I2CS_STOP\n");
+		if (slave_cb->stop) {
+			slave_cb->stop(data->slave_cfg);
+		}
 		break;
 
 	default:
