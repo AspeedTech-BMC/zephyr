@@ -1336,10 +1336,6 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 	uint32_t i, slave_rx_len = 0;
 	uint8_t byte_data = 0, value = 0;
 
-	/* clear irq first */
-	sys_write32(AST_I2CS_PKT_DONE, i2c_base + AST_I2CS_ISR);
-	sys_read32(i2c_base + AST_I2CS_ISR);
-
 	sts &= ~(AST_I2CS_PKT_DONE | AST_I2CS_PKT_ERROR);
 
 	switch (sts) {
@@ -1650,6 +1646,10 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 		, sts, sys_read32(i2c_base + AST_I2CS_ISR));
 		break;
 	}
+
+	/* clear irq at last stage */
+	sys_write32(AST_I2CS_PKT_DONE, i2c_base + AST_I2CS_ISR);
+	sys_read32(i2c_base + AST_I2CS_ISR);
 }
 
 void aspeed_i2c_slave_byte_irq(const struct device *dev, uint32_t i2c_base, uint32_t sts)
