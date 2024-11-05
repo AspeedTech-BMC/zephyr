@@ -915,6 +915,13 @@ struct i3c_device_id {
 		.pid = pid						\
 	}
 
+#define I3C_PID_MANUF_ID(pid)		(((pid) & GENMASK64(47, 33)) >> 33)
+#define I3C_PID_RND_LOWER_32BITS(pid)	(!!((pid) & BIT64(32)))
+#define I3C_PID_RND_VAL(pid)		((pid) & GENMASK64(31, 0))
+#define I3C_PID_PART_ID(pid)		(((pid) & GENMASK64(31, 16)) >> 16)
+#define I3C_PID_INSTANCE_ID(pid)	(((pid) & GENMASK64(15, 12)) >> 12)
+#define I3C_PID_EXTRA_INFO(pid)		((pid) & GENMASK64(11, 0))
+
 /**
  * @brief Structure describing a I3C target device.
  *

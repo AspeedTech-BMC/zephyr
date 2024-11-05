@@ -178,12 +178,17 @@ struct i3c_device_desc *i3c_dev_list_find(const struct i3c_dev_list *dev_list,
 {
 	int i;
 	struct i3c_device_desc *ret = NULL;
+	const bool random_pid = I3C_PID_RND_LOWER_32BITS(id->pid);
 
 	__ASSERT_NO_MSG(dev_list != NULL);
 
 	/* this only searches known I3C PIDs */
 	for (i = 0; i < dev_list->num_i3c; i++) {
 		struct i3c_device_desc *desc = &dev_list->i3c[i];
+		if (random_pid && I3C_PID_MANUF_ID(desc->pid) == I3C_PID_MANUF_ID(id->pid)) {
+			ret = desc;
+			break;
+		}
 
 		if (desc->pid == id->pid) {
 			ret = desc;
