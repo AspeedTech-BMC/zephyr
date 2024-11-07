@@ -897,7 +897,8 @@
 	};
 	/omit-if-no-ref/ pin_spim3csout: pin_spim3csout {
 		ball = <M3>;
-		sig_descs = <SIG_DESC_CLR(0x414, 2) SIG_DESC_CLR(0x4B4, 2) SIG_DESC_SET(0x694, 2)>;
+		sig_descs = <SIG_DESC_CLR(0x414, 2) SIG_DESC_CLR(0x4B4, 2) SIG_DESC_SET(0x694, 2)
+					 SIG_DESC_CLR(0x510, 5) SIG_DESC_CLR(0x51C, 10)>;
 	};
 	/omit-if-no-ref/ pin_spim3clkout: pin_spim3clkout {
 		ball = <M2>;
