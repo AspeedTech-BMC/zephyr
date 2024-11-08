@@ -31,6 +31,6 @@ typedef struct pinctrl_soc_pin {
 	char *name;
 #endif
 	int num_of_descs;
-	uint32_t sig_descs[3];
+	uint32_t sig_descs[5];
 } pinctrl_soc_pin_t;
 #endif
