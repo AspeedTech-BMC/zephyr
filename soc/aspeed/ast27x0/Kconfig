@@ -12,7 +12,7 @@ config SOC_AST2700_SSP
 	select CPU_HAS_DCACHE
 	select CPU_HAS_ICACHE
 	select CACHE_MANAGEMENT
-	select CACHE_AST27X0
+	select CACHE_AST27XX
 
 config SOC_AST2700_TSP
 	select ARM
@@ -24,4 +24,4 @@ config SOC_AST2700_TSP
 	select CPU_HAS_DCACHE
 	select CPU_HAS_ICACHE
 	select CACHE_MANAGEMENT
-	select CACHE_AST27X0
+	select CACHE_AST27XX
