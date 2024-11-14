@@ -1,0 +1,37 @@
+/*
+ * Copyright (c) 2024 Aspeed Technology Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+
+#include <aspeed/ast27xx.dtsi>
+
+/ {
+	model = "AST2700-EVB AST2700-IBEX";
+	compatible = "aspeed,ast2700-evb-ast2700-ibex";
+
+	chosen {
+		zephyr,console = &uart12;
+		zephyr,shell-uart = &uart12;
+		zephyr,sram = &sram;
+	};
+
+	aliases {
+		systick = &systick;
+	};
+
+	sram: memory@14b80a00 {
+		reg = <0x14b80a00 0x3be00>;
+	};
+};
+
+&uart12 {
+	status = "okay";
+	clock-frequency = <1846153>;
+};
+
+&emmc {
+	status = "okay";
+};

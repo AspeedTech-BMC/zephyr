@@ -8,3 +8,5 @@ board:
       cpucluster: ssp
     - name: ddr
       cpucluster: tsp
+    - name: sram
+      cpucluster: ibex
