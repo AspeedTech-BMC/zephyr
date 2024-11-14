@@ -10,7 +10,7 @@ family:
           - name: ast2600
             cpuclusters:
             - name: ssp
-      - name: ast27x0
+      - name: ast27xx
         socs:
           - name: ast2700
             cpuclusters:

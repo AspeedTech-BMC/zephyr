@@ -2,7 +2,7 @@
 #
 # Copyright (c) 2023 ASPEED Technology Inc.
 
-if SOC_SERIES_AST27X0
+if SOC_SERIES_AST27XX
 
 if ARM
 
@@ -147,4 +147,4 @@ config NUM_IRQS
 
 endif # RISCV
 
-endif # SOC_SERIES_AST27X0
+endif # SOC_SERIES_AST27XX
