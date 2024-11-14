@@ -1,5 +1,5 @@
 /dts-v1/;
-#include <aspeed/ast27x0.dtsi>
+#include "ast27xx-a0.dtsi"
 
 / {
 	aliases {

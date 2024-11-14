@@ -5,7 +5,7 @@
  */
 
 /dts-v1/;
-#include <aspeed/ast27x0_tsp-a1.dtsi>
+#include <aspeed/ast27xx_tsp.dtsi>
 
 / {
 	model = "Aspeed AST2700-TSP FPGA board";

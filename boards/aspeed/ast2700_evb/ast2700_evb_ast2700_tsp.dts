@@ -5,7 +5,7 @@
  */
 
 /dts-v1/;
-#include <aspeed/ast27x0_tsp.dtsi>
+#include <aspeed/ast27xx-a0_tsp.dtsi>
 
 / {
 	model = "Aspeed AST2700-TSP Evaluation board";
