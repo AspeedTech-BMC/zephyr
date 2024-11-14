@@ -1,0 +1,17 @@
+# Copyright (c) 2024, Aspeed Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+description: Aspeed, AST2700 Ibex timer
+  The AST2700 Ibex machine timer provides RISC-V privileged mie and mip
+  registers.
+
+compatible: "aspeed,ast2700-ibex-timer"
+
+include: base.yaml
+
+properties:
+  reg:
+    required: true
+
+  interrupts:
+    required: true

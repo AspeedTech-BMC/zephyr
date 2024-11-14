@@ -1,0 +1,69 @@
+/*
+ * Copyright (c) 2024 Aspeed Technology Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/ {
+	#address-cells = <0x01>;
+	#size-cells = <0x01>;
+	compatible = "aspeed,ast27xx";
+
+	cpus {
+		#address-cells = <0x01>;
+		#size-cells = <0x00>;
+
+		cpu@0 {
+			device_type = "cpu";
+			reg = <0x00>;
+			status = "okay";
+			compatible = "riscv";
+			riscv,isa = "rv32imc_zicsr_zifencei";
+
+			hlic: interrupt-controller {
+				compatible = "riscv,cpu-intc";
+				#address-cells = <0>;
+				#interrupt-cells = <1>;
+				interrupt-controller;
+			};
+		};
+	};
+
+	dram: memory@80000000 {
+		reg = <0x80000000 0x400000>;
+	};
+
+	soc0 {
+		compatible = "aspeed,soc0", "simple-bus";
+		#address-cells = <0x01>;
+		#size-cells = <0x01>;
+		ranges;
+
+		emmc: sdhci@12090000 {
+			compatible = "aspeed,sdhci";
+			reg = <0x12090000 0x200>;
+			status = "disabled";
+		};
+	};
+
+	soc1 {
+		compatible = "aspeed,soc1", "simple-bus";
+		#address-cells = <0x01>;
+		#size-cells = <0x01>;
+		ranges;
+
+		uart12: serial@14c33b00 {
+			compatible = "ns16550";
+			reg = <0x14c33b00 0x100>;
+			reg-shift = <2>;
+			status = "disabled";
+		};
+
+		systick: timer@14c36000 {
+			compatible = "aspeed,ast2700-ibex-timer";
+			reg = <0x14c36000 0x40>;
+			interrupt-parent = <&hlic>;
+			interrupts = <7 0>;
+		};
+	};
+};

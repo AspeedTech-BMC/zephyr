@@ -3,6 +3,9 @@
 # Copyright (c) 2023 ASPEED Technology Inc.
 
 if SOC_SERIES_AST27X0
+
+if ARM
+
 config ICACHE_LINE_SIZE
 	default 32
 
@@ -122,4 +125,26 @@ config NUM_IRQS
 	default 480
 
 endif #ASPEED_FPGA
+
+endif # ARM
+
+if RISCV
+
+config SYS_CLOCK_HW_CYCLES_PER_SEC
+	default 200000000
+
+config RISCV_SOC_INTERRUPT_INIT
+	default y
+
+config RISCV_HAS_CPU_IDLE
+	default y
+
+config RISCV_GP
+	default y
+
+config NUM_IRQS
+	default 16
+
+endif # RISCV
+
 endif # SOC_SERIES_AST27X0

@@ -16,6 +16,9 @@
 #if defined(CONFIG_ARM)
 #define SCU1_REG		0x74c02000
 #define WDT_REG			0x74c37000
+#elif defined(CONFIG_RISCV)
+#define SCU1_REG		0x14c02000
+#define WDT_REG			0x14c37000
 #else
 #error "Unsupported ARCH"
 #endif
@@ -95,4 +98,14 @@ void z_arm_platform_init(void)
 
 	soc_wdt_mask_init();
 }
+#endif
+
+#if defined(CONFIG_RISCV)
+static int soc_init(void)
+{
+	soc_wdt_mask_init();
+	return 0;
+}
+
+SYS_INIT(soc_init, PRE_KERNEL_1, 0);
 #endif

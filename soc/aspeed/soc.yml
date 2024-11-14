@@ -16,3 +16,4 @@ family:
             cpuclusters:
             - name: ssp
             - name: tsp
+            - name: ibex
