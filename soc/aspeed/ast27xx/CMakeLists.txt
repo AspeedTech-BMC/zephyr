@@ -7,7 +7,7 @@ zephyr_sources(soc.c)
 
 if(CONFIG_ARM)
   if(CONFIG_ASPEED_FPGA)
-    zephyr_library_sources_ifdef(CONFIG_ARM_CUSTOM_INTERRUPT_CONTROLLER irq_init.c irq_manage_a1.c)
+    zephyr_library_sources_ifdef(CONFIG_ARM_CUSTOM_INTERRUPT_CONTROLLER irq_init.c irq_manage.c)
   else()
     zephyr_library_sources_ifdef(CONFIG_ARM_CUSTOM_INTERRUPT_CONTROLLER irq_init.c irq_manage_legacy.c)
   endif()
