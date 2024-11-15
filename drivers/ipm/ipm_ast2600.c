@@ -21,7 +21,7 @@ LOG_MODULE_REGISTER(ipm_ast2600);
 /* secondary service processor ARM Cortex-M3. */
 #define IPCR_STATUS		0x28
 #define IPCR_CLEAR		0x2c
-#elif defined(CONFIG_SOC_AST2700)
+#elif defined(CONFIG_SOC_AST2700) || defined(CONFIG_SOC_AST2700_A0)
 /* secondary service processor ARM Cortex-M4. */
 #define IPCR_STATUS		0x24
 #define IPCR_CLEAR		0x24
@@ -192,7 +192,7 @@ static const struct ipm_driver_api ipm_ast2600_driver_api = {
 
 #if defined(CONFIG_SOC_AST2600)
 #define IPM_BASE_ADDR(inst) DT_INST_REG_ADDR(inst)
-#elif defined(CONFIG_SOC_AST2700)
+#elif defined(CONFIG_SOC_AST2700) || defined(CONFIG_SOC_AST2700_A0)
 #define IPM_BASE_ADDR(inst) DT_REG_ADDR(DT_INST_PARENT(inst)) + DT_INST_REG_ADDR(inst)
 #endif
 

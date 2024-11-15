@@ -13,8 +13,13 @@ config SOC_AST2700
 	bool
 	select SOC_SERIES_AST27XX
 
+config SOC_AST2700_A0
+	bool
+	select SOC_SERIES_AST27XX
+
 config SOC
 	default "ast2700" if SOC_AST2700
+	default "ast2700-a0" if SOC_AST2700_A0
 
 config SOC_AST2700_SSP
 	bool
@@ -33,3 +38,21 @@ config SOC_AST2700_IBEX
 	select SOC_AST2700
 	help
 	  Enable support for AST2700 Ibex MCU
+
+config SOC_AST2700_A0_SSP
+	bool
+	select SOC_AST2700_A0
+	help
+	  Enable support for AST2700-A0 SSP
+
+config SOC_AST2700_A0_TSP
+	bool
+	select SOC_AST2700_A0
+	help
+	  Enable support for AST2700-A0 TSP
+
+config SOC_AST2700_A0_IBEX
+	bool
+	select SOC_AST2700_A0
+	help
+	  Enable support for AST2700-A0 Ibex MCU

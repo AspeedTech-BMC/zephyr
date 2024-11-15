@@ -8,7 +8,7 @@
 #include <zephyr/drivers/syscon.h>
 #include <zephyr/sys/barrier.h>
 
-#ifdef CONFIG_ASPEED_FPGA
+#if defined(CONFIG_SOC_AST2700_SSP) || defined(CONFIG_SOC_AST2700_TSP)
 /*
  * cache area control: each bit controls 16MB cache area
  *	1: cacheable

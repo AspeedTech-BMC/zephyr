@@ -3,15 +3,23 @@
 # Copyright (c) 2020 ASPEED Technology Corporation.
 # SPDX-License-Identifier: Apache-2.0
 
-config ASPEED_INTC
-	bool "Aspeed interrupt controller driver"
+config AST27XX_INTC
+	bool "Aspeed AST27XX interrupt controller driver"
 	depends on MULTI_LEVEL_INTERRUPTS
-	depends on ARM
+	depends on SOC_AST2700_SSP || SOC_AST2700_TSP
 	default DT_HAS_ASPEED_AST2700_INTC_IC_ENABLED
 	help
-	  This option enables the interrupt controller
+	  This option enables the AST27XX interrupt controller
 
-if ASPEED_INTC
+config AST27XX_INTC_LEGACY
+	bool "Aspeed AST27XX legacy interrupt controller driver"
+	depends on MULTI_LEVEL_INTERRUPTS
+	depends on SOC_AST2700_A0_SSP || SOC_AST2700_A0_TSP
+	default DT_HAS_ASPEED_AST2700_INTC_IC_ENABLED
+	help
+	  This option enables the AST27XX legacy interrupt controller
+
+if AST27XX_INTC || AST27XX_INTC_LEGACY
 config SYSCON_INIT_PRIORITY
 	default INTC_INIT_PRIORITY
 endif

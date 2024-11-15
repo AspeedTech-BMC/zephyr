@@ -18,6 +18,3 @@ if BOARD_AST2700_FPGA_AST2700_IBEX
 config BOARD
 	default "ast2700_fpga_ibex"
 endif # BOARD_AST2700_FPGA_AST2700_IBEX
-
-config ASPEED_FPGA
-	bool "ASPEED FPGA Board"
