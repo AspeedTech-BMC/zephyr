@@ -89,7 +89,7 @@ int main(void)
 	}
 #elif defined(CONFIG_IPM_AST2700)
 	char ipc_name[16];
-#if defined(CONFIG_BOARD_AST2700_EVB_AST2700_SSP) || defined(CONFIG_BOARD_AST2700_FPGA_AST2700_SSP)
+#if defined(CONFIG_BOARD_AST2700_EVB_AST2700_SSP) || defined(CONFIG_BOARD_AST2700_EVB_AST2700_A0_SSP)
 	printk("SSP alive.\n");
 	strcpy(ipc_name, "soc0_ipc_v2@0");
 	ipmdev = device_get_binding(&ipc_name[0]);
@@ -118,8 +118,8 @@ int main(void)
 		printk("%s: cannot ipm_set_enabled\n", ipc_name);
 		goto fail;
 	}
-#endif /* defined(CONFIG_BOARD_AST2700_EVB/FPGA_AST2700_SSP) */
-#if defined(CONFIG_BOARD_AST2700_EVB_AST2700_TSP) || defined(CONFIG_BOARD_AST2700_FPGA_AST2700_TSP)
+#endif /* defined(CONFIG_BOARD_AST2700_EVB_AST2700_SSP) */
+#if defined(CONFIG_BOARD_AST2700_EVB_AST2700_TSP) || defined(CONFIG_BOARD_AST2700_EVB_AST2700_A0_TSP)
 	printk("TSP alive.\n");
 	strcpy(ipc_name, "soc0_ipc_v2@400");
 	ipmdev = device_get_binding(&ipc_name[0]);
@@ -148,7 +148,7 @@ int main(void)
 		printk("%s: cannot ipm_set_enabled\n", ipc_name);
 		goto fail;
 	}
-#endif /* defined(CONFIG_BOARD_AST2700_EVB/FPGA_AST2700_TSP) */
+#endif /* defined(CONFIG_BOARD_AST2700_EVB_AST2700_TSP) */
 
 	strcpy(ipc_name, "soc0_ipc_v2@800");
 	ipmdev = device_get_binding(&ipc_name[0]);
