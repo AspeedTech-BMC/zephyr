@@ -14,6 +14,11 @@ config BOARD
 	default "ast2700_evb_ast2700_tsp"
 endif # BOARD_AST2700_EVB_AST2700_TSP
 
+if BOARD_AST2700_EVB_AST2700_IBEX
+config BOARD
+	default "ast2700_evb_ast2700_ibex"
+endif # BOARD_AST2700_EVB_AST2700_IBEX
+
 if BOARD_AST2700_EVB_AST2700_A0_SSP
 config BOARD
 	default "ast2700_evb_ast2700-a0_ssp"
