@@ -8,3 +8,9 @@ board:
       cpucluster: ssp
     - name: ddr
       cpucluster: tsp
+  - name: ast2700-a0
+    variants:
+    - name: ddr
+      cpucluster: ssp
+    - name: ddr
+      cpucluster: tsp

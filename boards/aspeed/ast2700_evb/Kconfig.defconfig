@@ -6,10 +6,20 @@
 
 if BOARD_AST2700_EVB_AST2700_SSP
 config BOARD
-	default "ast2700_evb_ssp"
+	default "ast2700_evb_ast2700_ssp"
 endif # BOARD_AST2700_EVB_AST2700_SSP
 
 if BOARD_AST2700_EVB_AST2700_TSP
 config BOARD
-	default "ast2700_evb_tsp"
+	default "ast2700_evb_ast2700_tsp"
 endif # BOARD_AST2700_EVB_AST2700_TSP
+
+if BOARD_AST2700_EVB_AST2700_A0_SSP
+config BOARD
+	default "ast2700_evb_ast2700-a0_ssp"
+endif # BOARD_AST2700_EVB_AST2700_A0_SSP
+
+if BOARD_AST2700_EVB_AST2700_A0_TSP
+config BOARD
+	default "ast2700_evb_ast2700-a0_tsp"
+endif # BOARD_AST2700_EVB_AST2700_A0_TSP
