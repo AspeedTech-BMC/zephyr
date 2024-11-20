@@ -1434,6 +1434,7 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 				}
 			}
 
+			sys_write32(0, i2c_base + AST_I2CS_DMA_LEN_STS);
 			sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE)
 			, i2c_base + AST_I2CS_DMA_LEN);
 		} else if (config->mode == BUFF_MODE) {
