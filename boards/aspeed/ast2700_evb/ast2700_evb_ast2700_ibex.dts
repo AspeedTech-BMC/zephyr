@@ -20,6 +20,7 @@
 
 	aliases {
 		systick = &systick;
+		emmc = &emmc;
 	};
 
 	sram: memory@14b80a00 {
