@@ -111,10 +111,14 @@ void test_i2c_slave_EEPROM(void)
 		ast_zassert_false(result,
 		"I2C: %s EEPROM write is got failed %d", name_m, result);
 
+		k_sleep(K_MSEC(100));
+
 		/* burst receive data */
 		result = i2c_burst_read(master_dev, dev_addr, 0, data_r, DATA_COUNT);
 		ast_zassert_false(result,
 		"I2C: %s EEPROM read is got failed %d", name_m, result);
+
+		k_sleep(K_MSEC(100));
 
 		/* check data */
 		for (j = 0; j < DATA_COUNT; j++) {
