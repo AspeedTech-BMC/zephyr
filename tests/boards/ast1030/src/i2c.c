@@ -81,7 +81,7 @@ void test_i2c_slave_EEPROM(void)
 		sprintf(num, "%d", (i+1));
 		strcat(name_s, num);
 
-		printk("I2C M : %d - EE S : %d\n", i, (i+1));
+		/* printk("I2C M : %d - EE S : %d\n", i, (i+1)); */
 
 		/* obtain i2c master device */
 		master_dev = device_get_binding(name_m);
@@ -111,14 +111,10 @@ void test_i2c_slave_EEPROM(void)
 		ast_zassert_false(result,
 		"I2C: %s EEPROM write is got failed %d", name_m, result);
 
-		k_sleep(K_MSEC(100));
-
 		/* burst receive data */
 		result = i2c_burst_read(master_dev, dev_addr, 0, data_r, DATA_COUNT);
 		ast_zassert_false(result,
 		"I2C: %s EEPROM read is got failed %d", name_m, result);
-
-		k_sleep(K_MSEC(100));
 
 		/* check data */
 		for (j = 0; j < DATA_COUNT; j++) {
@@ -152,7 +148,7 @@ void test_i2c_slave_IPMB(void)
 	for (i = 0; i < ASPEED_I2C_NUMBER ; i += 2) {
 		dev_addr = IPMB_ADDR + i;
 
-		printk("I2C M : %d - IPMB S : %d:\n", (i+1), i);
+		/* printk("I2C M : %d - IPMB S : %d:\n", (i+1), i); */
 
 		strcpy(name_m, I2CMDRV);
 		sprintf(num, "%d", (i+1));
@@ -225,11 +221,13 @@ int test_i2c(int count, enum aspeed_test_type type)
 	printk("%s, count: %d, type: %d\n", __func__, count, type);
 
 	for (int i = 0; i < count; i++) {
-		printk("I2C slave EEPROM\n");
+		/* printk("I2C slave EEPROM\n"); */
 		test_i2c_slave_EEPROM();
+		k_sleep(K_MSEC(1));
 
 		/* printk("I2C slave IPMB\n"); */
-		/* test_i2c_slave_IPMB(); */
+		test_i2c_slave_IPMB();
+		k_sleep(K_MSEC(1));
 	}
 	return ast_ztest_result();
 }
