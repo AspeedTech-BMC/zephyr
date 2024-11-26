@@ -69,6 +69,7 @@ int mmc_read_blocks(struct sd_card *card, uint8_t *rbuf,
  */
 int mmc_ioctl(struct sd_card *card, uint8_t cmd, void *buf);
 
+int mmc_switch_part(struct sd_card *card, int part);
 #ifdef __cplusplus
 }
 #endif
