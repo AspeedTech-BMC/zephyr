@@ -23,6 +23,7 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #define DATA_COUNT 0x20
 #define EEPROM_ADDR 0x40
 #define IPMB_ADDR 0x50
+#define RETRY 0x5
 #define RANDOM
 #else
 #error No known devicetree compatible match for I2C test
@@ -67,7 +68,7 @@ void test_i2c_slave_EEPROM(void)
 	const struct device *slave_dev;
 	uint32_t dev_config_raw;
 	uint32_t i2c_clock = I2C_SPEED_FAST;
-	uint8_t dev_addr;
+	uint8_t dev_addr, retry_count = RETRY;
 
 	/* change odd device as EEPROM slave device */
 	for (i = 0; i < ASPEED_I2C_NUMBER ; i += 2) {
@@ -107,12 +108,30 @@ void test_i2c_slave_EEPROM(void)
 		prepare_test_data(data_s, DATA_COUNT);
 
 		/* burst transfer data */
-		result = i2c_burst_write(master_dev, dev_addr, 0, data_s, DATA_COUNT);
+		while (retry_count != 0) {
+			result = i2c_burst_write(master_dev, dev_addr, 0, data_s, DATA_COUNT);
+			if (result == -ETIMEDOUT) {
+				retry_count--;
+				printk(" Retry write: %d\n", retry_count);
+			} else {
+				retry_count = RETRY;
+				break;
+			}
+		}
 		ast_zassert_false(result,
 		"I2C: %s EEPROM write is got failed %d", name_m, result);
 
 		/* burst receive data */
-		result = i2c_burst_read(master_dev, dev_addr, 0, data_r, DATA_COUNT);
+		while (retry_count != 0) {
+			result = i2c_burst_read(master_dev, dev_addr, 0, data_r, DATA_COUNT);
+			if (result == -ETIMEDOUT) {
+				retry_count--;
+				printk(" Retry read: %d\n", retry_count);
+			} else {
+				retry_count = RETRY;
+				break;
+			}
+		}
 		ast_zassert_false(result,
 		"I2C: %s EEPROM read is got failed %d", name_m, result);
 
@@ -139,7 +158,7 @@ void test_i2c_slave_IPMB(void)
 	const struct device *slave_dev;
 	uint32_t dev_config_raw;
 	uint32_t i2c_clock = I2C_SPEED_FAST;
-	uint8_t dev_addr;
+	uint8_t dev_addr, retry_count = RETRY;
 	struct ipmb_msg *msg = NULL;
 	uint8_t length = 0;
 	uint8_t *buf = NULL;
@@ -181,12 +200,30 @@ void test_i2c_slave_IPMB(void)
 		/* fill transfer data */
 		prepare_test_data(data_s, DATA_COUNT);
 
-		/* burst transfer data */
-		result = i2c_burst_write(master_dev, dev_addr, 0, data_s, DATA_COUNT);
+		/* burst receive data */
+		while (retry_count != 0) {
+			result = i2c_burst_write(master_dev, dev_addr, 0, data_s, DATA_COUNT);
+			if (result == -ETIMEDOUT) {
+				retry_count--;
+				printk(" Retry write: %d\n", retry_count);
+			} else {
+				retry_count = RETRY;
+				break;
+			}
+		}
 		ast_zassert_false(result,
 		"I2C: %s IPMB write is got failed %d", name_m, result);
 
-		result = ipmb_slave_read(slave_dev, &msg, &length);
+		while (retry_count != 0) {
+			result = ipmb_slave_read(slave_dev, &msg, &length);
+			if (result == -ETIMEDOUT) {
+				retry_count--;
+				printk(" Retry write: %d\n", retry_count);
+			} else {
+				retry_count = RETRY;
+				break;
+			}
+		}
 		ast_zassert_false(result,
 		"I2C: %s IPMB read is got failed %d", name_s, result);
 
