@@ -258,10 +258,10 @@ int test_i2c(int count, enum aspeed_test_type type)
 	printk("%s, count: %d, type: %d\n", __func__, count, type);
 
 	for (int i = 0; i < count; i++) {
-		printk("I2C slave EEPROM\n");
+		/* I2C slave EEPROM */
 		test_i2c_slave_EEPROM();
 
-		printk("I2C slave IPMB\n");
+		/* I2C slave IPMB */
 		test_i2c_slave_IPMB();
 	}
 	return ast_ztest_result();
