@@ -920,6 +920,9 @@ static int aspeed_i3c_do_ccc(const struct device *dev, struct i3c_ccc_payload *p
 			/* broadcast CCC with data must be a write command */
 			cmd.tx_buf = payload->ccc.data;
 			cmd.tx_length = payload->ccc.data_len;
+
+			/* Assume all write data will be received by the targets */
+			payload->ccc.num_xfer = payload->ccc.data_len;
 		}
 	} else {
 		pos = aspeed_i3c_get_addr_pos(data, tgt_pl->addr);
@@ -939,10 +942,20 @@ static int aspeed_i3c_do_ccc(const struct device *dev, struct i3c_ccc_payload *p
 			cmd.rx_length = tgt_pl->data_len;
 			cmd.tx_length = 0;
 			rnw = 1;
+
+			/*
+			 * The actual number of received data bytes (cmd.rx_length) will be
+			 * modified in the ISR. Therefore, leave tgt_pl->num_xfer as zero and
+			 * update it after the transfer is successfully completed.
+			 */
+			tgt_pl->num_xfer = 0;
 		} else {
 			cmd.tx_buf = tgt_pl->data;
 			cmd.tx_length = tgt_pl->data_len;
 			cmd.rx_length = 0;
+
+			/* Assume all write data will be received by the target */
+			tgt_pl->num_xfer = tgt_pl->data_len;
 		}
 	}
 
@@ -988,6 +1001,11 @@ static int aspeed_i3c_do_ccc(const struct device *dev, struct i3c_ccc_payload *p
 		 */
 		LOG_INF("do_ccc: target devices not activated for now");
 		return 0;
+	}
+
+	/* Update the actual number of transferred bytes for direct RD CCCs */
+	if (!i3c_ccc_is_payload_broadcast(payload) && tgt_pl->rnw) {
+		tgt_pl->num_xfer = cmd.rx_length;
 	}
 
 	return xfer.ret;
