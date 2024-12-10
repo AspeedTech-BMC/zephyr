@@ -16,6 +16,7 @@
 		zephyr,console = &uart12;
 		zephyr,shell-uart = &uart12;
 		zephyr,sram = &sram;
+		zephyr,entropy = &rng;
 	};
 
 	aliases {
