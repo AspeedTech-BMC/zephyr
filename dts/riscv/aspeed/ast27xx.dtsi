@@ -52,6 +52,11 @@
 		#size-cells = <0x01>;
 		ranges;
 
+		syscon1: syscon@14c02000 {
+			compatible = "syscon";
+			reg = <0x14c02000 0x1000>;
+		};
+
 		uart12: serial@14c33b00 {
 			compatible = "ns16550";
 			reg = <0x14c33b00 0x100>;
@@ -64,6 +69,20 @@
 			reg = <0x14c36000 0x40>;
 			interrupt-parent = <&hlic>;
 			interrupts = <7 0>;
+		};
+
+		cptra_ecdsa: cptra-ecdsa@14c60000 {
+			compatible = "aspeed,cptra-ecdsa";
+			reg = <0x14c60000 0x1000>;
+			aspeed,scu = <&syscon1>;
+			status = "disabled";
+		};
+
+		cptra_sha: cptra-sha@14c61000 {
+			compatible = "aspeed,cptra-sha";
+			reg = <0x14c61000 0x1000>;
+			aspeed,scu = <&syscon1>;
+			status = "disabled";
 		};
 	};
 };
