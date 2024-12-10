@@ -34,7 +34,13 @@ config ECDSA_ASPEED
 	depends on SOC_FAMILY_ASPEED
 	select RSA_ASPEED
 	help
-	  This option enables the RSA driver for ASPEED SoCs.
+	  This option enables the ECDSA driver for ASPEED SoCs.
+
+config CPTRA_ECDSA
+	bool "ASPEED CPTRA ECDSA engine driver"
+	depends on SOC_AST2700_IBEX
+	help
+	  This option enables the Caliptra ECDSA driver for ASPEED SoCs.
 
 config HASH_SHELL
 	bool "Enable Hash Shell"
@@ -59,7 +65,7 @@ config RSA_SHELL
 
 config ECDSA_SHELL
 	bool "Enable ECDSA Shell"
-	depends on ECDSA_ASPEED
+	depends on ECDSA_ASPEED || CPTRA_ECDSA
 	depends on MBEDTLS
 	depends on SHELL
 	help
