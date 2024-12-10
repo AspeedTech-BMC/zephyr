@@ -37,3 +37,11 @@
 &emmc {
 	status = "okay";
 };
+
+&cptra_ecdsa {
+	status = "okay";
+};
+
+&cptra_sha {
+	status = "okay";
+};
