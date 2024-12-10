@@ -42,9 +42,15 @@ config CPTRA_ECDSA
 	help
 	  This option enables the Caliptra ECDSA driver for ASPEED SoCs.
 
+config CPTRA_SHA
+	bool "ASPEED CPTRA SHA engine driver"
+	depends on SOC_AST2700_IBEX
+	help
+	  This option enables the Caliptra SHA driver for ASPEED SoCs.
+
 config HASH_SHELL
 	bool "Enable Hash Shell"
-	depends on CRYPTO_ASPEED
+	depends on CRYPTO_ASPEED || CPTRA_SHA
 	depends on SHELL
 	help
 	  Enable Hash Shell for testing.

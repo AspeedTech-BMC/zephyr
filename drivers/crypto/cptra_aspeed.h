@@ -108,4 +108,91 @@ enum cptra_mbox_fsm {
 	CPTRA_MBFSM_ERROR,
 };
 
+/* SHA register offsets */
+#define CPTRA_SHA_LOCK				0x00
+#define CPTRA_SHA_USER				0x04
+#define CPTRA_SHA_MODE				0x08
+#define   CPTRA_SHA_MODE_ENDIAN			BIT(2)
+#define   CPTRA_SHA_MODE_SEL			GENMASK(1, 0)
+#define CPTRA_SHA_DLEN				0x10
+#define CPTRA_SHA_DATAIN			0x14
+#define CPTRA_SHA_EXEC				0x18
+#define CPTRA_SHA_STS				0x1c
+#define   CPTRA_SHA_STS_SOC_LOCK		BIT(1)
+#define   CPTRA_SHA_STS_VLD			BIT(0)
+#define CPTRA_SHA_DIGEST(n)			(0x20 + ((n) << 2))
+#define CPTRA_SHA_CTRL				0x60
+#define   CPTRA_SHA_CTRL_ZEROIZE		BIT(0)
+
+union cptra_sha_lock_s {
+	volatile uint32_t value;
+	struct {
+		volatile uint32_t lock : 1;			/*[0-0]*/
+		volatile uint32_t reserved : 31;		/*[1-31]*/
+	} fields;
+}; /* 0x00 */
+
+union cptra_sha_user_s {
+	volatile uint32_t value;
+}; /* 0x04 */
+
+union cptra_sha_mode_s {
+	volatile uint32_t value;
+	struct {
+		volatile uint32_t mode : 2;			/*[0-1]*/
+		volatile uint32_t endian_toggle : 1;		/*[2-2]*/
+		volatile uint32_t reserved : 29;		/*[3-31]*/
+	} fields;
+}; /* 0x08 */
+
+union cptra_sha_addr_s {
+	volatile uint32_t value;
+}; /* 0x0C */
+
+union cptra_sha_dlen_s {
+	volatile uint32_t value;
+}; /* 0x10 */
+
+union cptra_sha_datain_s {
+	volatile uint32_t value;
+}; /* 0x14 */
+
+union cptra_sha_exec_s {
+	volatile uint32_t value;
+}; /* 0x18 */
+
+union cptra_sha_sts_s {
+	volatile uint32_t value;
+	struct {
+		volatile uint32_t valid : 1;			/*[0-0]*/
+		volatile uint32_t soc_has_lock : 1;		/*[1-1]*/
+		volatile uint32_t reserved : 30;		/*[2-31]*/
+	} fields;
+}; /* 0x1C */
+
+union cptra_sha_digest_s {
+	volatile uint32_t value;
+}; /* 0x20 */
+
+union cptra_sha_ctrl_s {
+	volatile uint32_t value;
+	struct {
+		volatile uint32_t zeroize : 1;			/*[0-0]*/
+		volatile uint32_t reserved : 31;		/*[1-31]*/
+	} fields;
+}; /* 0x60 */
+
+struct cptra_sha_register_s {
+	union cptra_sha_lock_s sha_lock;			/* 00 */
+	union cptra_sha_user_s sha_user;			/* 04 */
+	union cptra_sha_mode_s sha_mode;			/* 08 */
+	union cptra_sha_addr_s sha_addr;			/* 0C */
+	union cptra_sha_dlen_s sha_dlen;			/* 10 */
+	union cptra_sha_datain_s sha_datain;			/* 14 */
+	union cptra_sha_exec_s sha_exec;			/* 18 */
+	union cptra_sha_sts_s sha_sts;				/* 1C */
+	union cptra_sha_digest_s sha_digest[16];		/* 20 */
+	union cptra_sha_ctrl_s sha_ctrl;			/* 60 */
+};
+
 #endif /* ZEPHYR_DRIVERS_CRYPTO_CPTRA_ASPEED_H_ */
