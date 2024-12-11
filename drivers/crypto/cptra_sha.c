@@ -202,13 +202,13 @@ static int cptra_sha_init(const struct device *dev)
 
 	state->in_use = false;
 
-	LOG_INF("base:0x%x", (uint32_t)cfg->base);
-	LOG_INF("scu_base:0x%x", (uint32_t)cfg->scu_base);
-
 	if (!(sys_read32(cfg->scu_base + SCU1_CPTRA) & SCU1_CPTRA_RDY_FOR_RT)) {
 		LOG_ERR("Caliptra is unavailable\n");
 		return -ENODEV;
 	}
+
+	LOG_INF("0x%x: Aspeed Caliptra SHA Hardware Accelerator successfully registered",
+		(uint32_t)cfg->base);
 
 	return 0;
 }
