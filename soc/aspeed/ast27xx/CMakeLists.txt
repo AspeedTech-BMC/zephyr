@@ -18,4 +18,6 @@ endif()
 
 if(CONFIG_RISCV)
   set(SOC_LINKER_SCRIPT ${ZEPHYR_BASE}/include/zephyr/arch/riscv/common/linker.ld CACHE INTERNAL "")
+  zephyr_library_link_libraries_ifdef(CONFIG_MBEDTLS mbedTLS)
+  zephyr_sources(crypto.c)
 endif()
