@@ -163,6 +163,14 @@ SECTION_FUNC(exception.entry, _isr_wrapper)
 	lr t0, ___cpu_t_current_OFFSET(s0)
 	lr tp, _thread_offset_to_tls(t0)
 
+	/* Make sure global pointer is sane */
+#ifdef CONFIG_RISCV_GP
+	.option push
+	.option norelax
+	la gp, __global_pointer$
+	.option pop
+#endif /* CONFIG_RISCV_GP */
+
 	/* Clear our per-thread usermode flag */
 	lui t0, %tprel_hi(is_user_mode)
 	add t0, t0, tp, %tprel_add(is_user_mode)
@@ -428,6 +436,12 @@ do_fault:
 1:	mv a1, sp
 
 #ifdef CONFIG_EXCEPTION_DEBUG
+	/*
+	 * Restore the s0 we saved early in ISR entry
+	 * so it shows up properly in the CSF.
+	 */
+	lr s0, __struct_arch_esf_s0_OFFSET(sp)
+
 	/* Allocate space for caller-saved registers on current thread stack */
 	addi sp, sp, -__callee_saved_t_SIZEOF
 

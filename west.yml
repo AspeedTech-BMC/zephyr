@@ -127,7 +127,7 @@ manifest:
       revision: ea987c1ca661be723de83bd159aed815d6cbd430
       path: modules/lib/cmsis-nn
     - name: edtt
-      revision: 8d7b543d4d2f2be0f78481e4e1d8d73a88024803
+      revision: b9ca3c7030518f07b7937dacf970d37a47865a76
       path: tools/edtt
       groups:
         - tools
@@ -157,7 +157,7 @@ manifest:
       groups:
         - hal
     - name: hal_espressif
-      revision: 796b3f62af6dc10cb7c7953f73c81882d4011d8d
+      revision: 01fc4ec49b8b178d7aea765cdb8709311ee4c50b
       path: modules/hal/espressif
       west-commands: west/west-commands.yml
       groups:
@@ -282,12 +282,12 @@ manifest:
       revision: 2b498e6f36d6b82ae1da12c8b7742e318624ecf5
       path: modules/lib/gui/lvgl
     - name: mbedtls
-      revision: fb36f3fe20f9f62e67b1a20c0cfe0a6788ec2bf6
+      revision: a78176c6ff0733ba08018cba4447bd3f20de7978
       path: modules/crypto/mbedtls
       groups:
         - crypto
     - name: mcuboot
-      revision: fb2cf0ec3da3687b93f28e556ab682bdd4b85223
+      revision: ea2410697dd0262edec041a0ccb07fdbde7c1aff
       path: bootloader/mcuboot
     - name: mipi-sys-t
       path: modules/debug/mipi-sys-t
@@ -327,7 +327,7 @@ manifest:
       groups:
         - crypto
     - name: trusted-firmware-m
-      revision: 069455be098383bf96eab73e3ff8e0c66c60fa5a
+      revision: 60ebade5d3d381a210af90191e475d8870b8adbc
       path: modules/tee/tf-m/trusted-firmware-m
       groups:
         - tee
