@@ -19,7 +19,7 @@
 LOG_MODULE_REGISTER(crypto);
 
 #ifdef CONFIG_CRYPTO_ASPEED
-#define CRYPTO_DRV_NAME CONFIG_CRYPTO_ASPEED_DRV_NAME
+#define CRYPTO_DRV_NAME		DEVICE_DT_NAME(DT_INST(0, aspeed_hace))
 #else
 #error "You need to enable ASPEED crypto device"
 #endif

@@ -190,14 +190,17 @@ struct aspeed_hace_engine {
 	int busy_flag;
 };
 
-extern struct aspeed_hace_engine hace_eng;
-
-#define SELECT_VAL_KEY_1() do { \
-	sys_write32(sys_read32(hace_eng.sbase + 0xc) & ~(BIT(0)), hace_eng.sbase + 0xc); \
+#define SELECT_VAL_KEY_1(sbase) do { \
+	sys_write32(sys_read32((sbase) + 0xc) & ~(BIT(0)), (sbase) + 0xc); \
 } while (false)
 
-#define SELECT_VAL_KEY_2() do { \
-	sys_write32(sys_read32(hace_eng.sbase + 0xc) & BIT(0), hace_eng.sbase + 0xc); \
+#define SELECT_VAL_KEY_2(sbase) do { \
+	sys_write32(sys_read32((sbase) + 0xc) & BIT(0), (sbase) + 0xc); \
 } while (false)
+
+struct aspeed_sg {
+	uint32_t len;
+	uint32_t addr;
+};
 
 #endif  /* ZEPHYR_DRIVERS_CRYPTO_HACE_ASPEED_H_ */

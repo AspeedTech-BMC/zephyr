@@ -16,7 +16,7 @@
 #include <zephyr/shell/shell.h>
 
 #ifdef CONFIG_CRYPTO_ASPEED
-#define HASH_DRV_NAME CONFIG_CRYPTO_ASPEED_HASH_DRV_NAME
+#define HASH_DRV_NAME		DEVICE_DT_NAME(DT_INST(0, aspeed_hace))
 #endif
 
 struct hash_testvec {

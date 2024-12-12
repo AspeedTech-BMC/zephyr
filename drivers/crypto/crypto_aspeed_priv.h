@@ -17,11 +17,6 @@
 #ifndef ZEPHYR_DRIVERS_CRYPTO_ASPEED_PRIV_H_
 #define ZEPHYR_DRIVERS_CRYPTO_ASPEED_PRIV_H_
 
-struct aspeed_sg {
-	uint32_t len;
-	uint32_t addr;
-};
-
 struct aspeed_crypto_ctx {
 	uint8_t ctx[64];
 	struct aspeed_sg src_sg;
