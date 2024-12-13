@@ -160,6 +160,8 @@ source "drivers/spi/Kconfig.max32"
 
 source "drivers/spi/Kconfig.aspeed"
 
+source "drivers/spi/Kconfig.aspeed_ast2700"
+
 source "drivers/spi/Kconfig.spi_monitor_aspeed"
 
 endif # SPI

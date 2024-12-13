@@ -18,7 +18,7 @@ properties:
     required: true
 
   clocks:
-    required: true
+    required: false
 
   num-cs:
     type: int
