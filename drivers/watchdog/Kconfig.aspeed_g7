@@ -1,0 +1,12 @@
+# ASPEED WDT controller driver
+
+# Copyright (c) 2025 ASPEED Technology Inc. <chin-ting_kuo@aspeedtech.com>
+# SPDX-License-Identifier: Apache-2.0
+
+config WDT_ASPEED_G7
+	bool "ASPEED WDT G7 Driver"
+	default DT_HAS_ASPEED_AST_WATCHDOG_G7_ENABLED
+	help
+	  Enable ASPEED WDT G7 controller driver.
+	  In ASPEED WDT G7, each watchdog controller
+	  has its own interrupt number.

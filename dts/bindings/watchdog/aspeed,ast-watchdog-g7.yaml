@@ -1,0 +1,20 @@
+# Copyright (c) 2023, ASPEED Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+description: ASPEED watchdog timer controller
+
+compatible: "aspeed,ast-watchdog-g7"
+
+include: [base.yaml]
+
+properties:
+  reg:
+    required: true
+
+  interrupts:
+    required: false
+
+  reset-mask:
+    type: array
+    required: true
+    description: Record default reset masks.
