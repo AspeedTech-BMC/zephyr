@@ -265,7 +265,7 @@ LOG_MODULE_REGISTER(i2c_aspeed);
 #define DEV_BASE(dev) \
 	((DEV_CFG(dev))->base)
 
-enum i2c_xfer_mode {
+enum xfer_mode {
 	BYTE_MODE,
 	BUFF_MODE,
 	DMA_MODE,
@@ -290,7 +290,7 @@ struct i2c_aspeed_config {
 	uint32_t ac_timing;
 	void (*irq_config_func)(const struct device *dev);
 	uint32_t clk_src;
-	enum i2c_xfer_mode mode;
+	enum xfer_mode mode;
 };
 
 struct i2c_aspeed_data {
