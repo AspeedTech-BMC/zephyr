@@ -192,8 +192,8 @@ static struct ecdsa_driver_api ecdsa_funcs = {
 };
 
 static const struct cptra_ecdsa_config cptra_ecdsa_config = {
-	.base = DT_REG_ADDR(DT_DRV_INST(0)),
-	.scu_base = DT_REG_ADDR(DT_INST_PHANDLE(0, aspeed_scu)),
+	.base = DT_REG_ADDR(DT_PARENT(DT_DRV_INST(0))),
+	.scu_base = DT_REG_ADDR(DT_PHANDLE_BY_IDX(DT_PARENT(DT_DRV_INST(0)), aspeed_scu, 0)),
 };
 
 static struct cptra_ecdsa_drv_state cptra_ecdsa_state;
