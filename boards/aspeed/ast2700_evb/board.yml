@@ -8,6 +8,8 @@ board:
       cpucluster: ssp
     - name: ddr
       cpucluster: tsp
+    - name: sram
+      cpucluster: bootmcu
   - name: ast2700-a0
     variants:
     - name: ddr
