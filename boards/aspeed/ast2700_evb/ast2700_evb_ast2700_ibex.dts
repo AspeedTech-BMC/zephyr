@@ -45,3 +45,7 @@
 &cptra_sha {
 	status = "okay";
 };
+
+&cptra_update {
+	status = "okay";
+};
