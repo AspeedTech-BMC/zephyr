@@ -12,7 +12,7 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/drivers/clock_control.h>
 #include <zephyr/drivers/reset.h>
-#include "cptra_aspeed.h"
+#include <zephyr/drivers/cptra.h>
 #include "ecdsa_aspeed_priv.h"
 
 LOG_MODULE_REGISTER(cptra_ecdsa, CONFIG_LOG_DEFAULT_LEVEL);

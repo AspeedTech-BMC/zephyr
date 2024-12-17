@@ -64,3 +64,9 @@ config SHELL_CMDS_OTP
 	depends on OTP_ASPEED
 	help
 	  This option enables the OTP shell commands.
+
+config CPTRA_UPDATE
+	bool "ASPEED CPTRA Update driver"
+	depends on SOC_AST2700_IBEX
+	help
+	  This option enables the Caliptra update driver for ASPEED SoCs.

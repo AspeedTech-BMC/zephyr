@@ -13,5 +13,6 @@ zephyr_library_sources_ifdef(CONFIG_PFR_SHELL_ASPEED		pfr_shell.c)
 zephyr_library_sources_ifdef(CONFIG_PCC_ASPEED			pcc_aspeed.c)
 zephyr_library_sources_ifdef(CONFIG_OTP_ASPEED			otp_aspeed.c)
 zephyr_library_sources_ifdef(CONFIG_SHELL_CMDS_OTP		otp_shell.c)
+zephyr_library_sources_ifdef(CONFIG_CPTRA_UPDATE		cptra_update.c)
 
 zephyr_library_link_libraries_ifdef(CONFIG_MBEDTLS mbedTLS)

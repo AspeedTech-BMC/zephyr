@@ -4,8 +4,11 @@
  * Copyright (c) 2024 ASPEED Technology Inc.
  */
 
-#ifndef ZEPHYR_DRIVERS_CRYPTO_CPTRA_ASPEED_H_
-#define ZEPHYR_DRIVERS_CRYPTO_CPTRA_ASPEED_H_
+#ifndef ZEPHYR_INCLUDE_DRIVERS_CPTRA_H_
+#define ZEPHYR_INCLUDE_DRIVERS_CPTRA_H_
+
+#include <zephyr/types.h>
+#include <zephyr/device.h>
 
 /* SCU register offsets */
 #define SCU1_CPTRA				0x130
@@ -27,8 +30,11 @@
 
 #define CPTRA_ECDSA_SIG_LEN			96	/* ECDSA384 */
 #define CPTRA_ECDSA_SHA_LEN			48	/* SHA384 */
+#define CPTRA_MBOX_SZ				0x20000	/* 128KB */
 
+/* Mailbox commands */
 #define CPTRA_MBCMD_ECDSA384_SIGNATURE_VERIFY	0x53494756
+#define CPTRA_MBCMD_CALIPTRA_FW_LOAD		0x46574C44
 
 union cptra_mbox_lock_s {
 	volatile uint32_t value;
@@ -195,4 +201,48 @@ struct cptra_sha_register_s {
 	union cptra_sha_ctrl_s sha_ctrl;			/* 60 */
 };
 
-#endif /* ZEPHYR_DRIVERS_CRYPTO_CPTRA_ASPEED_H_ */
+/* SoC ifc register offsets */
+#define CPTRA_HW_ERROR_FATAL			0x000
+#define CPTRA_HW_ERROR_NONFATAL			0x004
+#define CPTRA_FW_ERROR_FATAL			0x008
+#define CPTRA_FW_ERROR_NONFATAL			0x00c
+#define CPTRA_HW_ERROR_ENC			0x010
+#define CPTRA_FW_ERROR_ENC			0x014
+#define CPTRA_FW_EXT_ERROR_INFO			0x018
+#define CPTRA_BOOT_STS				0x038
+#define CPTRA_FLOW_STS				0x03c
+#define CPTRA_BOOT_STS				0x038
+#define CPTRA_FLOW_STS				0x03c
+#define   CPTRA_FLOW_STS_RDY_FOR_FUSES		BIT(30)
+#define   CPTRA_FLOW_STS_RDY_FOR_RT		BIT(29)
+#define   CPTRA_FLOW_STS_RDY_FOR_FW		BIT(28)
+#define CPTRA_RST_REASON			0x040
+#define   CPTRA_FW_UPD_RESET			BIT(0)
+#define   CPTRA_WARM_RESET			BIT(1)
+#define CPTRA_TRNG_DATA(n)			(0x078 + ((n) << 2))
+#define CPTRA_TRNG_STS				0x0ac
+#define   CPTRA_TRNG_STS_DATA_WR_DONE		BIT(1)
+#define   CPTRA_TRNG_STS_DATA_REQ		BIT(0)
+
+#define CPTRA_MAX_TRNG				12
+
+#define CPTRA_UPD_RST_TIMEOUT			1000
+#define CPTRA_TRNG_REQ_LOOP_CNT			1000000		/* TODO: real chip exp */
+
+/* The API a cptra driver should implement */
+__subsystem struct cptra_driver_api {
+	int (*caliptra_fw_upload)(const struct device *dev, uint8_t *buf, int size);
+};
+
+static inline int caliptra_fw_upload(const struct device *dev, uint8_t *buf, int size)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_fw_upload(dev, buf, size);
+
+	return tmp;
+}
+
+#endif /* ZEPHYR_INCLUDE_DRIVERS_CPTRA_H_ */

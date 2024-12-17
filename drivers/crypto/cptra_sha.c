@@ -14,7 +14,7 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/__assert.h>
 #include <zephyr/sys/byteorder.h>
-#include "cptra_aspeed.h"
+#include <zephyr/drivers/cptra.h>
 
 LOG_MODULE_REGISTER(cptra_sha, CONFIG_LOG_DEFAULT_LEVEL);
 
