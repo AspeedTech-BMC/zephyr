@@ -6,6 +6,6 @@ if SOC_SERIES_AST27XX
 
 rsource "Kconfig.defconfig.ssp"
 rsource "Kconfig.defconfig.tsp"
-rsource "Kconfig.defconfig.ibex"
+rsource "Kconfig.defconfig.bootmcu"
 
 endif # SOC_SERIES_AST27XX

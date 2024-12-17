@@ -70,7 +70,7 @@
 		};
 
 		systick: timer@14c36000 {
-			compatible = "aspeed,ast2700-ibex-timer";
+			compatible = "aspeed,ast2700-bootmcu-timer";
 			reg = <0x14c36000 0x40>;
 			interrupt-parent = <&hlic>;
 			interrupts = <7 0>;

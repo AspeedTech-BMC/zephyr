@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#define DT_DRV_COMPAT aspeed_ast2700_ibex_timer
+#define DT_DRV_COMPAT aspeed_ast2700_bootmcu_timer
 
 #include <zephyr/init.h>
 #include <zephyr/kernel.h>
@@ -16,7 +16,7 @@
 #include <zephyr/logging/log.h>
 
 #define LOG_LEVEL CONFIG_TIMER_LOG_LEVEL
-LOG_MODULE_REGISTER(ast2700_ibex_timer_ic, LOG_LEVEL_ERR);
+LOG_MODULE_REGISTER(ast2700_bootmcu_timer_ic, LOG_LEVEL_ERR);
 
 #define TMR_COUNT_L		0x00
 #define TMR_COUNT_H		0x04

@@ -24,13 +24,13 @@ config ECDSA_ASPEED
 
 config CPTRA_ECDSA
 	bool "ASPEED CPTRA ECDSA engine driver"
-	depends on SOC_AST2700_IBEX
+	depends on SOC_AST2700_BOOTMCU
 	help
 	  This option enables the Caliptra ECDSA driver for ASPEED SoCs.
 
 config CPTRA_SHA
 	bool "ASPEED CPTRA SHA engine driver"
-	depends on SOC_AST2700_IBEX
+	depends on SOC_AST2700_BOOTMCU
 	help
 	  This option enables the Caliptra SHA driver for ASPEED SoCs.
 

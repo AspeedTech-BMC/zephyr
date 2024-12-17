@@ -33,11 +33,11 @@ config SOC_AST2700_TSP
 	help
 	  Enable support for AST2700 TSP
 
-config SOC_AST2700_IBEX
+config SOC_AST2700_BOOTMCU
 	bool
 	select SOC_AST2700
 	help
-	  Enable support for AST2700 Ibex MCU
+	  Enable support for AST2700 Boot MCU
 
 config SOC_AST2700_A0_SSP
 	bool
@@ -51,8 +51,8 @@ config SOC_AST2700_A0_TSP
 	help
 	  Enable support for AST2700-A0 TSP
 
-config SOC_AST2700_A0_IBEX
+config SOC_AST2700_A0_BOOTMCU
 	bool
 	select SOC_AST2700_A0
 	help
-	  Enable support for AST2700-A0 Ibex MCU
+	  Enable support for AST2700-A0 Boot MCU

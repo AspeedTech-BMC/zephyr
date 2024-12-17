@@ -17,14 +17,14 @@ config TIMER_ASPEED_AST27XX
 	help
 	  Say "y" to enable the driver of the Aspeed ast27xx general purpose timer.
 
-config TIMER_ASPEED_AST2700_IBEX
-	bool "Aspeed ast2700 IBEX systick timer"
-	depends on DT_HAS_ASPEED_AST2700_IBEX_TIMER_ENABLED
+config TIMER_ASPEED_AST2700_BOOTMCU
+	bool "Aspeed ast2700 BootMCU systick timer"
+	depends on DT_HAS_ASPEED_AST2700_BOOTMCU_TIMER_ENABLED
 	select TIMER_HAS_64BIT_CYCLE_COUNTER
 	select TIMEOUT_64BIT
 	default y
 	help
-	  Say "y" to enable the driver of the Aspeed ast2700 IBEX systick timer.
+	  Say "y" to enable the driver of the Aspeed ast2700 BootMCU systick timer.
 
 if TIMER_ASPEED || TIMER_ASPEED_AST27XX
 config TIMER_ASPEED_SHELL

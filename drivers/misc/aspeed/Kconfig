@@ -67,6 +67,6 @@ config SHELL_CMDS_OTP
 
 config CPTRA_UPDATE
 	bool "ASPEED CPTRA Update driver"
-	depends on SOC_AST2700_IBEX
+	depends on SOC_AST2700_BOOTMCU
 	help
 	  This option enables the Caliptra update driver for ASPEED SoCs.

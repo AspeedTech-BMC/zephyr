@@ -9,8 +9,8 @@
 #include <aspeed/ast27xx.dtsi>
 
 / {
-	model = "AST2700-EVB AST2700-IBEX";
-	compatible = "aspeed,ast2700-evb-ast2700-ibex";
+	model = "AST2700-EVB AST2700-BOOTMCU";
+	compatible = "aspeed,ast2700-evb-ast2700-bootmcu";
 
 	chosen {
 		zephyr,console = &uart12;

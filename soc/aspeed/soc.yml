@@ -16,9 +16,9 @@ family:
             cpuclusters:
             - name: ssp
             - name: tsp
-            - name: ibex
+            - name: bootmcu
           - name: ast2700-a0
             cpuclusters:
             - name: ssp
             - name: tsp
-            - name: ibex
+            - name: bootmcu
