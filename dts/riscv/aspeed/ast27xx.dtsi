@@ -76,11 +76,21 @@
 			interrupts = <7 0>;
 		};
 
-		cptra_ecdsa: cptra-ecdsa@14c60000 {
-			compatible = "aspeed,cptra-ecdsa";
-			reg = <0x14c60000 0x1000>;
+		cptra_mbox: cptra-mbox@14c60000 {
+			compatible = "aspeed,cptra-mbox";
+			reg = <0x14c60000 0x1000
+			       0x14c70000 0x1000>;
 			aspeed,scu = <&syscon1>;
-			status = "disabled";
+
+			cptra_ecdsa: cptra-ecdsa {
+				compatible = "aspeed,cptra-ecdsa";
+				status = "disabled";
+			};
+
+			cptra_update: cptra-update {
+				compatible = "aspeed,cptra-update";
+				status = "disabled";
+			};
 		};
 
 		cptra_sha: cptra-sha@14c61000 {

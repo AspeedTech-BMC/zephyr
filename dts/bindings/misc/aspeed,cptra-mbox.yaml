@@ -1,0 +1,16 @@
+# Copyright (c) 2024 ASPEED Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  CPTRA Mailbox node for ASPEED platform.
+compatible: "aspeed,cptra-mbox"
+
+properties:
+  reg:
+    description: Register range for the Caliptra mailbox.
+    type: array
+    required: true
+
+  aspeed,scu:
+    description: Handle to the ASPEED system control unit (SCU).
+    type: phandle
