@@ -1,8 +1,8 @@
 # Copyright (c) 2024 Aspeed Technology Inc.
 # SPDX-License-Identifier: Apache-2.0
 
-identifier: ast2700_mcu_evb
-name: Aspeed AST2700 MCU on Evaluation Board
+identifier: ast2700_evb_ast2700_bootmcu
+name: Aspeed AST2700 BootMCU on Evaluation Board
 type: mcu
 arch: riscv32
 toolchain:
