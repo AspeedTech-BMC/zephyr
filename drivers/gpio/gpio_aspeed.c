@@ -558,17 +558,17 @@ int gpio_aspeed_init(const struct device *dev)
 
 static void gpio_aspeed_init_cmd_src_sel(const struct device *parent)
 {
-	volatile gpio_register_t *gpio_reg = DEV_PARENT_CFG(parent)->base;
 	gpio_cmd_src_sel_t cmd_src_sel;
 
-	cmd_src_sel.value = gpio_reg->cmd_src_sel.value;
+	cmd_src_sel.value = 0;
 	cmd_src_sel.fields.mst1 = ASPEED_GPIO_SEL_PRI;
 	cmd_src_sel.fields.mst2 = ASPEED_GPIO_SEL_LPC;
 	cmd_src_sel.fields.mst3 = ASPEED_GPIO_SEL_SSP;
 	cmd_src_sel.fields.mst4 = ASPEED_GPIO_SEL_PRI;
 	cmd_src_sel.fields.mst5 = ASPEED_GPIO_SEL_PRI;
 	cmd_src_sel.fields.lock = 1;
-	gpio_reg->cmd_src_sel.value = cmd_src_sel.value;
+	sys_write32(cmd_src_sel.value, (uint32_t)DEV_PARENT_CFG(parent)->base +
+					       offsetof(gpio_register_t, cmd_src_sel));
 }
 
 static int gpio_aspeed_usec_to_cycles(const struct device *parent, uint32_t us, uint32_t *cycles)
