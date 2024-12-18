@@ -39,6 +39,21 @@
 		#size-cells = <0x01>;
 		ranges;
 
+		syscon0: syscon@12c02000 {
+			compatible = "syscon";
+			reg = <0x12c02000 0x1000>;
+
+			sysrst0: reset-controller {
+				compatible = "aspeed,ast27xx-reset";
+				#reset-cells = <1>;
+			};
+
+			sysclk0: system-clock {
+				compatible = "aspeed,ast27xx-scu0-clock";
+				#clock-cells = <1>;
+			};
+		};
+
 		emmc: sdhci@12090000 {
 			compatible = "aspeed,sdhci";
 			reg = <0x12090000 0x200>;
@@ -55,6 +70,17 @@
 		syscon1: syscon@14c02000 {
 			compatible = "syscon";
 			reg = <0x14c02000 0x1000>;
+
+			sysrst1: reset-controller {
+				compatible = "aspeed,ast27xx-reset";
+				#reset-cells = <1>;
+			};
+
+			sysclk1: system-clock {
+				compatible = "aspeed,ast27xx-scu1-clock";
+				#clock-cells = <1>;
+			};
+
 		};
 
 		rng: hwrng@14c020f0 {

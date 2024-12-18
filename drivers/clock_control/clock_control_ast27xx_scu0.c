@@ -1,0 +1,101 @@
+/*
+ * Copyright (c) 2023 ASPEED Technology Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#define DT_DRV_COMPAT aspeed_ast27xx_scu0_clock
+#include <errno.h>
+#include <zephyr/dt-bindings/clock/ast27xx_clock.h>
+#include <zephyr/drivers/clock_control.h>
+#include <zephyr/devicetree.h>
+#include <zephyr/device.h>
+#include <zephyr/sys/util.h>
+
+#define LOG_LEVEL CONFIG_CLOCK_CONTROL_LOG_LEVEL
+#include <zephyr/logging/log.h>
+LOG_MODULE_REGISTER(clock_control_ast27xx_scu0);
+
+#define HPLL_FREQ			MHZ(1000)
+
+#define CLK_STOP_CTRL_SET		0x240
+#define CLK_STOP_CTRL_CLEAR		0x244
+
+#define SCU0_CLK_SEL1 0x280
+#define SCU0_CLK_SEL2 0x284
+#define UART_DIV13_EN BIT(30)
+#define SCU0_HPLL_PARAM 0x300
+#define SCU0_DPLL_PARAM 0x308
+#define SCU0_MPLL_PARAM 0x310
+#define SCU0_D1CLK_PARAM 0x320
+#define SCU0_D2CLK_PARAM 0x330
+#define SCU0_CRT1CLK_PARAM 0x340
+#define SCU0_CRT2CLK_PARAM 0x350
+#define SCU0_MPHYCLK_PARAM 0x360
+
+struct clock_ast27xx_scu0_config {
+	uintptr_t base;
+};
+
+static int
+ast27xx_scu0_clock_control_on(const struct device *dev, clock_control_subsys_t sub_system)
+{
+	const struct clock_ast27xx_scu0_config *config = dev->config;
+	uint32_t clk_gate = (uint32_t)sub_system;
+
+	sys_set_bit(config->base + CLK_STOP_CTRL_CLEAR, BIT(clk_gate));
+
+	return 0;
+}
+
+static int
+ast27xx_scu0_clock_control_off(const struct device *dev, clock_control_subsys_t sub_system)
+{
+	const struct clock_ast27xx_scu0_config *config = dev->config;
+	uint32_t clk_gate = (uint32_t)sub_system;
+
+	sys_set_bit(config->base + CLK_STOP_CTRL_SET, BIT(clk_gate));
+
+	return 0;
+}
+
+static int ast27xx_scu0_clock_control_get_rate(const struct device *dev,
+					      clock_control_subsys_t sub_system, uint32_t *rate)
+{
+	uint32_t clk_id = (uint32_t)sub_system;
+
+	switch (clk_id) {
+	case SCU0_CLK_HPLL:
+		/* HPLL/DPLL: 2000Mhz(default) */
+		*rate = MHZ(2000);
+		break;
+	case SCU0_CLK_AHB:
+		/* AHB CLK mpll/4 = 400Mhz*/
+		*rate = MHZ(1600) / 4;
+		break;
+	case SCU0_CLK_APB:
+		/* APB CLK MPLL/16 = 100Mhz */
+		*rate = MHZ(1600) / 16;
+		break;
+	case SCU0_CLK_GATE_UART4CLK:
+		*rate = MHZ(24) / 13;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static const struct clock_control_driver_api ast27xx_scu0_clk_api = {
+	.on = ast27xx_scu0_clock_control_on,
+	.off = ast27xx_scu0_clock_control_off,
+	.get_rate = ast27xx_scu0_clock_control_get_rate,
+};
+
+static const struct clock_ast27xx_scu0_config clock_scu0_config = {
+	.base = DT_REG_ADDR(DT_INST_PARENT(0)),
+};
+
+DEVICE_DT_INST_DEFINE(0, NULL, NULL, NULL, &clock_scu0_config, PRE_KERNEL_1,
+		      CONFIG_CLOCK_CONTROL_INIT_PRIORITY, &ast27xx_scu0_clk_api);

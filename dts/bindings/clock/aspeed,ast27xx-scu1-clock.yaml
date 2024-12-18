@@ -3,7 +3,7 @@
 
 description: Aspeed AST27XX Clock Controller
 
-compatible: "aspeed,ast27xx-cpu-clock"
+compatible: "aspeed,ast27xx-scu1-clock"
 
 include: [clock-controller.yaml, base.yaml]
 

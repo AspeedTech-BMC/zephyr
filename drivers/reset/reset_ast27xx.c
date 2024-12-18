@@ -10,10 +10,10 @@
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/reset.h>
 
-#define RESET_CTRL0_ASSERT		0x00
-#define RESET_CTRL0_DEASSERT		0x04
-#define RESET_CTRL1_ASSERT		0x20
-#define RESET_CTRL1_DEASSERT		0x24
+#define RESET_CTRL0_ASSERT		0x200
+#define RESET_CTRL0_DEASSERT		0x204
+#define RESET_CTRL1_ASSERT		0x220
+#define RESET_CTRL1_DEASSERT		0x224
 
 struct reset_ast27xx_config {
 	uintptr_t base;
@@ -81,7 +81,7 @@ static const struct reset_driver_api ast27xx_reset_api = {
 
 #define RESET_AST27XX_INIT(n)                                                                      \
 	static const struct reset_ast27xx_config reset_ast27xx_config_##n = {                      \
-		.base = DT_REG_ADDR(DT_INST_PARENT(n)) + DT_INST_REG_ADDR(n),                      \
+		.base = DT_REG_ADDR(DT_INST_PARENT(n)),                      \
 	};                                                                                         \
                                                                                                    \
 	DEVICE_DT_INST_DEFINE(n, NULL, NULL, NULL, &reset_ast27xx_config_##n, PRE_KERNEL_1,        \

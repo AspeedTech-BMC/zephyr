@@ -63,6 +63,7 @@
 			reg = <0x72c02000 0x1000>;
 			#address-cells = <1>;
 			#size-cells = <1>;
+			ranges;
 
 			ssp_cache: cache-controller@120 {
 				reg = <0x120 0x40>;
@@ -74,15 +75,13 @@
 				status = "disabled";
 			};
 
-			sysrst0: reset-controller@200 {
+			sysrst0: reset-controller {
 				compatible = "aspeed,ast27xx-reset";
-				reg = <0x200 0x40>;
 				#reset-cells = <1>;
 			};
 
-			sysclk0: system-clock@240 {
-				compatible = "aspeed,ast27xx-cpu-clock";
-				reg = <0x240 0x1c0>;
+			sysclk0: system-clock {
+				compatible = "aspeed,ast27xx-scu0-clock";
 				#clock-cells = <1>;
 			};
 		};
@@ -91,7 +90,7 @@
 			compatible = "aspeed,ast27xx-timer";
 			reg = <0x72c10000 0x40>;
 			interrupts = <16 1>;
-			clocks = <&sysclk0 AST2700_CPU_CLK_APB>;
+			clocks = <&sysclk0 SCU0_CLK_APB>;
 			status = "disabled";
 		};
 
@@ -99,7 +98,7 @@
 			compatible = "aspeed,ast27xx-timer";
 			reg = <0x72c10040 0x40>;
 			interrupts = <17 1>;
-			clocks = <&sysclk0 AST2700_CPU_CLK_APB>;
+			clocks = <&sysclk0 SCU0_CLK_APB>;
 			status = "disabled";
 		};
 
@@ -107,7 +106,7 @@
 			compatible = "aspeed,ast27xx-timer";
 			reg = <0x72c10080 0x40>;
 			interrupts = <18 1>;
-			clocks = <&sysclk0 AST2700_CPU_CLK_APB>;
+			clocks = <&sysclk0 SCU0_CLK_APB>;
 			status = "disabled";
 		};
 
@@ -115,7 +114,7 @@
 			compatible = "aspeed,ast27xx-timer";
 			reg = <0x72c100c0 0x40>;
 			interrupts = <19 1>;
-			clocks = <&sysclk0 AST2700_CPU_CLK_APB>;
+			clocks = <&sysclk0 SCU0_CLK_APB>;
 			status = "disabled";
 		};
 
@@ -123,7 +122,7 @@
 			compatible = "aspeed,ast27xx-timer";
 			reg = <0x72c10100 0x40>;
 			interrupts = <20 1>;
-			clocks = <&sysclk0 AST2700_CPU_CLK_APB>;
+			clocks = <&sysclk0 SCU0_CLK_APB>;
 			status = "disabled";
 		};
 
@@ -131,7 +130,7 @@
 			compatible = "aspeed,ast27xx-timer";
 			reg = <0x72c10140 0x40>;
 			interrupts = <21 1>;
-			clocks = <&sysclk0 AST2700_CPU_CLK_APB>;
+			clocks = <&sysclk0 SCU0_CLK_APB>;
 			status = "disabled";
 		};
 
@@ -139,7 +138,7 @@
 			compatible = "aspeed,ast27xx-timer";
 			reg = <0x72c10180 0x40>;
 			interrupts = <22 1>;
-			clocks = <&sysclk0 AST2700_CPU_CLK_APB>;
+			clocks = <&sysclk0 SCU0_CLK_APB>;
 			status = "disabled";
 		};
 
@@ -147,7 +146,7 @@
 			compatible = "aspeed,ast27xx-timer";
 			reg = <0x72c101c0 0x40>;
 			interrupts = <23 1>;
-			clocks = <&sysclk0 AST2700_CPU_CLK_APB>;
+			clocks = <&sysclk0 SCU0_CLK_APB>;
 			status = "disabled";
 		};
 
@@ -155,7 +154,7 @@
 			compatible = "ns16550";
 			reg = <0x72c1a000 0x1000>;
 			interrupts = <8 0>;
-			clocks = <&sysclk0 AST2700_CPU_CLK_GATE_UART4CLK>;
+			clocks = <&sysclk0 SCU0_CLK_GATE_UART4CLK>;
 			status = "disabled";
 			reg-shift = <2>;
 		};
@@ -173,16 +172,15 @@
 			reg = <0x74c02000 0x1000>;
 			#address-cells = <1>;
 			#size-cells = <1>;
+			ranges;
 
-			sysrst1: reset-controller@200 {
+			sysrst1: reset-controller {
 				compatible = "aspeed,ast27xx-reset";
-				reg = <0x200 0x40>;
 				#reset-cells = <1>;
 			};
 
-			sysclk1: system-clock@240 {
-				compatible = "aspeed,ast27xx-io-clock";
-				reg = <0x240 0x1c0>;
+			sysclk1: system-clock {
+				compatible = "aspeed,ast27xx-scu1-clock";
 				#clock-cells = <1>;
 			};
 		};
@@ -201,7 +199,7 @@
 			reg = <0x74c33500 0x100>;
 			interrupt-parent = <&intc4>;
 			interrupts = <12 1>;
-			clocks = <&sysclk1 AST2700_IO_CLK_GATE_UART6CLK>;
+			clocks = <&sysclk1 SCU1_CLK_GATE_UART6CLK>;
 			resets = <&sysrst1 ASPEED_RESET_UART6>;
 			status = "disabled";
 			reg-shift = <2>;
