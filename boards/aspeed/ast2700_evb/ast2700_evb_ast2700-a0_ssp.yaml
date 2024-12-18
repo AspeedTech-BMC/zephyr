@@ -1,6 +1,6 @@
 # Copyright (c) 2023 Aspeed Technology Inc.
 # SPDX-License-Identifier: Apache-2.0
-identifier: ast2700_evb_ast2700-a0_ssp
+identifier: ast2700_evb/ast2700-a0/ssp
 name: Aspeed AST2700-A0 SSP on Evaluation Board
 type: mcu
 arch: arm
