@@ -193,7 +193,10 @@ static const struct ecdsa_config ecdsa_aspeed_config = {
 	.sbase = DT_REG_ADDR_BY_IDX(DT_NODELABEL(ecdsa), 1),
 };
 
-DEVICE_DT_INST_DEFINE(0, ecdsa_init, NULL,
-		      NULL, &ecdsa_aspeed_config,
-		      POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEVICE,
-		      (void *)&ecdsa_funcs);
+#define ASPEED_ECDSA_INIT(inst)								\
+	DEVICE_DT_INST_DEFINE(inst, ecdsa_init, NULL,					\
+			      NULL, &ecdsa_aspeed_config,				\
+			      POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEVICE,		\
+			      (void *)&ecdsa_funcs);
+
+DT_INST_FOREACH_STATUS_OKAY(ASPEED_ECDSA_INIT)

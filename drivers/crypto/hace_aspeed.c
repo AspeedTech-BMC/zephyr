@@ -802,6 +802,9 @@ static struct crypto_driver_api crypto_funcs = {
 	.query_hw_caps = aspeed_hace_query_caps,
 };
 
-DEVICE_DT_INST_DEFINE(0, hace_init, NULL, &hace_drv_state, &hace_config,
-		      POST_KERNEL, CONFIG_CRYPTO_INIT_PRIORITY,
-		      (void *)&crypto_funcs);
+#define ASPEED_HACE_INIT(inst)								\
+	DEVICE_DT_INST_DEFINE(inst, hace_init, NULL, &hace_drv_state, &hace_config,	\
+			      POST_KERNEL, CONFIG_CRYPTO_INIT_PRIORITY,			\
+			      (void *)&crypto_funcs);
+
+DT_INST_FOREACH_STATUS_OKAY(ASPEED_HACE_INIT)

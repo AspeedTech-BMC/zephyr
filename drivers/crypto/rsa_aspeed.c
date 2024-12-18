@@ -181,7 +181,10 @@ static const struct rsa_config rsa_aspeed_config = {
 	.clk_id = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(0, clk_id),
 };
 
-DEVICE_DT_INST_DEFINE(0, rsa_init, NULL,
-		      NULL, &rsa_aspeed_config,
-		      POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEVICE,
-		      (void *)&rsa_funcs);
+#define ASPEED_RSA_INIT(inst)								\
+	DEVICE_DT_INST_DEFINE(inst, rsa_init, NULL,					\
+			      NULL, &rsa_aspeed_config,					\
+			      POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEVICE,		\
+			      (void *)&rsa_funcs);
+
+DT_INST_FOREACH_STATUS_OKAY(ASPEED_RSA_INIT)
