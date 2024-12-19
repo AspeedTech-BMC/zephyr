@@ -781,6 +781,7 @@
 			interrupts = <INTR_I2C0 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			xfer-mode = "DMA";
+			i2c-version = "AST10x0";
 			multi-master = <1>;
 			smbus-timeout = <1>;
 			manual-high-count = <0>;
@@ -800,6 +801,7 @@
 			interrupts = <INTR_I2C1 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			xfer-mode = "DMA";
+			i2c-version = "AST10x0";
 			multi-master = <1>;
 			smbus-timeout = <1>;
 			manual-high-count = <0>;
@@ -819,6 +821,7 @@
 			interrupts = <INTR_I2C2 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			xfer-mode = "DMA";
+			i2c-version = "AST10x0";
 			multi-master = <1>;
 			smbus-timeout = <1>;
 			manual-high-count = <0>;
@@ -838,6 +841,7 @@
 			interrupts = <INTR_I2C3 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			xfer-mode = "DMA";
+			i2c-version = "AST10x0";
 			multi-master = <1>;
 			smbus-timeout = <1>;
 			manual-high-count = <0>;
@@ -857,6 +861,7 @@
 			interrupts = <INTR_I2C4 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			xfer-mode = "DMA";
+			i2c-version = "AST10x0";
 			multi-master = <1>;
 			smbus-timeout = <1>;
 			manual-high-count = <0>;
@@ -876,6 +881,7 @@
 			interrupts = <INTR_I2C5 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			xfer-mode = "DMA";
+			i2c-version = "AST10x0";
 			multi-master = <1>;
 			smbus-timeout = <1>;
 			manual-high-count = <0>;
@@ -895,6 +901,7 @@
 			interrupts = <INTR_I2C6 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			xfer-mode = "DMA";
+			i2c-version = "AST10x0";
 			multi-master = <1>;
 			smbus-timeout = <1>;
 			manual-high-count = <0>;
@@ -914,6 +921,7 @@
 			interrupts = <INTR_I2C7 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			xfer-mode = "DMA";
+			i2c-version = "AST10x0";
 			multi-master = <1>;
 			smbus-timeout = <1>;
 			manual-high-count = <0>;
@@ -933,6 +941,7 @@
 			interrupts = <INTR_I2C8 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			xfer-mode = "DMA";
+			i2c-version = "AST10x0";
 			multi-master = <1>;
 			smbus-timeout = <1>;
 			manual-high-count = <0>;
@@ -952,6 +961,7 @@
 			interrupts = <INTR_I2C9 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			xfer-mode = "DMA";
+			i2c-version = "AST10x0";
 			multi-master = <1>;
 			smbus-timeout = <1>;
 			manual-high-count = <0>;
@@ -971,6 +981,7 @@
 			interrupts = <INTR_I2C10 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			xfer-mode = "DMA";
+			i2c-version = "AST10x0";
 			multi-master = <1>;
 			smbus-timeout = <1>;
 			manual-high-count = <0>;
@@ -990,6 +1001,7 @@
 			interrupts = <INTR_I2C11 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			xfer-mode = "DMA";
+			i2c-version = "AST10x0";
 			multi-master = <1>;
 			smbus-timeout = <1>;
 			manual-high-count = <0>;
@@ -1009,6 +1021,7 @@
 			interrupts = <INTR_I2C12 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			xfer-mode = "DMA";
+			i2c-version = "AST10x0";
 			multi-master = <1>;
 			smbus-timeout = <1>;
 			manual-high-count = <0>;
@@ -1028,6 +1041,7 @@
 			interrupts = <INTR_I2C13 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			xfer-mode = "DMA";
+			i2c-version = "AST10x0";
 			multi-master = <1>;
 			smbus-timeout = <1>;
 			manual-high-count = <0>;

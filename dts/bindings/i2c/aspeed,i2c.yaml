@@ -29,6 +29,17 @@ properties:
     description: |
       i2c transfer type. Default value is DMA.
 
+  i2c-version:
+    type: string
+    required: true
+    enum:
+        - "AST10x0"
+        - "AST2600"
+        - "AST2700"
+        - "AST2700A0"
+    description: |
+      i2c version.
+
   multi-master:
     type: int
     required: true
