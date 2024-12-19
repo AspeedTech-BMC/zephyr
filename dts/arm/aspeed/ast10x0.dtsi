@@ -784,9 +784,6 @@
 			i2c-version = "AST10x0";
 			multi-master = <1>;
 			smbus-timeout = <1>;
-			manual-high-count = <0>;
-			manual-low-count = <0>;
-			manual-sda-delay = <0>;
 			pinctrl-0 = <pinctrl_i2c0_default>;
 			pinctrl-names = "default";
 			status = "disabled";
@@ -804,9 +801,6 @@
 			i2c-version = "AST10x0";
 			multi-master = <1>;
 			smbus-timeout = <1>;
-			manual-high-count = <0>;
-			manual-low-count = <0>;
-			manual-sda-delay = <0>;
 			pinctrl-0 = <pinctrl_i2c1_default>;
 			pinctrl-names = "default";
 			status = "disabled";
@@ -824,9 +818,6 @@
 			i2c-version = "AST10x0";
 			multi-master = <1>;
 			smbus-timeout = <1>;
-			manual-high-count = <0>;
-			manual-low-count = <0>;
-			manual-sda-delay = <0>;
 			pinctrl-0 = <pinctrl_i2c2_default>;
 			pinctrl-names = "default";
 			status = "disabled";
@@ -844,9 +835,6 @@
 			i2c-version = "AST10x0";
 			multi-master = <1>;
 			smbus-timeout = <1>;
-			manual-high-count = <0>;
-			manual-low-count = <0>;
-			manual-sda-delay = <0>;
 			pinctrl-0 = <pinctrl_i2c3_default>;
 			pinctrl-names = "default";
 			status = "disabled";
@@ -864,9 +852,6 @@
 			i2c-version = "AST10x0";
 			multi-master = <1>;
 			smbus-timeout = <1>;
-			manual-high-count = <0>;
-			manual-low-count = <0>;
-			manual-sda-delay = <0>;
 			pinctrl-0 = <pinctrl_i2c4_default>;
 			pinctrl-names = "default";
 			status = "disabled";
@@ -884,9 +869,6 @@
 			i2c-version = "AST10x0";
 			multi-master = <1>;
 			smbus-timeout = <1>;
-			manual-high-count = <0>;
-			manual-low-count = <0>;
-			manual-sda-delay = <0>;
 			pinctrl-0 = <pinctrl_i2c5_default>;
 			pinctrl-names = "default";
 			status = "disabled";
@@ -904,9 +886,6 @@
 			i2c-version = "AST10x0";
 			multi-master = <1>;
 			smbus-timeout = <1>;
-			manual-high-count = <0>;
-			manual-low-count = <0>;
-			manual-sda-delay = <0>;
 			pinctrl-0 = <pinctrl_i2c6_default>;
 			pinctrl-names = "default";
 			status = "disabled";
@@ -924,9 +903,6 @@
 			i2c-version = "AST10x0";
 			multi-master = <1>;
 			smbus-timeout = <1>;
-			manual-high-count = <0>;
-			manual-low-count = <0>;
-			manual-sda-delay = <0>;
 			pinctrl-0 = <pinctrl_i2c7_default>;
 			pinctrl-names = "default";
 			status = "disabled";
@@ -944,9 +920,6 @@
 			i2c-version = "AST10x0";
 			multi-master = <1>;
 			smbus-timeout = <1>;
-			manual-high-count = <0>;
-			manual-low-count = <0>;
-			manual-sda-delay = <0>;
 			pinctrl-0 = <pinctrl_i2c8_default>;
 			pinctrl-names = "default";
 			status = "disabled";
@@ -964,9 +937,6 @@
 			i2c-version = "AST10x0";
 			multi-master = <1>;
 			smbus-timeout = <1>;
-			manual-high-count = <0>;
-			manual-low-count = <0>;
-			manual-sda-delay = <0>;
 			pinctrl-0 = <pinctrl_i2c9_default>;
 			pinctrl-names = "default";
 			status = "disabled";
@@ -984,9 +954,6 @@
 			i2c-version = "AST10x0";
 			multi-master = <1>;
 			smbus-timeout = <1>;
-			manual-high-count = <0>;
-			manual-low-count = <0>;
-			manual-sda-delay = <0>;
 			pinctrl-0 = <pinctrl_i2c10_default>;
 			pinctrl-names = "default";
 			status = "disabled";
@@ -1004,9 +971,6 @@
 			i2c-version = "AST10x0";
 			multi-master = <1>;
 			smbus-timeout = <1>;
-			manual-high-count = <0>;
-			manual-low-count = <0>;
-			manual-sda-delay = <0>;
 			pinctrl-0 = <pinctrl_i2c11_default>;
 			pinctrl-names = "default";
 			status = "disabled";
@@ -1024,9 +988,6 @@
 			i2c-version = "AST10x0";
 			multi-master = <1>;
 			smbus-timeout = <1>;
-			manual-high-count = <0>;
-			manual-low-count = <0>;
-			manual-sda-delay = <0>;
 			pinctrl-0 = <pinctrl_i2c12_default>;
 			pinctrl-names = "default";
 			status = "disabled";
@@ -1044,9 +1005,6 @@
 			i2c-version = "AST10x0";
 			multi-master = <1>;
 			smbus-timeout = <1>;
-			manual-high-count = <0>;
-			manual-low-count = <0>;
-			manual-sda-delay = <0>;
 			pinctrl-0 = <pinctrl_i2c13_default>;
 			pinctrl-names = "default";
 			status = "disabled";
