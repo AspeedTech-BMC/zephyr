@@ -271,6 +271,13 @@ enum xfer_mode {
 	DMA_MODE,
 };
 
+enum i2c_version {
+	AST10x0,
+	AST2600,
+	AST2700,
+	AST2700A0,
+};
+
 struct i2c_aspeed_config {
 	uint32_t global_reg;
 	uintptr_t base;
@@ -291,6 +298,7 @@ struct i2c_aspeed_config {
 	void (*irq_config_func)(const struct device *dev);
 	uint32_t clk_src;
 	enum xfer_mode mode;
+	enum i2c_version version;
 };
 
 struct i2c_aspeed_data {
@@ -1841,8 +1849,6 @@ static int i2c_aspeed_init(const struct device *dev)
 	/* check chip id*/
 	len = hwinfo_get_device_id((uint8_t *)&rev_id, sizeof(rev_id));
 	clock_control_get_rate(config->clock_dev, config->clk_id, &config->clk_src);
-	LOG_INF("clk src %d, multi-master %d, xfer mode %d",
-		config->clk_src, config->multi_master, config->mode);
 
 	bitrate_cfg = i2c_map_dt_bitrate(config->bitrate);
 	error = pinctrl_apply_state(config->pcfg, PINCTRL_STATE_DEFAULT);
@@ -1850,6 +1856,11 @@ static int i2c_aspeed_init(const struct device *dev)
 	if (error) {
 		return error;
 	}
+
+	/* i2c bus information */
+	LOG_INF("bus %d, clk %dKHz, multi-master %d, xfer mode %d, version %d",
+		i2c_count, data->bus_frequency / 1000,
+		config->multi_master, config->mode, config->version);
 
 	config->irq_config_func(dev);
 
@@ -1952,6 +1963,7 @@ static const struct i2c_driver_api i2c_aspeed_driver_api = {
 		.irq_config_func = i2c_aspeed_config_func_##n,                                     \
 		.bitrate = DT_INST_PROP(n, clock_frequency),                                       \
 		.mode = DT_ENUM_IDX(DT_INST(n, DT_DRV_COMPAT), xfer_mode),                         \
+		.version = DT_ENUM_IDX(DT_INST(n, DT_DRV_COMPAT), i2c_version),                    \
 		.multi_master = DT_INST_PROP(n, multi_master),                                     \
 		.smbus_timeout = DT_INST_PROP(n, smbus_timeout),                                   \
 		.manual_scl_high = DT_INST_PROP(n, manual_high_count),                             \
