@@ -55,7 +55,7 @@ properties:
 
   manual-high-count:
     type: int
-    required: true
+    required: false
     description: |
       manual i2c clock high part. Default value is 0.
       The value should be 0x3 ~ 0xF.0 means that this
@@ -63,7 +63,7 @@ properties:
 
   manual-low-count:
     type: int
-    required: true
+    required: false
     description: |
       manual i2c clock low part. Default value is 0.
       The value should be 0x3 ~ 0xF. 0 means that this
@@ -71,7 +71,7 @@ properties:
 
   manual-sda-delay:
     type: int
-    required: true
+    required: false
     description: |
       manual i2c sda dealy. Default value is 0.
       The value should be 0x0 ~ 0x3. 0 means that this
