@@ -51,6 +51,8 @@ LOG_MODULE_REGISTER(i2c_aspeed);
 #define AST_I2CC_SDA_DRIVE_1T_EN	BIT(8)
 #define AST_I2CC_M_SDA_DRIVE_1T_EN	BIT(7)
 #define AST_I2CC_M_HIGH_SPEED_EN	BIT(6)
+#define AST_I2CC_MANUAL_DEBOUNCE		(0x3 << 4)
+
 /* reserver 5 : 2 */
 #define AST_I2CC_SLAVE_EN		BIT(1)
 #define AST_I2CC_MASTER_EN		BIT(0)
@@ -239,6 +241,12 @@ LOG_MODULE_REGISTER(i2c_aspeed);
 #define AST_I2C_GET_TX_DMA_LEN(x)	((x) & 0x1fff)
 #define AST_I2C_GET_RX_DMA_LEN(x)	(((x) >> 16) & 0x1fff)
 
+/* 0x9c : Slave Device Address Register */
+#define AST_I2C_MISC2		0x9c
+#define AST_DEBOUNCE_MASK		0xff
+#define AST_DEBOUNCE_LEVEL_MAX	0x20
+#define AST_DEBOUNCE_LEVEL_MIN		0x2
+
 #define AST2600ID 0x05000000
 
 /* i2c timeout counter: use base clk4 1Mhz
@@ -290,6 +298,7 @@ struct i2c_aspeed_config {
 	uint8_t manual_scl_high;
 	uint8_t manual_scl_low;
 	uint8_t manual_sda_hold;
+	uint8_t debounce_level;
 	int smbus_alert;
 	const struct device *clock_dev;
 	const clock_control_subsys_t clk_id;
@@ -564,11 +573,34 @@ static int i2c_aspeed_configure(const struct device *dev,
 		return -EINVAL;
 	}
 
-	/*I2C Reset*/
+	/*Reset*/
 	sys_write32(0, i2c_base + AST_I2CC_FUN_CTRL);
 
+	/*Multi master*/
 	if (!config->multi_master) {
 		fun_ctrl |= AST_I2CC_MULTI_MASTER_DIS;
+	}
+
+	/*Debounce*/
+	if (config->version != AST10x0 || config->version != AST2600) {
+		uint32_t debounce_level = 0;
+		uint32_t config_debounce_level = 0;
+
+		/* AST2700 support manual debounce setting */
+		if (config->version == AST2700) {
+			if (config->debounce_level > AST_DEBOUNCE_LEVEL_MAX)
+				config_debounce_level = AST_DEBOUNCE_LEVEL_MAX;
+			if (config->debounce_level < AST_DEBOUNCE_LEVEL_MIN)
+				config_debounce_level = AST_DEBOUNCE_LEVEL_MIN;
+		}
+
+		debounce_level = sys_read32(i2c_base + AST_I2C_MISC2)
+		& ~(AST_DEBOUNCE_MASK);
+
+		debounce_level |= config_debounce_level;
+		sys_write32(debounce_level, i2c_base + AST_I2C_MISC2);
+
+		fun_ctrl |= AST_I2CC_MANUAL_DEBOUNCE;
 	}
 
 	/*Enable Master Mode*/
@@ -1969,6 +2001,7 @@ static const struct i2c_driver_api i2c_aspeed_driver_api = {
 		.manual_scl_high = DT_INST_PROP(n, manual_high_count),                             \
 		.manual_scl_low = DT_INST_PROP(n, manual_low_count),                               \
 		.manual_sda_hold = DT_INST_PROP(n, manual_sda_delay),                              \
+		.debounce_level = DT_PROP_OR(n, debounce_level, 0x2),                              \
 		.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(n)),                                \
 		.clk_id = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(n, clk_id),                  \
 		.pcfg = PINCTRL_DT_INST_DEV_CONFIG_GET(n),                                         \
