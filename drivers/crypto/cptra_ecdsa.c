@@ -198,8 +198,10 @@ static const struct cptra_ecdsa_config cptra_ecdsa_config = {
 
 static struct cptra_ecdsa_drv_state cptra_ecdsa_state;
 
-DEVICE_DT_INST_DEFINE(0, cptra_ecdsa_init, NULL,
-		      &cptra_ecdsa_state, &cptra_ecdsa_config,
-		      POST_KERNEL, CONFIG_CRYPTO_INIT_PRIORITY,
+#define ASPEED_CPTRA_ECDSA_INIT(inst)					\
+DEVICE_DT_INST_DEFINE(inst, cptra_ecdsa_init, NULL,			\
+		      &cptra_ecdsa_state, &cptra_ecdsa_config,		\
+		      POST_KERNEL, CONFIG_CRYPTO_INIT_PRIORITY,		\
 		      (void *)&ecdsa_funcs);
 
+DT_INST_FOREACH_STATUS_OKAY(ASPEED_CPTRA_ECDSA_INIT)

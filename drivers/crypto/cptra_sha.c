@@ -226,7 +226,10 @@ static const struct cptra_sha_config cptra_sha_config = {
 
 static struct cptra_sha_drv_state cptra_sha_state;
 
-DEVICE_DT_INST_DEFINE(0, cptra_sha_init, NULL,
-		      &cptra_sha_state, &cptra_sha_config,
-		      POST_KERNEL, CONFIG_CRYPTO_INIT_PRIORITY,
+#define ASPEED_CPTRA_SHA_INIT(inst)					\
+DEVICE_DT_INST_DEFINE(inst, cptra_sha_init, NULL,			\
+		      &cptra_sha_state, &cptra_sha_config,		\
+		      POST_KERNEL, CONFIG_CRYPTO_INIT_PRIORITY,		\
 		      (void *)&hash_funcs);
+
+DT_INST_FOREACH_STATUS_OKAY(ASPEED_CPTRA_SHA_INIT)
