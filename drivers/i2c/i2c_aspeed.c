@@ -110,6 +110,8 @@ LOG_MODULE_REGISTER(i2c_aspeed);
 /* 0x14 : I2CM Master Interrupt Status Register   : WC */
 #define AST_I2CM_ISR			0x14
 
+#define AST_I2CM_ISR_MASK  GENMASK(31, 21)
+#define AST_I2CM_SW_ISR_MASK  GENMASK(31, 19)
 #define AST_I2CM_PKT_TIMEOUT		BIT(18)
 #define AST_I2CM_PKT_ERROR		BIT(17)
 #define AST_I2CM_PKT_DONE		BIT(16)
@@ -1200,11 +1202,15 @@ void do_i2cm_rx(const struct device *dev)
 
 int aspeed_i2c_master_irq(const struct device *dev)
 {
+	const struct i2c_aspeed_config *config = DEV_CFG(dev);
 	struct i2c_aspeed_data *data = DEV_DATA(dev);
 	uint32_t i2c_base = DEV_BASE(dev);
 	uint32_t sts = sys_read32(i2c_base + AST_I2CM_ISR);
 
 	LOG_DBG("M sts %x\n", sts);
+
+	/* mask un-used isr bits */
+	sts &= ~AST_I2CM_ISR_MASK;
 
 	if (!data->alert_enable) {
 		sts &= ~AST_I2CM_SMBUS_ALT;
@@ -1259,15 +1265,26 @@ int aspeed_i2c_master_irq(const struct device *dev)
 	if (data->cmd_err) {
 		LOG_DBG("received error interrupt: 0x%02x\n",
 			sts);
-		sys_write32(AST_I2CM_PKT_DONE | AST_I2CM_PKT_ERROR,
-			i2c_base + AST_I2CM_ISR);
+		if (config->version == AST2700) {
+			sys_write32(sts, i2c_base + AST_I2CM_ISR);
+		} else {
+			sys_write32(AST_I2CM_PKT_DONE | AST_I2CM_PKT_ERROR,
+				i2c_base + AST_I2CM_ISR);
+		}
 		k_sem_give(&data->sync_sem);
 		return 1;
 	}
 
 	if (AST_I2CM_PKT_DONE & sts) {
-		sts &= ~AST_I2CM_PKT_DONE;
-		sys_write32(AST_I2CM_PKT_DONE, i2c_base + AST_I2CM_ISR);
+		if (config->version == AST2700) {
+			sys_write32(sts, i2c_base + AST_I2CM_ISR);
+		} else {
+			sys_write32(AST_I2CM_PKT_DONE | AST_I2CM_PKT_ERROR,
+				i2c_base + AST_I2CM_ISR);
+		}
+
+		sts &= ~(AST_I2CM_PKT_DONE | AST_I2CM_SW_ISR_MASK);
+
 		switch (sts) {
 		case AST_I2CM_PKT_ERROR | AST_I2CM_TX_NAK:	/* a0 fix for issue */
 		/*LOG_DBG("a0 workaround for M TX NAK [%x]\n",*/
