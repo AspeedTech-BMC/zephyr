@@ -126,6 +126,11 @@
 			status = "disabled";
 		};
 
+		cptra_ifc: cptra-ifc@14c70000 {
+			compatible = "aspeed,cptra-ifc";
+			reg = <0x14c70000 0x1000>;
+		};
+
 		fmc: spi@14000000 {
 			compatible = "aspeed,spi-controller";
 			reg = <0x14000000 0xc4>, <0x20000000 0x10000000>;
