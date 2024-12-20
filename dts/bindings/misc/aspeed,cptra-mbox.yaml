@@ -14,3 +14,7 @@ properties:
   aspeed,scu:
     description: Handle to the ASPEED system control unit (SCU).
     type: phandle
+
+  aspeed,cptra-ifc:
+    description: Handle to the ASPEED Caliptra SoC IFC.
+    type: phandle

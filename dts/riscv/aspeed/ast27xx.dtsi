@@ -104,9 +104,9 @@
 
 		cptra_mbox: cptra-mbox@14c60000 {
 			compatible = "aspeed,cptra-mbox";
-			reg = <0x14c60000 0x1000
-			       0x14c70000 0x1000>;
+			reg = <0x14c60000 0x1000>;
 			aspeed,scu = <&syscon1>;
+			aspeed,cptra-ifc = <&cptra_ifc>;
 
 			cptra_ecdsa: cptra-ecdsa {
 				compatible = "aspeed,cptra-ecdsa";

@@ -18,7 +18,7 @@ LOG_MODULE_REGISTER(cptra_update, CONFIG_LOG_DEFAULT_LEVEL);
 /* Device config */
 struct cptra_update_config {
 	uintptr_t base;			/* Caliptra mbox base address */
-	uintptr_t soc_ifc_base;		/* Caliptra soc ifc base address */
+	uintptr_t ifc_base;		/* Caliptra soc ifc base address */
 	uintptr_t scu_base;		/* SCU1 base address */
 };
 
@@ -33,33 +33,6 @@ struct cptra_update_drv_state {
 #define DEV_DATA(dev)				\
 	((struct cptra_update_drv_state *)	\
 	(dev)->data)
-
-#define SCU1_RNG_DATA			0x14c020f4
-
-/* TODO: use sys_rand() instead */
-static uint32_t rand(void)
-{
-	return sys_read32(SCU1_RNG_DATA);
-}
-
-static void trng_req_service(const struct device *dev)
-{
-	struct cptra_update_config *cfg = DEV_CFG(dev);
-	int count = 0;
-	uint32_t ts;
-
-	while (count < CPTRA_TRNG_REQ_LOOP_CNT) {
-		ts = sys_read32(cfg->soc_ifc_base + CPTRA_TRNG_STS);
-
-		if ((ts & CPTRA_TRNG_STS_DATA_REQ)) {
-			for (int i = 0; i < CPTRA_MAX_TRNG; ++i)
-				sys_write32(rand(), cfg->soc_ifc_base + CPTRA_TRNG_DATA(i));
-			sys_write32(CPTRA_TRNG_STS_DATA_WR_DONE, cfg->soc_ifc_base +
-				    CPTRA_TRNG_STS);
-		}
-		count++;
-	}
-}
 
 static int aspeed_cptra_fw_upload(const struct device *dev, uint8_t *buf, int size)
 {
@@ -124,17 +97,12 @@ static int aspeed_cptra_fw_upload(const struct device *dev, uint8_t *buf, int si
 
 	/* check update reset occurs */
 	while (count++ < CPTRA_UPD_RST_TIMEOUT) {
-		sts = sys_read32(cfg->soc_ifc_base + CPTRA_RST_REASON);
+		sts = sys_read32(cfg->ifc_base + CPTRA_RST_REASON);
 		if (sts & CPTRA_FW_UPD_RESET) {
 			LOG_INF("FW Update Reset !!!");
 			break;
 		}
 	}
-
-	/* service cptra trng request
-	 * TODO: enable interrupt mode to service
-	 */
-	trng_req_service(dev);
 
 	/* poll for result */
 	while (1) {
@@ -172,13 +140,16 @@ static struct cptra_driver_api cptra_funcs = {
 
 static const struct cptra_update_config cptra_update_config = {
 	.base = DT_REG_ADDR_BY_IDX(DT_PARENT(DT_DRV_INST(0)), 0),
-	.soc_ifc_base = DT_REG_ADDR_BY_IDX(DT_PARENT(DT_DRV_INST(0)), 1),
+	.ifc_base = DT_REG_ADDR(DT_PHANDLE_BY_IDX(DT_PARENT(DT_DRV_INST(0)), aspeed_cptra_ifc, 0)),
 	.scu_base = DT_REG_ADDR(DT_PHANDLE_BY_IDX(DT_PARENT(DT_DRV_INST(0)), aspeed_scu, 0)),
 };
 
 static struct cptra_update_drv_state cptra_update_state;
 
-DEVICE_DT_INST_DEFINE(0, cptra_update_init, NULL,
-		      &cptra_update_state, &cptra_update_config,
-		      POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEVICE,
+#define ASPEED_CPTRA_UPD_INIT(inst)						\
+	DEVICE_DT_INST_DEFINE(inst, cptra_update_init, NULL,			\
+		      &cptra_update_state, &cptra_update_config,		\
+		      POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEVICE,		\
 		      &cptra_funcs);
+
+DT_INST_FOREACH_STATUS_OKAY(ASPEED_CPTRA_UPD_INIT)
