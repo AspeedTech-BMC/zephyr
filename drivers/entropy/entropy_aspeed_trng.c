@@ -4,15 +4,15 @@
  * Copyright (c) 2023 ASPEED Technology Inc.
  */
 
+#include <stdbool.h>
 #define DT_DRV_COMPAT aspeed_hwrng
 
 #include <zephyr/drivers/entropy.h>
 #include <zephyr/kernel.h>
 #include <string.h>
 
-#define LOG_LEVEL		0
 #include <zephyr/logging/log.h>
-LOG_MODULE_REGISTER(hwrng_aspeed);
+LOG_MODULE_REGISTER(hwrng_aspeed, CONFIG_LOG_DEFAULT_LEVEL);
 
 #define AST_RNG_CTRL		0x0
 #define AST_RNG_DATA		0x4
@@ -26,7 +26,9 @@ struct aspeed_entropy_config {
 	uint32_t	base;
 };
 
-static bool rng_init;
+struct aspeed_entropy_data {
+	bool		rng_init;
+};
 
 static int entropy_aspeed_trng_read(const struct device *dev,
 				    uint8_t *output, size_t len)
@@ -78,9 +80,8 @@ static int entropy_aspeed_trng_read(const struct device *dev,
 static int entropy_aspeed_trng_init(const struct device *dev)
 {
 	const struct aspeed_entropy_config *config = dev->config;
+	struct aspeed_entropy_data *data = dev->data;
 	uint32_t ctrl;
-
-	LOG_DBG("%s: trng_base:0x%x\n", __func__, config->base);
 
 	/* Enable RNG */
 	ctrl = sys_read32(config->base + AST_RNG_CTRL);
@@ -90,7 +91,7 @@ static int entropy_aspeed_trng_init(const struct device *dev)
 	ctrl |= RNG_SET_MODE(RNG_MODE);
 
 	sys_write32(ctrl, config->base + AST_RNG_CTRL);
-	rng_init = true;
+	data->rng_init = true;
 
 	return 0;
 }
@@ -99,9 +100,10 @@ static int entropy_aspeed_trng_get_entropy(const struct device *dev,
 					   uint8_t *buffer,
 					   uint16_t length)
 {
+	struct aspeed_entropy_data *data = dev->data;
 	int ret;
 
-	if (!rng_init)
+	if (!data->rng_init)
 		entropy_aspeed_trng_init(dev);
 
 	ret = entropy_aspeed_trng_read(dev, buffer, length);
@@ -113,10 +115,11 @@ static int entropy_aspeed_trng_get_entropy_isr(const struct device *dev,
 					       uint8_t *buf,
 					       uint16_t len, uint32_t flags)
 {
+	struct aspeed_entropy_data *data = dev->data;
 	size_t count;
 	int ret;
 
-	if (!rng_init)
+	if (!data->rng_init)
 		entropy_aspeed_trng_init(dev);
 
 	if ((flags & ENTROPY_BUSYWAIT) == 0U) {
@@ -147,8 +150,11 @@ static const struct aspeed_entropy_config entropy_aspeed_config = {
 	.base = (uint32_t)DT_INST_REG_ADDR(0),
 };
 
-DEVICE_DT_INST_DEFINE(0,
-			entropy_aspeed_trng_init, NULL, NULL,
-			&entropy_aspeed_config,
-			PRE_KERNEL_1, CONFIG_KERNEL_INIT_PRIORITY_DEVICE,
-			&entropy_aspeed_trng_api_funcs);
+static struct aspeed_entropy_data entropy_aspeed_data;
+
+DEVICE_DT_INST_DEFINE(0, entropy_aspeed_trng_init, NULL,
+		      &entropy_aspeed_data,
+		      &entropy_aspeed_config,
+		      PRE_KERNEL_1,
+		      CONFIG_KERNEL_INIT_PRIORITY_DEVICE,
+		      &entropy_aspeed_trng_api_funcs);
