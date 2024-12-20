@@ -70,3 +70,9 @@ config CPTRA_UPDATE
 	depends on SOC_AST2700_BOOTMCU
 	help
 	  This option enables the Caliptra update driver for ASPEED SoCs.
+
+config CPTRA_IFC
+	bool "ASPEED CPTRA IFC driver"
+	depends on SOC_AST2700_BOOTMCU
+	help
+	  This option enables the Caliptra ifc driver for ASPEED SoCs.
