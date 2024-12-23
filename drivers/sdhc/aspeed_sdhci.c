@@ -273,6 +273,9 @@ LOG_MODULE_REGISTER(aspeed_sdhci, CONFIG_SDHC_LOG_LEVEL);
 
 struct aspeed_sdhci_config {
 	uintptr_t base;
+	const struct device *clock_dev;
+	const clock_control_subsys_t clk_id;
+	const struct reset_dt_spec reset;
 };
 
 static int sdhci_set_voltage(const struct device *dev, enum sd_voltage signal_voltage)
@@ -1053,6 +1056,7 @@ static int sdhci_get_host_props(const struct device *dev,
 
 static int aspeed_sdhci_init(const struct device *dev)
 {
+	const struct aspeed_sdhci_config *config = dev->config;
 	int ret;
 
 	LOG_DBG("%s\n", __func__);
@@ -1061,17 +1065,17 @@ static int aspeed_sdhci_init(const struct device *dev)
 
 	LOG_DBG("%s, reg_base=0x%x", __func__, (uint32_t)(struct sdhci_reg *)DEVICE_MMIO_GET(dev));
 
-	/* enable clock */
-	sys_write32(0x8000000, 0x12c02244);
-
 	/* assert reset */
-	sys_write32(0x20000, 0x12c02200);
-	k_busy_wait(20);
+	ret = reset_line_assert_dt(&config->reset);
+	__ASSERT_NO_MSG(ret == 0);
+
+	/* enable clock */
+	ret = clock_control_on(config->clock_dev, config->clk_id);
+	__ASSERT_NO_MSG(ret == 0);
 
 	/* release reset */
-	sys_write32(0x20000, 0x12c02204);
-	k_busy_wait(200);
-
+	ret = reset_line_deassert_dt(&config->reset);
+	__ASSERT_NO_MSG(ret == 0);
 	ret = sdhci_reset(dev);
 
 	return ret;
@@ -1175,6 +1179,9 @@ static struct sdhc_driver_api aspeed_sdhci_api = {
 									\
 	static const struct aspeed_sdhci_config aspeed_sdhci_config_##inst = {\
 		.base = DT_INST_REG_ADDR(inst) + 0x100,			\
+		.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(inst)),	 \
+		.clk_id = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(inst, clk_id),	\
+		.reset = RESET_DT_SPEC_INST_GET(inst), \
 	};								\
 	static struct sdhci_data aspeed_sdhci_data_##inst = {		\
 	};								\

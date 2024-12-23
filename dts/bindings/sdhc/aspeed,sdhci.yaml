@@ -1,0 +1,10 @@
+# Copyright (c) 2023 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+description: ASPEED SDHC Controller node
+
+compatible: "aspeed,sdhci"
+
+include: [sdhc.yaml, base.yaml, reset-device.yaml]
+
+
