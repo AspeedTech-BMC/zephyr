@@ -1691,8 +1691,10 @@ static int aspeed_i3c_init(const struct device *dev)
 
 	/* Disable the SIR for target mode */
 	data->sir_allowed_by_sw = false;
-	k_work_init(&data->target_work, aspeed_i3c_target_worker);
-	k_work_init(&data->target_rst_work, aspeed_i3c_target_rst_worker);
+	if (!data->target_work.handler)
+		k_work_init(&data->target_work, aspeed_i3c_target_worker);
+	if (!data->target_rst_work.handler)
+		k_work_init(&data->target_rst_work, aspeed_i3c_target_rst_worker);
 
 	/* Init hardware queues */
 	reg = FIELD_PREP(QUEUE_THLD_CTRL_IBI_DAT, MAX_IBI_FRAG_SIZE >> 2);
