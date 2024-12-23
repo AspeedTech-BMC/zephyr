@@ -2172,8 +2172,10 @@ static int i3c_aspeed_init(const struct device *dev)
 			}
 		}
 		obj->sir_allowed_by_sw = 0;
-		k_work_init(&obj->work, sir_allowed_worker);
-		k_work_init(&obj->rst_work, i3c_rst_worker);
+		if (!obj->work.handler)
+			k_work_init(&obj->work, sir_allowed_worker);
+		if (!obj->rst_work.handler)
+			k_work_init(&obj->rst_work, i3c_rst_worker);
 	} else {
 		union i3c_device_addr_s reg;
 
