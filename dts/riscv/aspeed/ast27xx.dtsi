@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <zephyr/dt-bindings/clock/ast27xx_clock.h>
+#include <zephyr/dt-bindings/reset/ast27xx_reset.h>
 / {
 	#address-cells = <0x01>;
 	#size-cells = <0x01>;
@@ -57,6 +59,8 @@
 		emmc: sdhci@12090000 {
 			compatible = "aspeed,sdhci";
 			reg = <0x12090000 0x200>;
+			clocks = <&sysclk0 SCU0_CLK_GATE_EMMCCLK>;
+			resets = <&sysrst0 SCU0_RESET_EMMC>;
 			status = "disabled";
 		};
 	};
@@ -135,6 +139,7 @@
 			compatible = "aspeed,spi-controller";
 			reg = <0x14000000 0xc4>, <0x20000000 0x10000000>;
 			reg-names = "ctrl_reg", "spi_mmap";
+			clocks = <&sysclk1 SCU1_CLK_AHB>;
 			num-cs = <1>;
 			ctrl-type = "bspi";
 			#address-cells = <1>;

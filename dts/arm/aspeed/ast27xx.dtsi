@@ -216,7 +216,7 @@
 			interrupt-parent = <&soc1_intc4>;
 			interrupts = <12 1>;
 			clocks = <&sysclk1 SCU1_CLK_GATE_UART6CLK>;
-			resets = <&sysrst1 ASPEED_RESET_UART6>;
+			resets = <&sysrst1 SCU1_RESET_UART6>;
 			status = "disabled";
 			reg-shift = <2>;
 		};
