@@ -5,7 +5,9 @@
  */
 
 #include <zephyr/dt-bindings/clock/ast27xx_clock.h>
+#include <zephyr/dt-bindings/misc/ast27xx_prictrl.h>
 #include <zephyr/dt-bindings/reset/ast27xx_reset.h>
+
 / {
 	#address-cells = <0x01>;
 	#size-cells = <0x01>;
@@ -61,6 +63,19 @@
 			reg = <0x12090000 0x200>;
 			clocks = <&sysclk0 SCU0_CLK_GATE_EMMCCLK>;
 			resets = <&sysrst0 SCU0_RESET_EMMC>;
+			status = "disabled";
+		};
+
+		prictrl: prictrl@12140000{
+			compatible = "aspeed,prictrl";
+			reg = <0x12140000 0x400>, <0x14100000 0x400>;
+			reg-names = "cpu", "io";
+			client-list-1 = <IO_S_I_PRICTRL C_S_C_PRICTRL IO_S_WDT_7>;
+			client-list-2 = <>;
+			client-list-3 = <>;
+			client-list-4 = <>;
+			client-list-5 = <>;
+			client-list-6 = <>;
 			status = "disabled";
 		};
 	};

@@ -82,3 +82,12 @@ config CPTRA_MBOX
 	depends on SOC_AST2700_BOOTMCU
 	help
 	  This option enables the Caliptra mbox driver for ASPEED SoCs.
+
+config PRIVILEGE_CTRL
+	bool "Enable ASPEED privilege control"
+	default y
+	depends on SOC_SERIES_AST27XX && DT_HAS_ASPEED_PRICTRL_ENABLED
+	help
+	  This option enables privilege control for aspeed
+	  board isolation.
+

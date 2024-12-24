@@ -1,0 +1,46 @@
+# Copyright (c) 2021, ASPEED
+# SPDX-License-Identifier: Apache-2.0
+
+description: ASPEED Privilege Control Driver
+
+compatible: "aspeed,prictrl"
+
+include: base.yaml
+
+properties:
+  client-list-1:
+    type: array
+    required: false
+    description: |
+      Program boot mcu accesses client list.
+
+  client-list-2:
+    type: array
+    required: false
+    description: |
+      Program ssp accesses client list.
+
+  client-list-3:
+    type: array
+    required: false
+    description: |
+      Program tsp accesses client list.
+
+  client-list-4:
+    type: array
+    required: false
+    description: |
+      Program secure ca35 accesses client list.
+
+  client-list-5:
+    type: array
+    required: false
+    description: |
+      Program non-secure ca35 accesses client list.
+
+  client-list-6:
+    type: array
+    required: false
+    description: |
+      Program dp mcu accesses client list.
+
