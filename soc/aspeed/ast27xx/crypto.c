@@ -4,10 +4,15 @@
  * SPDX-License-Identifier: MIT
  */
 
-#if !defined(MBEDTLS_CONFIG_FILE)
+#if defined(CONFIG_MBEDTLS)
+#if !defined(CONFIG_MBEDTLS_CFG_FILE)
 #include "mbedtls/config.h"
 #else
-#include MBEDTLS_CONFIG_FILE
+#include CONFIG_MBEDTLS_CFG_FILE
+#endif
+
+#include "mbedtls/ecdsa.h"
+#include "mbedtls/error.h"
 #endif
 
 #ifdef CONFIG_ECDSA_ASPEED
@@ -22,12 +27,11 @@
 #include <zephyr/crypto/crypto.h>
 #include <zephyr/crypto/hash.h>
 #include <crypto.h>
-#include "mbedtls/ecdsa.h"
-#include "mbedtls/error.h"
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(crypto, CONFIG_CRYPTO_LOG_LEVEL);
 
+#if defined(MBEDTLS_ECDSA_C)
 static void dump_pubkey(const char *title, mbedtls_ecdsa_context *key)
 {
 	unsigned char buf[300];
@@ -117,6 +121,7 @@ static int mbedtls_ecdsa_test(const struct ecdsa_testvec *tv, int tv_size)
 
 	return 0;
 }
+#endif
 
 #ifdef CONFIG_CPTRA_ECDSA
 static int hw_gen_sha(uint8_t *msg, int msg_size, uint8_t *d, int d_size)
@@ -218,12 +223,13 @@ static int ecdsa_selftest(void)
 {
 	int ret;
 
+#if defined(CONFIG_MBEDTLS)
 	ret = mbedtls_ecdsa_test(secp384r1_tv, ARRAY_SIZE(secp384r1_tv));
 	if (ret) {
 		LOG_ERR("mbedtls ecdsa test failed");
 		return ret;
 	}
-
+#endif
 	ret = hw_ecdsa_test(secp384r1_tv, ARRAY_SIZE(secp384r1_tv));
 	if (ret) {
 		LOG_ERR("hw ecdsa test failed");
