@@ -162,7 +162,7 @@ LOG_MODULE_REGISTER(i2c_aspeed);
 /* 0x24 : I2CS Slave Interrupt Status Register */
 #define AST_I2CS_ISR			0x24
 
-#define AST_I2CS_ADDR_INDICAT_MASK      (3 << 30)
+#define AST_I2CS_ADDR_INDICATE_MASK      (3 << 30)
 #define AST_I2CS_SLAVE_PENDING		BIT(29)
 
 #define AST_I2CS_Wait_TX_DMA		BIT(25)
@@ -172,6 +172,7 @@ LOG_MODULE_REGISTER(i2c_aspeed);
 #define AST_I2CS_ADDR2_NAK		BIT(21)
 #define AST_I2CS_ADDR1_NAK		BIT(20)
 
+#define AST_I2CS_ADDR_NAK_MASK	(3 << 20)
 #define AST_I2CS_ADDR_MASK		(3 << 18)
 #define AST_I2CS_PKT_ERROR		BIT(17)
 #define AST_I2CS_PKT_DONE		BIT(16)
@@ -1892,20 +1893,16 @@ int aspeed_i2c_slave_irq(const struct device *dev)
 
 	LOG_DBG("S irq sts %x, bus %x\n", sts, sys_read32(i2c_base + AST_I2CC_STS_AND_BUFF));
 
+	/*
+	 * Slave interrupt coming after Master package done
+	 * So need handle master first.
+	 */
+	if (sys_read32(i2c_base + AST_I2CS_ISR) & AST_I2CM_PKT_DONE)
+		return 0;
+
 	/* remove unnessary status flags */
-	sts &= ~(AST_I2CS_ADDR_INDICAT_MASK | AST_I2CS_SLAVE_PENDING);
-
-	if (AST_I2CS_ADDR1_NAK & sts) {
-		sts &= ~AST_I2CS_ADDR1_NAK;
-	}
-
-	if (AST_I2CS_ADDR2_NAK & sts) {
-		sts &= ~AST_I2CS_ADDR2_NAK;
-	}
-
-	if (AST_I2CS_ADDR3_NAK & sts) {
-		sts &= ~AST_I2CS_ADDR3_NAK;
-	}
+	sts &= ~(AST_I2CS_ADDR_INDICATE_MASK | AST_I2CS_SLAVE_PENDING |
+		AST_I2CS_ADDR_NAK_MASK);
 
 	if (AST_I2CS_ADDR_MASK & sts) {
 		sts &= ~AST_I2CS_ADDR_MASK;
