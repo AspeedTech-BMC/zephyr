@@ -20,6 +20,7 @@ LOG_MODULE_REGISTER(i2c_aspeed);
 
 #include "i2c-priv.h"
 
+#define I2C_SLAVE_COUNT			3
 #define I2C_SLAVE_BUF_SIZE		256
 
 #define I2C_BUF_SIZE			0x20
@@ -163,6 +164,7 @@ LOG_MODULE_REGISTER(i2c_aspeed);
 #define AST_I2CS_ADDR1_NAK		BIT(20)
 
 #define AST_I2CS_ADDR_MASK		(3 << 18)
+#define AST_I2CS_GET_SLAVE(x)	(((x) >> 30) & 0x3)
 #define AST_I2CS_PKT_ERROR		BIT(17)
 #define AST_I2CS_PKT_DONE		BIT(16)
 #define AST_I2CS_INACTIVE_TO		BIT(15)
@@ -302,7 +304,7 @@ struct i2c_aspeed_data {
 
 	int master_xfer_cnt;            /* total xfer count */
 
-	bool slave_attached;
+	uint8_t slave_attached;	/* slave attached count */
 
 	int xfer_complete;
 
@@ -323,7 +325,7 @@ struct i2c_aspeed_data {
 
 #ifdef CONFIG_I2C_SLAVE
 	unsigned char slave_dma_buf[I2C_SLAVE_BUF_SIZE];
-	struct i2c_slave_config *slave_cfg;
+	struct i2c_slave_config *slave_cfg[I2C_SLAVE_COUNT];
 #endif
 };
 
@@ -1173,12 +1175,13 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 {
 	struct i2c_aspeed_config *config = DEV_CFG(dev);
 	struct i2c_aspeed_data *data = DEV_DATA(dev);
-	const struct i2c_slave_callbacks *slave_cb = data->slave_cfg->callbacks;
+	struct i2c_slave_config *slave_cfg = data->slave_cfg[AST_I2CS_GET_SLAVE(sts)];
+	const struct i2c_slave_callbacks *slave_cb = slave_cfg->callbacks;
 	uint32_t cmd = 0;
 	uint32_t i, slave_rx_len = 0;
 	uint8_t byte_data = 0, value = 0;
 
-	sts &= ~(AST_I2CS_PKT_DONE | AST_I2CS_PKT_ERROR);
+	sts &= ~(AST_I2CS_PKT_DONE | AST_I2CS_PKT_ERROR | AST_I2CS_ADDR_INDICAT_MASK);
 
 	switch (sts) {
 	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE | AST_I2CS_Wait_RX_DMA: /* re-trigger? */
@@ -1188,7 +1191,7 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 		} else {
 			LOG_DBG("S : Sw|D - Issue rx dma\n");
 			if (slave_cb->write_requested) {
-				slave_cb->write_requested(data->slave_cfg);
+				slave_cb->write_requested(slave_cfg);
 			}
 			/* When RX_DONE occur, then checked DMA RX length */
 			if (sts & AST_I2CS_RX_DONE) {
@@ -1203,7 +1206,7 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 					if (slave_cb->write_received) {
 						for (i = 0; i < slave_rx_len; i++) {
 							LOG_DBG("[%02x] ", data->slave_dma_buf[i]);
-							slave_cb->write_received(data->slave_cfg
+							slave_cb->write_received(slave_cfg
 							, data->slave_dma_buf[i]);
 						}
 					}
@@ -1214,7 +1217,7 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 
 					if (slave_cb->write_received) {
 						for (i = 0; i < slave_rx_len ; i++) {
-							slave_cb->write_received(data->slave_cfg
+							slave_cb->write_received(slave_cfg
 							, sys_read8(config->buf_base + i));
 						}
 					}
@@ -1223,8 +1226,7 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 					(sys_read32(i2c_base + AST_I2CC_STS_AND_BUFF));
 					LOG_DBG("[%02x]", byte_data);
 					if (slave_cb->write_received) {
-						slave_cb->write_received
-						(data->slave_cfg, byte_data);
+						slave_cb->write_received(slave_cfg, byte_data);
 					}
 				}
 			}
@@ -1235,7 +1237,7 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 	case AST_I2CS_SLAVE_MATCH | AST_I2CS_STOP:
 		LOG_DBG("S : Sw | P\n");
 		if (slave_cb->stop) {
-			slave_cb->stop(data->slave_cfg);
+			slave_cb->stop(slave_cfg);
 		}
 		sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE)
 		, i2c_base + AST_I2CS_DMA_LEN);
@@ -1260,7 +1262,7 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 
 		if (sts & AST_I2CS_SLAVE_MATCH) {
 			if (slave_cb->write_requested) {
-				slave_cb->write_requested(data->slave_cfg);
+				slave_cb->write_requested(slave_cfg);
 			}
 		}
 
@@ -1275,8 +1277,7 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 			if (slave_cb->write_received) {
 				for (i = 0; i < slave_rx_len; i++) {
 					LOG_DBG("[%02x] ", data->slave_dma_buf[i]);
-					slave_cb->write_received(data->slave_cfg
-					, data->slave_dma_buf[i]);
+					slave_cb->write_received(slave_cfg, data->slave_dma_buf[i]);
 				}
 			}
 
@@ -1289,8 +1290,8 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 
 			if (slave_cb->write_received) {
 				for (i = 0; i < slave_rx_len ; i++) {
-					slave_cb->write_received(data->slave_cfg
-					, sys_read8(config->buf_base + i));
+					slave_cb->write_received(slave_cfg,
+					sys_read8(config->buf_base + i));
 				}
 			}
 		} else {
@@ -1298,12 +1299,12 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 			AST_I2CC_GET_RX_BUFF(sys_read32(i2c_base + AST_I2CC_STS_AND_BUFF));
 			LOG_DBG("[%02x]", byte_data);
 			if (slave_cb->write_received) {
-				slave_cb->write_received(data->slave_cfg, byte_data);
+				slave_cb->write_received(slave_cfg, byte_data);
 			}
 		}
 		if (sts & AST_I2CS_STOP) {
 			if (slave_cb->stop) {
-				slave_cb->stop(data->slave_cfg);
+				slave_cb->stop(slave_cfg);
 			}
 		}
 		aspeed_i2c_trigger_package_cmd(i2c_base, config->mode);
@@ -1320,7 +1321,7 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 
 		if (sts & AST_I2CS_SLAVE_MATCH) {
 			if (slave_cb->write_requested) {
-				slave_cb->write_requested(data->slave_cfg);
+				slave_cb->write_requested(slave_cfg);
 			}
 		}
 
@@ -1335,14 +1336,12 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 				, 1, K_CACHE_INVD);
 				LOG_DBG("rx [%02x]", data->slave_dma_buf[i]);
 				if (slave_cb->write_received) {
-					slave_cb->write_received(data->slave_cfg
-					, data->slave_dma_buf[i]);
+					slave_cb->write_received(slave_cfg, data->slave_dma_buf[i]);
 				}
 			}
 
 			if (slave_cb->read_requested) {
-				slave_cb->read_requested(data->slave_cfg
-				, &data->slave_dma_buf[0]);
+				slave_cb->read_requested(slave_cfg, &data->slave_dma_buf[0]);
 			}
 			LOG_DBG("tx [%02x]", data->slave_dma_buf[0]);
 
@@ -1356,13 +1355,13 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 			for (i = 0; i < slave_rx_len; i++) {
 				LOG_DBG("rx [%02x]", (sys_read32(config->buf_base + i) & 0xFF));
 				if (slave_cb->write_received) {
-					slave_cb->write_received(data->slave_cfg
+					slave_cb->write_received(slave_cfg
 					, (sys_read32(config->buf_base + i) & 0xFF));
 				}
 			}
 
 			if (slave_cb->read_requested) {
-				slave_cb->read_requested(data->slave_cfg, &value);
+				slave_cb->read_requested(slave_cfg, &value);
 			}
 			LOG_DBG("tx [%02x]", value);
 
@@ -1375,10 +1374,10 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 			byte_data = AST_I2CC_GET_RX_BUFF(sys_read32(i2c_base + AST_I2CC_STS_AND_BUFF));
 			LOG_DBG("rx : [%02x]", byte_data);
 			if (slave_cb->write_received) {
-				slave_cb->write_received(data->slave_cfg, byte_data);
+				slave_cb->write_received(slave_cfg, byte_data);
 			}
 			if (slave_cb->read_requested) {
-				slave_cb->read_requested(data->slave_cfg, &byte_data);
+				slave_cb->read_requested(slave_cfg, &byte_data);
 			}
 			LOG_DBG("tx : [%02x]", byte_data);
 			sys_write32(byte_data, i2c_base + AST_I2CC_STS_AND_BUFF);
@@ -1394,8 +1393,7 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 		if (config->mode == DMA_MODE) {
 			cmd |= AST_I2CS_TX_DMA_EN;
 			if (slave_cb->read_requested) {
-				slave_cb->read_requested(data->slave_cfg
-				, &data->slave_dma_buf[0]);
+				slave_cb->read_requested(slave_cfg, &data->slave_dma_buf[0]);
 			}
 			/*currently i2c slave framework only support one byte request.*/
 			LOG_DBG("tx: [%x]\n", data->slave_dma_buf[0]);
@@ -1404,7 +1402,7 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 		} else if (config->mode == BUFF_MODE) {
 			cmd |= AST_I2CS_TX_BUFF_EN;
 			if (slave_cb->read_requested) {
-				slave_cb->read_requested(data->slave_cfg, &byte_data);
+				slave_cb->read_requested(slave_cfg, &byte_data);
 			}
 			/* currently i2c slave framework only support one byte request. */
 			LOG_DBG("tx : [%02x]", byte_data);
@@ -1415,7 +1413,7 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 			cmd &= ~AST_I2CS_PKT_MODE_EN;
 			cmd |= AST_I2CS_TX_CMD;
 			if (slave_cb->read_requested) {
-				slave_cb->read_requested(data->slave_cfg, &byte_data);
+				slave_cb->read_requested(slave_cfg, &byte_data);
 			}
 			sys_write32(byte_data, i2c_base + AST_I2CC_STS_AND_BUFF);
 		}
@@ -1429,8 +1427,7 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 		if (config->mode == DMA_MODE) {
 			cmd |= AST_I2CS_TX_DMA_EN;
 			if (slave_cb->read_processed) {
-				slave_cb->read_processed(data->slave_cfg
-				, &data->slave_dma_buf[0]);
+				slave_cb->read_processed(slave_cfg, &data->slave_dma_buf[0]);
 			}
 			LOG_DBG("rx : [%02x]", data->slave_dma_buf[0]);
 			sys_write32(AST_I2CS_SET_TX_DMA_LEN(1)
@@ -1438,7 +1435,7 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 		} else if (config->mode == BUFF_MODE) {
 			cmd |= AST_I2CS_TX_BUFF_EN;
 			if (slave_cb->read_processed) {
-				slave_cb->read_processed(data->slave_cfg, &value);
+				slave_cb->read_processed(slave_cfg, &value);
 			}
 			LOG_DBG("tx: [%02x]\n", value);
 			sys_write8(value, config->buf_base);
@@ -1448,7 +1445,7 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 			cmd &= ~AST_I2CS_PKT_MODE_EN;
 			cmd |= AST_I2CS_TX_CMD;
 			if (slave_cb->read_processed) {
-				slave_cb->read_processed(data->slave_cfg, &byte_data);
+				slave_cb->read_processed(slave_cfg, &byte_data);
 			}
 			LOG_DBG("tx: [%02x]\n", byte_data);
 			sys_write32(byte_data, i2c_base + AST_I2CC_STS_AND_BUFF);
@@ -1460,7 +1457,7 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 		LOG_DBG("S: AST_I2CS_TX_NAK\n");
 		cmd = SLAVE_TRIGGER_CMD;
 		if (slave_cb->stop) {
-			slave_cb->stop(data->slave_cfg);
+			slave_cb->stop(slave_cfg);
 		}
 		if (config->mode == DMA_MODE) {
 			cmd |= AST_I2CS_RX_DMA_EN;
@@ -1478,7 +1475,7 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 
 	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE:
 		if (slave_cb->write_requested) {
-			slave_cb->write_requested(data->slave_cfg);
+			slave_cb->write_requested(slave_cfg);
 		}
 		break;
 
@@ -1486,7 +1483,7 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 		/*it just tx complete*/
 		LOG_DBG("S: AST_I2CS_STOP\n");
 		if (slave_cb->stop) {
-			slave_cb->stop(data->slave_cfg);
+			slave_cb->stop(slave_cfg);
 		}
 		break;
 
@@ -1504,9 +1501,12 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 void aspeed_i2c_slave_byte_irq(const struct device *dev, uint32_t i2c_base, uint32_t sts)
 {
 	struct i2c_aspeed_data *data = DEV_DATA(dev);
-	const struct i2c_slave_callbacks *slave_cb = data->slave_cfg->callbacks;
+	struct i2c_slave_config *slave_cfg = data->slave_cfg[AST_I2CS_GET_SLAVE(sts)];
+	const struct i2c_slave_callbacks *slave_cb = slave_cfg->callbacks;
 	uint32_t cmd = AST_I2CS_ACTIVE_ALL;
 	uint8_t byte_data = 0;
+
+	sts &= ~(AST_I2CS_ADDR_INDICAT_MASK);
 
 	LOG_DBG("byte mode\n");
 
@@ -1522,7 +1522,7 @@ void aspeed_i2c_slave_byte_irq(const struct device *dev, uint32_t i2c_base, uint
 		/* If the record address is still same, it is re-start case. */
 		if ((slave_cb->write_requested) &&
 		byte_data != data->slave_addr_last) {
-			slave_cb->write_requested(data->slave_cfg);
+			slave_cb->write_requested(slave_cfg);
 		}
 
 		data->slave_addr_last = byte_data;
@@ -1536,7 +1536,7 @@ void aspeed_i2c_slave_byte_irq(const struct device *dev, uint32_t i2c_base, uint
 		LOG_DBG("S : Sw|D|P\n");
 
 		if (slave_cb->stop) {
-			slave_cb->stop(data->slave_cfg);
+			slave_cb->stop(slave_cfg);
 		}
 
 		/* clear record slave address */
@@ -1549,7 +1549,7 @@ void aspeed_i2c_slave_byte_irq(const struct device *dev, uint32_t i2c_base, uint
 
 		/* address set request */
 		if (slave_cb->write_requested) {
-			slave_cb->write_requested(data->slave_cfg);
+			slave_cb->write_requested(slave_cfg);
 		}
 
 		data->slave_addr_last = byte_data;
@@ -1562,7 +1562,7 @@ void aspeed_i2c_slave_byte_irq(const struct device *dev, uint32_t i2c_base, uint
 		LOG_DBG("rx [%x]", byte_data);
 
 		if (slave_cb->write_received) {
-			slave_cb->write_received(data->slave_cfg
+			slave_cb->write_received(slave_cfg
 			, byte_data);
 		}
 		break;
@@ -1574,7 +1574,7 @@ void aspeed_i2c_slave_byte_irq(const struct device *dev, uint32_t i2c_base, uint
 		LOG_DBG("addr : [%02x]", byte_data);
 
 		if (slave_cb->read_requested) {
-			slave_cb->read_requested(data->slave_cfg
+			slave_cb->read_requested(slave_cfg
 			, &byte_data);
 		}
 
@@ -1586,7 +1586,7 @@ void aspeed_i2c_slave_byte_irq(const struct device *dev, uint32_t i2c_base, uint
 		LOG_DBG("S : D\n");
 
 		if (slave_cb->read_processed) {
-			slave_cb->read_processed(data->slave_cfg
+			slave_cb->read_processed(slave_cfg
 			, &byte_data);
 		}
 
@@ -1599,7 +1599,7 @@ void aspeed_i2c_slave_byte_irq(const struct device *dev, uint32_t i2c_base, uint
 	case AST_I2CS_SLAVE_MATCH | AST_I2CS_Wait_RX_DMA | AST_I2CS_STOP | AST_I2CS_TX_NAK:
 		LOG_DBG("S : P\n");
 		if (slave_cb->stop) {
-			slave_cb->stop(data->slave_cfg);
+			slave_cb->stop(slave_cfg);
 		}
 
 		/* clear record slave address */
@@ -1635,10 +1635,8 @@ int aspeed_i2c_slave_irq(const struct device *dev)
 		return 0;
 	}
 
-	LOG_DBG("S irq sts %x, bus %x\n", sts, sys_read32(i2c_base + AST_I2CC_STS_AND_BUFF));
-
 	/* remove unnessary status flags */
-	sts &= ~(AST_I2CS_ADDR_INDICAT_MASK | AST_I2CS_SLAVE_PENDING);
+	sts &= ~(AST_I2CS_SLAVE_PENDING);
 
 	if (AST_I2CS_ADDR1_NAK & sts) {
 		sts &= ~AST_I2CS_ADDR1_NAK;
@@ -1713,7 +1711,7 @@ static int i2c_aspeed_init(const struct device *dev)
 	uint32_t i2c_count = ((i2c_base & 0xFFF) / 0x80) - 1;
 	uint32_t i2c_base_offset = I2C_BUF_BASE + (i2c_count * 0x20);
 	uint32_t bitrate_cfg;
-	int error;
+	int error, i;
 	uint64_t rev_id;
 	size_t len;
 
@@ -1733,6 +1731,11 @@ static int i2c_aspeed_init(const struct device *dev)
 
 	/* byte mode check re-start */
 	data->slave_addr_last = 0xFF;
+
+	/* initial slave attach function pointer */
+	data->slave_attached = 0;
+	for (i = 0; i < I2C_SLAVE_COUNT; i++)
+		data->slave_cfg[i] = NULL;
 
 	/* check chip id*/
 	len = hwinfo_get_device_id((uint8_t *)&rev_id, sizeof(rev_id));
@@ -1758,24 +1761,57 @@ static int i2c_aspeed_slave_register(const struct device *dev,
 {
 	struct i2c_aspeed_config *i2c_config = DEV_CFG(dev);
 	struct i2c_aspeed_data *data = dev->data;
+	uint8_t i = 0;
 	uint32_t i2c_base = DEV_BASE(dev);
 	uint32_t cmd = AST_I2CS_ACTIVE_ALL | AST_I2CS_PKT_MODE_EN;
-	uint32_t slave_en = (sys_read32(i2c_base + AST_I2CC_FUN_CTRL)
-		& AST_I2CC_SLAVE_EN);
+	uint32_t slave_addr = sys_read32(i2c_base + AST_I2CS_ADDR_CTRL);
 
-	/* check slave config exist or has attached ever */
-	if ((!config) || (data->slave_attached) || slave_en) {
+	/* check slave config input */
+	if (!config || data->slave_attached == 3) {
 		return -EINVAL;
 	}
 
-	data->slave_cfg = config;
+	/* check duplicate address */
+	for (i = 0; i < I2C_SLAVE_COUNT; i++) {
+		if (data->slave_cfg[i]) {
+			if (data->slave_cfg[i]->address == config->address) {
+				LOG_DBG("duplicate address [%x] on %d\n", config->address, i);
+				return -EINVAL;
+			}
+		}
+	}
 
-	LOG_DBG(" [%x]\n", config->address);
+	/* assign the slave into slave array */
+	for (i = 0; i < I2C_SLAVE_COUNT; i++) {
+		if (!data->slave_cfg[i]) {
 
-	/* set slave addr */
-	sys_write32(config->address |
-		    (sys_read32(i2c_base + AST_I2CS_ADDR_CTRL) & ~AST_I2CS_ADDR1_MASK),
-		    i2c_base + AST_I2CS_ADDR_CTRL);
+			data->slave_cfg[i] = config;
+			LOG_DBG("reg [%x] into %d\n", config->address, i);
+
+			/* set slave addr by index */
+			switch (i) {
+			case 0:
+				slave_addr &= ~(AST_I2CS_ADDR1_MASK);
+				slave_addr |= (AST_I2CS_ADDR1(config->address)
+				| AST_I2CS_ADDR1_ENABLE);
+				break;
+			case 1:
+				slave_addr &= ~(AST_I2CS_ADDR2_MASK);
+				slave_addr |= (AST_I2CS_ADDR2(config->address)
+				| AST_I2CS_ADDR2_ENABLE);
+				break;
+			case 2:
+				slave_addr &= ~(AST_I2CS_ADDR3_MASK);
+				slave_addr |= (AST_I2CS_ADDR3(config->address)
+				| AST_I2CS_ADDR3_ENABLE);
+				break;
+			}
+
+			LOG_DBG("reg slave_addr [%x]\n", slave_addr);
+			sys_write32(slave_addr, i2c_base + AST_I2CS_ADDR_CTRL);
+			break;
+		}
+	}
 
 	/* trigger rx buffer */
 	if (i2c_config->mode == DMA_MODE) {
@@ -1797,7 +1833,7 @@ static int i2c_aspeed_slave_register(const struct device *dev,
 	sys_write32(AST_I2CC_SLAVE_EN | sys_read32(i2c_base + AST_I2CC_FUN_CTRL)
 	, i2c_base + AST_I2CC_FUN_CTRL);
 
-	data->slave_attached = true;
+	data->slave_attached++;
 
 	return 0;
 }
@@ -1807,20 +1843,54 @@ static int i2c_aspeed_slave_unregister(const struct device *dev,
 {
 	struct i2c_aspeed_data *data = dev->data;
 	uint32_t i2c_base = DEV_BASE(dev);
+	uint32_t slave_addr = sys_read32(i2c_base + AST_I2CS_ADDR_CTRL);
+	bool slave_found = false;
+	uint8_t i;
 
-	if (!data->slave_attached) {
+	/* check slave config input */
+	if (!config || data->slave_attached == 0) {
 		return -EINVAL;
 	}
 
-	LOG_DBG(" [%x]\n", config->address);
+	/* remove the slave call back from array */
+	for (i = 0; i < I2C_SLAVE_COUNT; i++) {
+		if (data->slave_cfg[i]) {
+			if (data->slave_cfg[i]->address == config->address) {
+				slave_found = true;
+				data->slave_cfg[i] = NULL;
+				LOG_DBG("remove [%x] from %d\n", config->address, i);
 
-	/*Turn off slave mode.*/
-	sys_write32(~AST_I2CC_SLAVE_EN & sys_read32(i2c_base + AST_I2CC_FUN_CTRL)
-	, i2c_base + AST_I2CC_FUN_CTRL);
-	sys_write32(sys_read32(i2c_base + AST_I2CS_ADDR_CTRL) & ~AST_I2CS_ADDR1_MASK
-	, i2c_base + AST_I2CS_ADDR_CTRL);
+				/* remove slave addr by index */
+				switch (i) {
+				case 0:
+					slave_addr &= ~(AST_I2CS_ADDR1_MASK);
+					break;
+				case 1:
+					slave_addr &= ~(AST_I2CS_ADDR2_MASK);
+					break;
+				case 2:
+					slave_addr &= ~(AST_I2CS_ADDR3_MASK);
+					break;
+				}
 
-	data->slave_attached = false;
+				LOG_DBG("un-reg slave_addr [%x]\n", slave_addr);
+				sys_write32(slave_addr, i2c_base + AST_I2CS_ADDR_CTRL);
+				break;
+			}
+		}
+	}
+
+	/* don't find slave to remove */
+	if (!slave_found)
+		return -EINVAL;
+
+	data->slave_attached--;
+
+	if (data->slave_attached == 0x0) {
+		/*Turn off slave mode.*/
+		sys_write32(~AST_I2CC_SLAVE_EN & sys_read32(i2c_base + AST_I2CC_FUN_CTRL)
+		, i2c_base + AST_I2CC_FUN_CTRL);
+	}
 
 	return 0;
 }
