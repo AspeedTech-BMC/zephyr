@@ -1,10 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0-only */
 /*
- *  Aspeed Interrupt Controller.
+ * Copyright (c) 2023 ASPEED Technology Inc.
  *
- *  Copyright (C) 2023 ASPEED Technology Inc.
+ * SPDX-License-Identifier: Apache-2.0
  */
-
 #define DT_DRV_COMPAT aspeed_ast2700_intc_ic
 
 #include <zephyr/drivers/interrupt_controller/intc_aspeed.h>
