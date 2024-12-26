@@ -13,6 +13,7 @@
 #include <zephyr/drivers/clock_control.h>
 #include <zephyr/drivers/reset.h>
 #include <zephyr/drivers/cptra.h>
+#include <zephyr/drivers/misc/aspeed/cptra_mbox.h>
 #include "ecdsa_aspeed_priv.h"
 
 LOG_MODULE_REGISTER(cptra_ecdsa, CONFIG_LOG_DEFAULT_LEVEL);
@@ -36,40 +37,21 @@ struct cptra_ecdsa_drv_state {
 	((struct cptra_ecdsa_drv_state *)	\
 	(dev)->data)
 
-static uint32_t mbox_csum(uint32_t csum, uint8_t *data, uint32_t dlen)
-{
-	uint32_t i;
-
-	if (!data)
-		return csum;
-
-	for (i = 0; i < dlen; ++i)
-		csum -= data[i];
-
-	return csum;
-}
-
 static int cptra_ecdsa_verify_trigger(const struct device *dev,
 				      char *m, char *r, char *s,
 				      char *qx, char *qy)
 {
 	struct cptra_ecdsa_config *cfg = DEV_CFG(dev);
-	struct cptra_mbox_register_s *mbox_register;
-	union cptra_mbox_lock_s mbox_lock;
 	uint32_t cmd, csum;
 	uint32_t sts;
 	uint32_t *p32;
 	int i;
 
-	mbox_register = (struct cptra_mbox_register_s *)cfg->base;
-
-	/* get CPTRA MBOX lock */
-	if (reg_read_poll_timeout(mbox_register, mbox_lock, mbox_lock,
-				  mbox_lock.fields.lock == 0, 10, 1000))
-		return -EBUSY;
+	while (cptra_mbox_lock())
+		;
 
 	/* check MBOX is ready for command */
-	sts = sys_read32(cfg->base + CPTRA_MBOX_STS);
+	sts = cptra_mbox_status();
 	if (FIELD_GET(CPTRA_MBOX_STS_FSM_PS, sts) != CPTRA_MBFSM_RDY_FOR_CMD)
 		return -EACCES;
 
@@ -78,11 +60,11 @@ static int cptra_ecdsa_verify_trigger(const struct device *dev,
 	csum = 0;
 
 	/* calculate checksum */
-	csum = mbox_csum(csum, (uint8_t *)&cmd, sizeof(cmd));
-	csum = mbox_csum(csum, qx, CPTRA_ECDSA_SIG_LEN / 2);
-	csum = mbox_csum(csum, qy, CPTRA_ECDSA_SIG_LEN / 2);
-	csum = mbox_csum(csum, r, CPTRA_ECDSA_SIG_LEN / 2);
-	csum = mbox_csum(csum, s, CPTRA_ECDSA_SIG_LEN / 2);
+	csum = cptra_mbox_csum(csum, (uint8_t *)&cmd, sizeof(cmd));
+	csum = cptra_mbox_csum(csum, qx, CPTRA_ECDSA_SIG_LEN / 2);
+	csum = cptra_mbox_csum(csum, qy, CPTRA_ECDSA_SIG_LEN / 2);
+	csum = cptra_mbox_csum(csum, r, CPTRA_ECDSA_SIG_LEN / 2);
+	csum = cptra_mbox_csum(csum, s, CPTRA_ECDSA_SIG_LEN / 2);
 
 	/* write command, data length */
 	sys_write32(cmd, cfg->base + CPTRA_MBOX_CMD);
@@ -108,13 +90,14 @@ static int cptra_ecdsa_verify_trigger(const struct device *dev,
 
 	/* poll for result */
 	while (1) {
-		sts = FIELD_GET(CPTRA_MBOX_STS_PS, sys_read32(cfg->base + CPTRA_MBOX_STS));
+		sts = FIELD_GET(CPTRA_MBOX_STS_PS, cptra_mbox_status());
 		if (sts != CPTRA_MBSTS_CMD_BUSY)
 			break;
 	}
 
 	/* unlock mbox */
-	sys_write32(0x0, cfg->base + CPTRA_MBOX_EXEC);
+	while (cptra_mbox_unlock())
+		;
 
 	return (sts == CPTRA_MBSTS_CMD_FAILURE) ? sts : 0;
 }

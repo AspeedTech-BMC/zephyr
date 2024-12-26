@@ -12,6 +12,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/drivers/cptra.h>
+#include <zephyr/drivers/misc/aspeed/cptra_mbox.h>
 
 LOG_MODULE_REGISTER(cptra_update, CONFIG_LOG_DEFAULT_LEVEL);
 
@@ -38,8 +39,6 @@ static int aspeed_cptra_fw_upload(const struct device *dev, uint8_t *buf, int si
 {
 	struct cptra_update_drv_state *state = DEV_DATA(dev);
 	struct cptra_update_config *cfg = DEV_CFG(dev);
-	struct cptra_mbox_register_s *mbox_register;
-	union cptra_mbox_lock_s mbox_lock;
 	uint32_t cmd, csum;
 	uint32_t sts, data;
 	int count = 0;
@@ -59,15 +58,12 @@ static int aspeed_cptra_fw_upload(const struct device *dev, uint8_t *buf, int si
 	}
 
 	state->in_use = true;
-	mbox_register = (struct cptra_mbox_register_s *)cfg->base;
 
-	/* get CPTRA MBOX lock */
-	if (reg_read_poll_timeout(mbox_register, mbox_lock, mbox_lock,
-				  mbox_lock.fields.lock == 0, 10, 1000))
-		return -EBUSY;
+	while (cptra_mbox_lock())
+		;
 
 	/* check MBOX is ready for command */
-	sts = sys_read32(cfg->base + CPTRA_MBOX_STS);
+	sts = cptra_mbox_status();
 	if (FIELD_GET(CPTRA_MBOX_STS_FSM_PS, sts) != CPTRA_MBFSM_RDY_FOR_CMD)
 		return -EACCES;
 
@@ -106,12 +102,14 @@ static int aspeed_cptra_fw_upload(const struct device *dev, uint8_t *buf, int si
 
 	/* poll for result */
 	while (1) {
-		sts = FIELD_GET(CPTRA_MBOX_STS_PS, sys_read32(cfg->base + CPTRA_MBOX_STS));
+		sts = FIELD_GET(CPTRA_MBOX_STS_PS, cptra_mbox_status());
 		if (sts != CPTRA_MBSTS_CMD_BUSY)
 			break;
 	}
 
-	sys_write32(0x0, cfg->base + CPTRA_MBOX_EXEC);
+	while (cptra_mbox_unlock())
+		;
+
 	state->in_use = false;
 
 	return (sts == CPTRA_MBSTS_CMD_COMPLETE) ? 0 : -EIO;

@@ -76,3 +76,9 @@ config CPTRA_IFC
 	depends on SOC_AST2700_BOOTMCU
 	help
 	  This option enables the Caliptra ifc driver for ASPEED SoCs.
+
+config CPTRA_MBOX
+	bool "ASPEED CPTRA MBOX driver"
+	depends on SOC_AST2700_BOOTMCU
+	help
+	  This option enables the Caliptra mbox driver for ASPEED SoCs.
