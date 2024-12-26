@@ -13,18 +13,16 @@
 #include <string.h>
 #include <soc.h>
 
-#if defined(CONFIG_ARM)
-#define SCU1_REG		0x74c02000
-#define WDT_REG			0x74c37000
-#elif defined(CONFIG_RISCV)
-#define SCU1_REG		0x14c02000
-#define WDT_REG			0x14c37000
-#else
-#error "Unsupported ARCH"
-#endif
-
+#define SCU0_REG		DT_REG_ADDR(DT_NODELABEL(syscon0))
+#define SCU1_REG		DT_REG_ADDR(DT_NODELABEL(syscon1))
 #define SCU1_RSTLOG0		(SCU1_REG + 0x050)
 #define   SCU1_RSTLOG0_SRST	BIT(0)
+
+extern char __RAM_NC_start[];
+extern char __RAM_NC_end[];
+
+#if IS_ENABLED(CONFIG_DT_HAS_ASPEED_AST_WATCHDOG_G7_ENABLED)
+#define WDT_REG			DT_REG_ADDR(DT_NODELABEL(wdt0))
 
 #define WDT_DEVS		9
 #define WDT_RSTMASK_1_VAL	0x0203e779
@@ -43,9 +41,6 @@
 #define WDT_SW_RSTMASK3(x)	(WDT_REG + ((x) * 0x80) + 0x3c)
 #define WDT_SW_RSTMASK4(x)	(WDT_REG + ((x) * 0x80) + 0x40)
 #define WDT_SW_RSTMASK5(x)	(WDT_REG + ((x) * 0x80) + 0x44)
-
-extern char __RAM_NC_start[];
-extern char __RAM_NC_end[];
 
 static void soc_wdt_mask_init(void)
 {
@@ -86,6 +81,8 @@ void sys_arch_reboot(int type)
 	sys_write32(0x4755, WDT_REG + 0x8);
 	sys_write32(0x13, WDT_REG + 0xc);
 }
+#endif
+
 
 #if defined(CONFIG_ARM) && defined(CONFIG_PLATFORM_SPECIFIC_INIT)
 void z_arm_platform_init(void)
@@ -95,15 +92,18 @@ void z_arm_platform_init(void)
 
 	sys_cache_instr_enable();
 	sys_cache_data_enable();
-
+#if IS_ENABLED(CONFIG_DT_HAS_ASPEED_AST_WATCHDOG_G7_ENABLED)
 	soc_wdt_mask_init();
+#endif
 }
 #endif
 
 #if defined(CONFIG_RISCV)
 static int soc_init(void)
 {
+#if IS_ENABLED(CONFIG_DT_HAS_ASPEED_AST_WATCHDOG_G7_ENABLED)
 	soc_wdt_mask_init();
+#endif
 	return 0;
 }
 
