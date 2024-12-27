@@ -46,6 +46,10 @@
 	status = "okay";
 };
 
+&cptra_lms {
+	status = "okay";
+};
+
 &cptra_update {
 	status = "okay";
 };
