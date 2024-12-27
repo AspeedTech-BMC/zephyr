@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: Apache-2.0
+
+title: Aspeed CPTRA LMS
+
+description: |
+  This binding gives a representation of the Aspeed CPTRA LMS hardware.
+
+properties:
+  compatible:
+    enum:
+      - aspeed,cptra-lms
+
+  reg:
+    description: Base address and size of the LMS registers.
+    items:
+      - description: Base address
+      - description: Size
+
+  status:
+    type: string
+    description: Indicates the operational status of the device.
+    enum:
+      - okay
+      - disabled
+
+required:
+  - compatible
+  - reg
+  - status
+
+additionalProperties: false

@@ -34,6 +34,12 @@ config CPTRA_SHA
 	help
 	  This option enables the Caliptra SHA driver for ASPEED SoCs.
 
+config CPTRA_LMS
+	bool "ASPEED CPTRA LMS engine driver"
+	depends on SOC_AST2700_BOOTMCU
+	help
+	  This option enables the Caliptra LMS driver for ASPEED SoCs.
+
 config HASH_SHELL
 	bool "Enable Hash Shell"
 	depends on CRYPTO_ASPEED || CPTRA_SHA

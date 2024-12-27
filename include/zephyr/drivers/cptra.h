@@ -34,6 +34,7 @@
 
 /* Mailbox commands */
 #define CPTRA_MBCMD_ECDSA384_SIGNATURE_VERIFY	0x53494756
+#define CPTRA_MBCMD_LMS_SIGNATURE_VERIFY	0x4c4d5356
 #define CPTRA_MBCMD_CALIPTRA_FW_LOAD		0x46574C44
 
 union cptra_mbox_lock_s {
