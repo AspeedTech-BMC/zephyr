@@ -5,11 +5,18 @@
  */
 
 #include <zephyr/drivers/i3c.h>
+#include <zephyr/drivers/i3c/target/i3c_target_mqueue.h>
 #include <zephyr/shell/shell.h>
 #include <stdlib.h>
 #include <string.h>
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/sys/util.h>
+#include <ctype.h>
+#ifdef CONFIG_ARCH_POSIX
+#include <unistd.h>
+#else
+#include <zephyr/posix/unistd.h>
+#endif
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(i3c_shell, CONFIG_LOG_DEFAULT_LEVEL);
@@ -89,6 +96,7 @@ DT_FOREACH_STATUS_OKAY(aspeed_i3c, I3C_CTRL_FN)
 DT_FOREACH_STATUS_OKAY(cdns_i3c, I3C_CTRL_FN)
 DT_FOREACH_STATUS_OKAY(nuvoton_npcx_i3c, I3C_CTRL_FN)
 DT_FOREACH_STATUS_OKAY(nxp_mcux_i3c, I3C_CTRL_FN)
+DT_FOREACH_STATUS_OKAY(i3c_target_mqueue, I3C_CTRL_FN)
 /* zephyr-keep-sorted-stop */
 
 #define I3C_CTRL_LIST_ENTRY(node_id)                                                               \
@@ -105,6 +113,10 @@ const struct i3c_ctrl i3c_list[] = {
 	DT_FOREACH_STATUS_OKAY(nuvoton_npcx_i3c, I3C_CTRL_LIST_ENTRY)
 	DT_FOREACH_STATUS_OKAY(nxp_mcux_i3c, I3C_CTRL_LIST_ENTRY)
 	/* zephyr-keep-sorted-stop */
+};
+
+const struct i3c_ctrl i3c_target_list[] = {
+	DT_FOREACH_STATUS_OKAY(i3c_target_mqueue, I3C_CTRL_LIST_ENTRY)
 };
 
 static int get_bytes_count_for_hex(char *arg)
@@ -1363,6 +1375,84 @@ static int cmd_i3c_hj_request(const struct shell *shell_ctx, size_t argc, char *
 	return ret;
 }
 
+static uint32_t args_to_wdata(char *arg, uint8_t *buf)
+{
+	char *data_ptrs[MAX_I3C_BYTES];
+	char *state;
+	int i = 0, len = 0;
+
+	data_ptrs[i] = strtok_r(arg, ",", &state);
+	while (data_ptrs[i] && i < MAX_I3C_BYTES - 1) {
+		data_ptrs[++i] = strtok_r(NULL, ",", &state);
+	}
+
+	for (len = 0; len < i; len++) {
+		buf[len] = strtoul(data_ptrs[len], NULL, 0);
+	}
+
+	return len;
+}
+
+static uint8_t data_buf[2][MAX_I3C_BYTES];
+
+static int cmd_tmq_xfer(const struct shell *shell_ctx, size_t argc, char **argv)
+{
+#ifdef CONFIG_I3C_TARGET_MQUEUE
+	const struct device *dev;
+	struct getopt_state *state;
+	int c, len, ret;
+
+	dev = device_get_binding(argv[ARGV_DEV]);
+	if (!dev) {
+		shell_error(shell_ctx, "I3C: Device driver %s not found.", argv[ARGV_DEV]);
+		return -ENODEV;
+	}
+
+	while ((c = getopt(argc - 1, &argv[1], "w:r:b:h")) != -1) {
+		state = getopt_state_get();
+		switch (c) {
+		case 'w':
+			len = args_to_wdata(state->optarg, data_buf[0]);
+			i3c_target_mqueue_write(dev, data_buf[0], len);
+			return 0;
+		case 'r':
+			len = strtoul(state->optarg, NULL, 0);
+			ret = i3c_target_mqueue_read(dev, data_buf[0], len);
+			if (ret) {
+				shell_hexdump(shell_ctx, data_buf[0], ret);
+			}
+			return 0;
+		case 'b':
+			const struct i3c_target_driver_api *api =
+				(const struct i3c_target_driver_api *)dev->api;
+			if (strtoul(state->optarg, NULL, 0)) {
+				api->driver_register(dev);
+			} else {
+				api->driver_unregister(dev);
+			}
+			return 0;
+		case 'h':
+			shell_help(shell_ctx);
+			return SHELL_CMD_HELP_PRINTED;
+		case '?':
+			if ((state->optopt == 'r') || (state->optopt == 'w')) {
+				shell_print(shell_ctx, "Option -%c requires an argument.",
+					    state->optopt);
+			} else if (isprint(state->optopt)) {
+				shell_print(shell_ctx, "Unknown option `-%c'.", state->optopt);
+			} else {
+				shell_print(shell_ctx, "Unknown option character `\\x%x'.",
+					    state->optopt);
+			}
+			return 1;
+		default:
+			break;
+		}
+	}
+#endif
+	return 0;
+}
+
 static void i3c_device_list_target_name_get(size_t idx, struct shell_static_entry *entry)
 {
 	if (idx < ARRAY_SIZE(i3c_list)) {
@@ -1404,6 +1494,20 @@ static void i3c_device_name_get(size_t idx, struct shell_static_entry *entry)
 }
 
 SHELL_DYNAMIC_CMD_CREATE(dsub_i3c_device_name, i3c_device_name_get);
+
+static void i3c_target_device_name_get(size_t idx, struct shell_static_entry *entry)
+{
+	if (idx < ARRAY_SIZE(i3c_target_list)) {
+		entry->syntax = i3c_target_list[idx].dev->name;
+		entry->handler = NULL;
+		entry->help = NULL;
+		entry->subcmd = NULL;
+	} else {
+		entry->syntax = NULL;
+	}
+}
+
+SHELL_DYNAMIC_CMD_CREATE(dsub_i3c_target_device_name, i3c_target_device_name_get);
 
 /* L2 I3C CCC Shell Commands*/
 SHELL_STATIC_SUBCMD_SET_CREATE(
@@ -1546,6 +1650,15 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 		      "Send I3C Hot-Join request\n"
 		      "Usage: hj_req <device>",
 		      cmd_i3c_hj_request, 2, 0),
+#ifdef CONFIG_I3C_TARGET_MQUEUE
+	SHELL_CMD_ARG(tmq, &dsub_i3c_target_device_name,
+		      "I3C target mqueue\n"
+		      "i3c tmq <dev> -b 1               | register i3c-target-mqueue driver\n"
+		      "i3c tmq <dev> -b 0               | unregister i3c-target-mqueue driver\n"
+		      "i3c tmq <dev> -w <b0, b1,... bn> | write byte stream\n"
+		      "i3c tmq <dev> -r <length>        | read length of byte from mqueue",
+		      cmd_tmq_xfer, 3, SHELL_OPT_ARG_CHECK_SKIP),
+#endif
 	SHELL_SUBCMD_SET_END /* Array terminated. */
 );
 
