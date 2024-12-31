@@ -1,0 +1,21 @@
+# Copyright (c) Aspeed Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+description: Aspeed pin control
+
+compatible: "aspeed,g7-soc1-pinctrl"
+
+include: base.yaml
+
+child-binding:
+  description: Aspeed pin configuration nodes
+  include:
+    - name: pincfg-node.yaml
+
+  properties:
+    sig_descs:
+      required: true
+      type: array
+    ball:
+      required: true
+      type: int

@@ -9,9 +9,17 @@ config PINCTRL_ASPEED
 	help
 	  Enable pin controller driver for Aspeed SOCs
 
+config PINCTRL_ASPEED_G7
+	bool "Pin controller driver for Aspeed G7 SOCs"
+	default y
+	depends on DT_HAS_ASPEED_G7_SOC1_PINCTRL_ENABLED
+	depends on SYSCON
+	help
+	  Enable pin controller driver for Aspeed SOCs
+
 config PINCTRL_ASPEED_STRING_NAME
 	bool "Store the pin name in a string"
 	default y
-	depends on PINCTRL_ASPEED
+	depends on PINCTRL_ASPEED || PINCTRL_ASPEED_G7
 	help
 	  Enable storing the pin name for debugging
