@@ -19,6 +19,9 @@ config RISCV_GP
 config NUM_IRQS
 	default 16
 
+config PINCTRL
+	default y
+
 config CLOCK_CONTROL_INIT_PRIORITY
 	default SYSCON_INIT_PRIORITY
 

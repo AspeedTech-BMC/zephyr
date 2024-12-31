@@ -122,6 +122,9 @@ config 3RD_LVL_INTR_07_OFFSET
 config NUM_IRQS
 	default 480
 
+config PINCTRL
+	default y
+
 endif # SOC_AST2700_TSP
 
 endif # SOC_AST2700_TSP || SOC_AST2700_A0_TSP
