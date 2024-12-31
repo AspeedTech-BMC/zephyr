@@ -9,6 +9,7 @@
 #include <aspeed/ast10x0-irq.h>
 #include <zephyr/dt-bindings/clock/ast27xx_clock.h>
 #include <zephyr/dt-bindings/reset/ast27xx_reset.h>
+#include <zephyr/dt-bindings/pinctrl/ast27xx-soc1-pinctrl-groups.h>
 
 / {
 	cpus {
@@ -199,6 +200,10 @@
 				compatible = "aspeed,ast27xx-scu1-clock";
 				#clock-cells = <1>;
 			};
+
+			pinctrl1: pinctrl {
+				compatible = "aspeed,g7-soc1-pinctrl";
+			};
 		};
 
 		uart0: serial@74c33000 {
@@ -226,3 +231,5 @@
 &nvic {
 	arm,num-irq-priority-bits = <3>;
 };
+
+#include "ast27xx-pinctrl.dtsi"
