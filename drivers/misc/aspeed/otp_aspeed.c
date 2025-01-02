@@ -141,7 +141,7 @@ static const struct otpkey_type ast10xxa1_key_type[] = {
 
 static int sb_sha256(uint8_t *src, uint32_t len, uint8_t *digest_ret)
 {
-#ifdef CONFIG_MBEDTLS_MAC_SHA256_ENABLED
+#ifdef CONFIG_MBEDTLS_SHA256
 	mbedtls_sha256(src, len, digest_ret, 0);
 	return 0;
 #else
