@@ -152,7 +152,7 @@ static int sb_sha256(uint8_t *src, uint32_t len, uint8_t *digest_ret)
 
 static int sb_sha384(uint8_t *src, uint32_t len, uint8_t *digest_ret)
 {
-#ifdef CONFIG_MBEDTLS_MAC_SHA512_ENABLED
+#ifdef CONFIG_MBEDTLS_SHA384
 	mbedtls_sha512(src, len, digest_ret, 1);
 	return 0;
 #else
