@@ -177,9 +177,9 @@ ast27xx_scu1_clock_control_on(const struct device *dev, clock_control_subsys_t s
 	uint32_t clk_gate = (uint32_t)sub_system;
 
 	if (clk_gate > 32)
-		sys_set_bit(config->base + CLK_STOP_CTRL0_CLEAR, clk_gate - 32);
+		sys_set_bit(config->base + CLK_STOP_CTRL1_CLEAR, clk_gate - 32);
 	else
-		sys_set_bit(config->base + CLK_STOP_CTRL1_CLEAR, clk_gate);
+		sys_set_bit(config->base + CLK_STOP_CTRL0_CLEAR, clk_gate);
 
 	return 0;
 }
@@ -191,9 +191,9 @@ ast27xx_scu1_clock_control_off(const struct device *dev, clock_control_subsys_t 
 	uint32_t clk_gate = (uint32_t)sub_system;
 
 	if (clk_gate > 32)
-		sys_set_bit(config->base + CLK_STOP_CTRL0_SET, clk_gate - 32);
+		sys_set_bit(config->base + CLK_STOP_CTRL1_SET, clk_gate - 32);
 	else
-		sys_set_bit(config->base + CLK_STOP_CTRL1_SET, clk_gate);
+		sys_set_bit(config->base + CLK_STOP_CTRL0_SET, clk_gate);
 
 	return 0;
 }
