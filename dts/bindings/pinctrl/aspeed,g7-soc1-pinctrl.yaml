@@ -15,7 +15,7 @@ child-binding:
   properties:
     sig_descs:
       required: true
-      type: array
+      type: int
     ball:
       required: true
       type: int
