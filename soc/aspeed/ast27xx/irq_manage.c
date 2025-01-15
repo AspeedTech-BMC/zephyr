@@ -49,11 +49,12 @@ LOG_MODULE_REGISTER(soc, LOG_LEVEL_ERR);
 
 #define INTCG_IRQ_ROUTE_REG0	0x200
 #define INTCG_IRQ_ROUTE_REG1	0x300
+#define INTCG_IRQ_ROUTE_REG2	0x400
 
 /*
  * sirqio_csel0: intc1g_base + INTC1G_IRQ_ROUTE_REG0
  * sirqio_csel1: intc1g_base + INTC1G_IRQ_ROUTE_REG1
- * sirqio_csel2: intc1g_base + INTC1G_IRQ_ROUTE_REG1
+ * sirqio_csel2: intc1g_base + INTC1G_IRQ_ROUTE_REG2
  */
 #define INTC1G_DEV		DT_ALIAS(intc1)
 #define INTC1G_BASE		(DT_REG_ADDR(INTC1G_DEV))
@@ -62,9 +63,9 @@ LOG_MODULE_REGISTER(soc, LOG_LEVEL_ERR);
 #define INTC1G_IRQ_ROUTE_REG1	0xa0
 #define INTC1G_IRQ_ROUTE_REG2	0xc0
 
-/* 1 INTC: SOC0_INTC0~SOC0_INTC10 NVIC128~138 */
-/* 1 INTC: SOC0_INTC11 bit0~bit7 NVIC160~192 */
-/* 8 INTC: SOC1_INTC0~SOC1_INTC7 parent to SOC0_INTC11 bit0~bit7 */
+/* 1-1 INTC: INTC0_0~INTC0_10 NVIC128~138 */
+/* 1-1 INTC: INTC0_11 bit0~bit9 NVIC160~192 */
+/* 6-1 INTC: INTC1_0~INTC1_5 which's parent is INTC0_11 bit0~bit5 */
 #define NUM_OF_INTC		10
 #define NUM_OF_2ND_3RD_LVL_IRQS	(NUM_IRQS_PER_REG * NUM_OF_INTC)
 /*
@@ -75,12 +76,12 @@ LOG_MODULE_REGISTER(soc, LOG_LEVEL_ERR);
  * | m        | m       | N/A    | N/A     |
  * | 127      | 127     | N/A    | N/A     |
  * ---------- + ------- + ------ + ---------
- * | 128 + 0  | 128     | N/A    | 0       | SOC0_INTC0
- * | 128 + 1  | 129     | N/A    | 1       | SOC0_INTC1
+ * | 128 + 0  | 128     | N/A    | 0       | INTC0_0
+ * | 128 + 1  | 129     | N/A    | 1       | INTC0_1
  * | ...      | ...     | N/A    | ...     | ...
- * | 128 + i  | ...     | N/A    | i       | SOC0_INTCi
+ * | 128 + i  | ...     | N/A    | i       | INTC0_i
  * | ...      | ...     | N/A    | ...     | ...
- * | 128 + 10 | 138     | N/A    | 10      | SOC0_INTC10
+ * | 128 + 10 | 138     | N/A    | 10      | INTC0_10
  * ---------- + ------- + ------ + ---------
  * | ...      | ...     | ...    | ...     |  Reserved
  * ---------- + ------- + ------ + ---------
@@ -90,41 +91,41 @@ LOG_MODULE_REGISTER(soc, LOG_LEVEL_ERR);
  * | ...      | 158     | N/A    | N/A     | /
  * | ...      | 159     | N/A    | N/A     |/
  * ---------- + ------- + ------ + ---------
- * | 160 + 0  | 160     | 192    | 0       | SOC0_INTC11 bit 0
- * | 160 + 1  | 161     | 193    | 1       | SOC0_INTC11 bit 1
+ * | 160 + 0  | 160     | 192    | 0       | INTC0_11 bit 0
+ * | 160 + 1  | 161     | 193    | 1       | INTC0_11 bit 1
  * | ...      | ...     | ...    | ...     | ...
- * | 160 + j  | ...     | ...    | j       | SOC0_INTC11 bit j
+ * | 160 + j  | ...     | ...    | j       | INTC0_11 bit j
  * | ...      | ...     | ...    | ...     | ...
- * | 160 + 7  | 167     | 199    | 199     | SOC0_INTC11 bit 7
+ * | 160 + 7  | 167     | 199    | 199     | INTC0_11 bit 5
  * ---------- + ------- + ------ + ---------
  * | 224 + 0  | 160     | 192    | 0       |\
  * | 224 + 1  | 160     | 192    | 1       | \
  * | ...      | 160     | 192    | ...     |  \
- * | 224 + n  | 160     | 192    | n       |  SOC1_INTC0
+ * | 224 + n  | 160     | 192    | n       |  INTC1_0
  * | ...      | 160     | 192    | ...     | /
  * | 224 + 31 | 160     | 192    | 31      |/
  * ---------- + ------- + ------ + ---------
  * | 256 + 0  | 161     | 193    | 0       |\
  * | 256 + 1  | 161     | 193    | 1       | \
  * | ...      | ...     | ...    | ...     |  \
- * | 256 + k  | 161     | 193    | k       |  SOC1_INTC1
+ * | 256 + k  | 161     | 193    | k       |  INTC1_1
  * | ...      | ...     | ...    | ...     | /
  * | 256 + 31 | 161     | 193    | 31      |/
  * ---------- + ------- + ------ + ---------
- * | ...      | ...     | ...    | ...     | SOC1_INTC2
- * | ...      | ...     | ...    | ...     | SOC1_INTC3
- * | ...      | ...     | ...    | ...     | SOC1_INTC4
+ * | ...      | ...     | ...    | ...     | INTC1_2
+ * | ...      | ...     | ...    | ...     | INTC1_3
+ * | ...      | ...     | ...    | ...     | INTC1_4
  * ---------- + ------- + ------ + ---------
  * | 384 + 0  | 165     | 197    | 0       |\
  * | 384 + 1  | 165     | 197    | 1       | \
  * | ...      | ...     | ...    | ...     |  \
- * | 384 + p  | 165     | 197    | p       |  SOC1_INTC5
+ * | 384 + p  | 165     | 197    | p       |  INTC1_5
  * | ...      | ...     | ...    | ...     | /
  * | 384 + 31 | 165     | 197    | 31      |/
  * ---------- + ------- + ------ + ---------
  * | 416      | 166     | 198    | N/A     |\
  * | 417      | 166     | 198    | N/A     | \
- * | ...      | ...     | ...    | ...     |  Reserved, SOC1_INTC6/7 in 1700_0
+ * | ...      | ...     | ...    | ...     |  Reserved, INTC1_6/7 in 1700_0, INTC1_8/9 in 1700_1
  * | 478      | 167     | 199    | N/A     | /
  * | 479      | 166     | 199    | N/A     |/
  * ---------- + ------- + ------ + ---------
@@ -141,7 +142,7 @@ static unsigned int irq_to_raw_irq(unsigned int irq)
 		unsigned int lvl1_irq = irq_parent_level_2(irq);
 		unsigned int lvl2_irq = irq_from_level_2(irq);
 
-		/* irq_raw = lvl1_irq(160) + 1 INTC of SOC0_INTC11 + its irqn */
+		/* irq_raw = lvl1_irq(160) + 1 INTC of INTC0_11 + its irqn */
 		irq_raw = lvl1_irq + NUM_IRQS_PER_REG + lvl2_irq;
 	} else {
 		unsigned int lvl1_irq = irq_parent_level_2(irq);
@@ -149,7 +150,7 @@ static unsigned int irq_to_raw_irq(unsigned int irq)
 		unsigned int lvl3_irq = irq_from_level_3(irq);
 		unsigned int offset = (lvl2_irq + 1) * NUM_IRQS_PER_REG;
 
-		/* irq_raw = lvl1_irq(160) + 1 INTC(SOC0_INTC11) +
+		/* irq_raw = lvl1_irq(160) + 1 INTC(INTC0_11) +
 		 *           (INTCx + 1) * 32 + its level 3 interrut number
 		 */
 		irq_raw = lvl1_irq + NUM_IRQS_PER_REG + offset + lvl3_irq;
@@ -178,24 +179,17 @@ static void intcg_set_irq_route(unsigned int irq_raw, int select)
 	uintptr_t base = INTCG_BASE;
 	uint32_t byte_offset = (irq_raw >> 5) * 4;
 	uint32_t bit_pos = irq_raw & BIT_MASK(5);
-	uint32_t reg;
 
-	if (select == 0x1) {
-		/* SOC0_INTC interrupt select for ssp. */
-		reg = sys_read32(base + INTCG_IRQ_ROUTE_REG0 + byte_offset);
-		reg &= ~BIT(bit_pos);
-		reg |= (select & BIT(0)) << bit_pos;
-		LOG_DBG("SSP selection base=0x%lx", base + INTCG_IRQ_ROUTE_REG0 + byte_offset);
-		LOG_DBG(", value=0x%x\n", reg);
-		sys_write32(reg, base + INTCG_IRQ_ROUTE_REG0 + byte_offset);
-	} else if (select == 0x2) {
-		/* SOC0_INTC interrupt select for tsp. */
-		reg = sys_read32(base + INTCG_IRQ_ROUTE_REG1 + byte_offset);
-		reg &= ~BIT(bit_pos);
-		reg |= ((select & BIT(1)) >> 1) << bit_pos;
-		LOG_DBG("TSP selection base=0x%lx", base + INTCG_IRQ_ROUTE_REG1 + byte_offset);
-		LOG_DBG(", value=0x%x\n", reg);
-		sys_write32(reg, base + INTCG_IRQ_ROUTE_REG1 + byte_offset);
+	if (select == 0x2) {
+		/* INTC0 interrupt select for ssp. */
+		sys_set_bit(base + INTCG_IRQ_ROUTE_REG0 + byte_offset, bit_pos);
+		sys_clear_bit(base + INTCG_IRQ_ROUTE_REG1 + byte_offset, bit_pos);
+		sys_clear_bit(base + INTCG_IRQ_ROUTE_REG2 + byte_offset, bit_pos);
+	} else if (select == 0x3) {
+		/* INTC0 interrupt select for tsp. */
+		sys_clear_bit(base + INTCG_IRQ_ROUTE_REG0 + byte_offset, bit_pos);
+		sys_set_bit(base + INTCG_IRQ_ROUTE_REG1 + byte_offset, bit_pos);
+		sys_clear_bit(base + INTCG_IRQ_ROUTE_REG2 + byte_offset, bit_pos);
 	} else {
 		LOG_ERR("Unknown interrupt route select=0x%x", select);
 	}
@@ -225,31 +219,26 @@ static void intc1g_set_irq_route(unsigned int irq_raw, int select)
 	uintptr_t base = INTC1G_BASE;
 	uint32_t byte_offset;
 	uint32_t bit_pos = irq_raw & BIT_MASK(5);
-	uint32_t reg;
 
 	irq_raw = irq_raw - CONFIG_3RD_LVL_ISR_TBL_OFFSET;
 	byte_offset = (irq_raw >> 5) * 4;
-	if (select == 0x1) {
-		/* SOC0_INTC interrupt select for ssp. */
-		reg = sys_read32(base + INTC1G_IRQ_ROUTE_REG1 + byte_offset);
-		reg &= ~BIT(bit_pos);
-		reg |= (select & BIT(0)) << bit_pos;
-		LOG_DBG("SSP selection base=0x%lx", base + INTC1G_IRQ_ROUTE_REG1 + byte_offset);
-		LOG_DBG(", value=0x%x\n", reg);
-		sys_write32(reg, base + INTC1G_IRQ_ROUTE_REG1 + byte_offset);
-	} else if (select == 0x2) {
-		/* SOC0_INTC interrupt select for tsp. */
-		reg = sys_read32(base + INTC1G_IRQ_ROUTE_REG1 + byte_offset);
-		reg &= ~BIT(bit_pos);
-		reg |= (select & BIT(0)) << bit_pos;
-		reg |= ((select & BIT(1)) >> 1) << bit_pos;
-		LOG_DBG("TSP selection base=0x%lx", base + INTC1G_IRQ_ROUTE_REG1 + byte_offset);
-		LOG_DBG(", value=0x%x\n", reg);
-		sys_write32(reg, base + INTC1G_IRQ_ROUTE_REG1 + byte_offset);
-	} else if (select == 0x3) {
-		/* TODO: BootMCU */
+
+	if (sys_test_bit((mem_addr_t)&select, 0)) {
+		sys_set_bit(base + INTC1G_IRQ_ROUTE_REG0 + byte_offset, bit_pos);
 	} else {
-		LOG_ERR("Unknown interrupt route select=0x%x", select);
+		sys_clear_bit(base + INTC1G_IRQ_ROUTE_REG0 + byte_offset, bit_pos);
+	}
+
+	if (sys_test_bit((mem_addr_t)&select, 1)) {
+		sys_set_bit(base + INTC1G_IRQ_ROUTE_REG1 + byte_offset, bit_pos);
+	} else {
+		sys_clear_bit(base + INTC1G_IRQ_ROUTE_REG1 + byte_offset, bit_pos);
+	}
+
+	if (sys_test_bit((mem_addr_t)&select, 2)) {
+		sys_set_bit(base + INTC1G_IRQ_ROUTE_REG2 + byte_offset, bit_pos);
+	} else {
+		sys_clear_bit(base + INTC1G_IRQ_ROUTE_REG2 + byte_offset, bit_pos);
 	}
 }
 
@@ -271,7 +260,7 @@ static const struct _irq_parent_entry *get_intc_entry_for_irq(unsigned int irq)
 
 	/*
 	 * Get device by its parent level irqn. For example, the interrupt assert sequence
-	 * IPC -> SOC1_INTC5(level 3) bit 19 -> SOC0_INTC11(level 2) bit 5 -> NVIC 160(level 1)
+	 * IPC -> INTC1_5(level 3) bit 19 -> INTC1_11(level 2) bit 5 -> NVIC 160(level 1)
 	 * After DT_MACRO, irq_enable((IRQ_TO_L3(19) | IRQ_TO_L2(5) | 160));
 	 * in intc_table, ._intc_table.static.intc_l3_5_ section only registered by L2 irqn(5)
 	 * Get parent device by its irqn of  L2 irqn(5
