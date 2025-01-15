@@ -16,8 +16,12 @@ properties:
     type: string
     enum:
       - "psp"
+      - "psp-legacy"
       - "ssp"
       - "tsp"
+      - "psp-s0"
+      - "psp-s1"
+      - "bootmcu"
 
   tx-region:
     description: phandle to the shared memory region used for data transmission
