@@ -222,6 +222,21 @@
 			interrupts = <12 1>;
 			clocks = <&sysclk1 SCU1_CLK_GATE_UART6CLK>;
 			resets = <&sysrst1 SCU1_RESET_UART6>;
+			pinctrl-names = "default";
+			pinctrl-0 = <pinctrl_uart6_default>;
+			status = "disabled";
+			reg-shift = <2>;
+		};
+
+		uart7: serial@74c33600 {
+			compatible = "ns16550";
+			reg = <0x74c33600 0x100>;
+			interrupt-parent = <&soc1_intc4>;
+			interrupts = <13 1>;
+			clocks = <&sysclk1 SCU1_CLK_GATE_UART7CLK>;
+			resets = <&sysrst1 SCU1_RESET_UART7>;
+			pinctrl-names = "default";
+			pinctrl-0 = <pinctrl_uart7_default>;
 			status = "disabled";
 			reg-shift = <2>;
 		};

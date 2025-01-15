@@ -14,4 +14,22 @@
 		ball = <AF16>;
 		sig_descs = <SIG_DESC(0x410, 28, 1)>;
 	};
+
+	/omit-if-no-ref/ pin_txd6: pin_txd6 {
+		ball = <AC17>;
+		sig_descs = <SIG_DESC(0x418, 24, 1)>;
+	};
+	/omit-if-no-ref/ pin_rxd6: pin_rxd6 {
+		ball = <AD17>;
+		sig_descs = <SIG_DESC(0x418, 28, 1)>;
+	};
+
+	/omit-if-no-ref/ pin_txd7: pin_txd7 {
+		ball = <AE16>;
+		sig_descs = <SIG_DESC(0x41c, 0, 1)>;
+	};
+	/omit-if-no-ref/ pin_rxd7: pin_rxd7 {
+		ball = <AE17>;
+		sig_descs = <SIG_DESC(0x41c, 4, 1)>;
+	};
 };
