@@ -43,12 +43,6 @@
 	status = "okay";
 };
 
-&uart4 {
-	clock-frequency = <1846153>;
-	current-speed = <115200>;
-	status = "okay";
-};
-
 &soc0_ipc0_v2 {
 	status = "okay";
 };
