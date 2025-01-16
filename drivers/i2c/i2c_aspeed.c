@@ -1893,13 +1893,6 @@ int aspeed_i2c_slave_irq(const struct device *dev)
 
 	LOG_DBG("S irq sts %x, bus %x\n", sts, sys_read32(i2c_base + AST_I2CC_STS_AND_BUFF));
 
-	/*
-	 * Slave interrupt coming after Master package done
-	 * So need handle master first.
-	 */
-	if (sys_read32(i2c_base + AST_I2CS_ISR) & AST_I2CM_PKT_DONE)
-		return 0;
-
 	/* remove unnessary status flags */
 	sts &= ~(AST_I2CS_ADDR_INDICATE_MASK | AST_I2CS_SLAVE_PENDING |
 		AST_I2CS_ADDR_NAK_MASK);
