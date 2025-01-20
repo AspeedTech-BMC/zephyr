@@ -51,8 +51,6 @@ LOG_MODULE_REGISTER(i2c_aspeed);
 #define AST_I2CC_SDA_DRIVE_1T_EN	BIT(8)
 #define AST_I2CC_M_SDA_DRIVE_1T_EN	BIT(7)
 #define AST_I2CC_M_HIGH_SPEED_EN	BIT(6)
-#define AST_I2CC_MANUAL_DEBOUNCE		(0x3 << 4)
-
 /* reserver 5 : 2 */
 #define AST_I2CC_SLAVE_EN		BIT(1)
 #define AST_I2CC_MASTER_EN		BIT(0)
@@ -110,8 +108,6 @@ LOG_MODULE_REGISTER(i2c_aspeed);
 /* 0x14 : I2CM Master Interrupt Status Register   : WC */
 #define AST_I2CM_ISR			0x14
 
-#define AST_I2CM_ISR_MASK  GENMASK(31, 21)
-#define AST_I2CM_SW_ISR_MASK  GENMASK(31, 19)
 #define AST_I2CM_PKT_TIMEOUT		BIT(18)
 #define AST_I2CM_PKT_ERROR		BIT(17)
 #define AST_I2CM_PKT_DONE		BIT(16)
@@ -172,7 +168,6 @@ LOG_MODULE_REGISTER(i2c_aspeed);
 #define AST_I2CS_ADDR2_NAK		BIT(21)
 #define AST_I2CS_ADDR1_NAK		BIT(20)
 
-#define AST_I2CS_ADDR_NAK_MASK	(3 << 20)
 #define AST_I2CS_ADDR_MASK		(3 << 18)
 #define AST_I2CS_PKT_ERROR		BIT(17)
 #define AST_I2CS_PKT_DONE		BIT(16)
@@ -244,30 +239,13 @@ LOG_MODULE_REGISTER(i2c_aspeed);
 #define AST_I2C_GET_TX_DMA_LEN(x)	((x) & 0x1fff)
 #define AST_I2C_GET_RX_DMA_LEN(x)	(((x) >> 16) & 0x1fff)
 
-/* 0x74 : Master and Slave timeout counts Register */
-#define AST_I2C_MISC1		0x74
-#define MISC_I2C_SET_TIMEOUT(s, m)	(((s) << 16) | (m))
-
-/* 0x9c : Misc 2 Decounce Setting */
-#define AST_I2C_MISC2		0x9c
-#define AST_DEBOUNCE_MASK		0xff
-#define AST_DEBOUNCE_LEVEL_MAX	0x20
-#define AST_DEBOUNCE_LEVEL_MIN		0x2
-
 #define AST2600ID 0x05000000
 
-/* AST10x0 / AST2600 i2c timeout counter: use base clk4 1Mhz
+/* i2c timeout counter: use base clk4 1Mhz
  * 1/(1000/4096) = 4.096ms * 8 = 32.768ms
  */
 #define I2C_TIMEOUT_CLK			0x2
 #define I2C_TIMEOUT_COUNT		0x8 /* i2c timeout setting (wait about 35ms) */
-
-/* i2c timeout counter: use timeout clk base 3 = 1ms
- * 1ms * 35 = 35ms
- */
-#define I2C_AST2700_TIMEOUT_CLK			0x3
-#define I2C_AST2700_TIMEOUT_COUNT		0x23 /* i2c timeout setting (wait about 35ms) */
-
 /***************************************************************************/
 /* Use platform_data instead of module parameters */
 /* Fast Mode = 400 kHz, Standard = 100 kHz */
@@ -287,17 +265,10 @@ LOG_MODULE_REGISTER(i2c_aspeed);
 #define DEV_BASE(dev) \
 	((DEV_CFG(dev))->base)
 
-enum xfer_mode {
+enum i2c_xfer_mode {
 	BYTE_MODE,
 	BUFF_MODE,
 	DMA_MODE,
-};
-
-enum i2c_version {
-	AST10x0,
-	AST2600,
-	AST2700,
-	AST2700A0,
 };
 
 struct i2c_aspeed_config {
@@ -312,7 +283,6 @@ struct i2c_aspeed_config {
 	uint8_t manual_scl_high;
 	uint8_t manual_scl_low;
 	uint8_t manual_sda_hold;
-	uint8_t debounce_level;
 	int smbus_alert;
 	const struct device *clock_dev;
 	const clock_control_subsys_t clk_id;
@@ -320,8 +290,7 @@ struct i2c_aspeed_config {
 	uint32_t ac_timing;
 	void (*irq_config_func)(const struct device *dev);
 	uint32_t clk_src;
-	enum xfer_mode mode;
-	enum i2c_version version;
+	enum i2c_xfer_mode mode;
 };
 
 struct i2c_aspeed_data {
@@ -370,7 +339,7 @@ struct ast_i2c_timing_table {
 	uint32_t timing;
 };
 
-static uint32_t ast2600_select_i2c_clock(const struct device *dev)
+static uint32_t i2c_aspeed_select_clock(const struct device *dev)
 {
 	const struct i2c_aspeed_config *config = DEV_CFG(dev);
 	struct i2c_aspeed_data *data = DEV_DATA(dev);
@@ -496,84 +465,6 @@ static uint32_t ast2600_select_i2c_clock(const struct device *dev)
 	return ac_timing;
 }
 
-static uint32_t ast2700_select_i2c_clock(const struct device *dev)
-{
-	const struct i2c_aspeed_config *config = DEV_CFG(dev);
-	struct i2c_aspeed_data *data = DEV_DATA(dev);
-	uint32_t i2c_base = DEV_BASE(dev);
-	unsigned long base_clk;
-	int divider_ratio = 0;
-	int baseclk_idx = 0;
-	uint32_t scl_low, scl_high;
-	uint32_t ac_timing;
-
-	for (int i = 0; i < 0x100; i++) {
-		base_clk = (config->clk_src) / (i + 1);
-		if ((base_clk / data->bus_frequency) <= 32) {
-			baseclk_idx = i;
-			divider_ratio = ROUND_UP(base_clk, data->bus_frequency);
-			break;
-		}
-	}
-
-	LOG_DBG("divider_ratio %x", divider_ratio);
-
-	divider_ratio = MIN(divider_ratio, 32);
-	LOG_DBG("divider_ratio min %x", divider_ratio);
-
-	/* Set menual scl low length */
-	if (config->manual_scl_low && config->manual_scl_high) {
-		scl_low = config->manual_scl_low;
-		scl_high = config->manual_scl_high;
-		LOG_DBG("maual scl_low min %x", scl_low);
-		LOG_DBG("maual scl_high min %x", scl_high);
-	} else if (config->manual_scl_low || config->manual_scl_high) {
-		if (config->manual_scl_low) {
-			scl_low = config->manual_scl_low;
-			LOG_DBG("maual scl_low min %x", scl_low);
-			scl_high = (divider_ratio - scl_low - 2) & 0xf;
-		} else {
-			scl_high = config->manual_scl_high;
-			LOG_DBG("maual scl_high min %x", scl_high);
-			scl_low = (divider_ratio - scl_high - 2) & 0xf;
-		}
-	} else {
-		scl_low = ((divider_ratio * 9) / 16) - 1;
-		LOG_DBG("default scl_low min%x", scl_low);
-		scl_high = (divider_ratio - scl_low - 2) & 0xf;
-		LOG_DBG("default scl_high min%x", scl_low);
-	}
-
-	scl_low = MIN(scl_low, 0xf);
-	scl_high = MIN(scl_high, 0xf);
-	LOG_DBG("scl_low min %x", scl_low);
-	LOG_DBG("scl_high min %x", scl_high);
-
-	/*Divisor : Base Clock : tCKHighMin : tCK High : tCK Low*/
-	ac_timing = ((scl_high - 1) << 20) | (scl_high << 16) | (scl_low << 12) | (baseclk_idx);
-
-	/* Set time out timer */
-	if (config->smbus_timeout) {
-		sys_write32(MISC_I2C_SET_TIMEOUT(I2C_AST2700_TIMEOUT_COUNT,
-		I2C_AST2700_TIMEOUT_COUNT), i2c_base + AST_I2C_MISC1);
-		ac_timing |= AST_I2CC_toutBaseCLK(I2C_AST2700_TIMEOUT_CLK);
-		LOG_DBG("smbus_timeout enable");
-	}
-
-	/* Manual set the sda hold time */
-	if (config->manual_sda_hold) {
-		LOG_DBG("manual_sda_hold %x", config->manual_sda_hold);
-		if (config->manual_sda_hold < 4)
-			ac_timing |= AST_I2CC_tHDDAT(config->manual_sda_hold);
-		else
-			LOG_DBG("invalid sda hold setting %x", config->manual_sda_hold);
-	}
-
-	LOG_DBG("ac_timing %x", ac_timing);
-
-	return ac_timing;
-}
-
 /*Default maximum time we allow for an I2C transfer (unit:ms)*/
 #define I2C_TRANS_TIMEOUT K_MSEC(100)
 #define I2C_ENTRY_TIMEOUT K_MSEC(200)
@@ -665,45 +556,18 @@ static int i2c_aspeed_configure(const struct device *dev,
 		return -EINVAL;
 	}
 
-	/*Reset*/
+	/*I2C Reset*/
 	sys_write32(0, i2c_base + AST_I2CC_FUN_CTRL);
 
-	/*Multi master*/
 	if (!config->multi_master) {
 		fun_ctrl |= AST_I2CC_MULTI_MASTER_DIS;
-	}
-
-	/*Debounce*/
-	if (config->version != AST10x0 || config->version != AST2600) {
-		uint32_t debounce_level = 0;
-		uint32_t config_debounce_level = 0;
-
-		/* AST2700 support manual debounce setting */
-		if (config->version == AST2700) {
-			if (config->debounce_level > AST_DEBOUNCE_LEVEL_MAX)
-				config_debounce_level = AST_DEBOUNCE_LEVEL_MAX;
-			if (config->debounce_level < AST_DEBOUNCE_LEVEL_MIN)
-				config_debounce_level = AST_DEBOUNCE_LEVEL_MIN;
-		}
-
-		debounce_level = sys_read32(i2c_base + AST_I2C_MISC2)
-		& ~(AST_DEBOUNCE_MASK);
-
-		debounce_level |= config_debounce_level;
-		sys_write32(debounce_level, i2c_base + AST_I2C_MISC2);
-
-		fun_ctrl |= AST_I2CC_MANUAL_DEBOUNCE;
 	}
 
 	/*Enable Master Mode*/
 	sys_write32(fun_ctrl, i2c_base + AST_I2CC_FUN_CTRL);
 
 	/*Set AC Timing*/
-	if (config->version == AST2700) {
-		sys_write32(ast2700_select_i2c_clock(dev), i2c_base + AST_I2CC_AC_TIMING);
-	} else {
-		sys_write32(ast2600_select_i2c_clock(dev), i2c_base + AST_I2CC_AC_TIMING);
-	}
+	sys_write32(i2c_aspeed_select_clock(dev), i2c_base + AST_I2CC_AC_TIMING);
 
 	/*Clear Interrupt*/
 	sys_write32(0xfffffff, i2c_base + AST_I2CM_ISR);
@@ -1203,15 +1067,11 @@ void do_i2cm_rx(const struct device *dev)
 
 int aspeed_i2c_master_irq(const struct device *dev)
 {
-	const struct i2c_aspeed_config *config = DEV_CFG(dev);
 	struct i2c_aspeed_data *data = DEV_DATA(dev);
 	uint32_t i2c_base = DEV_BASE(dev);
 	uint32_t sts = sys_read32(i2c_base + AST_I2CM_ISR);
 
 	LOG_DBG("M sts %x\n", sts);
-
-	/* mask un-used isr bits */
-	sts &= ~AST_I2CM_ISR_MASK;
 
 	if (!data->alert_enable) {
 		sts &= ~AST_I2CM_SMBUS_ALT;
@@ -1266,26 +1126,15 @@ int aspeed_i2c_master_irq(const struct device *dev)
 	if (data->cmd_err) {
 		LOG_DBG("received error interrupt: 0x%02x\n",
 			sts);
-		if (config->version == AST2700) {
-			sys_write32(sts, i2c_base + AST_I2CM_ISR);
-		} else {
-			sys_write32(AST_I2CM_PKT_DONE | AST_I2CM_PKT_ERROR,
-				i2c_base + AST_I2CM_ISR);
-		}
+		sys_write32(AST_I2CM_PKT_DONE | AST_I2CM_PKT_ERROR,
+			i2c_base + AST_I2CM_ISR);
 		k_sem_give(&data->sync_sem);
 		return 1;
 	}
 
 	if (AST_I2CM_PKT_DONE & sts) {
-		if (config->version == AST2700) {
-			sys_write32(sts, i2c_base + AST_I2CM_ISR);
-		} else {
-			sys_write32(AST_I2CM_PKT_DONE | AST_I2CM_PKT_ERROR,
-				i2c_base + AST_I2CM_ISR);
-		}
-
-		sts &= ~(AST_I2CM_PKT_DONE | AST_I2CM_SW_ISR_MASK);
-
+		sts &= ~AST_I2CM_PKT_DONE;
+		sys_write32(AST_I2CM_PKT_DONE, i2c_base + AST_I2CM_ISR);
 		switch (sts) {
 		case AST_I2CM_PKT_ERROR | AST_I2CM_TX_NAK:	/* a0 fix for issue */
 		/*LOG_DBG("a0 workaround for M TX NAK [%x]\n",*/
@@ -1378,11 +1227,21 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 	uint32_t i, slave_rx_len = 0;
 	uint8_t byte_data = 0, value = 0;
 
+	/* clear irq first */
+	sys_write32(AST_I2CS_PKT_DONE, i2c_base + AST_I2CS_ISR);
+	sys_read32(i2c_base + AST_I2CS_ISR);
+
 	sts &= ~(AST_I2CS_PKT_DONE | AST_I2CS_PKT_ERROR);
 
 	switch (sts) {
-	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE | AST_I2CS_Wait_RX_DMA: /* re-trigger? */
+	case AST_I2CS_SLAVE_MATCH:
+	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE:
+		if (slave_cb->write_requested) {
+			slave_cb->write_requested(data->slave_cfg);
+		}
+		break;
 	case AST_I2CS_SLAVE_MATCH | AST_I2CS_Wait_RX_DMA:
+	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE | AST_I2CS_Wait_RX_DMA: /* re-trigger? */
 		if (sys_read32(i2c_base + AST_I2CM_ISR)) {
 			LOG_DBG("S : Sw|D - Wait normal\n");
 		} else {
@@ -1390,45 +1249,41 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 			if (slave_cb->write_requested) {
 				slave_cb->write_requested(data->slave_cfg);
 			}
-			/* When RX_DONE occur, then checked DMA RX length */
-			if (sts & AST_I2CS_RX_DONE) {
-				if (config->mode == DMA_MODE) {
-					slave_rx_len = AST_I2C_GET_RX_DMA_LEN
-					(sys_read32(i2c_base + AST_I2CS_DMA_LEN_STS));
 
-					/*aspeed_cache_invalid_data*/
-					cache_data_invd_range((&data->slave_dma_buf[0])
-					, slave_rx_len);
+			if (config->mode == DMA_MODE) {
+				slave_rx_len =
+				AST_I2C_GET_RX_DMA_LEN(sys_read32(i2c_base + AST_I2CS_DMA_LEN_STS));
 
-					if (slave_cb->write_received) {
-						for (i = 0; i < slave_rx_len; i++) {
-							LOG_DBG("[%02x] ", data->slave_dma_buf[i]);
-							slave_cb->write_received(data->slave_cfg
-							, data->slave_dma_buf[i]);
-						}
-					}
-				} else if (config->mode == BUFF_MODE) {
-					LOG_DBG("Slave_Buff");
-					slave_rx_len = AST_I2CC_GET_RX_BUF_LEN
-					(sys_read32(i2c_base + AST_I2CC_BUFF_CTRL));
+				/*aspeed_cache_invalid_data*/
+				cache_data_invd_range((&data->slave_dma_buf[0])
+				, slave_rx_len);
 
-					if (slave_cb->write_received) {
-						for (i = 0; i < slave_rx_len ; i++) {
-							slave_cb->write_received(data->slave_cfg
-							, sys_read8(config->buf_base + i));
-						}
-					}
-				} else {
-					byte_data = AST_I2CC_GET_RX_BUFF
-					(sys_read32(i2c_base + AST_I2CC_STS_AND_BUFF));
-					LOG_DBG("[%02x]", byte_data);
-					if (slave_cb->write_received) {
-						slave_cb->write_received
-						(data->slave_cfg, byte_data);
+				if (slave_cb->write_received) {
+					for (i = 0; i < slave_rx_len; i++) {
+						LOG_DBG("[%02x] ", data->slave_dma_buf[i]);
+						slave_cb->write_received(data->slave_cfg
+						, data->slave_dma_buf[i]);
 					}
 				}
-			}
+			} else if (config->mode == BUFF_MODE) {
+				LOG_DBG("Slave_Buff");
+				slave_rx_len =
+				AST_I2CC_GET_RX_BUF_LEN(sys_read32(i2c_base + AST_I2CC_BUFF_CTRL));
 
+				if (slave_cb->write_received) {
+					for (i = 0; i < slave_rx_len ; i++) {
+						slave_cb->write_received(data->slave_cfg
+						, sys_read8(config->buf_base + i));
+					}
+				}
+			} else {
+				byte_data =
+				AST_I2CC_GET_RX_BUFF(sys_read32(i2c_base + AST_I2CC_STS_AND_BUFF));
+				LOG_DBG("[%02x]", byte_data);
+				if (slave_cb->write_received) {
+					slave_cb->write_received(data->slave_cfg, byte_data);
+				}
+			}
 			aspeed_i2c_trigger_package_cmd(i2c_base, config->mode);
 		}
 		break;
@@ -1437,17 +1292,15 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 		if (slave_cb->stop) {
 			slave_cb->stop(data->slave_cfg);
 		}
-		sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE)
-		, i2c_base + AST_I2CS_DMA_LEN);
 		aspeed_i2c_trigger_package_cmd(i2c_base, config->mode);
 		break;
-	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE_NAK | AST_I2CS_RX_DONE | AST_I2CS_STOP:
-	case AST_I2CS_SLAVE_MATCH | AST_I2CS_Wait_RX_DMA | AST_I2CS_RX_DONE | AST_I2CS_STOP:
-	case AST_I2CS_RX_DONE_NAK | AST_I2CS_RX_DONE | AST_I2CS_STOP:
-	case AST_I2CS_RX_DONE | AST_I2CS_Wait_RX_DMA | AST_I2CS_STOP:
 	case AST_I2CS_RX_DONE | AST_I2CS_STOP:
 	case AST_I2CS_RX_DONE | AST_I2CS_Wait_RX_DMA: /* wait for last package received data done */
+	case AST_I2CS_RX_DONE | AST_I2CS_Wait_RX_DMA | AST_I2CS_STOP:
+	case AST_I2CS_RX_DONE_NAK | AST_I2CS_RX_DONE | AST_I2CS_STOP:
 	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE | AST_I2CS_STOP:
+	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE | AST_I2CS_Wait_RX_DMA | AST_I2CS_STOP:
+	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE_NAK | AST_I2CS_RX_DONE | AST_I2CS_STOP:
 		if (sts & AST_I2CS_STOP) {
 			if (sts & AST_I2CS_SLAVE_MATCH) {
 				LOG_DBG("S : Sw|D|P\n");
@@ -1480,6 +1333,7 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 				}
 			}
 
+			sys_write32(0, i2c_base + AST_I2CS_DMA_LEN_STS);
 			sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE)
 			, i2c_base + AST_I2CS_DMA_LEN);
 		} else if (config->mode == BUFF_MODE) {
@@ -1546,6 +1400,7 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 			}
 			LOG_DBG("tx [%02x]", data->slave_dma_buf[0]);
 
+			sys_write32(0, i2c_base + AST_I2CS_DMA_LEN_STS);
 			sys_write32(AST_I2CS_SET_TX_DMA_LEN(1)
 			, i2c_base + AST_I2CS_DMA_LEN);
 		} else if (config->mode == BUFF_MODE) {
@@ -1635,6 +1490,7 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 				, &data->slave_dma_buf[0]);
 			}
 			LOG_DBG("rx : [%02x]", data->slave_dma_buf[0]);
+			sys_write32(0, i2c_base + AST_I2CS_DMA_LEN_STS);
 			sys_write32(AST_I2CS_SET_TX_DMA_LEN(1)
 			, i2c_base + AST_I2CS_DMA_LEN);
 		} else if (config->mode == BUFF_MODE) {
@@ -1660,12 +1516,16 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 
 	case AST_I2CS_TX_NAK | AST_I2CS_STOP:
 		LOG_DBG("S: AST_I2CS_TX_NAK\n");
+	case AST_I2CS_STOP:
+		/*it just tx complete*/
+		LOG_DBG("S: AST_I2CS_STOP\n");
 		cmd = SLAVE_TRIGGER_CMD;
 		if (slave_cb->stop) {
 			slave_cb->stop(data->slave_cfg);
 		}
 		if (config->mode == DMA_MODE) {
 			cmd |= AST_I2CS_RX_DMA_EN;
+			sys_write32(0, i2c_base + AST_I2CS_DMA_LEN_STS);
 			sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE)
 			, i2c_base + AST_I2CS_DMA_LEN);
 		} else if (config->mode == BUFF_MODE) {
@@ -1678,81 +1538,11 @@ void aspeed_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, ui
 		sys_write32(cmd, i2c_base + AST_I2CS_CMD_STS);
 		break;
 
-	case AST_I2CS_TX_NAK | AST_I2CS_STOP |
-	AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE | AST_I2CS_Wait_RX_DMA:
-		LOG_DBG("S: AST_I2CS_TX_NAK\n");
-		if (slave_cb->stop) {
-			slave_cb->stop(data->slave_cfg);
-		}
-		if (sys_read32(i2c_base + AST_I2CM_ISR)) {
-			LOG_DBG("S : Sw|D - Wait normal\n");
-		} else {
-			LOG_DBG("S : Sw|D - Issue rx dma\n");
-			if (slave_cb->write_requested) {
-				slave_cb->write_requested(data->slave_cfg);
-			}
-
-			if (config->mode == DMA_MODE) {
-				slave_rx_len =
-				AST_I2C_GET_RX_DMA_LEN(sys_read32(i2c_base + AST_I2CS_DMA_LEN_STS));
-
-				/*aspeed_cache_invalid_data*/
-				sys_cache_data_invd_range((&data->slave_dma_buf[0])
-				, slave_rx_len);
-
-				if (slave_cb->write_received) {
-					for (i = 0; i < slave_rx_len; i++) {
-						LOG_DBG("[%02x] ", data->slave_dma_buf[i]);
-						slave_cb->write_received(data->slave_cfg
-						, data->slave_dma_buf[i]);
-					}
-				}
-			} else if (config->mode == BUFF_MODE) {
-				LOG_DBG("Slave_Buff");
-				slave_rx_len =
-				AST_I2CC_GET_RX_BUF_LEN(sys_read32(i2c_base + AST_I2CC_BUFF_CTRL));
-
-				if (slave_cb->write_received) {
-					for (i = 0; i < slave_rx_len ; i++) {
-						slave_cb->write_received(data->slave_cfg
-						, sys_read8(config->buf_base + i));
-					}
-				}
-			} else {
-				byte_data =
-				AST_I2CC_GET_RX_BUFF(sys_read32(i2c_base + AST_I2CC_STS_AND_BUFF));
-				LOG_DBG("[%02x]", byte_data);
-				if (slave_cb->write_received) {
-					slave_cb->write_received(data->slave_cfg, byte_data);
-				}
-			}
-			aspeed_i2c_trigger_package_cmd(i2c_base, config->mode);
-		}
-		break;
-
-	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE:
-		if (slave_cb->write_requested) {
-			slave_cb->write_requested(data->slave_cfg);
-		}
-		break;
-
-	case AST_I2CS_STOP:
-		/*it just tx complete*/
-		LOG_DBG("S: AST_I2CS_STOP\n");
-		if (slave_cb->stop) {
-			slave_cb->stop(data->slave_cfg);
-		}
-		break;
-
 	default:
 		LOG_DBG("TODO slave sts case %x, now %x\n"
 		, sts, sys_read32(i2c_base + AST_I2CS_ISR));
 		break;
 	}
-
-	/* clear irq at last stage */
-	sys_write32(AST_I2CS_PKT_DONE, i2c_base + AST_I2CS_ISR);
-	sys_read32(i2c_base + AST_I2CS_ISR);
 }
 
 void aspeed_i2c_slave_byte_irq(const struct device *dev, uint32_t i2c_base, uint32_t sts)
@@ -1856,10 +1646,8 @@ void aspeed_i2c_slave_byte_irq(const struct device *dev, uint32_t i2c_base, uint
 			slave_cb->stop(data->slave_cfg);
 		}
 
-		if (sts & AST_I2CS_TX_NAK) {
-			/* clear record slave address */
-			data->slave_addr_last = 0x0;
-		}
+		/* clear record slave address */
+		data->slave_addr_last = 0x0;
 
 		if (sts & AST_I2CS_SLAVE_MATCH) {
 			/* Don't handle this match for current condition*/
@@ -1894,8 +1682,19 @@ int aspeed_i2c_slave_irq(const struct device *dev)
 	LOG_DBG("S irq sts %x, bus %x\n", sts, sys_read32(i2c_base + AST_I2CC_STS_AND_BUFF));
 
 	/* remove unnessary status flags */
-	sts &= ~(AST_I2CS_ADDR_INDICATE_MASK | AST_I2CS_SLAVE_PENDING |
-		AST_I2CS_ADDR_NAK_MASK);
+	sts &= ~(AST_I2CS_ADDR_INDICATE_MASK | AST_I2CS_SLAVE_PENDING);
+
+	if (AST_I2CS_ADDR1_NAK & sts) {
+		sts &= ~AST_I2CS_ADDR1_NAK;
+	}
+
+	if (AST_I2CS_ADDR2_NAK & sts) {
+		sts &= ~AST_I2CS_ADDR2_NAK;
+	}
+
+	if (AST_I2CS_ADDR3_NAK & sts) {
+		sts &= ~AST_I2CS_ADDR3_NAK;
+	}
 
 	if (AST_I2CS_ADDR_MASK & sts) {
 		sts &= ~AST_I2CS_ADDR_MASK;
@@ -1981,6 +1780,8 @@ static int i2c_aspeed_init(const struct device *dev)
 	/* check chip id*/
 	len = hwinfo_get_device_id((uint8_t *)&rev_id, sizeof(rev_id));
 	clock_control_get_rate(config->clock_dev, config->clk_id, &config->clk_src);
+	LOG_INF("clk src %d, multi-master %d, xfer mode %d",
+		config->clk_src, config->multi_master, config->mode);
 
 	bitrate_cfg = i2c_map_dt_bitrate(config->bitrate);
 	error = pinctrl_apply_state(config->pcfg, PINCTRL_STATE_DEFAULT);
@@ -1988,11 +1789,6 @@ static int i2c_aspeed_init(const struct device *dev)
 	if (error) {
 		return error;
 	}
-
-	/* i2c bus information */
-	LOG_INF("bus %d, clk %dKHz, multi-master %d, xfer mode %d, version %d",
-		i2c_count, data->bus_frequency / 1000,
-		config->multi_master, config->mode, config->version);
 
 	config->irq_config_func(dev);
 
@@ -2095,13 +1891,11 @@ static const struct i2c_driver_api i2c_aspeed_driver_api = {
 		.irq_config_func = i2c_aspeed_config_func_##n,                                     \
 		.bitrate = DT_INST_PROP(n, clock_frequency),                                       \
 		.mode = DT_ENUM_IDX(DT_INST(n, DT_DRV_COMPAT), xfer_mode),                         \
-		.version = DT_ENUM_IDX(DT_INST(n, DT_DRV_COMPAT), i2c_version),                    \
 		.multi_master = DT_INST_PROP(n, multi_master),                                     \
 		.smbus_timeout = DT_INST_PROP(n, smbus_timeout),                                   \
-		.manual_scl_high = DT_PROP_OR(n, manual_high_count, 0x0),                          \
-		.manual_scl_low = DT_PROP_OR(n, manual_low_count, 0x0),                            \
-		.manual_sda_hold = DT_PROP_OR(n, manual_sda_delay, 0x0),                           \
-		.debounce_level = DT_PROP_OR(n, debounce_level, 0x2),                              \
+		.manual_scl_high = DT_INST_PROP(n, manual_high_count),                             \
+		.manual_scl_low = DT_INST_PROP(n, manual_low_count),                               \
+		.manual_sda_hold = DT_INST_PROP(n, manual_sda_delay),                              \
 		.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(n)),                                \
 		.clk_id = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(n, clk_id),                  \
 		.pcfg = PINCTRL_DT_INST_DEV_CONFIG_GET(n),                                         \

@@ -29,17 +29,6 @@ properties:
     description: |
       i2c transfer type. Default value is DMA.
 
-  i2c-version:
-    type: string
-    required: true
-    enum:
-        - "AST10x0"
-        - "AST2600"
-        - "AST2700"
-        - "AST2700A0"
-    description: |
-      i2c version.
-
   multi-master:
     type: int
     required: true
@@ -55,7 +44,7 @@ properties:
 
   manual-high-count:
     type: int
-    required: false
+    required: true
     description: |
       manual i2c clock high part. Default value is 0.
       The value should be 0x3 ~ 0xF.0 means that this
@@ -63,7 +52,7 @@ properties:
 
   manual-low-count:
     type: int
-    required: false
+    required: true
     description: |
       manual i2c clock low part. Default value is 0.
       The value should be 0x3 ~ 0xF. 0 means that this
@@ -71,16 +60,8 @@ properties:
 
   manual-sda-delay:
     type: int
-    required: false
+    required: true
     description: |
       manual i2c sda dealy. Default value is 0.
       The value should be 0x0 ~ 0x3. 0 means that this
       parameter use driver default value.
-
-  debounce-level:
-    type: int
-    required: false
-    description: |
-      debounce-level. Default value is 2.
-      The fliexable level could be 0x2 ~ 0xFF under AST2700.
-      Other projects are fixed design.
