@@ -685,6 +685,34 @@ void i3c_aspeed_gen_stop_to_internal(int inst_id)
 	sys_write32(value, i3c_gr + I3CG_REG1(inst_id));
 }
 
+int i3c_aspeed_gen_jesd403_timed_reset(struct i3c_aspeed_obj *obj)
+{
+	struct i3c_aspeed_config *config = obj->config;
+	uint32_t i3c_gr = DT_REG_ADDR(DT_NODELABEL(i3c_gr));
+	uint32_t value;
+	int inst_id = config->inst_id;
+
+	/* SCL pin enter sofware force mode */
+	value = sys_read32(i3c_gr + I3CG_REG1(inst_id));
+	value |= SCL_OUT_SW_MODE_VAL;
+	sys_write32(value, i3c_gr + I3CG_REG1(inst_id));
+	value |= SCL_SW_MODE_OE;
+	sys_write32(value, i3c_gr + I3CG_REG1(inst_id));
+	value |= SCL_OUT_SW_MODE_EN;
+	sys_write32(value, i3c_gr + I3CG_REG1(inst_id));
+	/* SCL low */
+	value &= ~SCL_OUT_SW_MODE_VAL;
+	sys_write32(value, i3c_gr + I3CG_REG1(inst_id));
+	k_msleep(50);
+	/* Restore to SCL high */
+	value |= SCL_OUT_SW_MODE_VAL;
+	sys_write32(value, i3c_gr + I3CG_REG1(inst_id));
+	/* SCL pin exit sofware force mode */
+	value &= ~SCL_OUT_SW_MODE_EN;
+	sys_write32(value, i3c_gr + I3CG_REG1(inst_id));
+
+	return 0;
+}
 #define DEV_CFG(dev)			((struct i3c_aspeed_config *)(dev)->config)
 #define DEV_DATA(dev)			((struct i3c_aspeed_obj *)(dev)->data)
 #define DESC_PRIV(desc)			((struct i3c_aspeed_dev_priv *)(desc)->priv_data)
@@ -2035,6 +2063,26 @@ int i3c_aspeed_master_send_ccc(const struct device *dev, struct i3c_ccc_cmd *ccc
 	}
 
 	ret = xfer.ret;
+
+	return ret;
+}
+
+int i3c_aspeed_master_recovery_bus(const struct device *dev)
+{
+	struct i3c_aspeed_obj *obj = DEV_DATA(dev);
+	struct i3c_aspeed_config *config = DEV_CFG(dev);
+	int ret;
+
+	if (config->secondary) {
+		LOG_ERR("%s: recovery bus not supported", dev->name);
+		return -ENOTSUP;
+	}
+
+	i3c_aspeed_enter_halt(obj, true);
+
+	ret = i3c_aspeed_gen_jesd403_timed_reset(obj);
+
+	i3c_aspeed_exit_halt(obj);
 
 	return ret;
 }
