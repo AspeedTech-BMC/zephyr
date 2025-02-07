@@ -24,18 +24,15 @@
 		emmc = &emmc;
 	};
 
-	sram: memory@14b80a00 {
-		reg = <0x14b80a00 0x3be00>;
+	sram: memory@14ba8000 {
+		reg = <0x14ba8000 0x17800>;
 	};
 };
 
 &uart12 {
 	status = "okay";
 	clock-frequency = <1846153>;
-};
-
-&emmc {
-	status = "okay";
+	current-speed = <115200>;
 };
 
 &cptra_ecdsa {

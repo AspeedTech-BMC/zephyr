@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Copyright (c) 2025 ASPEED Technology Inc.
+
+config LOAD_FIT_ENABLED
+	default n
+	bool "Load FIT enabled"
+	help
+	  Load FIT enabled.
+
+config AST_EXT_LOADER_ADDR
+	hex "ASPEED external loader address"
+	depends on LOAD_FIT_ENABLED
+	help
+	  ASPEED external loader address.
+
+config LOAD_FIT_ADDR
+	default 0x20120000
+	hex "Load next FIT address"
+	depends on LOAD_FIT_ENABLED
+	help
+	  Load next FIT address.
+
+source "Kconfig.zephyr"

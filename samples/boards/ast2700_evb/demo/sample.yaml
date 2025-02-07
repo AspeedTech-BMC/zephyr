@@ -1,0 +1,5 @@
+sample:
+  name: Aspeed demo sample
+tests:
+  sample.board.ast2700_evb:
+    platform_allow: ast2700_evb

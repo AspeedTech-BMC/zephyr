@@ -5,7 +5,7 @@
  */
 
 #include <zephyr/shell/shell.h>
-#include <zephyr/random/rand32.h>
+#include <zephyr/random/random.h>
 #include <stdlib.h>
 
 #define SHELL_HELP_GET_RANDOM		"Get random number"
