@@ -127,8 +127,8 @@
 	soc0_ipc2_v2: soc0_ipc_v2@800 {
 		compatible = "aspeed,ast2700-ipc-v2";
 		reg = <0x800 0x200>;
-		reg-tx-offset = <0x100>;
-		reg-rx-offset = <0>;
+		reg-tx-offset = <0x0>;
+		reg-rx-offset = <0x100>;
 		interrupts = <109 1>;
 		status = "disabled";
 	};
