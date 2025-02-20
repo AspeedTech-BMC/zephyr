@@ -110,5 +110,5 @@ static const struct i2c_global_config i2c_aspeed_config = {
 
 DEVICE_DT_INST_DEFINE(0, &i2c_global_init, NULL,
 		      NULL, &i2c_aspeed_config,
-		      POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEVICE,
+		      PRE_KERNEL_1, CONFIG_KERNEL_INIT_PRIORITY_DEVICE,
 		      NULL);
