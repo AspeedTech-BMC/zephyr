@@ -10,6 +10,15 @@
 
 #define ESPI_PLD_LEN_MIN	BIT(6)
 
+#define SIZE_4K             (0x1000)
+#define SIZE_32K            (0x8000)
+#define SIZE_64K            (0x10000)
+#define SIZE_128K           (0x20000)
+#define SIZE_256K           (0x40000)
+
+static uint64_t ssp_mem_base;
+static uint64_t tgt_mapping_addr;
+
 static void hexdump(uint8_t *buf, uint32_t len)
 {
 	int i;
@@ -126,6 +135,11 @@ static int espi_safs_write(const struct device *dev, uint8_t tag, uint32_t addr,
 	int rc;
 	struct espi_aspeed_ioc ioc;
 	struct espi_flash_cmplt cmplt_pkt;
+	int i;
+
+	for (i = 0; i < len; i += 4) {
+		sys_write32(*(uint32_t *)(buf + i), tgt_mapping_addr - ssp_mem_base + addr + i);
+	}
 
 	cmplt_pkt.cyc = ESPI_FLASH_SUC_CMPLT;
 	cmplt_pkt.tag = tag;
@@ -149,6 +163,29 @@ static int espi_safs_erase(const struct device *dev, uint8_t tag, uint32_t addr,
 	int rc;
 	struct espi_aspeed_ioc ioc;
 	struct espi_flash_cmplt cmplt_pkt;
+	int i;
+
+	/* decode erase size */
+	switch (len) {
+	case 0:
+		len = SIZE_4K;
+		break;
+	case 1:
+		len = SIZE_32K;
+		break;
+	case 2:
+		len = SIZE_64K;
+		break;
+	case 3:
+		len = SIZE_128K;
+		break;
+	default:
+		printk("unknown erase size: 0x%x\n", len);
+		break;
+	}
+	for (i = 0; i < len; i += 4) {
+		sys_write32(0xffffffff, tgt_mapping_addr - ssp_mem_base + addr + i);
+	}
 
 	cmplt_pkt.cyc = ESPI_FLASH_SUC_CMPLT;
 	cmplt_pkt.tag = tag;
@@ -177,7 +214,7 @@ void main(void)
 	uint32_t cyc, tag, len, addr;
 	uint32_t reg;
 
-	espi_dev = device_get_binding("espi");
+	espi_dev = device_get_binding("espi@74c05000");
 	if (!espi_dev) {
 		printk("no eSPI device found\n");
 		return;
@@ -190,10 +227,9 @@ void main(void)
 		return;
 	}
 
-	/* enable SAFS */
-	reg = *((volatile uint32_t *)(0x7e6e2510));
-	reg |= BIT(7);
-	*((volatile uint32_t *)(0x7e6e2510)) = reg;
+	ssp_mem_base = (sys_read32(0x72c02128) & 0x7fffffffULL) << 4;
+	tgt_mapping_addr = ((uint64_t)sys_read32(0x74c05434) << 32) | sys_read32(0x74c05430);
+	printk("ssp_mem_base=0x%llx, tgt_mapping_addr=0x%llx\n", ssp_mem_base, tgt_mapping_addr);
 
 	while (1) {
 		ioc.pkt_len = rwe_pkt_len;
@@ -208,7 +244,7 @@ void main(void)
 		cyc = rwe_pkt->cyc;
 		tag = rwe_pkt->tag;
 		len = (rwe_pkt->len_h << 8) | (rwe_pkt->len_l & 0xff);
-		addr = __bswap_32(rwe_pkt->addr_be);
+		addr = BSWAP_32(rwe_pkt->addr_be);
 
 		printk("\n==== Receive RX Packet ====\n");
 		printk("cyc=0x%02x, tag=0x%02x, len=0x%04x, addr=0x%08x\n", cyc, tag, len, addr);

@@ -61,3 +61,8 @@ properties:
       type: int
       required: false
       description: select the eDAF mode (0->mix, 1->hw, 2->sw)
+
+    flash-edaf-tgt-addr:
+      type: array
+      required: false
+      description: eDAF target mapping address

@@ -206,6 +206,15 @@
 			};
 		};
 
+		espi0: espi@74c05000 {
+			compatible = "aspeed,espi-v2";
+			reg = <0x74c05000 0x1000>;
+			interrupt-parent = <&soc1_intc0>;
+			interrupts = <10 1>;
+			clocks = <&sysclk1 SCU1_CLK_GATE_ESPI0CLK>;
+			status = "disabled";
+		};
+
 		uart0: serial@74c33000 {
 			compatible = "ns16550";
 			reg = <0x74c33000 0x100>;

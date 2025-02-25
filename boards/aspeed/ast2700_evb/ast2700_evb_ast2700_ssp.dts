@@ -86,3 +86,10 @@
 &soc1_intc5 {
 	status = "okay";
 };
+
+&espi0 {
+	status = "okay";
+	flash-edaf-mode = <0x0>;
+	flash-dma-mode;
+	flash-edaf-tgt-addr = <0x4 0x31000000>;
+};

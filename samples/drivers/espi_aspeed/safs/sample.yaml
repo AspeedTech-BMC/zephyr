@@ -1,5 +1,5 @@
 sample:
-  name: Aspeed eSPI OOB loopback test
+  name: Aspeed eSPI SAFS test
 tests:
-  sample.board.ast1030_evb:
-    platform_allow: ast1030_evb
+  sample.board.ast2700_evb_ast2700_ssp:
+    platform_allow: ast2700_evb_ast2700_ssp
