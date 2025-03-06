@@ -21,4 +21,10 @@ config LOAD_FIT_ADDR
 	help
 	  Load next FIT address.
 
+config IPC_SAMPLE
+	default n
+	bool "IPC sample enabled"
+	help
+	  IPC sampled enabled.
+
 source "Kconfig.zephyr"
