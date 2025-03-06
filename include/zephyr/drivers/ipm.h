@@ -72,12 +72,22 @@ typedef int (*ipm_max_data_size_get_t)(const struct device *ipmdev);
 typedef uint32_t (*ipm_max_id_val_get_t)(const struct device *ipmdev);
 
 /**
- * @typedef ipm_register_callback_t
+ * @typedef
  * @brief Callback API upon registration
  *
  * See @a ipm_register_callback() for argument definitions.
  */
 typedef void (*ipm_register_callback_t)(const struct device *port,
+					ipm_callback_t cb,
+					void *user_data);
+
+/**
+ * @typedef ipm_register_callback_t
+ * @brief Callback API upon registration
+ *
+ * See @a ipm_register_id_callback() for argument definitions.
+ */
+typedef void (*ipm_register_id_callback_t)(const struct device *port, uint32_t id,
 					ipm_callback_t cb,
 					void *user_data);
 
@@ -90,6 +100,14 @@ typedef void (*ipm_register_callback_t)(const struct device *port,
 typedef int (*ipm_set_enabled_t)(const struct device *ipmdev, int enable);
 
 /**
+ * @typedef ipm_set_enabled_t
+ * @brief Callback API upon enablement of interrupts
+ *
+ * See @a ipm_set_id_enabled() for argument definitions.
+ */
+typedef int (*ipm_set_id_enabled_t)(const struct device *ipmdev, uint32_t id, int enable);
+
+/**
  * @typedef ipm_complete_t
  * @brief Callback API upon command completion
  *
@@ -100,9 +118,11 @@ typedef void (*ipm_complete_t)(const struct device *ipmdev);
 __subsystem struct ipm_driver_api {
 	ipm_send_t send;
 	ipm_register_callback_t register_callback;
+	ipm_register_id_callback_t register_id_callback;
 	ipm_max_data_size_get_t max_data_size_get;
 	ipm_max_id_val_get_t max_id_val_get;
 	ipm_set_enabled_t set_enabled;
+	ipm_set_id_enabled_t set_id_enabled;
 #ifdef CONFIG_IPM_CALLBACK_ASYNC
 	ipm_complete_t complete;
 #endif
@@ -174,6 +194,24 @@ static inline void ipm_register_callback(const struct device *ipmdev,
 }
 
 /**
+ * @brief Register a callback function for incoming messages.
+ *
+ * @param ipmdev Driver instance pointer.
+ * @param id Message type identifier.
+ * @param cb Callback function to execute on incoming message interrupts.
+ * @param user_data Application-specific data pointer which will be passed
+ *        to the callback function when executed.
+ */
+static inline void ipm_register_id_callback(const struct device *ipmdev, uint32_t id,
+					    ipm_callback_t cb, void *user_data)
+{
+	const struct ipm_driver_api *api =
+		(const struct ipm_driver_api *)ipmdev->api;
+
+	api->register_id_callback(ipmdev, id, cb, user_data);
+}
+
+/**
  * @brief Return the maximum number of bytes possible in an outbound message.
  *
  * IPM implementations vary on the amount of data that can be sent in a
@@ -232,6 +270,27 @@ static inline int z_impl_ipm_set_enabled(const struct device *ipmdev,
 		(const struct ipm_driver_api *)ipmdev->api;
 
 	return api->set_enabled(ipmdev, enable);
+}
+
+/**
+ * @brief Enable interrupts and callbacks for inbound channels.
+ *
+ * @param ipmdev Driver instance pointer.
+ * @param id Message type identifier.
+ * @param enable Set to 0 to disable and to nonzero to enable.
+ *
+ * @retval 0       On success.
+ * @retval -EINVAL If it isn't an inbound channel.
+ */
+__syscall int ipm_set_id_enabled(const struct device *ipmdev, uint32_t id, int enable);
+
+static inline int z_impl_ipm_set_id_enabled(const struct device *ipmdev, uint32_t id,
+					    int enable)
+{
+	const struct ipm_driver_api *api =
+		(const struct ipm_driver_api *)ipmdev->api;
+
+	return api->set_id_enabled(ipmdev, id, enable);
 }
 
 /**

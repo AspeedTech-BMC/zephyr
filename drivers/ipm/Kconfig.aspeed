@@ -14,3 +14,10 @@ config IPM_AST2700
 	depends on DT_HAS_ASPEED_AST2700_IPC_ENABLED || DT_HAS_ASPEED_AST2700_IPC_V2_ENABLED
 	help
 	  This option enables the IPM driver for ASPEED AST2700 series SOC.
+
+config IPM_BOOTMCU
+	bool "ASPEED IPC driver"
+	default y
+	depends on SOC_AST2700_BOOTMCU
+	help
+	  This option enables the IPC driver for ASPEED SoCs.
