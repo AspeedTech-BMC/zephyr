@@ -1,0 +1,20 @@
+# Copyright (c) 2024 ASPEED Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+description: ASPEED BOOTMCU IPC (Interprocessor Communication) in AST2700 SOC
+
+compatible: "aspeed,bootmcu-ipc"
+
+include: base.yaml
+
+properties:
+  reg:
+    required: true
+
+  reg-tx-offset:
+    type: int
+    required: true
+
+  reg-rx-offset:
+    type: int
+    required: true

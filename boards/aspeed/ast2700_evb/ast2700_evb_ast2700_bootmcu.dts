@@ -35,6 +35,26 @@
 	current-speed = <115200>;
 };
 
+#if 0
+&ipc_s_ca35 {
+	status = "okay";
+};
+
+&ipc_ns_ca35 {
+	status = "okay";
+};
+#endif
+
+&ipc_ssp {
+	status = "okay";
+};
+
+#if 0
+&ipc_tsp {
+	status = "okay";
+};
+#endif
+
 &cptra_ecdsa {
 	status = "okay";
 };
