@@ -89,6 +89,7 @@ int main(void)
 	}
 #elif defined(CONFIG_IPM_AST2700)
 	char ipc_name[16];
+	int device_id, enable;
 #if defined(CONFIG_BOARD_AST2700_EVB_AST2700_SSP) || defined(CONFIG_BOARD_AST2700_EVB_AST2700_A0_SSP)
 	printk("SSP alive.\n");
 	strcpy(ipc_name, "soc0_ipc_v2@0");
@@ -98,8 +99,11 @@ int main(void)
 		rc = 1;
 		goto fail;
 	}
-	ipm_register_callback(ipmdev, test_ipm_cb, NULL);
-	rc = ipm_set_enabled(ipmdev, 1);
+
+	device_id = 0;
+	enable = 1;
+	ipm_register_id_callback(ipmdev, device_id, test_ipm_cb, NULL);
+	rc = ipm_set_id_enabled(ipmdev, device_id, enable);
 	if (rc) {
 		printk("%s: cannot ipm_set_enabled\n", ipc_name);
 		goto fail;
@@ -112,8 +116,11 @@ int main(void)
 		rc = 1;
 		goto fail;
 	}
-	ipm_register_callback(ipmdev, test_ipm_cb, NULL);
-	rc = ipm_set_enabled(ipmdev, 1);
+
+	device_id = 0;
+	enable = 1;
+	ipm_register_id_callback(ipmdev, device_id, test_ipm_cb, NULL);
+	rc = ipm_set_id_enabled(ipmdev, device_id, enable);
 	if (rc) {
 		printk("%s: cannot ipm_set_enabled\n", ipc_name);
 		goto fail;
@@ -128,8 +135,11 @@ int main(void)
 		rc = 1;
 		goto fail;
 	}
-	ipm_register_callback(ipmdev, test_ipm_cb, NULL);
-	rc = ipm_set_enabled(ipmdev, 1);
+
+	device_id = 0;
+	enable = 1;
+	ipm_register_id_callback(ipmdev, device_id, test_ipm_cb, NULL);
+	rc = ipm_set_id_enabled(ipmdev, device_id, enable);
 	if (rc) {
 		printk("%s: cannot ipm_set_enabled\n", ipc_name);
 		goto fail;
@@ -142,8 +152,11 @@ int main(void)
 		rc = 1;
 		goto fail;
 	}
-	ipm_register_callback(ipmdev, test_ipm_cb, NULL);
-	rc = ipm_set_enabled(ipmdev, 1);
+
+	device_id = 0;
+	enable = 1;
+	ipm_register_id_callback(ipmdev, device_id, test_ipm_cb, NULL);
+	rc = ipm_set_id_enabled(ipmdev, device_id, enable);
 	if (rc) {
 		printk("%s: cannot ipm_set_enabled\n", ipc_name);
 		goto fail;
@@ -157,8 +170,11 @@ int main(void)
 		rc = 1;
 		goto fail;
 	}
-	ipm_register_callback(ipmdev, test_ipm_cb, NULL);
-	rc = ipm_set_enabled(ipmdev, 1);
+
+	device_id = 0;
+	enable = 1;
+	ipm_register_id_callback(ipmdev, device_id, test_ipm_cb, NULL);
+	rc = ipm_set_id_enabled(ipmdev, device_id, enable);
 	if (rc) {
 		printk("%s: cannot ipm_set_enabled\n", ipc_name);
 		goto fail;

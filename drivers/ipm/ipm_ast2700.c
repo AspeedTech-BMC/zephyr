@@ -37,8 +37,8 @@ struct ipm_ast2700_config {
 };
 
 struct ipm_ast2700_data {
-	ipm_callback_t callback;
-	void *user_data;
+	ipm_callback_t callback[IPC_NUM_OF_ID];
+	void *user_data[IPC_NUM_OF_ID];
 };
 
 static void ipm_ast2700_isr(const void *dev)
@@ -52,22 +52,21 @@ static void ipm_ast2700_isr(const void *dev)
 
 	printk("ipc@%lx: isr status 0x%x", config->base, status);
 
-	if (!data->callback)
-		goto done;
 
 	for (i = 0; i < IPC_NUM_OF_ID; i++) {
 		if (status & BIT(i)) {
+			if (!data->callback[i])
+				return;
+
 			msg_base = base + IPCR_DATA0 + IPC_MAX_MSG_SIZE * i;
 
 			printk("msg@%08x:", msg_base);
 			LOG_HEXDUMP_DBG((void *)msg_base, IPC_MAX_MSG_SIZE, "msg");
 
-			data->callback(dev, data->user_data, i, (volatile void *)msg_base);
+			data->callback[i](dev, data->user_data[i], i, (volatile void *)msg_base);
 		}
+		sys_write32(BIT(i), base + IPCR_STATUS);
 	}
-
-done:
-	sys_write32(status, base + IPCR_STATUS);
 }
 
 static int ipm_ast2700_send(const struct device *dev, int wait, uint32_t id, const void *data,
@@ -101,13 +100,13 @@ static int ipm_ast2700_send(const struct device *dev, int wait, uint32_t id, con
 	return 0;
 }
 
-static void ipm_ast2700_register_callback(const struct device *dev, ipm_callback_t cb,
-					  void *user_data)
+static void ipm_ast2700_register_id_callback(const struct device *dev, uint32_t id,
+					     ipm_callback_t cb, void *user_data)
 {
 	struct ipm_ast2700_data *data = dev->data;
 
-	data->callback = cb;
-	data->user_data = user_data;
+	data->callback[id] = cb;
+	data->user_data[id] = user_data;
 }
 
 static int ipm_ast2700_max_data_size_get(const struct device *dev)
@@ -120,13 +119,16 @@ static uint32_t ipm_ast2700_max_id_val_get(const struct device *dev)
 	return IPC_NUM_OF_ID - 1;
 }
 
-static int ipm_ast2700_set_enabled(const struct device *dev, int enable)
+static int ipm_ast2700_set_id_enabled(const struct device *dev, uint32_t id, int enable)
 {
 	const struct ipm_ast2700_config *config = dev->config;
 	uint32_t reg = 0;
 
+	reg = sys_read32(config->base + config->reg_rx_offset + IPCR_ENABLE);
 	if (enable) {
-		reg = GENMASK(IPC_NUM_OF_ID - 1, 0);
+		reg |= BIT(id);
+	} else {
+		reg &= ~BIT(id);
 	}
 	sys_write32(reg, config->base + config->reg_rx_offset + IPCR_ENABLE);
 
@@ -150,10 +152,10 @@ static int ipm_ast2700_init(const struct device *dev)
 
 static const struct ipm_driver_api ipm_ast2700_driver_api = {
 	.send = ipm_ast2700_send,
-	.register_callback = ipm_ast2700_register_callback,
+	.register_id_callback = ipm_ast2700_register_id_callback,
 	.max_data_size_get = ipm_ast2700_max_data_size_get,
 	.max_id_val_get = ipm_ast2700_max_id_val_get,
-	.set_enabled = ipm_ast2700_set_enabled,
+	.set_id_enabled = ipm_ast2700_set_id_enabled,
 };
 
 #define IPM_AST2700_INIT(n)                                                                        \
