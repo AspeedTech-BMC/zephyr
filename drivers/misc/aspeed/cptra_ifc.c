@@ -55,7 +55,7 @@ static void cptra_trng_thread(const struct device *dev)
 			continue;
 		}
 
-		ret = k_msleep(100);
+		ret = k_msleep(10);
 	}
 }
 
