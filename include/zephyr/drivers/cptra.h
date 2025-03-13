@@ -33,9 +33,33 @@
 #define CPTRA_MBOX_SZ				0x20000	/* 128KB */
 
 /* Mailbox commands */
-#define CPTRA_MBCMD_ECDSA384_SIGNATURE_VERIFY	0x53494756
-#define CPTRA_MBCMD_LMS_SIGNATURE_VERIFY	0x4c4d5356
-#define CPTRA_MBCMD_CALIPTRA_FW_LOAD		0x46574C44
+enum cptra_mbox_cmd {
+	CPTRA_MBCMD_ECDSA384_SIGNATURE_VERIFY       = 0x53494756, /* "SIGV" */
+	CPTRA_MBCMD_LMS_SIGNATURE_VERIFY            = 0x4c4d5356, /* "LMSV" */
+	CPTRA_MBCMD_CALIPTRA_FW_LOAD                = 0x46574c44, /* "FWLD" */
+	CPTRA_MBCMD_STASH_MEASUREMENT               = 0x4d454153, /* "MEAS" */
+	CPTRA_MBCMD_QUOTE_PCRS                      = 0x50435251, /* "PCRQ" */
+	CPTRA_MBCMD_GET_IDEV_CERT                   = 0x49444543, /* "IDEC" */
+	CPTRA_MBCMD_GET_IDEV_INFO                   = 0x49444549, /* "IDEI" */
+	CPTRA_MBCMD_POPULATE_IDEV_CERT              = 0x49444550, /* "IDEP" */
+	CPTRA_MBCMD_GET_LDEV_CERT                   = 0x4C444556, /* "LDEV" */
+	CPTRA_MBCMD_GET_FMC_ALIAS_CERT              = 0x43455246, /* "CERF" */
+	CPTRA_MBCMD_GET_RT_ALIAS_CERT               = 0x43455252, /* "CERR" */
+	CPTRA_MBCMD_INVOKE_DPE_COMMAND              = 0x44504543, /* "DPEC" */
+	CPTRA_MBCMD_DISABLE_ATTESTATION             = 0x4453424C, /* "DSBL" */
+	CPTRA_MBCMD_FW_INFO                         = 0x494E464F, /* "INFO" */
+	CPTRA_MBCMD_DPE_TAG_TCI                     = 0x54514754, /* "TAGT" */
+	CPTRA_MBCMD_DPE_GET_TAGGED_TCI              = 0x47544744, /* "GTGD" */
+	CPTRA_MBCMD_INCREMENT_PCR_RESET_COUNTER     = 0x50435252, /* "PCRR" */
+	CPTRA_MBCMD_EXTEND_PCR                      = 0x50435245, /* "PCRE" */
+	CPTRA_MBCMD_ADD_SUBJECT_ALT_NAME            = 0x414C544E, /* "ALTN" */
+	CPTRA_MBCMD_CERTIFY_KEY_EXTENDED            = 0x434B4558, /* "CKEX" */
+	CPTRA_MBCMD_FIPS_VERSION                    = 0x46505652, /* "FPVR" */
+	CPTRA_MBCMD_SELF_TEST_START                 = 0x46504C54, /* "FPST" */
+	CPTRA_MBCMD_SELF_TEST_GET_RESULTS           = 0x46504C67, /* "FPGR" */
+	CPTRA_MBCMD_SHUTDOWN                        = 0x46505344, /* "FPSD" */
+	CPTRA_MBCMD_CAPABILITIES                    = 0x43415053, /* "CAPS" */
+};
 
 union cptra_mbox_lock_s {
 	volatile uint32_t value;
@@ -230,9 +254,56 @@ struct cptra_sha_register_s {
 #define CPTRA_UPD_RST_TIMEOUT			1000
 #define CPTRA_TRNG_REQ_LOOP_CNT			1000000		/* TODO: real chip exp */
 
+struct cptra_stash_measurement_ia {
+	uint8_t metadata[4];
+	uint8_t measure[48];
+	uint8_t context[48];
+	uint32_t svn;
+};
+
+struct cptra_stash_measurement_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+	uint32_t dpe_result;
+};
+
+struct cptra_quote_pcrs_ia {
+	uint8_t nonce[32];
+};
+
+typedef uint8_t PcrValue[48];
+
+struct cptra_quote_pcrs_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+	PcrValue PCRs[32];
+	uint8_t nonce[32];
+	uint8_t digest[48];
+	uint32_t reset_ctrs[32];
+	uint8_t signature_r[48];
+	uint8_t signature_s[48];
+};
+
+struct cptra_extend_pcr_ia {
+	uint32_t index;
+	uint8_t value[48];
+};
+
+struct cptra_extend_pcr_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+};
+
 /* The API a cptra driver should implement */
 __subsystem struct cptra_driver_api {
 	int (*caliptra_fw_upload)(const struct device *dev, uint8_t *buf, int size);
+	int (*caliptra_stash_measurement)(const struct device *dev,
+					  struct cptra_stash_measurement_ia *input,
+					  struct cptra_stash_measurement_oa *output);
+	int (*caliptra_quote_pcrs)(const struct device *dev, struct cptra_quote_pcrs_ia *input,
+				   struct cptra_quote_pcrs_oa *output);
+	int (*caliptra_extend_pcr)(const struct device *dev, struct cptra_extend_pcr_ia *input,
+				   struct cptra_extend_pcr_oa *output);
 };
 
 static inline int caliptra_fw_upload(const struct device *dev, uint8_t *buf, int size)
@@ -242,6 +313,43 @@ static inline int caliptra_fw_upload(const struct device *dev, uint8_t *buf, int
 
 	api = (struct cptra_driver_api *)dev->api;
 	tmp = api->caliptra_fw_upload(dev, buf, size);
+
+	return tmp;
+}
+
+static inline int caliptra_stash_measurement(const struct device *dev,
+					     struct cptra_stash_measurement_ia *input,
+					     struct cptra_stash_measurement_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_stash_measurement(dev, input, output);
+
+	return tmp;
+}
+
+static inline int caliptra_quote_pcrs(const struct device *dev, struct cptra_quote_pcrs_ia *input,
+				      struct cptra_quote_pcrs_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_quote_pcrs(dev, input, output);
+
+	return tmp;
+}
+
+static inline int caliptra_extend_pcr(const struct device *dev, struct cptra_extend_pcr_ia *input,
+				      struct cptra_extend_pcr_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_extend_pcr(dev, input, output);
 
 	return tmp;
 }

@@ -183,6 +183,11 @@
 				compatible = "aspeed,cptra-update";
 				status = "disabled";
 			};
+
+			cptra_dice: cptra-dice {
+				compatible = "aspeed,cptra-dice";
+				status = "disabled";
+			};
 		};
 
 		cptra_sha: cptra-sha@14c61000 {

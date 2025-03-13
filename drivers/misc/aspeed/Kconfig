@@ -83,6 +83,12 @@ config CPTRA_MBOX
 	help
 	  This option enables the Caliptra mbox driver for ASPEED SoCs.
 
+config CPTRA_DICE
+	bool "ASPEED CPTRA DICE driver"
+	depends on SOC_AST2700_BOOTMCU
+	help
+	  This option enables the Caliptra dice driver for ASPEED SoCs.
+
 config PRIVILEGE_CTRL
 	bool "Enable ASPEED privilege control"
 	default y

@@ -41,6 +41,55 @@ static void cptra_mbox_set_base(uint32_t base)
 	cptra_mbox_base = base;
 }
 
+void cptra_mbox_dump(void)
+{
+	for (int i = 0; i < 9; i++) {
+		LOG_INF("0x%x: 0x%x", cptra_mbox_base + (i << 2),
+			sys_read32(cptra_mbox_base + (i << 2)));
+	}
+}
+
+int cptra_mbox_trigger(uint32_t cmd, uint32_t dlen, uint32_t csum,
+		       uint8_t *input, uint32_t ilen,
+		       uint8_t *output, uint32_t olen)
+{
+	uint32_t *p32;
+	uint32_t sts;
+	int rc;
+
+	sys_write32(cmd, cptra_mbox_base + CPTRA_MBOX_CMD);
+	sys_write32(sizeof(csum) + ilen, cptra_mbox_base + CPTRA_MBOX_DLEN);
+	sys_write32(csum, cptra_mbox_base + CPTRA_MBOX_DATAIN);
+
+	p32 = (uint32_t *)input;
+	for (int i = 0; i < (ilen / sizeof(uint32_t)); i++)
+		sys_write32(p32[i], cptra_mbox_base + CPTRA_MBOX_DATAIN);
+
+	sys_write32(0x1, cptra_mbox_base + CPTRA_MBOX_EXEC);
+
+	while (1) {
+		sts = FIELD_GET(CPTRA_MBOX_STS_PS, cptra_mbox_status());
+		if (sts != CPTRA_MBSTS_CMD_BUSY)
+			break;
+	}
+
+	if (sts == CPTRA_MBSTS_DATA_READY) {
+		dlen = sys_read32(cptra_mbox_base + CPTRA_MBOX_DLEN);
+		LOG_INF("output dlen:0x%x", dlen);
+
+		p32 = (uint32_t *)output;
+		for (int i = 0; i < (dlen / sizeof(uint32_t)); i++)
+			*p32++ = sys_read32(cptra_mbox_base + CPTRA_MBOX_DATAOUT);
+
+		rc = 0;
+	} else {
+		cptra_mbox_dump();
+		rc = -1;
+	}
+
+	return rc;
+}
+
 uint32_t cptra_mbox_csum(uint32_t csum, uint8_t *data, uint32_t dlen)
 {
 	uint32_t i;
