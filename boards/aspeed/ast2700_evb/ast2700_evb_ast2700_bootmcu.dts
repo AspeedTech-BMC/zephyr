@@ -70,3 +70,7 @@
 &cptra_update {
 	status = "okay";
 };
+
+&cptra_dice {
+	status = "okay";
+};
