@@ -39,12 +39,15 @@ static int ast27xx_reset_line_assert(const struct device *dev, uint32_t id)
 	const struct reset_ast27xx_config *config = dev->config;
 	uint32_t addr = RESET_CTRL0_ASSERT;
 
+	__ASSERT_NO_MSG(id < 64);
+
 	if (id >= 32) {
 		id -= 32;
 		addr = RESET_CTRL1_ASSERT;
 	}
 
 	sys_set_bit(config->base + addr, ((id) & 0x1FU));
+	sys_read32(config->base + addr);
 
 	return 0;
 }
@@ -54,12 +57,15 @@ static int ast27xx_reset_line_deassert(const struct device *dev, uint32_t id)
 	const struct reset_ast27xx_config *config = dev->config;
 	uint32_t addr = RESET_CTRL0_DEASSERT;
 
+	__ASSERT_NO_MSG(id < 64);
+
 	if (id >= 32) {
 		id -= 32;
 		addr = RESET_CTRL1_DEASSERT;
 	}
 
 	sys_set_bit(config->base + addr, ((id) & 0x1FU));
+	sys_read32(config->base + addr);
 
 	return 0;
 }
