@@ -1,0 +1,19 @@
+# Copyright (c) 2025, Aspeed Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+description: Aspeed, AST27xx LTPI controller
+
+compatible: "aspeed,ast27xx-ltpi"
+
+include: [base.yaml, reset-device.yaml]
+
+properties:
+    aspeed,scu:
+      type: phandle
+      required: true
+      description: phandle to SCU device tree node
+
+    index:
+      type: int
+      required: true
+      description: specify the HW index
