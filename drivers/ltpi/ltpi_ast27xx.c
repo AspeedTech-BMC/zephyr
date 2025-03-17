@@ -754,8 +754,9 @@ static int ltpi_set_operational_clk(struct ast27xx_ltpi_data *ltpi, uint16_t spe
 	return target_speed;
 }
 
-static int ltpi_optimeout_init(struct ast27xx_ltpi_data *ltpi)
+static int ltpi_optimeout_init(struct ast27xx_ltpi_data *ltpi, int timeout_ms)
 {
+	ltpi->op_timeout = Z_TIMEOUT_MS(timeout_ms).ticks;
 	ltpi->t_link_detect = sys_clock_tick_get_32();
 
 	return 0;
@@ -772,7 +773,7 @@ static int ltpi_optimeout_query(struct ast27xx_ltpi_data *ltpi)
 	return 0;
 }
 
-static int ast27xx_ltpi_do_link(const struct device *dev)
+static int ast27xx_ltpi_do_link(const struct device *dev, int timeout_ms)
 {
 	struct ast27xx_ltpi_data *ltpi = dev->data;
 	int ret, target_speed;
@@ -786,7 +787,7 @@ static int ast27xx_ltpi_do_link(const struct device *dev)
 		return 0;
 	}
 
-	ltpi_optimeout_init(ltpi);
+	ltpi_optimeout_init(ltpi, timeout_ms);
 	/* LTPI initialization is required, start link training phase */
 	do {
 		ltpi_do_link_training(ltpi);

@@ -105,7 +105,7 @@ enum ltpi_link_speed {
 #define LTPI_LINK_CTRL_SW_RESET			BIT(0)
 
 /* LTPI APIs */
-typedef int (*ltpi_api_do_link)(const struct device *dev);
+typedef int (*ltpi_api_do_link)(const struct device *dev, int timeout_ms);
 typedef int (*ltpi_api_get_status)(const struct device *dev, struct ltpi_ctrl_status_regs **status);
 
 /**
@@ -118,8 +118,8 @@ __subsystem struct ltpi_driver_api {
 	ltpi_api_get_status get_status;
 };
 
-__syscall int ltpi_do_link(const struct device *dev);
-static inline int z_impl_ltpi_do_link(const struct device *dev)
+__syscall int ltpi_do_link(const struct device *dev, int timeout_ms);
+static inline int z_impl_ltpi_do_link(const struct device *dev, int timeout_ms)
 {
 	const struct ltpi_driver_api *api = (const struct ltpi_driver_api *)dev->api;
 
@@ -127,7 +127,7 @@ static inline int z_impl_ltpi_do_link(const struct device *dev)
 		return -ENOSYS;
 	}
 
-	return api->do_link(dev);
+	return api->do_link(dev, timeout_ms);
 }
 
 __syscall int ltpi_get_status(const struct device *dev, struct ltpi_ctrl_status_regs **status);
