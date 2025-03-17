@@ -1,0 +1,17 @@
+# ASPEED LTPI driver configuration options
+
+# Copyright (c) 2025 ASPEED Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+module = LTPI_ASPEED
+module-str = ltpi-aspeed
+source "subsys/logging/Kconfig.template.log_config"
+
+config LTPI_AST27XX
+	bool "ASPEED AST27XX LTPI driver"
+	default y
+	depends on SOC_SERIES_AST27XX && DT_HAS_ASPEED_AST27XX_LTPI_ENABLED
+	select RESET
+	select CLOCK_CONTROL
+	help
+	  This option enables the LTPI driver for ASPEED AST27xx SOCs.

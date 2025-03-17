@@ -1,0 +1,20 @@
+# LTPI configuration options
+#
+# Copyright (c) 2025 Aspeed Technology
+#
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig LTPI
+	bool "LVDS Tunneling Protocol & Interface (LTPI) drivers"
+	help
+	  Enable LTPI Driver Configuration
+
+if LTPI
+
+module = LTPI
+module-str = ltpi
+source "subsys/logging/Kconfig.template.log_config"
+
+rsource "Kconfig.aspeed"
+
+endif # LTPI
