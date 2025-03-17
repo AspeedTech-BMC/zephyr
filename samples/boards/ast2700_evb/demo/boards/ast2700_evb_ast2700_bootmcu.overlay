@@ -1,0 +1,7 @@
+&ltpi0{
+	status = "okay";
+};
+
+&ltpi1{
+	status = "okay";
+};
