@@ -294,6 +294,167 @@ struct cptra_extend_pcr_oa {
 	uint32_t fips_status;
 };
 
+struct cptra_increment_pcr_reset_counter_ia {
+	uint32_t index;
+};
+
+struct cptra_increment_pcr_reset_counter_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+};
+
+struct cptra_dpe_tag_tci_ia {
+	uint8_t handle[16];
+	uint32_t tag;
+};
+
+struct cptra_dpe_tag_tci_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+};
+
+struct cptra_dpe_get_tagged_tci_ia {
+	uint32_t tag;
+};
+
+struct cptra_dpe_get_tagged_tci_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+	uint8_t tci_cumulative[48];
+	uint8_t tci_current[48];
+};
+
+struct cptra_add_subject_alt_name_ia {
+	uint32_t dmtf_device_info_size;
+	uint8_t dmtf_device_info[128];
+};
+
+struct cptra_add_subject_alt_name_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+};
+
+struct cptra_certify_key_extended_ia {
+	uint8_t certify_key_req[72];
+	uint32_t flags;
+};
+
+struct cptra_certify_key_extended_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+	uint8_t certify_key_resp[2176];
+};
+
+struct cptra_disable_attestation_ia {
+};
+
+struct cptra_disable_attestation_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+};
+
+struct cptra_get_idev_cert_ia {
+	uint8_t signature_r[48];
+	uint8_t signature_s[48];
+	uint32_t tbs_size;
+	uint8_t tbs[916];
+};
+
+struct cptra_get_idev_cert_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+	uint32_t cert_size;
+	uint8_t cert[1024];
+};
+
+struct cptra_populate_idev_cert_ia {
+	uint32_t cert_size;
+	uint8_t cert[1024];
+};
+
+struct cptra_populate_idev_cert_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+};
+
+struct cptra_get_idev_info_ia {
+};
+
+struct cptra_get_idev_info_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+	uint8_t idev_pub_x[48];
+	uint8_t idev_pub_y[48];
+};
+
+struct cptra_get_ldev_cert_ia {
+};
+
+struct cptra_get_ldev_cert_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+	uint32_t data_size;
+	uint8_t data[1024];
+};
+
+struct cptra_get_fmc_alias_cert_ia {
+};
+
+struct cptra_get_fmc_alias_cert_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+	uint32_t data_size;
+	uint8_t data[1024];
+};
+
+struct cptra_get_rt_alias_cert_ia {
+};
+
+struct cptra_get_rt_alias_cert_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+	uint32_t data_size;
+	uint8_t data[1024];
+};
+
+enum dpe_command {
+	GET_PROFILE		= 0x01,
+	INITIALIZE_CONTEXT	= 0x07,
+	DERIVE_CONTEXT		= 0x08,
+	CERTIFY_KEY		= 0x09,
+	SIGN			= 0x0A,
+	ROTATE_CONTEXT_HANDLE	= 0x0e,
+	DESTROY_CONTEXT		= 0x0f,
+	GET_CERTIFICATE_CHAIN	= 0x10,
+};
+
+/* TODO: DPE command */
+struct dpe_cmd_header {
+	uint32_t magic;
+	uint32_t cmd;
+	uint32_t profile;
+};
+
+struct get_profile_i {
+	struct dpe_cmd_header cmd_hdr;
+};
+
+struct get_profile_o {
+	uint32_t output[3];
+};
+
+struct cptra_invoke_dpe_command_ia {
+	uint32_t data_size;
+	uint8_t data[256];
+};
+
+struct cptra_invoke_dpe_command_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+	uint32_t data_size;
+	uint8_t data[128];
+};
+
 /* The API a cptra driver should implement */
 __subsystem struct cptra_driver_api {
 	int (*caliptra_fw_upload)(const struct device *dev, uint8_t *buf, int size);
@@ -304,6 +465,44 @@ __subsystem struct cptra_driver_api {
 				   struct cptra_quote_pcrs_oa *output);
 	int (*caliptra_extend_pcr)(const struct device *dev, struct cptra_extend_pcr_ia *input,
 				   struct cptra_extend_pcr_oa *output);
+	int (*caliptra_increment_pcr_reset_counter)(const struct device *dev,
+				struct cptra_increment_pcr_reset_counter_ia *input,
+				struct cptra_increment_pcr_reset_counter_oa *output);
+	int (*caliptra_dpe_tag_tci)(const struct device *dev, struct cptra_dpe_tag_tci_ia *input,
+				    struct cptra_dpe_tag_tci_oa *output);
+	int (*caliptra_dpe_get_tagged_tci)(const struct device *dev,
+					   struct cptra_dpe_get_tagged_tci_ia *input,
+					   struct cptra_dpe_get_tagged_tci_oa *output);
+	int (*caliptra_add_subject_alt_name)(const struct device *dev,
+					     struct cptra_add_subject_alt_name_ia *input,
+					     struct cptra_add_subject_alt_name_oa *output);
+	int (*caliptra_certify_key_extended)(const struct device *dev,
+					     struct cptra_certify_key_extended_ia *input,
+					     struct cptra_certify_key_extended_oa *output);
+	int (*caliptra_disable_attestation)(const struct device *dev,
+					    struct cptra_disable_attestation_ia *input,
+					    struct cptra_disable_attestation_oa *output);
+	int (*caliptra_invoke_dpe_command)(const struct device *dev,
+					   struct cptra_invoke_dpe_command_ia *input,
+					   struct cptra_invoke_dpe_command_oa *output);
+	int (*caliptra_get_idev_cert)(const struct device *dev,
+				      struct cptra_get_idev_cert_ia *input,
+				      struct cptra_get_idev_cert_oa *output);
+	int (*caliptra_populate_idev_cert)(const struct device *dev,
+					   struct cptra_populate_idev_cert_ia *input,
+					   struct cptra_populate_idev_cert_oa *output);
+	int (*caliptra_get_idev_info)(const struct device *dev,
+				      struct cptra_get_idev_info_ia *input,
+				      struct cptra_get_idev_info_oa *output);
+	int (*caliptra_get_ldev_cert)(const struct device *dev,
+				      struct cptra_get_ldev_cert_ia *input,
+				      struct cptra_get_ldev_cert_oa *output);
+	int (*caliptra_get_fmc_alias_cert)(const struct device *dev,
+					   struct cptra_get_fmc_alias_cert_ia *input,
+					   struct cptra_get_fmc_alias_cert_oa *output);
+	int (*caliptra_get_rt_alias_cert)(const struct device *dev,
+					  struct cptra_get_rt_alias_cert_ia *input,
+					  struct cptra_get_rt_alias_cert_oa *output);
 };
 
 static inline int caliptra_fw_upload(const struct device *dev, uint8_t *buf, int size)
@@ -350,6 +549,175 @@ static inline int caliptra_extend_pcr(const struct device *dev, struct cptra_ext
 
 	api = (struct cptra_driver_api *)dev->api;
 	tmp = api->caliptra_extend_pcr(dev, input, output);
+
+	return tmp;
+}
+
+static inline int
+caliptra_increment_pcr_reset_counter(const struct device *dev,
+				     struct cptra_increment_pcr_reset_counter_ia *input,
+				     struct cptra_increment_pcr_reset_counter_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_increment_pcr_reset_counter(dev, input, output);
+
+	return tmp;
+}
+
+static inline int caliptra_dpe_tag_tci(const struct device *dev, struct cptra_dpe_tag_tci_ia *input,
+				       struct cptra_dpe_tag_tci_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_dpe_tag_tci(dev, input, output);
+
+	return tmp;
+}
+
+static inline int caliptra_dpe_get_tagged_tci(const struct device *dev,
+					      struct cptra_dpe_get_tagged_tci_ia *input,
+					      struct cptra_dpe_get_tagged_tci_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_dpe_get_tagged_tci(dev, input, output);
+
+	return tmp;
+}
+
+static inline int caliptra_add_subject_alt_name(const struct device *dev,
+						struct cptra_add_subject_alt_name_ia *input,
+						struct cptra_add_subject_alt_name_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_add_subject_alt_name(dev, input, output);
+
+	return tmp;
+}
+
+static inline int caliptra_certify_key_extended(const struct device *dev,
+						struct cptra_certify_key_extended_ia *input,
+						struct cptra_certify_key_extended_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_certify_key_extended(dev, input, output);
+
+	return tmp;
+}
+
+static inline int caliptra_disable_attestation(const struct device *dev,
+					       struct cptra_disable_attestation_ia *input,
+					       struct cptra_disable_attestation_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_disable_attestation(dev, input, output);
+
+	return tmp;
+}
+
+static inline int caliptra_invoke_dpe_command(const struct device *dev,
+					      struct cptra_invoke_dpe_command_ia *input,
+					      struct cptra_invoke_dpe_command_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_invoke_dpe_command(dev, input, output);
+
+	return tmp;
+}
+
+static inline int caliptra_get_idev_cert(const struct device *dev,
+					 struct cptra_get_idev_cert_ia *input,
+					 struct cptra_get_idev_cert_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_get_idev_cert(dev, input, output);
+
+	return tmp;
+}
+
+static inline int caliptra_populate_idev_cert(const struct device *dev,
+					      struct cptra_populate_idev_cert_ia *input,
+					      struct cptra_populate_idev_cert_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_populate_idev_cert(dev, input, output);
+
+	return tmp;
+}
+
+static inline int caliptra_get_idev_info(const struct device *dev,
+					 struct cptra_get_idev_info_ia *input,
+					 struct cptra_get_idev_info_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_get_idev_info(dev, input, output);
+
+	return tmp;
+}
+
+static inline int caliptra_get_ldev_cert(const struct device *dev,
+					 struct cptra_get_ldev_cert_ia *input,
+					 struct cptra_get_ldev_cert_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_get_ldev_cert(dev, input, output);
+
+	return tmp;
+}
+
+static inline int caliptra_get_fmc_alias_cert(const struct device *dev,
+					      struct cptra_get_fmc_alias_cert_ia *input,
+					      struct cptra_get_fmc_alias_cert_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_get_fmc_alias_cert(dev, input, output);
+
+	return tmp;
+}
+
+static inline int caliptra_get_rt_alias_cert(const struct device *dev,
+					     struct cptra_get_rt_alias_cert_ia *input,
+					     struct cptra_get_rt_alias_cert_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_get_rt_alias_cert(dev, input, output);
 
 	return tmp;
 }
