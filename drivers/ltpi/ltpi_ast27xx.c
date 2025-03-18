@@ -37,7 +37,7 @@ struct bootstage_t {
 	(LTPI_SP_CAP_25M | LTPI_SP_CAP_50M | LTPI_SP_CAP_75M |    \
 	 LTPI_SP_CAP_100M | LTPI_SP_CAP_150M | LTPI_SP_CAP_200M | \
 	 LTPI_SP_CAP_250M | LTPI_SP_CAP_300M | LTPI_SP_CAP_400M | \
-	 LTPI_SP_CAP_600M | LTPI_SP_CAP_500M | LTPI_SP_CAP_DDR)
+	 LTPI_SP_CAP_500M | LTPI_SP_CAP_DDR)
 
 /* bootstage_t->errno */
 #define LTPI_STATUS_EXIT			BIT(7)	/* 1: exit due to errors */
@@ -232,7 +232,7 @@ struct bootstage_t {
 #define   REG_LTPI_OEM_TX_INIT_DONE		BIT(8)
 
 static const int16_t ltpi_clk_lookup_sdr[13] = {
-	25, 50, 75, 100, 150, 200, 250, 300, 400, 600, -1, -1, 50,
+	25, 50, 75, 100, 150, 200, 250, 300, 400, 600, -1, -1, 500,
 };
 
 /* AST2700 IO-die PLL control */
