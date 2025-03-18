@@ -110,6 +110,13 @@
 			reg = <0x14c020f0 0x8>;
 		};
 
+		uart4: serial@12c1a000 {
+			compatible = "ns16550";
+			reg = <0x12c1a000 0x100>;
+			reg-shift = <2>;
+			status = "disabled";
+		};
+
 		uart12: serial@14c33b00 {
 			compatible = "ns16550";
 			reg = <0x14c33b00 0x100>;
@@ -210,6 +217,11 @@
 
 			cptra_dice: cptra-dice {
 				compatible = "aspeed,cptra-dice";
+				status = "disabled";
+			};
+
+			cptra_misc: cptra-misc {
+				compatible = "aspeed,cptra-misc";
 				status = "disabled";
 			};
 		};
