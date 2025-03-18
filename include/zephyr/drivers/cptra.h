@@ -417,6 +417,69 @@ struct cptra_get_rt_alias_cert_oa {
 	uint8_t data[1024];
 };
 
+struct cptra_fw_info_ia {
+};
+
+struct cptra_fw_info_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+	uint32_t pl0_pauser;
+	uint32_t runtime_svn;
+	uint32_t min_runtime_svn;
+	uint32_t fmc_manifest_svn;
+	uint32_t attestation_disabled;
+	uint8_t rom_revision[20];
+	uint8_t fmc_revision[20];
+	uint8_t runtime_revision[20];
+	uint32_t rom_sha256_digest[8];
+	uint32_t fmc_sha384_digest[12];
+	uint32_t runtime_sha384_digest[12];
+};
+
+struct cptra_capabilities_ia {
+};
+
+struct cptra_capabilities_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+	uint8_t capabilities[16];
+};
+
+struct cptra_version_ia {
+};
+
+struct cptra_version_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+	uint32_t mode;
+	uint32_t fips_rev[3];
+	uint8_t name[12];
+};
+
+struct cptra_self_test_start_ia {
+};
+
+struct cptra_self_test_start_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+};
+
+struct cptra_self_test_get_results_ia {
+};
+
+struct cptra_self_test_get_results_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+};
+
+struct cptra_shutdown_ia {
+};
+
+struct cptra_shutdown_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+};
+
 enum dpe_command {
 	GET_PROFILE		= 0x01,
 	INITIALIZE_CONTEXT	= 0x07,
@@ -503,6 +566,24 @@ __subsystem struct cptra_driver_api {
 	int (*caliptra_get_rt_alias_cert)(const struct device *dev,
 					  struct cptra_get_rt_alias_cert_ia *input,
 					  struct cptra_get_rt_alias_cert_oa *output);
+	int (*caliptra_fw_info)(const struct device *dev,
+				struct cptra_fw_info_ia *input,
+				struct cptra_fw_info_oa *output);
+	int (*caliptra_capabilities)(const struct device *dev,
+				     struct cptra_capabilities_ia *input,
+				     struct cptra_capabilities_oa *output);
+	int (*caliptra_version)(const struct device *dev,
+				struct cptra_version_ia *input,
+				struct cptra_version_oa *output);
+	int (*caliptra_self_test_start)(const struct device *dev,
+					struct cptra_self_test_start_ia *input,
+					struct cptra_self_test_start_oa *output);
+	int (*caliptra_self_test_get_results)(const struct device *dev,
+					      struct cptra_self_test_get_results_ia *input,
+					      struct cptra_self_test_get_results_oa *output);
+	int (*caliptra_shutdown)(const struct device *dev,
+				 struct cptra_shutdown_ia *input,
+				 struct cptra_shutdown_oa *output);
 };
 
 static inline int caliptra_fw_upload(const struct device *dev, uint8_t *buf, int size)
@@ -718,6 +799,81 @@ static inline int caliptra_get_rt_alias_cert(const struct device *dev,
 
 	api = (struct cptra_driver_api *)dev->api;
 	tmp = api->caliptra_get_rt_alias_cert(dev, input, output);
+
+	return tmp;
+}
+
+static inline int caliptra_fw_info(const struct device *dev, struct cptra_fw_info_ia *input,
+				   struct cptra_fw_info_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_fw_info(dev, input, output);
+
+	return tmp;
+}
+
+static inline int caliptra_capabilities(const struct device *dev,
+					struct cptra_capabilities_ia *input,
+					struct cptra_capabilities_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_capabilities(dev, input, output);
+
+	return tmp;
+}
+
+static inline int caliptra_version(const struct device *dev, struct cptra_version_ia *input,
+				   struct cptra_version_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_version(dev, input, output);
+
+	return tmp;
+}
+
+static inline int caliptra_self_test_start(const struct device *dev,
+					   struct cptra_self_test_start_ia *input,
+					   struct cptra_self_test_start_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_self_test_start(dev, input, output);
+
+	return tmp;
+}
+
+static inline int caliptra_self_test_get_results(const struct device *dev,
+						 struct cptra_self_test_get_results_ia *input,
+						 struct cptra_self_test_get_results_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_self_test_get_results(dev, input, output);
+
+	return tmp;
+}
+
+static inline int caliptra_shutdown(const struct device *dev, struct cptra_shutdown_ia *input,
+				    struct cptra_shutdown_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_shutdown(dev, input, output);
 
 	return tmp;
 }

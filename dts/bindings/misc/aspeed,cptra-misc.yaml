@@ -1,0 +1,8 @@
+# Copyright (c) 2025 ASPEED Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+description: ASPEED CPTRA MISC mailbox service
+
+compatible: "aspeed,cptra-misc"
+
+include: base.yaml
