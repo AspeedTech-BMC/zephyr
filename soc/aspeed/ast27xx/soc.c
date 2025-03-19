@@ -42,34 +42,6 @@ extern char __RAM_NC_end[];
 #define WDT_SW_RSTMASK4(x)	(WDT_REG + ((x) * 0x80) + 0x40)
 #define WDT_SW_RSTMASK5(x)	(WDT_REG + ((x) * 0x80) + 0x44)
 
-static void soc_wdt_mask_init(void)
-{
-	/*
-	 * FIXME:
-	 * The SRST reset log flag has been cleared by ROM code.
-	 * There is no way to know whether the SoC boots from SRST.
-	 *
-	 * if (!(sys_read32(SCU1_RSTLOG0) & SCU1_RSTLOG0_SRST))
-	 *      return;
-	 */
-
-	for (int idx = 0; idx < WDT_DEVS; idx++) {
-		/* SoC reset mask */
-		sys_write32(WDT_RSTMASK_1_VAL, WDT_RSTMASK1(idx));
-		sys_write32(WDT_RSTMASK_2_VAL, WDT_RSTMASK2(idx));
-		sys_write32(WDT_RSTMASK_3_VAL, WDT_RSTMASK3(idx));
-		sys_write32(WDT_RSTMASK_4_VAL, WDT_RSTMASK4(idx));
-		sys_write32(WDT_RSTMASK_5_VAL, WDT_RSTMASK5(idx));
-
-		/* SW reset mask */
-		sys_write32(WDT_RSTMASK_1_VAL, WDT_SW_RSTMASK1(idx));
-		sys_write32(WDT_RSTMASK_2_VAL, WDT_SW_RSTMASK2(idx));
-		sys_write32(WDT_RSTMASK_3_VAL, WDT_SW_RSTMASK3(idx));
-		sys_write32(WDT_RSTMASK_4_VAL, WDT_SW_RSTMASK4(idx));
-		sys_write32(WDT_RSTMASK_5_VAL, WDT_SW_RSTMASK5(idx));
-	}
-}
-
 void sys_arch_reboot(int type)
 {
 	/*
@@ -177,18 +149,12 @@ void z_arm_platform_init(void)
 
 	sys_cache_instr_enable();
 	sys_cache_data_enable();
-#if IS_ENABLED(CONFIG_DT_HAS_ASPEED_AST_WATCHDOG_G7_ENABLED)
-	soc_wdt_mask_init();
-#endif
 }
 #endif
 
 #if defined(CONFIG_RISCV)
 static int soc_init(void)
 {
-#if IS_ENABLED(CONFIG_DT_HAS_ASPEED_AST_WATCHDOG_G7_ENABLED)
-	soc_wdt_mask_init();
-#endif
 	return 0;
 }
 
