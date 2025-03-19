@@ -31,8 +31,11 @@ void sys_arch_reboot(int type)
 	 * Use aspeed_wdt_reboot_device once if the watchdog driver is ready
 	 */
 	sys_write32(0, WDT_REG + 0xc);
+	k_usleep(5);
 	sys_write32(0x100, WDT_REG + 0x4);
+	k_usleep(5);
 	sys_write32(0x4755, WDT_REG + 0x8);
+	k_usleep(5);
 	sys_write32(0x13, WDT_REG + 0xc);
 }
 #endif
