@@ -24,24 +24,6 @@ extern char __RAM_NC_end[];
 #if IS_ENABLED(CONFIG_DT_HAS_ASPEED_AST_WATCHDOG_G7_ENABLED)
 #define WDT_REG			DT_REG_ADDR(DT_NODELABEL(wdt0))
 
-#define WDT_DEVS		9
-#define WDT_RSTMASK_1_VAL	0x0203e779
-#define WDT_RSTMASK_2_VAL	0x000003f6
-#define WDT_RSTMASK_3_VAL	0x000093ec
-#define WDT_RSTMASK_4_VAL	0x00303803
-#define WDT_RSTMASK_5_VAL	0x00020000
-
-#define WDT_RSTMASK1(x)		(WDT_REG + ((x) * 0x80) + 0x1c)
-#define WDT_RSTMASK2(x)		(WDT_REG + ((x) * 0x80) + 0x20)
-#define WDT_RSTMASK3(x)		(WDT_REG + ((x) * 0x80) + 0x24)
-#define WDT_RSTMASK4(x)		(WDT_REG + ((x) * 0x80) + 0x28)
-#define WDT_RSTMASK5(x)		(WDT_REG + ((x) * 0x80) + 0x2c)
-#define WDT_SW_RSTMASK1(x)	(WDT_REG + ((x) * 0x80) + 0x34)
-#define WDT_SW_RSTMASK2(x)	(WDT_REG + ((x) * 0x80) + 0x38)
-#define WDT_SW_RSTMASK3(x)	(WDT_REG + ((x) * 0x80) + 0x3c)
-#define WDT_SW_RSTMASK4(x)	(WDT_REG + ((x) * 0x80) + 0x40)
-#define WDT_SW_RSTMASK5(x)	(WDT_REG + ((x) * 0x80) + 0x44)
-
 void sys_arch_reboot(int type)
 {
 	/*
