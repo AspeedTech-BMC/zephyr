@@ -25,12 +25,8 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME, CONFIG_LTPI_LOG_LEVEL);
 #define ADVERTISE_TIMEOUT_US			105000 /* 105 ms */
 
 struct bootstage_t {
-	uint8_t errno;
+	uint8_t flags;
 	uint8_t syndrome;
-	union {
-		uint16_t boot2fmc;
-		uint16_t panic;
-	};
 };
 
 #define LTPI_SP_CAP_ASPEED_SUPPORTED                              \
@@ -39,7 +35,7 @@ struct bootstage_t {
 	 LTPI_SP_CAP_250M | LTPI_SP_CAP_300M | LTPI_SP_CAP_400M | \
 	 LTPI_SP_CAP_500M | LTPI_SP_CAP_DDR)
 
-/* bootstage_t->errno */
+/* bootstage_t->flags */
 #define LTPI_STATUS_EXIT			BIT(7)	/* 1: exit due to errors */
 #define LTPI_STATUS_RESTART			BIT(6)	/* 1: restart LTPI initialization */
 
@@ -320,7 +316,7 @@ struct ast27xx_ltpi_data {
 	int clk_inverse;
 
 	int link_speed_frm_rx_cnt;
-	struct bootstage_t *bootstage;
+	struct bootstage_t bootstage;
 
 	/* Advertise timeout in us */
 	int ad_timeout;
@@ -582,40 +578,42 @@ static int ltpi_set_local_speed_cap(struct ast27xx_ltpi_data *ltpi, uint32_t spe
 
 static void bootstage_prologue(const char *mark)
 {
-	if (!mark)
+	if (!mark) {
 		return;
+	}
 
-	printf("%s", mark);
+	LOG_DBG("%s", mark);
 }
 
 static void bootstage_epilogue(struct bootstage_t sts)
 {
-	printf(" %02x%02x\n", sts.errno, sts.syndrome);
+	LOG_DBG(" %02x%02x\n", sts.flags, sts.syndrome);
 }
 
 static void ltpi_log_exit(struct ast27xx_ltpi_data *ltpi, int reason)
 {
-	ltpi->bootstage->errno |= LTPI_STATUS_EXIT;
-	ltpi->bootstage->syndrome = reason;
+	ltpi->bootstage.flags |= LTPI_STATUS_EXIT;
+	ltpi->bootstage.syndrome = reason;
+	bootstage_epilogue(ltpi->bootstage);
 }
 
 static void ltpi_log_restart(struct ast27xx_ltpi_data *ltpi, int reason)
 {
-	ltpi->bootstage->errno |= LTPI_STATUS_RESTART;
-	ltpi->bootstage->syndrome = reason;
-	bootstage_epilogue(*ltpi->bootstage);
+	ltpi->bootstage.flags |= LTPI_STATUS_RESTART;
+	ltpi->bootstage.syndrome = reason;
+	bootstage_epilogue(ltpi->bootstage);
 
 	/* Restart a boot log */
 	bootstage_prologue(BOOTSTAGE_LTPI_INIT);
-	ltpi->bootstage->errno &= ~LTPI_STATUS_RESTART;
-	ltpi->bootstage->errno &= ~LTPI_STATUS_HAS_CRC_ERR;
-	ltpi->bootstage->syndrome = LTPI_SYND_OK;
+	ltpi->bootstage.flags &= ~LTPI_STATUS_RESTART;
+	ltpi->bootstage.flags &= ~LTPI_STATUS_HAS_CRC_ERR;
+	ltpi->bootstage.syndrome = LTPI_SYND_OK;
 }
 
 static void ltpi_log_phy_mode(struct ast27xx_ltpi_data *ltpi, int phy_mode)
 {
-	ltpi->bootstage->errno &= ~LTPI_STATUS_MODE;
-	ltpi->bootstage->errno |= FIELD_PREP(LTPI_STATUS_MODE, phy_mode);
+	ltpi->bootstage.flags &= ~LTPI_STATUS_MODE;
+	ltpi->bootstage.flags |= FIELD_PREP(LTPI_STATUS_MODE, phy_mode);
 }
 
 /*
@@ -779,6 +777,8 @@ static int ast27xx_ltpi_do_link(const struct device *dev, int timeout_ms)
 	int ret, target_speed;
 	uint32_t reg, state;
 
+	bootstage_prologue(BOOTSTAGE_LTPI_INIT);
+
 	/* Check whether LTPI is initialized */
 	state = ltpi_get_link_mng_state(ltpi);
 	if (state == LTPI_LINK_MNG_ST_OP) {
@@ -831,7 +831,7 @@ static int ast27xx_ltpi_do_link(const struct device *dev, int timeout_ms)
 
 		if (sys_read32((mm_reg_t)ltpi->ctrl_status_reg->link_status) &
 		    LTPI_STATUS_CRC_ERR) {
-			ltpi->bootstage->errno |= LTPI_STATUS_HAS_CRC_ERR;
+			ltpi->bootstage.flags |= LTPI_STATUS_HAS_CRC_ERR;
 		}
 
 		if (ltpi_optimeout_query(ltpi)) {
@@ -849,6 +849,8 @@ static int ast27xx_ltpi_do_link(const struct device *dev, int timeout_ms)
 
 		ltpi_log_restart(ltpi, LTPI_SYND_WAIT_OP_TO);
 	} while (1);
+
+	bootstage_epilogue(ltpi->bootstage);
 
 	return 0;
 
