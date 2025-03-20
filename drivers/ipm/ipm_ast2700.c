@@ -74,7 +74,7 @@ static int ipm_ast2700_send(const struct device *dev, int wait, uint32_t id, con
 {
 	const struct ipm_ast2700_config *config = ((const struct device *)dev)->config;
 	uintptr_t base  = config->base + config->reg_tx_offset;
-	uint32_t reg;
+	uint32_t reg, i;
 
 	if (size > IPC_MAX_MSG_SIZE) {
 		return -EMSGSIZE;
@@ -89,6 +89,12 @@ static int ipm_ast2700_send(const struct device *dev, int wait, uint32_t id, con
 		return -EBUSY;
 	}
 
+	/* Copy message data to IPC Data registers. */
+	for (i = 0; i < size / 4; i++) {
+		sys_write32(((uint32_t *)data)[i], base + IPCR_DATA0 + i * 4);
+	}
+
+	/* Trigger IPC TX. */
 	sys_write32(reg | BIT(id), base + IPCR_TRIG);
 
 	if (wait) {
