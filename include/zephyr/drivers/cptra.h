@@ -480,6 +480,8 @@ struct cptra_shutdown_oa {
 	uint32_t fips_status;
 };
 
+#define DPE_COMMAND_MAGIC		0x44504543	/* DPEC */
+
 enum dpe_command {
 	GET_PROFILE		= 0x01,
 	INITIALIZE_CONTEXT	= 0x07,
@@ -491,6 +493,11 @@ enum dpe_command {
 	GET_CERTIFICATE_CHAIN	= 0x10,
 };
 
+enum dpe_profile {
+	P256Sha256 = 1,
+	P384Sha384 = 2,
+};
+
 /* TODO: DPE command */
 struct dpe_cmd_header {
 	uint32_t magic;
@@ -498,12 +505,55 @@ struct dpe_cmd_header {
 	uint32_t profile;
 };
 
-struct get_profile_i {
+struct dpe_get_profile_i {
 	struct dpe_cmd_header cmd_hdr;
 };
 
-struct get_profile_o {
-	uint32_t output[3];
+struct dpe_initialize_context_i {
+	struct dpe_cmd_header cmd_hdr;
+	uint32_t init_ctx_cmd;
+};
+
+struct dpe_derive_context_i {
+	struct dpe_cmd_header cmd_hdr;
+	uint8_t handle[16];
+	uint8_t data[48];
+	uint32_t flags;
+	uint32_t tci_type;
+	uint32_t target_locality;
+};
+
+struct dpe_certify_key_i {
+	struct dpe_cmd_header cmd_hdr;
+	uint8_t handle[16];
+	uint32_t flags;
+	uint32_t format;
+	uint8_t label[48];
+};
+
+struct dpe_sign_i {
+	struct dpe_cmd_header cmd_hdr;
+	uint8_t handle[16];
+	uint8_t label[48];
+	uint32_t flags;
+	uint8_t digest[48];
+};
+
+struct dpe_rotate_context_handle_i {
+	struct dpe_cmd_header cmd_hdr;
+	uint8_t handle[16];
+	uint32_t flags;
+};
+
+struct dpe_destroy_context_i {
+	struct dpe_cmd_header cmd_hdr;
+	uint8_t handle[16];
+};
+
+struct dpe_get_certificate_chain_i {
+	struct dpe_cmd_header cmd_hdr;
+	uint32_t offset;
+	uint32_t size;
 };
 
 struct cptra_invoke_dpe_command_ia {
@@ -515,7 +565,7 @@ struct cptra_invoke_dpe_command_oa {
 	uint32_t chksum;
 	uint32_t fips_status;
 	uint32_t data_size;
-	uint8_t data[128];
+	uint8_t data[2304];
 };
 
 /* The API a cptra driver should implement */

@@ -369,6 +369,13 @@ static int aspeed_cptra_invoke_dpe_command(const struct device *dev,
 	while (cptra_mbox_unlock())
 		;
 
+	LOG_INF("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
+	if (output->data_size > 0x400)
+		dlen = 0x400;
+	else
+		dlen = output->data_size;
+	LOG_HEXDUMP_INF(output->data, dlen, "DPE COMMAND RESP:");
+
 	state->in_use = false;
 
 	return rc;
