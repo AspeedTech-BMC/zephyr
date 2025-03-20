@@ -43,6 +43,14 @@
 		#size-cells = <0x01>;
 		ranges;
 
+		emmc: sdhci@12090000 {
+			compatible = "aspeed,sdhci";
+			reg = <0x12090000 0x200>;
+			clocks = <&sysclk0 SCU0_CLK_GATE_EMMCCLK>;
+			resets = <&sysrst0 SCU0_RESET_EMMC>;
+			status = "disabled";
+		};
+
 		syscon0: syscon@12c02000 {
 			compatible = "syscon";
 			reg = <0x12c02000 0x1000>;
@@ -58,11 +66,10 @@
 			};
 		};
 
-		emmc: sdhci@12090000 {
-			compatible = "aspeed,sdhci";
-			reg = <0x12090000 0x200>;
-			clocks = <&sysclk0 SCU0_CLK_GATE_EMMCCLK>;
-			resets = <&sysrst0 SCU0_RESET_EMMC>;
+		uart4: serial@12c1a000 {
+			compatible = "ns16550";
+			reg = <0x12c1a000 0x100>;
+			reg-shift = <2>;
 			status = "disabled";
 		};
 
@@ -86,6 +93,27 @@
 		#size-cells = <0x01>;
 		ranges;
 
+		fmc: spi@14000000 {
+			compatible = "aspeed,spi-controller";
+			reg = <0x14000000 0xc4>, <0x20000000 0x10000000>;
+			reg-names = "ctrl_reg", "spi_mmap";
+			clocks = <&sysclk1 SCU1_CLK_AHB>;
+			num-cs = <1>;
+			ctrl-type = "bspi";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			spi-ctrl-caps-mask = <0x000e0e0c>;
+
+			fmc_cs0: fmc@0 {
+				compatible = "jedec,spi-nor";
+				reg = <0>;
+				spi-max-buswidth = <1>;
+				spi-max-frequency = <25000000>;
+				jedec-id = [];
+				write-block-size = <4096>;
+			};
+		};
+
 		syscon1: syscon@14c02000 {
 			compatible = "syscon";
 			reg = <0x14c02000 0x1000>;
@@ -108,13 +136,6 @@
 		rng: hwrng@14c020f0 {
 			compatible = "aspeed,hwrng";
 			reg = <0x14c020f0 0x8>;
-		};
-
-		uart4: serial@12c1a000 {
-			compatible = "ns16550";
-			reg = <0x12c1a000 0x100>;
-			reg-shift = <2>;
-			status = "disabled";
 		};
 
 		uart12: serial@14c33b00 {
@@ -236,27 +257,6 @@
 		cptra_ifc: cptra-ifc@14c70000 {
 			compatible = "aspeed,cptra-ifc";
 			reg = <0x14c70000 0x1000>;
-		};
-
-		fmc: spi@14000000 {
-			compatible = "aspeed,spi-controller";
-			reg = <0x14000000 0xc4>, <0x20000000 0x10000000>;
-			reg-names = "ctrl_reg", "spi_mmap";
-			clocks = <&sysclk1 SCU1_CLK_AHB>;
-			num-cs = <1>;
-			ctrl-type = "bspi";
-			#address-cells = <1>;
-			#size-cells = <0>;
-			spi-ctrl-caps-mask = <0x000e0e0c>;
-
-			fmc_cs0: fmc@0 {
-				compatible = "jedec,spi-nor";
-				reg = <0>;
-				spi-max-buswidth = <1>;
-				spi-max-frequency = <25000000>;
-				jedec-id = [];
-				write-block-size = <4096>;
-			};
 		};
 
 		wdt0: wdt@14c37000 {

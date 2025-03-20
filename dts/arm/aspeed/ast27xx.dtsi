@@ -59,15 +59,6 @@
 			};
 		};
 
-		intc1_global: intc-global@74c18000 {
-			compatible = "aspeed,ast2700-intc-global", "syscon";
-			reg = <0x74c18000 0x2000>;
-			#global-reg-cells = <2>;
-			#address-cells = <1>;
-			#size-cells = <1>;
-			status = "okay";
-		};
-
 		syscon0: syscon@72c02000 {
 			compatible = "syscon";
 			reg = <0x72c02000 0x1000>;
@@ -177,13 +168,6 @@
 			ranges = <0 0x72c1c000 0x1000>;
 		};
 
-		soc1_ipc_v2: bus@74c39000 {
-			#address-cells = <1>;
-			#size-cells = <1>;
-			compatible = "simple-bus";
-			ranges = <0 0x74c39000 0x1000>;
-		};
-
 		syscon1: syscon@74c02000 {
 			compatible = "syscon";
 			reg = <0x74c02000 0x1000>;
@@ -213,6 +197,15 @@
 			interrupts = <10 1>;
 			clocks = <&sysclk1 SCU1_CLK_GATE_ESPI0CLK>;
 			status = "disabled";
+		};
+
+		intc1_global: intc-global@74c18000 {
+			compatible = "aspeed,ast2700-intc-global", "syscon";
+			reg = <0x74c18000 0x2000>;
+			#global-reg-cells = <2>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			status = "okay";
 		};
 
 		uart0: serial@74c33000 {
@@ -248,6 +241,13 @@
 			pinctrl-0 = <pinctrl_uart7_default>;
 			status = "disabled";
 			reg-shift = <2>;
+		};
+
+		soc1_ipc_v2: bus@74c39000 {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "simple-bus";
+			ranges = <0 0x74c39000 0x1000>;
 		};
 	};
 };
