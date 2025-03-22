@@ -159,7 +159,7 @@ static int hw_gen_sha(uint8_t *msg, int msg_size, uint8_t *d, int d_size)
 	if (!memcmp(digest, d, d_size))
 		LOG_DBG("digest compare - PASS");
 	else
-		LOG_DBG("digest compare - FAIL");
+		LOG_ERR("digest compare - FAIL");
 
 	return 0;
 }
