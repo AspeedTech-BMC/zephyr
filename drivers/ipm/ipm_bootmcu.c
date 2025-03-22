@@ -101,7 +101,8 @@ static int ipc_send(const struct device *dev, int wait, uint32_t id, const void 
 
 	/* Copy message data to IPC Data registers. */
 	for (i = 0; i < size / 4; i++) {
-		sys_write32(((uint32_t *)data)[i], base + IPCR_DATA0 + i * 4);
+		sys_write32(((uint32_t *)data)[i],
+			    base + IPCR_DATA0 + IPC_MAX_MSG_SIZE * id + i * 4);
 	}
 
 	/* Trigger IPC TX. */
