@@ -18,6 +18,7 @@ zephyr_library_sources_ifdef(CONFIG_CPTRA_IFC		        cptra_ifc.c)
 zephyr_library_sources_ifdef(CONFIG_CPTRA_MBOX		        cptra_mbox.c)
 zephyr_library_sources_ifdef(CONFIG_CPTRA_DICE		        cptra_dice.c)
 zephyr_library_sources_ifdef(CONFIG_CPTRA_MISC		        cptra_misc.c)
+zephyr_library_sources_ifdef(CONFIG_CPTRA_IPC		        cptra_ipc.c)
 zephyr_library_sources_ifdef(CONFIG_PRIVILEGE_CTRL		prictrl_aspeed.c)
 
 zephyr_library_link_libraries_ifdef(CONFIG_MBEDTLS mbedTLS)

@@ -95,6 +95,12 @@ config CPTRA_MISC
 	help
 	  This option enables the Caliptra misc driver for ASPEED SoCs.
 
+config CPTRA_IPC
+	bool "ASPEED CPTRA IPC driver"
+	depends on SOC_AST2700_BOOTMCU
+	help
+	  This option enables the Caliptra ipc driver for ASPEED SoCs.
+
 config PRIVILEGE_CTRL
 	bool "Enable ASPEED privilege control"
 	default y
