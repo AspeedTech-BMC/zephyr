@@ -8,6 +8,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/ipm.h>
 #include <zephyr/sys/printk.h>
+#include <zephyr/drivers/misc/aspeed/cptra_ipc.h>
 #include <string.h>
 
 #define DEFAULT_LINE_LENGTH_BYTES (16)
@@ -54,6 +55,8 @@ int main(void)
 	void *func = (void *)CONFIG_AST_EXT_LOADER_ADDR;
 	((void (*)(uint32_t))func)((uint32_t)CONFIG_LOAD_FIT_ADDR);
 #endif
+
+	cptra_ipc_enable();
 
 #if defined(CONFIG_IPC_SAMPLE)
 	const struct device *ipmdev;
