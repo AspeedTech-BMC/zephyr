@@ -62,7 +62,7 @@ static void ipc_thread(const void *dev)
 	const struct bootmcu_ipc_data *data = ((const struct device *)dev)->data;
 	const struct bootmcu_ipc_config *config = ((const struct device *)dev)->config;
 	uintptr_t base = config->base + config->reg_rx_offset;
-	uint32_t msg_base, status;
+	uint32_t status, msg_base;
 	int i, ret;
 
 	while (1) {
@@ -71,8 +71,8 @@ static void ipc_thread(const void *dev)
 			if ((status & BIT(i)) && data->callback[i]) {
 				msg_base = base + IPCR_DATA0 + IPC_MAX_MSG_SIZE * i;
 				data->callback[i](dev, data->user_data[i], i, (void *)msg_base);
-				sys_write32(BIT(i), base + IPCR_STATUS);
 			}
+			sys_write32(BIT(i), base + IPCR_STATUS);
 		}
 
 		ret = k_msleep(100);
@@ -184,7 +184,7 @@ static const struct ipm_driver_api ipc_driver_api = {
 	.set_id_enabled = ipc_set_id_enabled,
 };
 
-#define ASPEED_BOOTMCU_IPC_INIT(n)                                                                \
+#define ASPEED_BOOTMCU_IPC_INIT(n)                                                                 \
 	static int bootmcu_ipc_config_func_##n(const struct device *dev);                          \
 	static const struct bootmcu_ipc_config bootmcu_ipc_config_##n = {                          \
 		.base = DT_INST_REG_ADDR(n),                                                       \

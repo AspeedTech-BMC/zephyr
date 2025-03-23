@@ -50,19 +50,9 @@ static void ipm_ast2700_isr(const void *dev)
 	uint32_t msg_base;
 	int i;
 
-	printk("ipc@%lx: isr status 0x%x", config->base, status);
-
-
 	for (i = 0; i < IPC_NUM_OF_ID; i++) {
-		if (status & BIT(i)) {
-			if (!data->callback[i])
-				return;
-
+		if ((status & BIT(i)) && data->callback[i]) {
 			msg_base = base + IPCR_DATA0 + IPC_MAX_MSG_SIZE * i;
-
-			printk("msg@%08x:", msg_base);
-			LOG_HEXDUMP_DBG((void *)msg_base, IPC_MAX_MSG_SIZE, "msg");
-
 			data->callback[i](dev, data->user_data[i], i, (volatile void *)msg_base);
 		}
 		sys_write32(BIT(i), base + IPCR_STATUS);
@@ -91,7 +81,8 @@ static int ipm_ast2700_send(const struct device *dev, int wait, uint32_t id, con
 
 	/* Copy message data to IPC Data registers. */
 	for (i = 0; i < size / 4; i++) {
-		sys_write32(((uint32_t *)data)[i], base + IPCR_DATA0 + i * 4);
+		sys_write32(((uint32_t *)data)[i],
+			    base + IPCR_DATA0 + IPC_MAX_MSG_SIZE * id + i * 4);
 	}
 
 	/* Trigger IPC TX. */
