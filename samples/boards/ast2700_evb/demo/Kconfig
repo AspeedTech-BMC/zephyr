@@ -27,4 +27,10 @@ config IPC_SAMPLE
 	help
 	  IPC sampled enabled.
 
+config CPTRA_SAMPLE
+	default n
+	bool "Caliptra mailbox command sample"
+	help
+	  CPTRA mailbox command sample enabled.
+
 source "Kconfig.zephyr"

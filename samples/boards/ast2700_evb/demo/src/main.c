@@ -10,6 +10,9 @@
 #include <zephyr/sys/printk.h>
 #include <zephyr/drivers/misc/aspeed/cptra_ipc.h>
 #include <string.h>
+#if defined(CONFIG_CPTRA_SAMPLE)
+#include "cptra_sample.h"
+#endif
 
 #define DEFAULT_LINE_LENGTH_BYTES (16)
 static void test_ipm_cb(const struct device *ipmdev, void *user_data,
@@ -79,6 +82,10 @@ int main(void)
 		printk("%s: cannot ipm_set_enabled\n", ipc_name);
 		goto fail;
 	}
+#endif
+
+#if defined(CONFIG_CPTRA_SAMPLE)
+	cptra_test();
 #endif
 
 fail:
