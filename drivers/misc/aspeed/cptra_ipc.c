@@ -12,7 +12,7 @@
 #include <zephyr/crypto/ecdsa_structs.h>
 #include <zephyr/crypto/ecdsa.h>
 
-LOG_MODULE_REGISTER(cptra_ipc, CONFIG_LOG_DEFAULT_LEVEL);
+LOG_MODULE_REGISTER(cptra_ipc, CONFIG_MISC_ASPEED_LOG_LEVEL);
 
 #define CPTRA_ECDSA_DRV_NAME		DEVICE_DT_NAME(DT_INST(0, aspeed_cptra_ecdsa))
 #define CPTRA_HASH_DRV_NAME		DEVICE_DT_NAME(DT_INST(0, aspeed_cptra_sha))

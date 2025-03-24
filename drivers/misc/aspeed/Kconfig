@@ -109,3 +109,6 @@ config PRIVILEGE_CTRL
 	  This option enables privilege control for aspeed
 	  board isolation.
 
+module = MISC_ASPEED
+module-str = misc-aspeed
+source "subsys/logging/Kconfig.template.log_config"
