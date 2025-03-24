@@ -59,7 +59,7 @@ static int cptra_lms_verify_trigger(const struct device *dev, struct lms_pkt *pk
 	uint8_t *sig_tree_path = pkt->sig.tree_path;
 	int rc = 0;
 
-	LOG_INF("Caliptra LMS verify");
+	LOG_DBG("Caliptra LMS verify");
 
 	/* Check LMS public key algorithm type */
 	if (pk_tree_type != LMS_PUB_KEY_TREE_TYPE ||
@@ -136,7 +136,7 @@ static int cptra_lms_verify_trigger(const struct device *dev, struct lms_pkt *pk
 
 int cptra_lms_verify(struct lms_ctx *ctx, struct lms_pkt *pkt)
 {
-	LOG_INF("Caliptra LMS verify");
+	LOG_DBG("Caliptra LMS verify");
 
 	if (pkt->sig.tree_type != LMS_PUB_KEY_TREE_TYPE) {
 		LOG_ERR("This signature tree type 0x%x is not supported",
@@ -153,7 +153,7 @@ static int aspeed_lms_session_setup(const struct device *dev, struct lms_ctx *ct
 	struct cptra_lms_drv_state *state = DEV_DATA(dev);
 	struct lms_pub_key *key;
 
-	LOG_INF("Caliptra LMS session setup");
+	LOG_DBG("Caliptra LMS session setup");
 
 	if (state->in_use) {
 		LOG_ERR("Peripheral in use");

@@ -22,11 +22,18 @@
 #define HASH_DRV_NAME		DEVICE_DT_NAME(DT_INST(0, aspeed_cptra_sha))
 #endif
 
+#ifdef CONFIG_CPTRA_LMS
+#define LMS_DRV_NAME		DEVICE_DT_NAME(DT_INST(0, aspeed_cptra_lms))
+#endif
+
 #include <zephyr/crypto/ecdsa.h>
 #include <zephyr/crypto/ecdsa_structs.h>
+#include <zephyr/crypto/lms.h>
+#include <zephyr/crypto/lms_structs.h>
 #include <zephyr/crypto/crypto.h>
 #include <zephyr/crypto/hash.h>
 #include <crypto.h>
+#include <zephyr/sys/byteorder.h>
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(crypto, CONFIG_CRYPTO_LOG_LEVEL);
@@ -156,10 +163,12 @@ static int hw_gen_sha(uint8_t *msg, int msg_size, uint8_t *d, int d_size)
 
 	hash_free_session(dev, &ini);
 
-	if (!memcmp(digest, d, d_size))
-		LOG_DBG("digest compare - PASS");
-	else
-		LOG_ERR("digest compare - FAIL");
+	if (d) {
+		if (!memcmp(digest, d, d_size))
+			LOG_DBG("digest compare - PASS");
+		else
+			LOG_ERR("digest compare - FAIL");
+	}
 
 	return 0;
 }
@@ -239,6 +248,71 @@ static int ecdsa_selftest(void)
 	return 0;
 }
 
+static int hw_lms_test(const struct lms_testvec *tv, int tv_size)
+{
+	const struct device *dev = device_get_binding(LMS_DRV_NAME);
+	struct lms_ctx ctx;
+	struct lms_pub_key key;
+	struct lms_pkt pkt;
+	int ret, rc = 0;
+
+	LOG_INF("Start...");
+	for (int i = 0; i < tv_size; i++) {
+		/* Doing hash first for Caliptra secure IP case */
+		hw_gen_sha((uint8_t *)tv[i].raw, tv[i].raw_size,
+			   NULL, 0);
+
+		key.pub_key_tree_type = sys_cpu_to_be32(tv[i].pub_key_tree_type);
+		key.pub_key_ots_type = sys_cpu_to_be32(tv[i].pub_key_ots_type);
+		memcpy(key.pub_key_id, tv[i].pub_key_id, LMS_PUB_KEY_ID_LEN);
+		memcpy(key.pub_key_digest, tv[i].pub_key_digest, LMS_PUB_KEY_DGST);
+
+		pkt.sig.q = tv[i].sig_q;
+		memcpy(pkt.sig.ots, tv[i].sig_ots, LMS_SIG_OTS_LEN);
+		pkt.sig.tree_type = tv[i].sig_tree_type;
+		memcpy(pkt.sig.tree_path, tv[i].sig_tree_path, LMS_SIG_TREE_PATH);
+
+		LOG_DBG("Test case %d...", i);
+		ret = lms_begin_session(dev, &ctx, &key);
+		if (ret)
+			LOG_INF("ecdsa_begin_session fail: %d", ret);
+
+		ret = lms_verify(&ctx, &pkt);
+		if (ret && !tv[i].result)
+			LOG_DBG(" result expected (failed), Pass\n");
+		else if (ret == 0 && tv[i].result)
+			LOG_DBG(" result expected (pass), Pass\n");
+		else {
+			LOG_DBG(" result unexpected (ret=%d), Failed\n", ret);
+			rc = -1;
+		}
+
+		lms_free_session(dev, &ctx);
+
+		if (rc) {
+			LOG_INF("Failure");
+			return rc;
+		}
+	}
+
+	LOG_INF("Pass");
+
+	return 0;
+}
+
+static int lms_selftest(void)
+{
+	int ret;
+
+	ret = hw_lms_test(lms_tv, ARRAY_SIZE(lms_tv));
+	if (ret) {
+		LOG_ERR("hw lms test failed");
+		return ret;
+	}
+
+	return 0;
+}
+
 int crypto_selftest(void)
 {
 	int ret;
@@ -247,6 +321,9 @@ int crypto_selftest(void)
 
 	/* ECDSA self-test */
 	ret = ecdsa_selftest();
+
+	/* LMS self-test */
+	ret += lms_selftest();
 
 	return ret;
 }
