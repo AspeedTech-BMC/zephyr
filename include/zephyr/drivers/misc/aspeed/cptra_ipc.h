@@ -37,6 +37,45 @@ enum cptra_ipc_cmd {
 	CPTRA_IPCCMD_CAPABILITIES,
 };
 
+struct cptra_ecdsa_ctx {
+	int qx_len;
+	uint8_t *qx;
+	int qy_len;
+	uint8_t *qy;
+	int r_len;
+	uint8_t *r;
+	int s_len;
+	uint8_t *s;
+	int  m_len;
+	uint8_t *m;
+};
+
+struct cptra_hash_ctx {
+	uint32_t algo;
+	int in_len;
+	uint8_t *in_buf;
+	int out_len;
+	uint8_t *out_buf;
+};
+
+struct cptra_lms_ctx {
+	/* public key */
+	uint32_t pub_key_tree_type;
+	uint32_t pub_key_ots_type;
+	int pub_key_id_len;
+        uint8_t *pub_key_id;
+        int pub_key_digest_len;
+	uint8_t *pub_key_digest;
+
+	/* signature */
+	uint32_t sig_q;
+        int sig_ots_len;
+	uint8_t *sig_ots;
+	uint32_t sig_tree_type;
+        int sig_tree_path_len;
+	uint8_t *sig_tree_path;
+};
+
 int cptra_ipc_enable(void);
 
 #endif /* ZEPHYR_DRIVERS_MISC_ASPEED_CPTRA_IPC_H_ */

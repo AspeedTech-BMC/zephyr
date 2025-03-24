@@ -11,11 +11,15 @@
 #include <zephyr/crypto/crypto.h>
 #include <zephyr/crypto/ecdsa_structs.h>
 #include <zephyr/crypto/ecdsa.h>
+#include <zephyr/crypto/lms.h>
+#include <zephyr/crypto/lms_structs.h>
+#include <zephyr/sys/byteorder.h>
 
 LOG_MODULE_REGISTER(cptra_ipc, CONFIG_MISC_ASPEED_LOG_LEVEL);
 
 #define CPTRA_ECDSA_DRV_NAME		DEVICE_DT_NAME(DT_INST(0, aspeed_cptra_ecdsa))
 #define CPTRA_HASH_DRV_NAME		DEVICE_DT_NAME(DT_INST(0, aspeed_cptra_sha))
+#define CPTRA_LMS_DRV_NAME		DEVICE_DT_NAME(DT_INST(0, aspeed_cptra_lms))
 #define CPTRA_UPDATE_DRV_NAME		DEVICE_DT_NAME(DT_INST(0, aspeed_cptra_update))
 #define CPTRA_DICE_DRV_NAME		DEVICE_DT_NAME(DT_INST(0, aspeed_cptra_dice))
 #define CPTRA_MISC_DRV_NAME		DEVICE_DT_NAME(DT_INST(0, aspeed_cptra_misc))
@@ -25,6 +29,7 @@ LOG_MODULE_REGISTER(cptra_ipc, CONFIG_MISC_ASPEED_LOG_LEVEL);
 
 static int cptra_ipc_ecdsa384_verify(const struct device *dev, void *arg1, void *arg2);
 static int cptra_ipc_sha384(const struct device *dev, void *arg1, void *arg2);
+static int cptra_ipc_lms_verify(const struct device *dev, void *arg1, void *arg2);
 
 typedef int (*cptra_callback_t)(const struct device *dev, void *arg1, void *arg2);
 
@@ -37,6 +42,7 @@ struct cptra_ipc_callback_tbl {
 static const struct cptra_ipc_callback_tbl cptra_ipc_list[] = {
 	{ CPTRA_ECDSA_DRV_NAME, CPTRA_IPCCMD_ECDSA384_SIGNATURE_VERIFY, cptra_ipc_ecdsa384_verify },
 	{ CPTRA_HASH_DRV_NAME, CPTRA_IPCCMD_SHA384, (cptra_callback_t)cptra_ipc_sha384 },
+	{ CPTRA_LMS_DRV_NAME, CPTRA_IPCCMD_LMS_SIGNATURE_VERIFY, (cptra_callback_t)cptra_ipc_lms_verify },
 	{ CPTRA_UPDATE_DRV_NAME, CPTRA_IPCCMD_CALIPTRA_FW_LOAD, (cptra_callback_t)caliptra_fw_upload },
 	{ CPTRA_DICE_DRV_NAME, CPTRA_IPCCMD_STASH_MEASUREMENT, (cptra_callback_t)caliptra_stash_measurement },
 	{ CPTRA_DICE_DRV_NAME, CPTRA_IPCCMD_QUOTE_PCRS, (cptra_callback_t)caliptra_quote_pcrs },
@@ -60,26 +66,44 @@ static const struct cptra_ipc_callback_tbl cptra_ipc_list[] = {
 	{ CPTRA_MISC_DRV_NAME, CPTRA_IPCCMD_CAPABILITIES, (cptra_callback_t)caliptra_capabilities },
 };
 
-struct cptra_ecdsa_ctx {
-	int qx_len;
-	uint8_t *qx;
-	int qy_len;
-	uint8_t *qy;
-	int r_len;
-	uint8_t *r;
-	int s_len;
-	uint8_t *s;
-	int  m_len;
-	uint8_t *m;
-};
+static int cptra_ipc_lms_verify(const struct device *dev, void *arg1, void *arg2)
+{
+	struct cptra_lms_ctx *ctx = (struct cptra_lms_ctx *)arg1;
+	struct lms_ctx ini;
+	struct lms_pkt pkt;
+	struct lms_pub_key ek;
+	int ret, rc = 0;
 
-struct cptra_hash_ctx {
-	uint32_t algo;
-	int in_len;
-	uint8_t *in_buf;
-	int out_len;
-	uint8_t *out_buf;
-};
+	ek.pub_key_tree_type = sys_cpu_to_be32(ctx->pub_key_tree_type);
+	ek.pub_key_ots_type = sys_cpu_to_be32(ctx->pub_key_ots_type);
+	memcpy(ek.pub_key_id, ctx->pub_key_id, LMS_PUB_KEY_ID_LEN);
+	memcpy(ek.pub_key_digest, ctx->pub_key_digest, LMS_PUB_KEY_DGST);
+
+	pkt.sig.q = ctx->sig_q;
+	memcpy(pkt.sig.ots, ctx->sig_ots, LMS_SIG_OTS_LEN);
+	pkt.sig.tree_type = ctx->sig_tree_type;
+	memcpy(pkt.sig.tree_path, ctx->sig_tree_path, LMS_SIG_TREE_PATH);
+
+	ret = lms_begin_session(dev, &ini, &ek);
+	if (ret) {
+		LOG_ERR("lms_begin_session fail: %d", ret);
+		goto end;
+	}
+
+	ret = lms_verify(&ini, &pkt);
+	if (ret) {
+		LOG_ERR("lms verify failed\n");
+		rc = -1;
+	} else {
+		LOG_INF("lms verify pass\n");
+		rc = 0;
+	}
+
+	lms_free_session(dev, &ini);
+
+end:
+	return rc;
+}
 
 static int cptra_ipc_ecdsa384_verify(const struct device *dev, void *arg1, void *arg2)
 {
