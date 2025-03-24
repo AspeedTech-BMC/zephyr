@@ -468,6 +468,13 @@ static void cptra_test_add_subject_alt_name(void)
 
 	memset(&input, 0, sizeof(struct cptra_add_subject_alt_name_ia));
 	memset(&output, 0, sizeof(struct cptra_add_subject_alt_name_oa));
+
+	/* Set input */
+	char *dev_info = "abc:def:ghi";
+
+	memcpy(input.dmtf_device_info, dev_info, strlen(dev_info));
+	input.dmtf_device_info_size = strlen(dev_info);
+
 	ret = caliptra_add_subject_alt_name(dev, &input, &output);
 	if (ret)
 		LOG_ERR("caliptra_add_subject_alt_name is failure, ret:0x%x\n", ret);
