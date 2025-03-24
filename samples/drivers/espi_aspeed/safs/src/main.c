@@ -204,7 +204,7 @@ static int espi_safs_erase(const struct device *dev, uint8_t tag, uint32_t addr,
 	return 0;
 }
 
-void main(void)
+int main(void)
 {
 	int rc;
 	const struct device *espi_dev;
@@ -212,19 +212,18 @@ void main(void)
 	struct espi_flash_rwe *rwe_pkt;
 	uint32_t rwe_pkt_len;
 	uint32_t cyc, tag, len, addr;
-	uint32_t reg;
 
 	espi_dev = device_get_binding("espi@74c05000");
 	if (!espi_dev) {
 		printk("no eSPI device found\n");
-		return;
+		return -ENODEV;
 	}
 
 	rwe_pkt_len = sizeof(*rwe_pkt) + ESPI_PLD_LEN_MAX;
 	rwe_pkt = (struct espi_flash_rwe *)k_malloc(rwe_pkt_len);
 	if (!rwe_pkt) {
 		printk("failed to allocate flash packet\n");
-		return;
+		return -ENOMEM;
 	}
 
 	ssp_mem_base = (sys_read32(0x72c02128) & 0x7fffffffULL) << 4;
@@ -273,4 +272,5 @@ void main(void)
 	}
 
 	k_free(rwe_pkt);
+	return 0;
 }
