@@ -71,18 +71,6 @@
 #define CACHE_DEV		DT_ALIAS(cache)
 #define CACHE_BASE		(DT_REG_ADDR(DT_PARENT(CACHE_DEV)) + DT_REG_ADDR(CACHE_DEV))
 
-static uint32_t get_cache_area(void)
-{
-	uint32_t start_bit, end_bit, max_bit;
-
-	/* calculate how many areas need to be set */
-	max_bit = 8 * sizeof(uint32_t) - 1;
-	start_bit = MIN(max_bit, CACHED_SRAM_ADDR >> CACHE_AREA_SIZE_LOG2);
-	end_bit = MIN(max_bit, CACHED_SRAM_END >> CACHE_AREA_SIZE_LOG2);
-
-	return GENMASK(end_bit, start_bit);
-}
-
 /**
  * @brief get aligned address and the number of cachline to be invalied
  * @param [IN] addr - start address to be invalidated
@@ -128,24 +116,27 @@ void cache_data_disable(void)
 	uintptr_t base = CACHE_BASE;
 	uint32_t reg;
 
+	barrier_dsync_fence_full();
 	reg = sys_read32(base + CACHE_FUNC_CTRL_REG);
 	reg &= ~DCACHE_ENABLE;
 	sys_write32(reg, base + CACHE_FUNC_CTRL_REG);
+	barrier_dsync_fence_full();
 }
 
 void cache_data_enable(void)
 {
 	uintptr_t base = CACHE_BASE;
-	uint32_t reg, area;
+	uint32_t reg;
 
 	cache_data_disable();
 
-	area = get_cache_area();
-	sys_write32(area, base + DCACHE_AREA_CTRL_REG);
+	barrier_dsync_fence_full();
+	sys_write32(0xffffffff, base + DCACHE_AREA_CTRL_REG);
 
 	reg = sys_read32(base + CACHE_FUNC_CTRL_REG);
 	reg |= DCACHE_ENABLE;
 	sys_write32(reg, base + CACHE_FUNC_CTRL_REG);
+	barrier_dsync_fence_full();
 }
 
 void cache_instr_disable(void)
@@ -153,24 +144,27 @@ void cache_instr_disable(void)
 	uintptr_t base = CACHE_BASE;
 	uint32_t reg;
 
+	barrier_dsync_fence_full();
 	reg = sys_read32(base + CACHE_FUNC_CTRL_REG);
 	reg &= ~ICACHE_ENABLE;
 	sys_write32(reg, base + CACHE_FUNC_CTRL_REG);
+	barrier_dsync_fence_full();
 }
 
 void cache_instr_enable(void)
 {
 	uintptr_t base = CACHE_BASE;
-	uint32_t reg, area;
+	uint32_t reg;
 
 	cache_instr_disable();
 
-	area = get_cache_area();
-	sys_write32(area, base + ICACHE_AREA_CTRL_REG);
+	barrier_dsync_fence_full();
+	sys_write32(0xffffffff, base + ICACHE_AREA_CTRL_REG);
 
 	reg = sys_read32(base + CACHE_FUNC_CTRL_REG);
 	reg |= ICACHE_ENABLE;
 	sys_write32(reg, base + CACHE_FUNC_CTRL_REG);
+	barrier_dsync_fence_full();
 }
 
 int cache_data_invd_all(void)
