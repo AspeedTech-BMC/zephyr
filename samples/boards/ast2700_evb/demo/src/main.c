@@ -19,7 +19,7 @@ static void test_ipm_cb(const struct device *ipmdev, void *user_data,
 			uint32_t id, volatile void *msg_data)
 {
 	int i;
-	int check = 0;
+	int wait = 0;
 	int width = 4;
 	int linelen = DEFAULT_LINE_LENGTH_BYTES / width;
 	int max_msg_data_size = ipm_max_data_size_get(ipmdev);
@@ -27,25 +27,18 @@ static void test_ipm_cb(const struct device *ipmdev, void *user_data,
 
 	printk("%s:msg id %x, msg data at %p\n", __func__, id, msg_data);
 
-	for (i = 0; i < max_msg_data_size / sizeof(buf) ; i++) {
-		/* FAIL when buf is not golden value */
-		if (buf[i] != 0x1688a8a8)
-			check = 1;
+	/* Check golden fail to print the msg data */
+	while (max_msg_data_size) {
+		printk("%p:", buf);
+
+		for (i = 0; i < linelen; i++)
+			printk(" %08x ", buf[i]);
+		printk("\n");
+		buf += linelen;
+		max_msg_data_size -= linelen * width;
 	}
 
-	/* Check golden fail to print the msg data */
-	if (check)
-		while (max_msg_data_size) {
-			printk("%p:", buf);
-
-			for (i = 0; i < linelen; i++)
-				printk(" %08x ", buf[i]);
-			printk("\n");
-			buf += linelen;
-			max_msg_data_size -= linelen * width;
-		}
-	else
-		printk("Check msg data: pass.\n");
+	ipm_send(ipmdev, wait, 0, msg_data, max_msg_data_size);
 }
 
 int main(void)
