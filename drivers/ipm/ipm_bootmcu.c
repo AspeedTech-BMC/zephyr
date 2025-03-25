@@ -172,6 +172,13 @@ static int bootmcu_ipc_init(const struct device *dev)
 			      (k_thread_entry_t)ipc_thread, (void *)dev,
 			      NULL, NULL, THREAD_PRIORITY, 0, K_NO_WAIT);
 
+#ifdef CONFIG_THREAD_NAME
+	int ret = k_thread_name_set(tid, "ipc");
+
+	if (ret)
+		LOG_ERR("set thread name failed, ret:0x%x\n", ret);
+#endif
+
 	/* Disabled by default */
 	sys_write32(0x0, config->base + config->reg_rx_offset + IPCR_ENABLE);
 
