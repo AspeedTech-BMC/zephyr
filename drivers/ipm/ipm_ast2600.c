@@ -62,12 +62,9 @@ static void ipc_ast2600_isr(const void *dev)
 {
 	struct ipm_ast2600_obj *obj = DEV_DATA((const struct device *)dev);
 	struct ipm_ast2600_config *config = DEV_CFG((const struct device *)dev);
-
 	uint32_t base = config->base;
-	uint32_t status;
+	uint32_t status = sys_read32(base + IPCR_STATUS);
 	int i;
-
-	status = sys_read32(base + IPCR_STATUS);
 
 	LOG_DBG("isr status: %08x\n", status);
 
@@ -93,8 +90,13 @@ static int ipm_ast2600_send(const struct device *dev, int wait, uint32_t id, con
 #if defined(CONFIG_IPC_SHM_RX_SIZE) || defined(CONFIG_IPC_SHM_TX_SIZE)
 	uint32_t shm_tx_size = config->shm_tx_size;
 #endif
+	uint32_t status = sys_read32(base + IPCR_STATUS);
 	uint32_t ret = 0;
-	uint32_t reg;
+
+	if (status & BIT(id)) {
+		ret = -EBUSY;
+		goto finish;
+	}
 
 	if (id >= config->num_irqs) {
 		ret = -EINVAL;
@@ -103,25 +105,21 @@ static int ipm_ast2600_send(const struct device *dev, int wait, uint32_t id, con
 
 #if defined(CONFIG_IPC_SHM_RX_SIZE) || defined(CONFIG_IPC_SHM_TX_SIZE)
 	if (size > shm_tx_size) {
-		ret = -EINVAL;
+		ret = -EMSGSIZE;
 		goto finish;
-	} else {
-		memcpy((void *)shm_tx, data, size);
 	}
+
+	/* Copy message data to shared memory. */
+	memcpy((void *)shm_tx, data, size);
 #endif
 
-	reg = sys_read32(base + IPCR_TRIG);
-	if (reg & BIT(id)) {
-		ret = -EBUSY;
-		goto finish;
-	}
-
+	/* Trigger IPC TX. */
 	sys_write32(BIT(id), base + IPCR_TRIG);
 	if (wait) {
 		do {
-			k_busy_wait(100);
-			reg = sys_read32(base + IPCR_STATUS);
-		} while (reg & BIT(id));
+			/* busy-wait for the status clean */
+			status = sys_read32(base + IPCR_STATUS);
+		} while (status & BIT(id));
 	}
 
 finish:

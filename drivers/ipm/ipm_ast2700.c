@@ -64,19 +64,23 @@ static int ipm_ast2700_send(const struct device *dev, int wait, uint32_t id, con
 {
 	const struct ipm_ast2700_config *config = ((const struct device *)dev)->config;
 	uintptr_t base  = config->base + config->reg_tx_offset;
-	uint32_t reg, i;
+	uint32_t status = sys_read32(base + IPCR_STATUS);
+	uint32_t ret = 0;
+	uint32_t i;
 
-	if (size > IPC_MAX_MSG_SIZE) {
-		return -EMSGSIZE;
+	if (status & BIT(id)) {
+		ret = -EBUSY;
+		goto finish;
 	}
 
 	if (id >= IPC_NUM_OF_ID) {
-		return -EINVAL;
+		ret = -EINVAL;
+		goto finish;
 	}
 
-	reg = sys_read32(base + IPCR_TRIG);
-	if (reg & BIT(id)) {
-		return -EBUSY;
+	if (size > IPC_MAX_MSG_SIZE) {
+		ret = -EMSGSIZE;
+		goto finish;
 	}
 
 	/* Copy message data to IPC Data registers. */
@@ -86,15 +90,16 @@ static int ipm_ast2700_send(const struct device *dev, int wait, uint32_t id, con
 	}
 
 	/* Trigger IPC TX. */
-	sys_write32(reg | BIT(id), base + IPCR_TRIG);
-
+	sys_write32(BIT(id), base + IPCR_TRIG);
 	if (wait) {
-		while (sys_read32(base + IPCR_STATUS) & BIT(id)) {
-			/* busy-wait */
-		}
+		do {
+			/* busy-wait for the status clean */
+			status = sys_read32(base + IPCR_STATUS);
+		} while (status & BIT(id));
 	}
 
-	return 0;
+finish:
+	return ret;
 }
 
 static void ipm_ast2700_register_id_callback(const struct device *dev, uint32_t id,
