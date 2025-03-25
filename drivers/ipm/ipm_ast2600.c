@@ -16,15 +16,23 @@
 #define LOG_LEVEL CONFIG_IPM_LOG_LEVEL
 LOG_MODULE_REGISTER(ipm_ast2600);
 
-#define IPCR_TRIG		0x18
 #if defined(CONFIG_SOC_AST2600)
-/* secondary service processor ARM Cortex-M3. */
+/* Secondary service processor ARM Cortex-M3. */
+#define IPCR_TRIG		0x18
 #define IPCR_STATUS		0x28
 #define IPCR_CLEAR		0x2c
-#elif defined(CONFIG_SOC_AST2700) || defined(CONFIG_SOC_AST2700_A0)
-/* secondary service processor ARM Cortex-M4. */
+#elif defined(CONFIG_SOC_AST2700_SSP) || defined(CONFIG_SOC_AST2700_A0_SSP)
+/* Secondary service processor ARM Cortex-M4. */
+#define IPCR_EN			0x20
+#define IPCR_TRIG		0x28
 #define IPCR_STATUS		0x24
 #define IPCR_CLEAR		0x24
+#elif defined(CONFIG_SOC_AST2700_TSP) || defined(CONFIG_SOC_AST2700_A0_TSP)
+/* Tertiary service processor ARM Cortex-M4. */
+#define IPCR_EN			0x30
+#define IPCR_TRIG		0x38
+#define IPCR_STATUS		0x34
+#define IPCR_CLEAR		0x34
 #endif
 
 #if defined(CONFIG_IPC_SHM_RX_SIZE) || defined(CONFIG_IPC_SHM_TX_SIZE)
@@ -112,7 +120,7 @@ static int ipm_ast2600_send(const struct device *dev, int wait, uint32_t id, con
 	if (wait) {
 		do {
 			k_busy_wait(100);
-			reg = sys_read32(base + IPCR_TRIG);
+			reg = sys_read32(base + IPCR_STATUS);
 		} while (reg & BIT(id));
 	}
 
@@ -169,6 +177,11 @@ static int ipm_ast2600_init(const struct device *dev)
 	/* clear shared memory for SSP communicating with PSP. */
 	memset(shm_rx, 0, CONFIG_IPC_SHM_RX_SIZE);
 	memset(shm_tx, 0, CONFIG_IPC_SHM_TX_SIZE);
+#endif
+
+#if defined(CONFIG_SOC_AST2700_SSP) || defined(CONFIG_SOC_AST2700_A0_SSP) || \
+	defined(CONFIG_SOC_AST2700_TSP) || defined(CONFIG_SOC_AST2700_A0_TSP)
+	sys_write32(0xff, config->base + IPCR_EN);
 #endif
 
 	return 0;
