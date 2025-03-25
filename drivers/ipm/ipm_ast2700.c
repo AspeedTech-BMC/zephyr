@@ -89,7 +89,7 @@ static int ipm_ast2700_send(const struct device *dev, int wait, uint32_t id, con
 	sys_write32(reg | BIT(id), base + IPCR_TRIG);
 
 	if (wait) {
-		while (sys_read32(base + IPCR_TRIG) & BIT(id)) {
+		while (sys_read32(base + IPCR_STATUS) & BIT(id)) {
 			/* busy-wait */
 		}
 	}
