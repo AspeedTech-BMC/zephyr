@@ -96,6 +96,8 @@ static void demo_spim_log_work(struct k_work *item)
 
 	if (IS_ENABLED(CONFIG_MULTITHREADING))
 		k_sem_give(&sem_demo_log_op);
+
+	k_usleep(1);
 }
 
 static void demo_spim_isr_callback(const struct device *dev)
