@@ -10,36 +10,12 @@
 #include <zephyr/sys/printk.h>
 #include <zephyr/drivers/misc/aspeed/cptra_ipc.h>
 #include <string.h>
+#if defined(CONFIG_IPC_SAMPLE)
+#include "ipc_sample.h"
+#endif
 #if defined(CONFIG_CPTRA_SAMPLE)
 #include "cptra_sample.h"
 #endif
-
-#define DEFAULT_LINE_LENGTH_BYTES (16)
-static void test_ipm_cb(const struct device *ipmdev, void *user_data,
-			uint32_t id, volatile void *msg_data)
-{
-	int i;
-	int wait = 0;
-	int width = 4;
-	int linelen = DEFAULT_LINE_LENGTH_BYTES / width;
-	int max_msg_data_size = ipm_max_data_size_get(ipmdev);
-	uint32_t *buf = (uint32_t *)msg_data;
-
-	printk("%s:msg id %x, msg data at %p\n", __func__, id, msg_data);
-
-	/* Check golden fail to print the msg data */
-	while (max_msg_data_size) {
-		printk("%p:", buf);
-
-		for (i = 0; i < linelen; i++)
-			printk(" %08x ", buf[i]);
-		printk("\n");
-		buf += linelen;
-		max_msg_data_size -= linelen * width;
-	}
-
-	ipm_send(ipmdev, wait, 0, msg_data, max_msg_data_size);
-}
 
 int main(void)
 {
@@ -55,32 +31,12 @@ int main(void)
 	cptra_ipc_enable();
 
 #if defined(CONFIG_IPC_SAMPLE)
-	const struct device *ipmdev;
-	char ipc_name[32];
-	int device_id, enable;
-
-	strcpy(ipc_name, "ipc1@400");
-	ipmdev = device_get_binding(&ipc_name[0]);
-	if (!ipmdev) {
-		printk("%s: device_get_binding failed to find device\n", ipc_name);
-		rc = 1;
-		goto fail;
-	}
-
-	device_id = 0;
-	enable = 1;
-	ipm_register_id_callback(ipmdev, device_id, test_ipm_cb, NULL);
-	rc = ipm_set_id_enabled(ipmdev, device_id, enable);
-	if (rc) {
-		printk("%s: cannot ipm_set_enabled\n", ipc_name);
-		goto fail;
-	}
+	ipc_test();
 #endif
 
 #if defined(CONFIG_CPTRA_SAMPLE)
 	cptra_test();
 #endif
 
-fail:
 	return rc;
 }
