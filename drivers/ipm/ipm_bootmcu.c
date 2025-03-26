@@ -87,7 +87,7 @@ static int ipc_send(const struct device *dev, int wait, uint32_t id, const void 
 	uint32_t status = sys_read32(base + IPCR_STATUS);
 	uint32_t ret = 0;
 	uint32_t i;
-	LOG_DBG("base:0x%lx, status: 0x%x, size=0x%x\n", base, status, size);
+	LOG_DBG("wait=0x%x, id=0x%x, size=0x%x\n", wait, id, size);
 
 	if (status & BIT(id)) {
 		ret = -EBUSY;
@@ -116,6 +116,7 @@ static int ipc_send(const struct device *dev, int wait, uint32_t id, const void 
 		do {
 			/* busy-wait for the status clean */
 			status = sys_read32(base + IPCR_STATUS);
+			LOG_INF("status base:0x%lx, status: 0x%x\n", base + IPCR_STATUS, status);
 		} while (status & BIT(id));
 	}
 
