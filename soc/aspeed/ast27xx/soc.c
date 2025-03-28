@@ -91,6 +91,7 @@ uint64_t ast27xx_soc_virt_addr_to_phy_addr(uintptr_t addr)
 	limit = base + sys_read32(SCU0_REG + 0x14c);
 	if (addr >= base && addr < limit) {
 		phy_dram_base = (uint64_t)sys_read32(SCU0_REG + 0x124) << 4;
+		addr -= base;
 		goto out;
 	}
 
@@ -115,6 +116,7 @@ uintptr_t ast27xx_soc_phy_addr_to_virt_addr(uint64_t addr)
 	base = (uint64_t)sys_read32(SCU0_REG + 0x124) << 4;
 	limit = base + sys_read32(SCU0_REG + 0x14c);
 	if (addr >= base && addr < limit) {
+		base += sys_read32(SCU0_REG + 0x148);
 		goto out;
 	}
 
