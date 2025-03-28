@@ -1352,6 +1352,7 @@ static int spim_abnormal_log_init(const struct device *dev)
 	const struct device *parent_dev = config->parent;
 	struct aspeed_spim_common_data *const parent_data = parent_dev->data;
 	uint32_t cur_log_sz;
+	uint32_t log_num = data->log_info.log_max_sz / 4;
 
 	acquire_log_op(config->parent);
 	data->log_info.log_ram_addr = (mem_addr_t)(&spim_log_arr[0] + parent_data->cur_log_sz);
@@ -1367,8 +1368,7 @@ static int spim_abnormal_log_init(const struct device *dev)
 
 	acquire_spim_device(dev);
 	sys_write32(data->log_info.log_ram_addr, config->ctrl_base + SPIM_LOG_BASE);
-	sys_write32(data->log_info.log_max_sz | SPIM_BLOCK_INFO_EN,
-			config->ctrl_base + SPIM_LOG_SZ);
+	sys_write32(log_num | SPIM_BLOCK_INFO_EN, config->ctrl_base + SPIM_LOG_SZ);
 	release_spim_device(dev);
 
 end:
