@@ -116,7 +116,7 @@ static int ipc_send(const struct device *dev, int wait, uint32_t id, const void 
 		do {
 			/* busy-wait for the status clean */
 			status = sys_read32(base + IPCR_STATUS);
-			LOG_INF("status base:0x%lx, status: 0x%x\n", base + IPCR_STATUS, status);
+			LOG_DBG("status base:0x%lx, status: 0x%x\n", base + IPCR_STATUS, status);
 		} while (status & BIT(id));
 	}
 
@@ -167,8 +167,7 @@ static int bootmcu_ipc_init(const struct device *dev)
 	k_thread_stack_t *thread_stack = data->state.thread_stack;
 	k_tid_t tid;
 
-	printk("\n");
-	LOG_INF("0x%x: Create threads to service ipc requests", (uint32_t)config->base);
+	LOG_DBG("0x%x: Create threads to service ipc requests", (uint32_t)config->base);
 
 	tid = k_thread_create(thread_data, thread_stack, THREAD_STACK_SIZE,
 			      (k_thread_entry_t)ipc_thread, (void *)dev,
