@@ -31,7 +31,7 @@ static void ch0_ipm_cb(const struct device *ipmdev, void *user_data,
 
 		for (i = 0; i < linelen; i++)
 			LOG_INF(" %08x ", buf[i]);
-		printk("\n");
+		LOG_INF("\n");
 		buf += linelen;
 		max_msg_data_size -= linelen * width;
 	}
