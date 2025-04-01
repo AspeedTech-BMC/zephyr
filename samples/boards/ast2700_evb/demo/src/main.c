@@ -28,8 +28,9 @@ int main(void)
 	((void (*)(uint32_t))func)((uint32_t)CONFIG_LOAD_FIT_ADDR);
 #endif
 
+#if defined(CONFIG_CPTRA_IPC) || defined(CONFIG_CPTRA_IPC_SSP)
 	cptra_ipc_enable();
-
+#endif
 #if defined(CONFIG_IPC_SAMPLE)
 	ipc_test();
 #endif

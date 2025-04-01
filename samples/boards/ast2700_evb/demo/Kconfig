@@ -33,4 +33,18 @@ config CPTRA_SAMPLE
 	help
 	  CPTRA mailbox command sample enabled.
 
+config CPTRA_SAMPLE_BOOTMCU
+	default n
+	depends on SOC_AST2700_BOOTMCU
+	bool "Caliptra mailbox command sample for bootmcu"
+	help
+	  CPTRA mailbox command sample enabled for bootmcu.
+
+config CPTRA_SAMPLE_SSP
+	default n
+	depends on SOC_AST2700_SSP
+	bool "Caliptra mailbox command sample for ssp"
+	help
+	  CPTRA mailbox command sample enabled for ssp.
+
 source "Kconfig.zephyr"
