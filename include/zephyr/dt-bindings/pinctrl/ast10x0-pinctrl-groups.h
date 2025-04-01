@@ -91,8 +91,8 @@
 #define pinctrl_spi2_quad &pin_spi2cs0 &pin_spi2ck &pin_spi2dq0 &pin_spi2dq1 &pin_spi2cs1 &pin_spi2dq2 &pin_spi2dq3
 /* The following pins only available on AST1060 */
 #define pinctrl_smbflt_default &pin_smbf1sclin &pin_smbf1sdain &pin_smbf1sclout &pin_smbf1sdaout &pin_smbf2sclin &pin_smbf2sdain &pin_smbf2sclout &pin_smbf2sdaout &pin_smbf3sclin &pin_smbf3sdain &pin_smbf3sclout &pin_smbf3sdaout &pin_smbf4sclin &pin_smbf4sdain &pin_smbf4sclout &pin_smbf4sdaout
-#define pinctrl_spim1_default &pin_spim1csin &pin_spim1clkin &pin_spim1mosiin &pin_spim1misoin &pin_spim1csout &pin_spim1clkout &pin_spim1mosiout &pin_spim1misoout &pin_spim1spirstin &pin_spim1spirstout &pin_spim1muxsel
-#define pinctrl_spim1_quad_default &pin_spim1csin &pin_spim1clkin &pin_spim1mosiin &pin_spim1misoin &pin_spim1csout &pin_spim1clkout &pin_spim1mosiout &pin_spim1misoout &pin_spim1spirstin &pin_spim1spirstout &pin_spim1muxsel &pin_spim1io2in &pin_spim1io3in &pin_spim1io2out &pin_spim1io3out
+#define pinctrl_spim1_default &pin_spim1csin &pin_spim1clkin &pin_spim1mosiin &pin_spim1misoin &pin_spim1csout &pin_spim1spirstin &pin_spim1spirstout &pin_spim1muxsel
+#define pinctrl_spim1_quad_default &pin_spim1csin &pin_spim1clkin &pin_spim1mosiin &pin_spim1misoin &pin_spim1csout &pin_spim1spirstin &pin_spim1spirstout &pin_spim1muxsel &pin_spim1io2in &pin_spim1io3in
 #define pinctrl_spim2_default &pin_spim2csin &pin_spim2clkin &pin_spim2mosiin &pin_spim2misoin &pin_spim2csout &pin_spim2clkout &pin_spim2mosiout &pin_spim2misoout &pin_spim2spirstin &pin_spim2spirstout &pin_spim2muxsel
 #define pinctrl_spim2_quad_default &pin_spim2csin &pin_spim2clkin &pin_spim2mosiin &pin_spim2misoin &pin_spim2csout &pin_spim2clkout &pin_spim2mosiout &pin_spim2misoout &pin_spim2spirstin &pin_spim2spirstout &pin_spim2muxsel &pin_spim2io2in &pin_spim2io3in &pin_spim2io2out &pin_spim2io3out
 #define pinctrl_spim3_default &pin_spim3csin &pin_spim3clkin &pin_spim3mosiin &pin_spim3misoin &pin_spim3csout &pin_spim3clkout &pin_spim3mosiout &pin_spim3misoout &pin_spim3spirstin &pin_spim3spirstout &pin_spim3muxsel
