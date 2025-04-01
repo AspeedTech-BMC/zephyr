@@ -29,6 +29,18 @@
 extern "C" {
 #endif
 
+#define IPC_CHANNEL_ID_CH0			0
+#define IPC_CHANNEL_0_SSP_IN_ADDR		(0x1000000 + (0 * 1024 * 1024))
+#define IPC_CHANNEL_0_SSP_OUT_ADDR		(0x1000000 + (1 * 1024 * 1024))
+#define IPC_CHANNEL_0_BOOTMCU_IN_ADDR		(0xAD000000 + (0 * 1024 * 1024))
+#define IPC_CHANNEL_0_BOOTMCU_OUT_ADDR		(0xAD000000 + (1 * 1024 * 1024))
+#define IPC_CHANNEL_ID_CPTRA			1
+#define IPC_CHANNEL_1_SSP_IN_ADDR		(0x1000000 + (2 * 1024 * 1024))
+#define IPC_CHANNEL_1_SSP_OUT_ADDR		(0x1000000 + (3 * 1024 * 1024))
+#define IPC_CHANNEL_1_BOOTMCU_IN_ADDR		(0xAD000000 + (2 * 1024 * 1024))
+#define IPC_CHANNEL_1_BOOTMCU_OUT_ADDR		(0xAD000000 + (3 * 1024 * 1024))
+#define IPC_CHANNEL_1_BUFF_SIZE			(1024 * 1024)
+
 /**
  * @typedef ipm_callback_t
  * @brief Callback API for incoming IPM messages

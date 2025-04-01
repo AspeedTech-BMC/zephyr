@@ -37,6 +37,17 @@ enum cptra_ipc_cmd {
 	CPTRA_IPCCMD_CAPABILITIES,
 };
 
+enum cptra_ipc_rx_type {
+	CPTRA_IPC_RX_TYPE_INTERNAL = 0,
+	CPTRA_IPC_RX_TYPE_EXTERNAL = 1,
+};
+
+int cptra_ipc_enable(void);
+int cptra_ipc_trigger(enum cptra_ipc_cmd cmd, void *input, int input_size);
+int cptra_ipc_receive(enum cptra_ipc_rx_type type, void *output, int output_size);
+int cptra_ipc_transfer(enum cptra_ipc_cmd cmd, void *input, int input_size,
+		       enum cptra_ipc_rx_type type, void *output, int output_size);
+
 struct cptra_ecdsa_ctx {
 	int qx_len;
 	uint8_t *qx;

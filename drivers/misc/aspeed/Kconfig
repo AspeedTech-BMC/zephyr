@@ -101,6 +101,12 @@ config CPTRA_IPC
 	help
 	  This option enables the Caliptra ipc driver for ASPEED SoCs.
 
+config CPTRA_IPC_SSP
+	bool "ASPEED CPTRA IPC driver in SSP"
+	depends on SOC_AST2700_SSP
+	help
+	  This option enables the Caliptra ipc driver in SSP for ASPEED SoCs.
+
 config PRIVILEGE_CTRL
 	bool "Enable ASPEED privilege control"
 	default y
