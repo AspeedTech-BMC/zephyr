@@ -17,8 +17,7 @@
 
 LOG_MODULE_REGISTER(cptra_ipc, CONFIG_MISC_ASPEED_LOG_LEVEL);
 
-#define IPC_DEV_SSP_TX_BOOTMCU_RX		"ipc1@400"
-#define IPC_DEV_BOOTMCU_TX_SSP_RX		"ipc1@500"
+#define IPC_DEV_SSP_BOOTMCU			"ipc1@400"
 #define IPC_CHANNEL_ID_CPTRA			1
 
 #define IPC_CHANNEL_1_SSP_OUT_ADDR		(0x1000000 + (3 * 1024 * 1024))
@@ -96,7 +95,7 @@ int cptra_ipc_receive(enum cptra_ipc_rx_type type, void *output, int output_size
 
 int cptra_ipc_trigger(enum cptra_ipc_cmd cmd, void *input, int input_size)
 {
-	char ipc_name[32] = IPC_DEV_SSP_TX_BOOTMCU_RX;
+	char ipc_name[32] = IPC_DEV_SSP_BOOTMCU;
 	const struct device *ipmdev;
 	uint32_t *p32 = (uint32_t *)input;
 	uint32_t data[8] = {0};
@@ -141,7 +140,7 @@ static void cptra_ipc_cb(const struct device *ipmdev, void *user_data,
 
 int cptra_ipc_enable(void)
 {
-	char ipc_name[32] = IPC_DEV_BOOTMCU_TX_SSP_RX;
+	char ipc_name[32] = IPC_DEV_SSP_BOOTMCU;
 	int device_id = IPC_CHANNEL_ID_CPTRA;
 	const struct device *ipmdev;
 	int rc = 0;

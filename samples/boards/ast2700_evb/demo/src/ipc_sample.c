@@ -12,7 +12,7 @@
 LOG_MODULE_REGISTER(ipc_test, CONFIG_SOC_LOG_LEVEL);
 
 #define DEFAULT_LINE_LENGTH_BYTES	(16)
-#define IPC_DEV_SSP_TX_BOOTMCU_RX	"ipc1@400"
+#define IPC_DEV_SSP_BOOTMCU		"ipc1@400"
 #define IPC_CHANNEL_ID			0
 
 static void ch0_ipm_cb(const struct device *ipmdev, void *user_data,
@@ -42,7 +42,7 @@ static void ch0_ipm_cb(const struct device *ipmdev, void *user_data,
 
 int ipc_test(void)
 {
-	char ipc_name[32] = IPC_DEV_SSP_TX_BOOTMCU_RX;
+	char ipc_name[32] = IPC_DEV_SSP_BOOTMCU;
 	int device_id = IPC_CHANNEL_ID;
 	const struct device *ipmdev;
 	int rc;

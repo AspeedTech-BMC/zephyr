@@ -24,7 +24,7 @@ LOG_MODULE_REGISTER(cptra_ipc, CONFIG_MISC_ASPEED_LOG_LEVEL);
 #define CPTRA_DICE_DRV_NAME		DEVICE_DT_NAME(DT_INST(0, aspeed_cptra_dice))
 #define CPTRA_MISC_DRV_NAME		DEVICE_DT_NAME(DT_INST(0, aspeed_cptra_misc))
 
-#define IPC_DEV_SSP_TX_BOOTMCU_RX	"ipc1@400"
+#define IPC_DEV_SSP_BOOTMCU		"ipc1@400"
 #define IPC_CHANNEL_ID_CPTRA		1
 
 static int cptra_ipc_ecdsa384_verify(const struct device *dev, void *arg1, void *arg2);
@@ -221,7 +221,7 @@ static void cptra_ipc_cb(const struct device *ipmdev, void *user_data,
 
 int cptra_ipc_enable(void)
 {
-	char ipc_name[32] = IPC_DEV_SSP_TX_BOOTMCU_RX;
+	char ipc_name[32] = IPC_DEV_SSP_BOOTMCU;
 	int device_id = IPC_CHANNEL_ID_CPTRA;
 	const struct device *ipmdev;
 	int rc = 0;
