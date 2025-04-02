@@ -1061,7 +1061,7 @@ end:
 	return ret;
 }
 
-static int cptra_test_ecdsa_verify(void)
+__attribute__((unused)) static int cptra_test_ecdsa_verify(void)
 {
 	uint8_t *p8_bmcu_in = (uint8_t *)IPC_CHANNEL_1_BOOTMCU_IN_ADDR;
 	uint8_t *p8_ssp_in = (uint8_t *)IPC_CHANNEL_1_SSP_IN_ADDR;
@@ -1146,7 +1146,7 @@ static int cptra_test_ecdsa_verify(void)
 	return 0;
 }
 
-static int cptra_test_lms_verify(void)
+__attribute__((unused)) static int cptra_test_lms_verify(void)
 {
 	uint8_t *p8_bmcu_in = (uint8_t *)IPC_CHANNEL_1_BOOTMCU_IN_ADDR;
 	uint8_t *p8_ssp_in = (uint8_t *)IPC_CHANNEL_1_SSP_IN_ADDR;
@@ -1225,7 +1225,7 @@ static int cptra_test_lms_verify(void)
 	return 0;
 }
 
-static int cptra_test_sha384(void)
+__attribute__((unused)) static int cptra_test_sha384(void)
 {
 	const struct hash_testvec *tv = sha384_tv_template;
 	int tv_size = ARRAY_SIZE(sha384_tv_template);
