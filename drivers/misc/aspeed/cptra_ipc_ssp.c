@@ -14,16 +14,15 @@
 #include <zephyr/crypto/lms.h>
 #include <zephyr/crypto/lms_structs.h>
 #include <zephyr/sys/byteorder.h>
+#include <zephyr/drivers/ipm.h>
+#include <zephyr/cache.h>
 
 LOG_MODULE_REGISTER(cptra_ipc, CONFIG_MISC_ASPEED_LOG_LEVEL);
 
 #define IPC_DEV_SSP_BOOTMCU			"ipc1@400"
-#define IPC_CHANNEL_ID_CPTRA			1
 
-#define IPC_CHANNEL_1_SSP_OUT_ADDR		(0x1000000 + (3 * 1024 * 1024))
-
-bool cptra_ipc_rx_bootmcu;
-uint32_t cptra_ipc_rx_data[8];
+static bool cptra_ipc_rx;
+static uint32_t cptra_ipc_rx_data[8];
 
 int cptra_ipc_transfer(enum cptra_ipc_cmd cmd, void *input, int input_size,
 		       enum cptra_ipc_rx_type type, void *output, int output_size)
@@ -33,17 +32,17 @@ int cptra_ipc_transfer(enum cptra_ipc_cmd cmd, void *input, int input_size,
 	int rc;
 
 	/* Copy input data into shared memory */
-	memcpy(p8_ssp_in, &input, input_size);
+	memcpy(p8_ssp_in, input, input_size);
 
 	rc = cptra_ipc_trigger(cmd, data, sizeof(data));
 	if (rc) {
-		LOG_ERR("cptra_ipc_trigger failed\n");
+		LOG_ERR("cptra_ipc_trigger failed");
 		return rc;
 	}
 
 	rc = cptra_ipc_receive(type, output, output_size);
 	if (rc) {
-		LOG_ERR("cptra_ipc_receive failed\n");
+		LOG_ERR("cptra_ipc_receive failed");
 		return rc;
 	}
 
@@ -52,18 +51,18 @@ int cptra_ipc_transfer(enum cptra_ipc_cmd cmd, void *input, int input_size,
 
 void cptra_ipc_rx_done(void)
 {
-	cptra_ipc_rx_bootmcu = true;
+	cptra_ipc_rx = true;
 }
 
 bool cptra_ipc_rx_is_done(void)
 {
-	return cptra_ipc_rx_bootmcu;
+	return cptra_ipc_rx;
 }
 
 void cptra_ipc_rx_clear(void)
 {
 	memset(cptra_ipc_rx_data, 0, sizeof(cptra_ipc_rx_data));
-	cptra_ipc_rx_bootmcu = false;
+	cptra_ipc_rx = false;
 }
 
 int cptra_ipc_receive(enum cptra_ipc_rx_type type, void *output, int output_size)
@@ -84,6 +83,8 @@ int cptra_ipc_receive(enum cptra_ipc_rx_type type, void *output, int output_size
 		memcpy(output, cptra_ipc_rx_data, size);
 
 	} else {
+		cache_data_invd_all();
+
 		memcpy(output, p8, output_size);
 		rc = cptra_ipc_rx_data[0];
 	}
@@ -101,14 +102,16 @@ int cptra_ipc_trigger(enum cptra_ipc_cmd cmd, void *input, int input_size)
 	uint32_t data[8] = {0};
 	int rc;
 
-	LOG_DBG("%s\n", __func__);
+	LOG_DBG("%s", __func__);
 
 	ipmdev = device_get_binding(ipc_name);
 	if (!ipmdev) {
-		printk("%s: device_get_binding failed to find device\n", ipc_name);
+		printk("%s: device_get_binding failed to find device", ipc_name);
 		rc = -1;
 		return rc;
 	}
+
+	cache_data_flush_all();
 
 	data[0] = (uint32_t)cmd;
 	for (int i = 0; i < input_size / 4 && i < 8; i++) {
@@ -117,9 +120,9 @@ int cptra_ipc_trigger(enum cptra_ipc_cmd cmd, void *input, int input_size)
 
 	rc = ipm_send(ipmdev, 0, IPC_CHANNEL_ID_CPTRA, (void *)data, sizeof(data));
 	if (rc)
-		LOG_ERR("ipm_send failed\n");
+		LOG_ERR("ipm_send failed");
 	else
-		LOG_DBG("ipm_send success\n");
+		LOG_DBG("ipm_send success");
 
 	return rc;
 }
@@ -129,10 +132,10 @@ static void cptra_ipc_cb(const struct device *ipmdev, void *user_data,
 {
 	uint32_t *buf = (uint32_t *)msg_data;
 
-	LOG_DBG("%s: msg ch1 with data at %p\n", __func__, (void *)msg_data);
+	LOG_DBG("%s: msg ch1 with data at %p", __func__, (void *)msg_data);
 	for (int i = 0; i < 8; i++) {
 		cptra_ipc_rx_data[i] = buf[i];
-		LOG_DBG("msg data = 0x%x\n", buf[i]);
+		LOG_DBG("msg data = 0x%x", buf[i]);
 	}
 
 	cptra_ipc_rx_done();
@@ -149,7 +152,7 @@ int cptra_ipc_enable(void)
 
 	ipmdev = device_get_binding(ipc_name);
 	if (!ipmdev) {
-		printk("%s: device_get_binding failed to find device\n", ipc_name);
+		printk("%s: device_get_binding failed to find device", ipc_name);
 		rc = -1;
 		return rc;
 	}
@@ -157,7 +160,7 @@ int cptra_ipc_enable(void)
 	ipm_register_id_callback(ipmdev, device_id, cptra_ipc_cb, NULL);
 	rc = ipm_set_id_enabled(ipmdev, device_id, 1);
 	if (rc) {
-		printk("%s: cannot ipm_set_enabled\n", ipc_name);
+		printk("%s: cannot ipm_set_enabled", ipc_name);
 		return rc;
 	}
 
