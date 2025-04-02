@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # Workaround for not being able to have commas in macro arguments
-DT_CHOSEN_Z_IPC := zephyr,ipc
+DT_CHOSEN_Z_IPC := zephyr,ipc_legacy
 DT_CHOSEN_Z_IPC_RX_SHM := zephyr,ipc_shm_rx
 DT_CHOSEN_Z_IPC_TX_SHM := zephyr,ipc_shm_tx
 

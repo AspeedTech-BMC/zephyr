@@ -35,7 +35,7 @@
 			#size-cells = <1>;
 			status = "okay";
 
-			ipc: ipc@0 {
+			ipc_legacy: ipc_legacy@0 {
 				compatible = "aspeed,ast2600-ipc";
 				reg = <0x0 0x40>;
 				interrupt-parent = <&nvic>;
@@ -159,7 +159,7 @@
 			reg-shift = <2>;
 		};
 
-		soc0_ipc_v2: bus@72c1c000 {
+		ipc0: bus@72c1c000 {
 			#address-cells = <1>;
 			#size-cells = <1>;
 			compatible = "simple-bus";

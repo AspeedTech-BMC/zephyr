@@ -36,21 +36,21 @@
 };
 
 #if 0
-&ipc_s_ca35 {
+&ipc1_s_ca35 {
 	status = "okay";
 };
 
-&ipc_ns_ca35 {
+&ipc1_ns_ca35 {
 	status = "okay";
 };
 #endif
 
-&ipc_ssp {
+&ipc1_ssp {
 	status = "okay";
 };
 
 #if 0
-&ipc_tsp {
+&ipc1_tsp {
 	status = "okay";
 };
 #endif

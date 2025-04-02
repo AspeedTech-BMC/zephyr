@@ -1,9 +1,9 @@
 # Copyright (c) 2023 ASPEED Technology Inc.
 # SPDX-License-Identifier: Apache-2.0
 
-description: ASPEED IPC V2 (Interprocessor Communication) in AST2700 SOC
+description: ASPEED IPC (Interprocessor Communication) in AST2700 SOC
 
-compatible: "aspeed,ast2700-ipc-v2"
+compatible: "aspeed,ast2700-ipc"
 
 include: base.yaml
 

@@ -117,8 +117,8 @@
 	irq-route-select = "tsp";
 };
 
-&soc0_ipc_v2 {
-	soc0_ipc0_v2: soc0_ipc_v2@400 {
+&ipc0 {
+	ipc0_s_ca35: ipc0@400 {
 		compatible = "aspeed,ast2700-ipc-v2";
 		reg = <0x400 0x200>;
 		reg-tx-offset = <0x100>;
@@ -127,7 +127,7 @@
 		status = "disabled";
 	};
 
-	soc0_ipc1_v2: soc0_ipc_v2@600 {
+	ipc0_ns_ca35: ipc0@600 {
 		compatible = "aspeed,ast2700-ipc-v2";
 		reg = <0x600 0x200>;
 		reg-tx-offset = <0x100>;
@@ -136,7 +136,7 @@
 		status = "disabled";
 	};
 
-	soc0_ipc2_v2: soc0_ipc_v2@800 {
+	ipc0_ssp: ipc0@800 {
 		compatible = "aspeed,ast2700-ipc-v2";
 		reg = <0x800 0x200>;
 		reg-tx-offset = <0x100>;

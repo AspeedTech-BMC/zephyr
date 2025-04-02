@@ -36,7 +36,7 @@
 			#size-cells = <1>;
 			status = "okay";
 
-			ipc: ipc@0 {
+			ipc_legacy: ipc_legacy@0 {
 				compatible = "aspeed,ast2600-ipc";
 				reg = <0x0 0x40>;
 				interrupt-parent = <&nvic>;
@@ -160,7 +160,7 @@
 			reg-shift = <2>;
 		};
 
-		soc0_ipc_v2: bus@72c1c000 {
+		ipc0: bus@72c1c000 {
 			#address-cells = <1>;
 			#size-cells = <1>;
 			compatible = "simple-bus";
@@ -193,7 +193,7 @@
 		espi0: espi@74c05000 {
 			compatible = "aspeed,espi-v2";
 			reg = <0x74c05000 0x1000>;
-			interrupt-parent = <&soc1_intc0>;
+			interrupt-parent = <&intc1_0>;
 			interrupts = <10 1>;
 			clocks = <&sysclk1 SCU1_CLK_GATE_ESPI0CLK>;
 			status = "disabled";
@@ -211,7 +211,7 @@
 		uart0: serial@74c33000 {
 			compatible = "ns16550";
 			reg = <0x74c33000 0x100>;
-			interrupt-parent = <&soc1_intc4>;
+			interrupt-parent = <&intc1_4>;
 			interrupts = <7 1>;
 			status = "disabled";
 			reg-shift = <2>;
@@ -220,7 +220,7 @@
 		uart6: serial@74c33500 {
 			compatible = "ns16550";
 			reg = <0x74c33500 0x100>;
-			interrupt-parent = <&soc1_intc4>;
+			interrupt-parent = <&intc1_4>;
 			interrupts = <12 1>;
 			clocks = <&sysclk1 SCU1_CLK_GATE_UART6CLK>;
 			resets = <&sysrst1 SCU1_RESET_UART6>;
@@ -233,7 +233,7 @@
 		uart7: serial@74c33600 {
 			compatible = "ns16550";
 			reg = <0x74c33600 0x100>;
-			interrupt-parent = <&soc1_intc4>;
+			interrupt-parent = <&intc1_4>;
 			interrupts = <13 1>;
 			clocks = <&sysclk1 SCU1_CLK_GATE_UART7CLK>;
 			resets = <&sysrst1 SCU1_RESET_UART7>;
@@ -243,7 +243,7 @@
 			reg-shift = <2>;
 		};
 
-		soc1_ipc_v2: bus@74c39000 {
+		ipc1: bus@74c39000 {
 			#address-cells = <1>;
 			#size-cells = <1>;
 			compatible = "simple-bus";

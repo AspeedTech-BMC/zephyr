@@ -9,7 +9,7 @@
 	};
 
 	soc {
-		soc0_intc11: interrupt-controller@72102b00 {
+		intc0_11: interrupt-controller@72102b00 {
 			#address-cells = <1>;
 			#interrupt-cells = <2>;
 			interrupt-controller;
@@ -25,68 +25,68 @@
 			status = "disabled";
 		};
 
-		soc1_intc0: interrupt-controller@74c18180 {
+		intc1_0: interrupt-controller@74c18180 {
 			#address-cells = <1>;
 			#interrupt-cells = <2>;
 			interrupt-controller;
 			compatible = "aspeed,ast2700-intc-ic";
 			reg = <0x74c18180 0x10>;
-			interrupt-parent = <&soc0_intc11>;
+			interrupt-parent = <&intc0_11>;
 			interrupts = <0 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			status = "disabled";
 		};
 
-		soc1_intc1: interrupt-controller@74c18190 {
+		intc1_1: interrupt-controller@74c18190 {
 			#address-cells = <1>;
 			#interrupt-cells = <2>;
 			interrupt-controller;
 			compatible = "aspeed,ast2700-intc-ic";
 			reg = <0x74c18190 0x10>;
-			interrupt-parent = <&soc0_intc11>;
+			interrupt-parent = <&intc0_11>;
 			interrupts = <1 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			status = "disabled";
 		};
 
-		soc1_intc2: interrupt-controller@74c181a0 {
+		intc1_2: interrupt-controller@74c181a0 {
 			#address-cells = <1>;
 			#interrupt-cells = <2>;
 			interrupt-controller;
 			compatible = "aspeed,ast2700-intc-ic";
 			reg = <0x74c181a0 0x10>;
-			interrupt-parent = <&soc0_intc11>;
+			interrupt-parent = <&intc0_11>;
 			interrupts = <2 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			status = "disabled";
 		};
 
-		soc1_intc3: interrupt-controller@74c181b0 {
+		intc1_3: interrupt-controller@74c181b0 {
 			#address-cells = <1>;
 			#interrupt-cells = <2>;
 			interrupt-controller;
 			compatible = "aspeed,ast2700-intc-ic";
 			reg = <0x74c181b0 0x10>;
-			interrupt-parent = <&soc0_intc11>;
+			interrupt-parent = <&intc0_11>;
 			interrupts = <3 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			status = "disabled";
 		};
 
-		soc1_intc4: interrupt-controller@74c181c0 {
+		intc1_4: interrupt-controller@74c181c0 {
 			#address-cells = <1>;
 			#interrupt-cells = <2>;
 			interrupt-controller;
 			compatible = "aspeed,ast2700-intc-ic";
 			reg = <0x74c181c0 0x10>;
-			interrupt-parent = <&soc0_intc11>;
+			interrupt-parent = <&intc0_11>;
 			interrupts = <4 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			status = "disabled";
 		};
 
-		soc1_intc5: interrupt-controller@74c181d0 {
+		intc1_5: interrupt-controller@74c181d0 {
 			#address-cells = <1>;
 			#interrupt-cells = <2>;
 			interrupt-controller;
 			compatible = "aspeed,ast2700-intc-ic";
 			reg = <0x74c181d0 0x10>;
-			interrupt-parent = <&soc0_intc11>;
+			interrupt-parent = <&intc0_11>;
 			interrupts = <5 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			status = "disabled";
 		};
@@ -105,9 +105,9 @@
 	irq-route-select = "ssp";
 };
 
-&soc0_ipc_v2 {
-	soc0_ipc0_v2: soc0_ipc_v2@0 {
-		compatible = "aspeed,ast2700-ipc-v2";
+&ipc0 {
+	ipc0_s_ca35: ipc0@0 {
+		compatible = "aspeed,ast2700-ipc";
 		reg = <0x0 0x200>;
 		reg-tx-offset = <0x100>;
 		reg-rx-offset = <0>;
@@ -115,8 +115,8 @@
 		status = "disabled";
 	};
 
-	soc0_ipc1_v2: soc0_ipc_v2@200 {
-		compatible = "aspeed,ast2700-ipc-v2";
+	ipc0_ns_ca35: ipc0@200 {
+		compatible = "aspeed,ast2700-ipc";
 		reg = <0x200 0x200>;
 		reg-tx-offset = <0x100>;
 		reg-rx-offset = <0>;
@@ -124,8 +124,8 @@
 		status = "disabled";
 	};
 
-	soc0_ipc2_v2: soc0_ipc_v2@800 {
-		compatible = "aspeed,ast2700-ipc-v2";
+	ipc0_tsp: ipc0@800 {
+		compatible = "aspeed,ast2700-ipc";
 		reg = <0x800 0x200>;
 		reg-tx-offset = <0x0>;
 		reg-rx-offset = <0x100>;
@@ -134,13 +134,13 @@
 	};
 };
 
-&soc1_ipc_v2 {
-	soc1_ipc0_v2: soc1_ipc_v2@500 {
-		compatible = "aspeed,ast2700-ipc-v2";
-		reg = <0x500 0x100>;
-		reg-tx-offset = <0x100>;
-		reg-rx-offset = <0>;
-		interrupt-parent = <&soc1_intc5>;
+&ipc1 {
+	ipc1_bootmcu: ipc1@400 {
+		compatible = "aspeed,ast2700-ipc";
+		reg = <0x400 0x200>;
+		reg-tx-offset = <0x0>;
+		reg-rx-offset = <0x100>;
+		interrupt-parent = <&intc1_5>;
 		interrupts = <19 1>;
 		status = "disabled";
 	};

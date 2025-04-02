@@ -4,7 +4,7 @@
 
 / {
 	chosen {
-		zephyr,ipc = &ipc;
+		zephyr,ipc = &ipc_legacy;
 		zephyr,ipc_shm_rx = &sram_ipc0_rx;
 		zephyr,ipc_shm_tx = &sram_ipc0_tx;
 	};
@@ -36,7 +36,7 @@
 	reg = <0xc0000 DT_SIZE_K(252)>;
 };
 
-&ipc {
+&ipc_legacy {
 	tx-region = <&sram_ipc0_tx>;
 	rx-region = <&sram_ipc0_rx>;
 	mbox-names = "rx", "tx";

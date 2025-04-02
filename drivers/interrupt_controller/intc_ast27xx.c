@@ -58,18 +58,18 @@ static int intc_ast2700_isr(const void *dev)
 	LOG_DBG("enable 0x%x, status 0x%x", enable, status);
 
 	if (level == 1) {
-		intc_num = INTC_2ND_LEVEL_NUMBER; /* SOC0_INTC11 in NVIC */
-		irqn_from_intc = irqn; /* IRQN of SOC0_INTC11 is NVIC#160~NVIC#165 */
+		intc_num = INTC_2ND_LEVEL_NUMBER; /* INTC0_11 in NVIC */
+		irqn_from_intc = irqn; /* IRQN of INTC0_11 is NVIC#160~NVIC#165 */
 		offset = CONFIG_2ND_LVL_ISR_TBL_OFFSET;
 	} else if (level == 2) {
 		/*
-		 * SOC1_INTx in SOC0_INTC11, which shifts 2rd level interrupt bits.
-		 * x begin from 0, such as SOC1_INTC0
+		 * INTC1_x in INTC0_11, which shifts 2rd level interrupt bits.
+		 * x begin from 0, such as INTC1_0
 		 */
 		intc_num = (irqn >> CONFIG_2ND_LEVEL_INTERRUPT_BITS) - 1;
 
 		/*
-		 * SOC1_INTx registered ISR in IRQN calculated with INTC number(from INTC0).
+		 * INTC1_x registered ISR in IRQN calculated with INTC number(from INTC0).
 		 * Table offset is in CONFIG_3RD_LVL_ISR_TBL_OFFSET +
 		 * intc_num * CONFIG_MAX_IRQ_PER_AGGREGATOR.
 		 */
@@ -78,7 +78,7 @@ static int intc_ast2700_isr(const void *dev)
 	}
 
 	for (i = 0; i < CONFIG_MAX_IRQ_PER_AGGREGATOR; i++) {
-		/* Read SOC0_INTC11 or SOC1_INTCx status back to check bit as INTC number. */
+		/* Read INTC0_11 or INTC1_x status back to check bit as INTC number. */
 		if (IS_BIT_SET(enable, i) && IS_BIT_SET(status, i)) {
 			LOG_DBG("INTC %d: irqn %d, bit %lx", intc_num, irqn_from_intc + i, BIT(i));
 			LOG_DBG("offset at %d", offset + i);
@@ -87,7 +87,7 @@ static int intc_ast2700_isr(const void *dev)
 			} else
 				LOG_ERR("IRQ %u has not been requested", irqn_from_intc + i);
 
-			/* Clear SOC0_INTC11 or SOC1_INTCx status bit */
+			/* Clear INTC0_11 or INTC1_x status bit */
 			LOG_DBG("base 0x%lx, write 0x%lx", base + INTC_RAW, BIT(i));
 			sys_write32(BIT(i), base + INTC_RAW);
 		}

@@ -43,47 +43,47 @@
 	status = "okay";
 };
 
-&soc0_ipc0_v2 {
+&ipc0_s_ca35 {
 	status = "okay";
 };
 
-&soc0_ipc1_v2 {
+&ipc0_ns_ca35 {
 	status = "okay";
 };
 
-&soc0_ipc2_v2 {
+&ipc0_tsp {
 	status = "okay";
 };
 
-&soc1_ipc0_v2 {
+&ipc1_bootmcu {
 	status = "okay";
 };
 
-&soc0_intc11 {
+&intc0_11 {
 	status = "okay";
 };
 
-&soc1_intc0 {
+&intc1_0 {
 	status = "okay";
 };
 
-&soc1_intc1 {
+&intc1_1 {
 	status = "okay";
 };
 
-&soc1_intc2 {
+&intc1_2 {
 	status = "okay";
 };
 
-&soc1_intc3 {
+&intc1_3 {
 	status = "okay";
 };
 
-&soc1_intc4 {
+&intc1_4 {
 	status = "okay";
 };
 
-&soc1_intc5 {
+&intc1_5 {
 	status = "okay";
 };
 

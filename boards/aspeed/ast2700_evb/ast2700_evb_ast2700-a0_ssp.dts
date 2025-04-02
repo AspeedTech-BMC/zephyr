@@ -44,15 +44,15 @@
 	status = "okay";
 };
 
-&soc0_ipc0_v2 {
+&ipc0_s_ca35 {
 	status = "okay";
 };
 
-&soc0_ipc1_v2 {
+&ipc0_ns_ca35 {
 	status = "okay";
 };
 
-&soc0_ipc2_v2 {
+&ipc0_tsp {
 	status = "okay";
 };
 

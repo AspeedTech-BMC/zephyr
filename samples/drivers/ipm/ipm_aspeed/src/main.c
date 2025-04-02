@@ -92,7 +92,7 @@ int main(void)
 	int device_id, enable;
 #if defined(CONFIG_BOARD_AST2700_EVB_AST2700_SSP) || defined(CONFIG_BOARD_AST2700_EVB_AST2700_A0_SSP)
 	printk("SSP alive.\n");
-	strcpy(ipc_name, "soc0_ipc_v2@0");
+	strcpy(ipc_name, "ipc0@0");
 	ipmdev = device_get_binding(&ipc_name[0]);
 	if (!ipmdev) {
 		printk("%s: device_get_binding failed to find device\n", ipc_name);
@@ -109,7 +109,7 @@ int main(void)
 		goto fail;
 	}
 
-	strcpy(ipc_name, "soc0_ipc_v2@200");
+	strcpy(ipc_name, "ipc0@200");
 	ipmdev = device_get_binding(&ipc_name[0]);
 	if (!ipmdev) {
 		printk("%s: device_get_binding failed to find device\n", ipc_name);
@@ -128,7 +128,7 @@ int main(void)
 #endif /* defined(CONFIG_BOARD_AST2700_EVB_AST2700_SSP) */
 #if defined(CONFIG_BOARD_AST2700_EVB_AST2700_TSP) || defined(CONFIG_BOARD_AST2700_EVB_AST2700_A0_TSP)
 	printk("TSP alive.\n");
-	strcpy(ipc_name, "soc0_ipc_v2@400");
+	strcpy(ipc_name, "ipc0@400");
 	ipmdev = device_get_binding(&ipc_name[0]);
 	if (!ipmdev) {
 		printk("%s: device_get_binding failed to find device\n", ipc_name);
@@ -145,7 +145,7 @@ int main(void)
 		goto fail;
 	}
 
-	strcpy(ipc_name, "soc0_ipc_v2@600");
+	strcpy(ipc_name, "ipc0@600");
 	ipmdev = device_get_binding(&ipc_name[0]);
 	if (!ipmdev) {
 		printk("%s: device_get_binding failed to find device\n", ipc_name);
@@ -163,7 +163,7 @@ int main(void)
 	}
 #endif /* defined(CONFIG_BOARD_AST2700_EVB_AST2700_TSP) */
 
-	strcpy(ipc_name, "soc0_ipc_v2@800");
+	strcpy(ipc_name, "ipc0@800");
 	ipmdev = device_get_binding(&ipc_name[0]);
 	if (!ipmdev) {
 		printk("%s: device_get_binding failed to find device\n", ipc_name);
