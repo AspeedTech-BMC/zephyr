@@ -9,6 +9,8 @@
 #include <zephyr/drivers/ipm.h>
 #include <zephyr/drivers/misc/aspeed/cptra_ipc.h>
 #include <zephyr/shell/shell.h>
+#include <zephyr/crypto/hash.h>
+#include "cptra_sample.h"
 
 LOG_MODULE_REGISTER(cptra_test, CONFIG_SOC_LOG_LEVEL);
 
@@ -950,7 +952,8 @@ static void cptra_test_extend_pcr(void)
 
 	/* TODO: customize input data by application */
 	input.index = 31;
-	memcpy(input.value, (uint8_t *)0xbeef, 2);
+	input.value[0] = 0x28;
+	input.value[1] = 0x01;
 
 #if CONFIG_CPTRA_SAMPLE_BOOTMCU
 	const struct device *dev = device_get_binding(CPTRA_DICE_DRV_NAME);
@@ -1014,7 +1017,239 @@ end:
 	LOG_INF("%s: Failed", __func__);
 }
 
-static void cptra_test_fw_upload(void)
+static int cptra_sha384(uint8_t *msg, int msg_size, uint8_t *output, int output_size)
+{
+	uint8_t *p8_bmcu_out = (uint8_t *)IPC_CHANNEL_1_BOOTMCU_OUT_ADDR;
+	uint8_t *p8_bmcu_in = (uint8_t *)IPC_CHANNEL_1_BOOTMCU_IN_ADDR;
+	uint8_t *p8_ssp_in = (uint8_t *)IPC_CHANNEL_1_SSP_IN_ADDR;
+	int ipccmd = CPTRA_IPCCMD_SHA384;
+	struct cptra_hash_ctx ctx;
+	uint32_t data[2];
+	int ret;
+
+	LOG_DBG("%s", __func__);
+
+	/* Prepare tx data to bootmcu */
+	data[0] = IPC_CHANNEL_1_BOOTMCU_IN_ADDR;
+	data[1] = IPC_CHANNEL_1_BOOTMCU_OUT_ADDR;
+
+	ctx.algo = CRYPTO_HASH_ALGO_SHA384;
+	ctx.in_len = msg_size;
+	ctx.in_buf = p8_bmcu_in + sizeof(struct cptra_hash_ctx);
+	ctx.out_len = output_size;
+	ctx.out_buf = p8_bmcu_out;
+
+	/* Copy input data structure into shared memory */
+	memcpy(p8_ssp_in, &ctx, sizeof(struct cptra_hash_ctx));
+	p8_ssp_in += sizeof(struct cptra_hash_ctx);
+
+	/* Copy input data into shared memory */
+	memcpy(p8_ssp_in, msg, msg_size);
+
+	ret = cptra_ipc_trigger(ipccmd, data, sizeof(data));
+	if (ret) {
+		LOG_ERR("cptra_ipc_trigger:0x%x is failure, ret:0x%x", ipccmd, ret);
+		goto end;
+	} else
+		LOG_DBG("cptra_ipc_trigger:0x%x is successful", ipccmd);
+
+	cptra_ipc_receive(CPTRA_IPC_RX_TYPE_EXTERNAL, output, output_size);
+
+	return 0;
+
+end:
+	return ret;
+}
+
+static int cptra_test_ecdsa_verify(void)
+{
+	uint8_t *p8_bmcu_in = (uint8_t *)IPC_CHANNEL_1_BOOTMCU_IN_ADDR;
+	uint8_t *p8_ssp_in = (uint8_t *)IPC_CHANNEL_1_SSP_IN_ADDR;
+	int ipccmd = CPTRA_IPCCMD_ECDSA384_SIGNATURE_VERIFY;
+	const struct ecdsa_testvec *tv = secp384r1_tv;
+	int tv_size = ARRAY_SIZE(secp384r1_tv);
+	struct cptra_ecdsa_ctx ctx;
+	uint8_t digest[64];
+	uint32_t data[2];
+	int ret;
+
+	LOG_INF("%s: Start...", __func__);
+	for (int i = 0; i < tv_size; i++) {
+		LOG_DBG("Test vector %d", i);
+
+		/* Doing hash first for Caliptra secure IP case */
+		cptra_sha384((uint8_t *)tv[i].raw, tv[i].raw_size, digest, 48);
+		if (!memcmp(digest, tv[i].m, tv[i].m_size))
+			LOG_DBG("digest compare - PASS");
+		else {
+			LOG_ERR("digest compare - FAIL");
+			return -1;
+		}
+
+		/* Prepare tx data to bootmcu */
+		p8_bmcu_in = (uint8_t *)IPC_CHANNEL_1_BOOTMCU_IN_ADDR;
+		p8_bmcu_in += sizeof(struct cptra_ecdsa_ctx);
+		ctx.qx = p8_bmcu_in;
+		p8_bmcu_in += 48;
+		ctx.qy = p8_bmcu_in;
+		p8_bmcu_in += 48;
+		ctx.r = p8_bmcu_in;
+		p8_bmcu_in += 48;
+		ctx.s = p8_bmcu_in;
+		p8_bmcu_in += 48;
+		ctx.m = p8_bmcu_in;
+		p8_bmcu_in += tv[i].m_size;
+		ctx.qx_len = 48;
+		ctx.qy_len = 48;
+		ctx.r_len = 48;
+		ctx.s_len = 48;
+		ctx.m_len = tv[i].m_size;
+
+		p8_ssp_in = (uint8_t *)IPC_CHANNEL_1_SSP_IN_ADDR;
+		memcpy(p8_ssp_in, &ctx, sizeof(struct cptra_ecdsa_ctx));
+		p8_ssp_in += sizeof(struct cptra_ecdsa_ctx);
+		memcpy(p8_ssp_in, tv[i].qx, 48);
+		p8_ssp_in += 48;
+		memcpy(p8_ssp_in, tv[i].qy, 48);
+		p8_ssp_in += 48;
+		memcpy(p8_ssp_in, tv[i].r, 48);
+		p8_ssp_in += 48;
+		memcpy(p8_ssp_in, tv[i].s, 48);
+		p8_ssp_in += 48;
+		memcpy(p8_ssp_in, tv[i].m, tv[i].m_size);
+		p8_ssp_in += tv[i].m_size;
+
+		data[0] = IPC_CHANNEL_1_BOOTMCU_IN_ADDR;
+		data[1] = IPC_CHANNEL_1_BOOTMCU_OUT_ADDR;
+
+		ret = cptra_ipc_trigger(ipccmd, data, sizeof(data));
+		if (ret) {
+			LOG_ERR("cptra_ipc_trigger:0x%x is failure, ret:0x%x", ipccmd, ret);
+			break;
+		}
+
+		LOG_DBG("cptra_ipc_trigger:%x is successful", ipccmd);
+
+		cptra_ipc_receive(CPTRA_IPC_RX_TYPE_INTERNAL, &ret, sizeof(ret));
+		if (ret && !tv[i].result)
+			LOG_DBG(" result expected (failed), Pass");
+		else if (ret == 0 && tv[i].result)
+			LOG_DBG(" result expected (pass), Pass");
+		else {
+			LOG_ERR(" result unexpected (ret=%d), Failed", ret);
+			return -1;
+		}
+	}
+
+	LOG_INF("%s: Pass", __func__);
+
+	return 0;
+}
+
+static int cptra_test_lms_verify(void)
+{
+	uint8_t *p8_bmcu_in = (uint8_t *)IPC_CHANNEL_1_BOOTMCU_IN_ADDR;
+	uint8_t *p8_ssp_in = (uint8_t *)IPC_CHANNEL_1_SSP_IN_ADDR;
+	int ipccmd = CPTRA_IPCCMD_LMS_SIGNATURE_VERIFY;
+	const struct lms_testvec *tv = lms_tv;
+	int tv_size = ARRAY_SIZE(lms_tv);
+	struct cptra_lms_ctx ctx;
+	uint8_t digest[64];
+	uint32_t data[2];
+	int ret;
+
+	LOG_INF("%s: Start...", __func__);
+	for (int i = 0; i < tv_size; i++) {
+		LOG_DBG("Test vector %d", i);
+
+		/* Doing hash first for Caliptra secure IP case */
+		cptra_sha384((uint8_t *)tv[i].raw, tv[i].raw_size, digest, 48);
+
+		/* Prepare tx data to bootmcu */
+		p8_bmcu_in = (uint8_t *)IPC_CHANNEL_1_BOOTMCU_IN_ADDR;
+		p8_bmcu_in += sizeof(struct cptra_lms_ctx);
+		ctx.pub_key_id = p8_bmcu_in;
+		p8_bmcu_in += tv[i].pub_key_id_len;
+		ctx.pub_key_digest = p8_bmcu_in;
+		p8_bmcu_in += tv[i].pub_key_digest_len;
+		ctx.sig_ots = p8_bmcu_in;
+		p8_bmcu_in += tv[i].sig_ots_len;
+		ctx.sig_tree_path = p8_bmcu_in;
+		p8_bmcu_in += tv[i].sig_tree_path_len;
+
+		ctx.pub_key_tree_type = tv[i].pub_key_tree_type;
+		ctx.pub_key_ots_type = tv[i].pub_key_ots_type;
+		ctx.pub_key_id_len = tv[i].pub_key_id_len;
+		ctx.pub_key_digest_len = tv[i].pub_key_digest_len;
+		ctx.sig_q = tv[i].sig_q;
+		ctx.sig_ots_len = tv[i].sig_ots_len;
+		ctx.sig_tree_type = tv[i].sig_tree_type;
+		ctx.sig_tree_path_len = tv[i].sig_tree_path_len;
+
+		p8_ssp_in = (uint8_t *)IPC_CHANNEL_1_SSP_IN_ADDR;
+		memcpy(p8_ssp_in, &ctx, sizeof(struct cptra_lms_ctx));
+		p8_ssp_in += sizeof(struct cptra_lms_ctx);
+		memcpy(p8_ssp_in, tv[i].pub_key_id, tv[i].pub_key_id_len);
+		p8_ssp_in += tv[i].pub_key_id_len;
+		memcpy(p8_ssp_in, tv[i].pub_key_digest, tv[i].pub_key_digest_len);
+		p8_ssp_in += tv[i].pub_key_digest_len;
+		memcpy(p8_ssp_in, tv[i].sig_ots, tv[i].sig_ots_len);
+		p8_ssp_in += tv[i].sig_ots_len;
+		memcpy(p8_ssp_in, tv[i].sig_tree_path, tv[i].sig_tree_path_len);
+		p8_ssp_in += tv[i].sig_tree_path_len;
+
+		data[0] = IPC_CHANNEL_1_BOOTMCU_IN_ADDR;
+		data[1] = IPC_CHANNEL_1_BOOTMCU_OUT_ADDR;
+
+		ret = cptra_ipc_trigger(ipccmd, data, sizeof(data));
+		if (ret) {
+			LOG_ERR("cptra_ipc_trigger:0x%x is failure, ret:0x%x", ipccmd, ret);
+			break;
+		}
+
+		LOG_DBG("cptra_ipc_trigger:%x is successful", ipccmd);
+
+		cptra_ipc_receive(CPTRA_IPC_RX_TYPE_INTERNAL, &ret, sizeof(ret));
+		if (ret && !tv[i].result)
+			LOG_DBG(" result expected (failed), Pass");
+		else if (ret == 0 && tv[i].result)
+			LOG_DBG(" result expected (pass), Pass");
+		else {
+			LOG_ERR(" result unexpected (ret=%d), Failed", ret);
+			return -1;
+		}
+	}
+
+	LOG_INF("%s: Pass", __func__);
+
+	return 0;
+}
+
+static int cptra_test_sha384(void)
+{
+	const struct hash_testvec *tv = sha384_tv_template;
+	int tv_size = ARRAY_SIZE(sha384_tv_template);
+	uint8_t digest[64];
+
+	LOG_INF("%s: Start...", __func__);
+	for (int i = 0; i < tv_size; i++) {
+		LOG_DBG("Test vector %d", i);
+
+		cptra_sha384((uint8_t *)tv[i].plaintext, tv[i].psize, digest, 48);
+		if (!memcmp(digest, tv[i].digest, 48))
+			LOG_DBG("digest compare - PASS");
+		else {
+			LOG_ERR("digest compare - FAIL");
+			return -1;
+		}
+	}
+
+	LOG_INF("%s: Pass", __func__);
+
+	return 0;
+}
+
+__attribute__((unused)) static void cptra_test_fw_upload(void)
 {
 	int ret;
 
@@ -1093,7 +1328,15 @@ int cptra_test(void)
 #elif CONFIG_CPTRA_SAMPLE_SSP
 static int cmd_cptra(const struct shell *shell, size_t argc, char **argv)
 {
-	cptra_test_fw_upload();
+	/* cptra: test update */
+	/* cptra_test_fw_upload(); */
+
+	/* cptra: test crypto */
+	cptra_test_sha384();
+	cptra_test_ecdsa_verify();
+	cptra_test_lms_verify();
+
+	/* cptra: test dice */
 	cptra_test_stash_measurement();
 	cptra_test_quote_pcrs();
 	cptra_test_extend_pcr();
@@ -1110,6 +1353,8 @@ static int cmd_cptra(const struct shell *shell, size_t argc, char **argv)
 	cptra_test_get_ldev_cert();
 	cptra_test_get_fmc_alias_cert();
 	cptra_test_get_rt_alias_cert();
+
+	/* cptra: test misc */
 	cptra_test_fw_info();
 	cptra_test_capabilities();
 	cptra_test_version();
