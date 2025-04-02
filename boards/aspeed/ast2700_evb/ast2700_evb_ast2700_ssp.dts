@@ -16,6 +16,7 @@
 		zephyr,shell-uart = &uart4;
 		zephyr,flash = &dram_ro_region;
 		zephyr,sram = &dram_rw_region;
+		zephyr,entropy = &rng;
 	};
 
 	dram_rw_region: memory@20000 {

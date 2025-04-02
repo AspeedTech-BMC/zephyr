@@ -190,6 +190,12 @@
 			};
 		};
 
+		rng: hwrng@74c020f0 {
+			compatible = "aspeed,hwrng";
+			reg = <0x74c020f0 0x8>;
+			status = "disabled";
+		};
+
 		espi0: espi@74c05000 {
 			compatible = "aspeed,espi-v2";
 			reg = <0x74c05000 0x1000>;

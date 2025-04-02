@@ -145,3 +145,7 @@
 		status = "disabled";
 	};
 };
+
+&rng {
+	status = "okay";
+};
