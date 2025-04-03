@@ -100,3 +100,10 @@ properties:
     required: false
     description: |
       Use pure SPI mode to access SPI flash.
+
+  spi-ctrl-fifo-enabled:
+    type: boolean
+    required: false
+    description: |
+      Use FIFO register in the controller to access
+      SPI flash directly instead of memory map.

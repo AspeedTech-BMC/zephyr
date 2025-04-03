@@ -90,6 +90,19 @@
 			interrupts = <5 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			status = "disabled";
 		};
+
+		fmc: spi@74000000 {
+			compatible = "aspeed,spi-controller";
+			reg = <0x74000000 0x300>, <0x20000000 0x10000000>;
+			reg-names = "ctrl_reg", "spi_mmap";
+			num-cs = <2>;
+			ctrl-type = "bspi";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			spi-ctrl-caps-mask = <0x000e0e0c>;
+			spi-ctrl-fifo-enabled;
+			status = "disabled";
+		};
 	};
 };
 
@@ -148,4 +161,26 @@
 
 &rng {
 	status = "okay";
+};
+
+&fmc {
+	status = "okay";
+
+	fmc_cs0: fmc@0 {
+		compatible = "jedec,spi-nor";
+		reg = <0>;
+		spi-max-buswidth = <4>;
+		spi-max-frequency = <50000000>;
+		jedec-id = [];
+		status = "okay";
+	};
+
+	fmc_cs1: fmc@1 {
+		compatible = "jedec,spi-nor";
+		reg = <1>;
+		spi-max-buswidth = <4>;
+		spi-max-frequency = <50000000>;
+		jedec-id = [];
+		status = "okay";
+	};
 };
