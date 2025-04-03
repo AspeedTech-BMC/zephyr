@@ -289,7 +289,7 @@ static void aspeed_spi_write_data(uint32_t ahb_addr,
 	}
 }
 
-static uint32_t aspeed_spi_get_fifo_idx(const struct device *dev)
+static uint32_t aspeed_spi_get_fifo_offset(const struct device *dev)
 {
 	const struct aspeed_spi_config *config = dev->config;
 	struct aspeed_spi_data *data = dev->data;
@@ -317,7 +317,7 @@ static void aspeed_spi_start_tx(const struct device *dev)
 
 	if (config->spi_ctrl_fifo_enabled) {
 		mem_reg = config->ctrl_base + SPI200_DATA_FIFO_REG +
-			  aspeed_spi_get_fifo_idx(dev);
+			  aspeed_spi_get_fifo_offset(dev);
 	}
 
 	/* active cs */
@@ -361,7 +361,7 @@ static void aspeed_spi_nor_transceive_user(const struct device *dev,
 
 	if (config->spi_ctrl_fifo_enabled) {
 		mem_reg = config->ctrl_base + SPI200_DATA_FIFO_REG +
-			  aspeed_spi_get_fifo_idx(dev);
+			  aspeed_spi_get_fifo_offset(dev);
 	}
 
 	LOG_DBG("[cs %d][%s] op: %x, addr: %lx(%d)(%d), dummy: %d, data len: %d\n",
