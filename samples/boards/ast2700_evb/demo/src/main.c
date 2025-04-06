@@ -17,6 +17,8 @@
 #include "cptra_sample.h"
 #endif
 
+int aspeed_load_image(void);
+
 int main(void)
 {
 	int rc = 0;
@@ -38,6 +40,7 @@ int main(void)
 #if defined(CONFIG_CPTRA_SAMPLE)
 	cptra_test();
 #endif
+	aspeed_load_image();
 
 	return rc;
 }
