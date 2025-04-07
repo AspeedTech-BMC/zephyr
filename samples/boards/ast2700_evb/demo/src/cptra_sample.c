@@ -6,6 +6,7 @@
 
 #include <zephyr/drivers/cptra.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/drivers/flash.h>
 #include <zephyr/drivers/ipm.h>
 #include <zephyr/drivers/misc/aspeed/cptra_ipc.h>
 #include <zephyr/shell/shell.h>
@@ -27,6 +28,8 @@ LOG_MODULE_REGISTER(cptra_test, CONFIG_SOC_LOG_LEVEL);
 #define SPI_TO_DRAM_BASE_ADDR		0x2c000000
 #define CPTRA_FW_ADDR			0x20000000
 #define CPTRA_FW_SIZE			0x20000
+
+#define FMC_DEV_NAME			"fmc@0"
 
 __attribute__((unused)) static void cptra_test_shutdown(void)
 {
@@ -1263,14 +1266,23 @@ __attribute__((unused)) static void cptra_test_fw_upload(void)
 	uint8_t *p8_bmcu_in = (uint8_t *)IPC_CHANNEL_1_BOOTMCU_IN_ADDR;
 	uint8_t *p8_ssp_in = (uint8_t *)IPC_CHANNEL_1_SSP_IN_ADDR;
 	int ipccmd = CPTRA_IPCCMD_CALIPTRA_FW_LOAD;
+	const struct device *flash_dev;
 	uint32_t data[2];
 
 	/* Prepare tx data to bootmcu */
 	data[0] = (uint32_t)p8_bmcu_in;
 	data[1] = (uint32_t)CPTRA_FW_SIZE;
 
+	flash_dev = device_get_binding(FMC_DEV_NAME);
+	if (!flash_dev) {
+		LOG_ERR("Failed to get flash device");
+		goto end;
+	}
+
 	/* Copy input data into shared memory */
-	memcpy(SPI_TO_DRAM_BASE_ADDR + p8_ssp_in, (void *)CPTRA_FW_ADDR, CPTRA_FW_SIZE);
+	ret = flash_read(flash_dev, 0x0, p8_ssp_in, CPTRA_FW_SIZE);
+	if (ret)
+		LOG_ERR("fail to read flash, ret:0x%x", ret);
 
 	ret = cptra_ipc_trigger(ipccmd, data, sizeof(data));
 	if (ret) {
@@ -1329,7 +1341,7 @@ int cptra_test(void)
 static int cmd_cptra(const struct shell *shell, size_t argc, char **argv)
 {
 	/* cptra: test update */
-	/* cptra_test_fw_upload(); */
+	cptra_test_fw_upload();
 
 	/* cptra: test crypto */
 	cptra_test_sha384();
