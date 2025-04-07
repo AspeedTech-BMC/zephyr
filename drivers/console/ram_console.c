@@ -34,6 +34,8 @@ char ram_console_buf[CONFIG_RAM_CONSOLE_BUFFER_SIZE] RAM_CONSOLE_BUF_ATTR;
 char *ram_console;
 static int pos;
 
+#define device_map(virt, phys, size, flags) *(virt) = (phys)
+
 static int ram_console_out(int character)
 {
 	ram_console[pos] = (char)character;
