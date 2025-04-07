@@ -40,7 +40,10 @@ int main(void)
 #if defined(CONFIG_CPTRA_SAMPLE)
 	cptra_test();
 #endif
+
+#if defined(CONFIG_AST2700_IROT_LOAD_IMAGE)
 	aspeed_load_image();
+#endif
 
 	return rc;
 }

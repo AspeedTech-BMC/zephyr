@@ -47,4 +47,11 @@ config CPTRA_SAMPLE_SSP
 	help
 	  CPTRA mailbox command sample enabled for ssp.
 
+config AST2700_IROT_LOAD_IMAGE
+	default n
+	depends on SOC_AST2700_SSP
+	bool "Load CA35 boot images"
+	help
+	  Load CA35 image from fixed flash offset to DRAM.
+
 source "Kconfig.zephyr"
