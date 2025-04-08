@@ -13,10 +13,16 @@
 	compatible = "aspeed,ast2700-evb-ast2700-bootmcu";
 
 	chosen {
-		zephyr,console = &uart12;
-		zephyr,shell-uart = &uart12;
+		zephyr,ram-console = &ram_console;
+		zephyr,console = &ram_console;
 		zephyr,sram = &sram;
 		zephyr,entropy = &rng;
+	};
+
+	ram_console: memory@14b8a000 {
+		compatible = "zephyr,memory-region";
+		reg = <0x14b8a000 0x1000>;
+		zephyr,memory-region = "RAM_CONSOLE";
 	};
 
 	aliases {
