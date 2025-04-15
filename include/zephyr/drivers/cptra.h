@@ -342,7 +342,7 @@ struct cptra_certify_key_extended_ia {
 struct cptra_certify_key_extended_oa {
 	uint32_t chksum;
 	uint32_t fips_status;
-	uint8_t certify_key_resp[2176];
+	uint8_t certify_key_resp[6280];
 };
 
 struct cptra_disable_attestation_ia {
@@ -434,6 +434,7 @@ struct cptra_fw_info_oa {
 	uint32_t rom_sha256_digest[8];
 	uint32_t fmc_sha384_digest[12];
 	uint32_t runtime_sha384_digest[12];
+	uint32_t owner_pub_key_hash[12];
 };
 
 struct cptra_capabilities_ia {
@@ -494,8 +495,8 @@ enum dpe_command {
 };
 
 enum dpe_profile {
-	P256Sha256 = 1,
-	P384Sha384 = 2,
+	P256Sha256 = 3,
+	P384Sha384 = 4,
 };
 
 /* TODO: DPE command */
