@@ -133,9 +133,6 @@ void z_arm_platform_init(void)
 {
 	/* clear non-cached .bss */
 	(void)memset(__RAM_NC_start, 0, __RAM_NC_end - __RAM_NC_start);
-
-	sys_cache_instr_enable();
-	sys_cache_data_enable();
 }
 #endif
 
