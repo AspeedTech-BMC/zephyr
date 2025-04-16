@@ -128,11 +128,12 @@ void cache_data_enable(void)
 	uintptr_t base = CACHE_BASE;
 	uint32_t reg;
 
-	cache_data_disable();
+	reg = sys_read32(base + CACHE_FUNC_CTRL_REG);
+	if (reg & DCACHE_ENABLE) {
+		return;
+	}
 
 	barrier_dsync_fence_full();
-	sys_write32(0xffffffff, base + DCACHE_AREA_CTRL_REG);
-
 	reg = sys_read32(base + CACHE_FUNC_CTRL_REG);
 	reg |= DCACHE_ENABLE;
 	sys_write32(reg, base + CACHE_FUNC_CTRL_REG);
@@ -156,11 +157,12 @@ void cache_instr_enable(void)
 	uintptr_t base = CACHE_BASE;
 	uint32_t reg;
 
-	cache_instr_disable();
+	reg = sys_read32(base + CACHE_FUNC_CTRL_REG);
+	if (reg & ICACHE_ENABLE) {
+		return;
+	}
 
 	barrier_dsync_fence_full();
-	sys_write32(0xffffffff, base + ICACHE_AREA_CTRL_REG);
-
 	reg = sys_read32(base + CACHE_FUNC_CTRL_REG);
 	reg |= ICACHE_ENABLE;
 	sys_write32(reg, base + CACHE_FUNC_CTRL_REG);
