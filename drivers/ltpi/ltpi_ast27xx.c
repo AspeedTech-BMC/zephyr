@@ -843,8 +843,8 @@ static int ast27xx_ltpi_do_link(const struct device *dev, int timeout_ms)
 		ltpi->phy_speed_cap &= ~BIT(target_speed);
 
 		/* the lowest speed 25M should always be supported */
-		if (ltpi->phy_speed_cap == 0) {
-			ltpi->phy_speed_cap |= BIT(0);
+		if ((ltpi->phy_speed_cap & LTPI_SP_CAP_25M) == 0) {
+			ltpi->phy_speed_cap |= LTPI_SP_CAP_25M;
 		}
 
 		ltpi_log_restart(ltpi, LTPI_SYND_WAIT_OP_TO);
