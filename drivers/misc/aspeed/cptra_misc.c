@@ -44,6 +44,53 @@ static void aspeed_cptra_ifc_error(const struct device *dev)
 		sys_read32(cfg->ifc_base + 0x8), sys_read32(cfg->ifc_base + 0xc));
 }
 
+static int aspeed_cptra_set_auth_manifest(const struct device *dev,
+					  struct cptra_set_auth_manifest_ia *input,
+					  struct cptra_set_auth_manifest_oa *output)
+{
+	struct cptra_misc_drv_state *state = DEV_DATA(dev);
+	uint32_t cmd = CPTRA_MBCMD_SET_AUTH_MANIFEST;
+	uint32_t csum = 0, sts, dlen, ilen, olen;
+	int rc;
+
+	if (state->in_use) {
+		LOG_ERR("Peripheral in use");
+		return -EBUSY;
+	}
+
+	LOG_INF("Start doing set_auth_manifest");
+	state->in_use = true;
+
+	while (cptra_mbox_lock())
+		;
+
+	/* check MBOX is ready for command */
+	sts = cptra_mbox_status();
+	if (FIELD_GET(CPTRA_MBOX_STS_FSM_PS, sts) != CPTRA_MBFSM_RDY_FOR_CMD)
+		return -EACCES;
+
+	csum = cptra_mbox_csum(csum, (uint8_t *)&cmd, sizeof(cmd));
+	csum = cptra_mbox_csum(csum, (uint8_t *)input,
+			       sizeof(struct cptra_set_auth_manifest_ia));
+
+	/* init mbox parameters */
+	dlen = sizeof(csum) + sizeof(struct cptra_set_auth_manifest_ia);
+	ilen = sizeof(struct cptra_set_auth_manifest_ia);
+	olen = sizeof(struct cptra_set_auth_manifest_oa);
+	rc = cptra_mbox_trigger(cmd, dlen, csum, (uint8_t *)input, ilen, (uint8_t *)output, olen);
+	if (rc)
+		aspeed_cptra_ifc_error(dev);
+
+	while (cptra_mbox_unlock())
+		;
+
+	LOG_INF("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
+
+	state->in_use = false;
+
+	return rc;
+}
+
 static int aspeed_cptra_shutdown(const struct device *dev, struct cptra_shutdown_ia *input,
 				 struct cptra_shutdown_oa *output)
 {
@@ -360,6 +407,7 @@ static struct cptra_driver_api cptra_funcs = {
 	.caliptra_self_test_start = aspeed_cptra_self_test_start,
 	.caliptra_self_test_get_results = aspeed_cptra_self_test_get_results,
 	.caliptra_shutdown = aspeed_cptra_shutdown,
+	.caliptra_set_auth_manifest = aspeed_cptra_set_auth_manifest,
 };
 
 static const struct cptra_misc_config cptra_misc_config = {

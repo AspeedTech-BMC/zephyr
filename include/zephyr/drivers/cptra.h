@@ -59,6 +59,7 @@ enum cptra_mbox_cmd {
 	CPTRA_MBCMD_SELF_TEST_GET_RESULTS           = 0x46504C67, /* "FPGR" */
 	CPTRA_MBCMD_SHUTDOWN                        = 0x46505344, /* "FPSD" */
 	CPTRA_MBCMD_CAPABILITIES                    = 0x43415053, /* "CAPS" */
+	CPTRA_MBCMD_SET_AUTH_MANIFEST               = 0x41544D4E, /* "ATMN" */
 };
 
 union cptra_mbox_lock_s {
@@ -481,6 +482,45 @@ struct cptra_shutdown_oa {
 	uint32_t fips_status;
 };
 
+/* AUTH_MANIFEST_FLAGS */
+#define VENDOR_SIGNATURE_REQUIRED		BIT(0)
+
+struct cptra_manifest_preamble {
+	uint32_t manifest_marker;
+	uint32_t preamble_size;
+	uint32_t manifest_version;
+	uint32_t manifest_flags;
+	uint32_t manifest_vendor_ecc384_key[24];
+	uint32_t manifest_vendor_lms_key[12];
+	uint32_t manifest_vendor_ecc384_sig[24];
+	uint32_t manifest_vendor_LMS_sig[405];
+	uint32_t manifest_owner_ecc384_key[24];
+	uint32_t manifest_owner_lms_key[12];
+	uint32_t manifest_owner_ecc384_sig[24];
+	uint32_t manifest_owner_LMS_sig[405];
+	uint32_t metadata_vendor_ecc384_sig[24];
+	uint32_t metadata_vendor_LMS_sig[405];
+	uint32_t metadata_owner_ecc384_sig[24];
+	uint32_t metadata_owner_LMS_sig[405];
+};
+
+struct cptra_set_auth_manifest_ia {
+	uint32_t manifest_size;
+
+	struct cptra_manifest_preamble preamble;
+	uint32_t metadata_entry_entry_count;
+	struct {
+		uint32_t fw_id;
+		uint32_t flags;
+		uint8_t digest[48];
+	} metadata_entries[1];
+};
+
+struct cptra_set_auth_manifest_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+};
+
 #define DPE_COMMAND_MAGIC		0x44504543	/* DPEC */
 
 enum dpe_command {
@@ -635,6 +675,9 @@ __subsystem struct cptra_driver_api {
 	int (*caliptra_shutdown)(const struct device *dev,
 				 struct cptra_shutdown_ia *input,
 				 struct cptra_shutdown_oa *output);
+	int (*caliptra_set_auth_manifest)(const struct device *dev,
+					  struct cptra_set_auth_manifest_ia *input,
+					  struct cptra_set_auth_manifest_oa *output);
 };
 
 static inline int caliptra_fw_upload(const struct device *dev, uint8_t *buf, int size)
@@ -925,6 +968,19 @@ static inline int caliptra_shutdown(const struct device *dev, struct cptra_shutd
 
 	api = (struct cptra_driver_api *)dev->api;
 	tmp = api->caliptra_shutdown(dev, input, output);
+
+	return tmp;
+}
+
+static inline int caliptra_set_auth_manifest(const struct device *dev,
+					     struct cptra_set_auth_manifest_ia *input,
+					     struct cptra_set_auth_manifest_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_set_auth_manifest(dev, input, output);
 
 	return tmp;
 }
