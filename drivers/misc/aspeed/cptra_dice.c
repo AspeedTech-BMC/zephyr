@@ -330,6 +330,55 @@ static int aspeed_cptra_get_idev_cert(const struct device *dev,
 	return rc;
 }
 
+static int aspeed_cptra_get_idevid_csr(const struct device *dev,
+				       struct cptra_get_idevid_csr_ia *input,
+				       struct cptra_get_idevid_csr_oa *output)
+{
+	struct cptra_dice_drv_state *state = DEV_DATA(dev);
+	uint32_t cmd = CPTRA_MBCMD_GET_IDEVID_CSR;
+	uint32_t csum = 0, sts, dlen, ilen, olen;
+	int rc;
+
+	if (state->in_use) {
+		LOG_ERR("Peripheral in use");
+		return -EBUSY;
+	}
+
+	LOG_INF("Start doing get_idevid_csr");
+	state->in_use = true;
+
+	while (cptra_mbox_lock())
+		;
+
+	/* check MBOX is ready for command */
+	sts = cptra_mbox_status();
+	if (FIELD_GET(CPTRA_MBOX_STS_FSM_PS, sts) != CPTRA_MBFSM_RDY_FOR_CMD) {
+		return -EACCES;
+	}
+
+	csum = cptra_mbox_csum(csum, (uint8_t *)&cmd, sizeof(cmd));
+	csum = cptra_mbox_csum(csum, (uint8_t *)input, sizeof(struct cptra_get_idevid_csr_ia));
+
+	/* init mbox parameters */
+	dlen = sizeof(csum) + sizeof(struct cptra_get_idevid_csr_ia);
+	ilen = sizeof(struct cptra_get_idevid_csr_ia);
+	olen = sizeof(struct cptra_get_idevid_csr_oa);
+	rc = cptra_mbox_trigger(cmd, dlen, csum, (uint8_t *)input, ilen, (uint8_t *)output, olen);
+	if (rc) {
+		aspeed_cptra_ifc_error(dev);
+	}
+
+	while (cptra_mbox_unlock())
+		;
+
+	LOG_INF("chksum: 0x%x, data_size: 0x%x", output->chksum, output->data_size);
+	LOG_HEXDUMP_INF(output->data, output->data_size, "IDEVID CSR:");
+
+	state->in_use = false;
+
+	return rc;
+}
+
 static int aspeed_cptra_invoke_dpe_command(const struct device *dev,
 					   struct cptra_invoke_dpe_command_ia *input,
 					   struct cptra_invoke_dpe_command_oa *output)
@@ -809,6 +858,116 @@ static int aspeed_cptra_stash_measurement(const struct device *dev,
 	return rc;
 }
 
+static int aspeed_cptra_sign_with_exported_ecdsa(const struct device *dev,
+						 struct cptra_sign_with_exported_ecdsa_ia *input,
+						 struct cptra_sign_with_exported_ecdsa_oa *output)
+{
+	struct cptra_dice_drv_state *state = DEV_DATA(dev);
+	uint32_t cmd = CPTRA_MBCMD_SIGN_WITH_EXPORTED_ECDSA;
+	uint32_t csum = 0, sts, dlen, ilen, olen;
+	int rc;
+
+	if (state->in_use) {
+		LOG_ERR("Peripheral in use");
+		return -EBUSY;
+	}
+
+	LOG_INF("Start doing sign_with_exported_ecdsa");
+	state->in_use = true;
+
+	while (cptra_mbox_lock())
+		;
+
+	/* Check MBOX is ready for command */
+	sts = cptra_mbox_status();
+	if (FIELD_GET(CPTRA_MBOX_STS_FSM_PS, sts) != CPTRA_MBFSM_RDY_FOR_CMD) {
+		rc = -EACCES;
+		goto unlock;
+	}
+
+	/* Compute checksum */
+	csum = cptra_mbox_csum(csum, (uint8_t *)&cmd, sizeof(cmd));
+	csum = cptra_mbox_csum(csum, (uint8_t *)input,
+			       sizeof(struct cptra_sign_with_exported_ecdsa_ia));
+
+	/* Initialize mailbox parameters */
+	dlen = sizeof(csum) + sizeof(struct cptra_sign_with_exported_ecdsa_ia);
+	ilen = sizeof(struct cptra_sign_with_exported_ecdsa_ia);
+	olen = sizeof(struct cptra_sign_with_exported_ecdsa_oa);
+	rc = cptra_mbox_trigger(cmd, dlen, csum, (uint8_t *)input, ilen, (uint8_t *)output, olen);
+	if (rc)
+		aspeed_cptra_ifc_error(dev);
+
+unlock:
+	while (cptra_mbox_unlock())
+		;
+
+	LOG_INF("Derived Public Key X:");
+	LOG_HEXDUMP_INF(output->derived_pubkey_x, sizeof(output->derived_pubkey_x), "X:");
+	LOG_INF("Derived Public Key Y:");
+	LOG_HEXDUMP_INF(output->derived_pubkey_y, sizeof(output->derived_pubkey_y), "Y:");
+	LOG_INF("Signature R:");
+	LOG_HEXDUMP_INF(output->signature_r, sizeof(output->signature_r), "R:");
+	LOG_INF("Signature S:");
+	LOG_HEXDUMP_INF(output->signature_s, sizeof(output->signature_s), "S:");
+
+	state->in_use = false;
+
+	return rc;
+}
+
+static int
+aspeed_cptra_revoke_exported_cdi_handle(const struct device *dev,
+					struct cptra_revoke_exported_cdi_handle_ia *input,
+					struct cptra_revoke_exported_cdi_handle_oa *output)
+{
+	struct cptra_dice_drv_state *state = DEV_DATA(dev);
+	uint32_t cmd = CPTRA_MBCMD_REVOKE_EXPORTED_CDI_HANDLE;
+	uint32_t csum = 0, sts, dlen, ilen, olen;
+	int rc;
+
+	if (state->in_use) {
+		LOG_ERR("Peripheral in use");
+		return -EBUSY;
+	}
+
+	LOG_INF("Start doing revoke_exported_cdi_handle");
+	state->in_use = true;
+
+	while (cptra_mbox_lock())
+		;
+
+	/* check MBOX is ready for command */
+	sts = cptra_mbox_status();
+	if (FIELD_GET(CPTRA_MBOX_STS_FSM_PS, sts) != CPTRA_MBFSM_RDY_FOR_CMD) {
+		rc = -EACCES;
+		goto unlock;
+	}
+
+	/* Compute checksum */
+	csum = cptra_mbox_csum(csum, (uint8_t *)&cmd, sizeof(cmd));
+	csum = cptra_mbox_csum(csum, (uint8_t *)input,
+			       sizeof(struct cptra_revoke_exported_cdi_handle_ia));
+
+	/* Initialize mailbox parameters */
+	dlen = sizeof(csum) + sizeof(struct cptra_revoke_exported_cdi_handle_ia);
+	ilen = sizeof(struct cptra_revoke_exported_cdi_handle_ia);
+	olen = sizeof(struct cptra_revoke_exported_cdi_handle_oa);
+	rc = cptra_mbox_trigger(cmd, dlen, csum, (uint8_t *)input, ilen, (uint8_t *)output, olen);
+	if (rc)
+		aspeed_cptra_ifc_error(dev);
+
+unlock:
+	while (cptra_mbox_unlock())
+		;
+
+	LOG_INF("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
+
+	state->in_use = false;
+
+	return rc;
+}
+
 int cptra_dice_init(const struct device *dev)
 {
 	struct cptra_dice_drv_state *state = DEV_DATA(dev);
@@ -843,6 +1002,9 @@ static struct cptra_driver_api cptra_funcs = {
 	.caliptra_get_ldev_cert = aspeed_cptra_get_ldev_cert,
 	.caliptra_get_fmc_alias_cert = aspeed_cptra_get_fmc_alias_cert,
 	.caliptra_get_rt_alias_cert = aspeed_cptra_get_rt_alias_cert,
+	.caliptra_get_idevid_csr = aspeed_cptra_get_idevid_csr,
+	.caliptra_sign_with_exported_ecdsa = aspeed_cptra_sign_with_exported_ecdsa,
+	.caliptra_revoke_exported_cdi_handle = aspeed_cptra_revoke_exported_cdi_handle,
 };
 
 static const struct cptra_dice_config cptra_dice_config = {

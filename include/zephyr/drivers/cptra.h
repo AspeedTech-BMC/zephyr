@@ -61,6 +61,9 @@ enum cptra_mbox_cmd {
 	CPTRA_MBCMD_CAPABILITIES                    = 0x43415053, /* "CAPS" */
 	CPTRA_MBCMD_SET_AUTH_MANIFEST               = 0x41544D4E, /* "ATMN" */
 	CPTRA_MBCMD_AUTHORIZE_AND_STASH             = 0x41545348, /* "ATSH" */
+	CPTRA_MBCMD_GET_IDEVID_CSR                  = 0x49444352, /* "IDCR" */
+	CPTRA_MBCMD_SIGN_WITH_EXPORTED_ECDSA        = 0x53574545, /* "SWEE" */
+	CPTRA_MBCMD_REVOKE_EXPORTED_CDI_HANDLE      = 0x52564348, /* "RVCH" */
 };
 
 union cptra_mbox_lock_s {
@@ -549,6 +552,37 @@ enum image_hash_source {
 
 #define AUTHORIZE_AND_STASH_FLAGS_SKIP_STASH	BIT(0)
 
+struct cptra_get_idevid_csr_ia {
+};
+
+struct cptra_get_idevid_csr_oa {
+	uint32_t chksum;
+	uint32_t data_size;
+	uint8_t data[1024]; /* Maximum size for the DER-encoded CSR */
+};
+
+struct cptra_sign_with_exported_ecdsa_ia {
+	uint8_t exported_cdi_handle[32];
+	uint8_t tbs[48];
+};
+
+struct cptra_sign_with_exported_ecdsa_oa {
+	uint8_t derived_pubkey_x[48];
+	uint8_t derived_pubkey_y[48];
+	uint8_t signature_r[48];
+	uint8_t signature_s[48];
+};
+
+struct cptra_revoke_exported_cdi_handle_ia {
+	uint32_t chksum;
+	uint8_t exported_cdi_handle[32];
+};
+
+struct cptra_revoke_exported_cdi_handle_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+};
+
 #define DPE_COMMAND_MAGIC			0x44504543	/* DPEC */
 
 enum dpe_command {
@@ -709,6 +743,15 @@ __subsystem struct cptra_driver_api {
 	int (*caliptra_authorize_and_stash)(const struct device *dev,
 					    struct cptra_authorize_and_stash_ia *input,
 					    struct cptra_authorize_and_stash_oa *output);
+	int (*caliptra_get_idevid_csr)(const struct device *dev,
+				       struct cptra_get_idevid_csr_ia *input,
+				       struct cptra_get_idevid_csr_oa *output);
+	int (*caliptra_sign_with_exported_ecdsa)(const struct device *dev,
+						 struct cptra_sign_with_exported_ecdsa_ia *input,
+						 struct cptra_sign_with_exported_ecdsa_oa *output);
+	int (*caliptra_revoke_exported_cdi_handle)(const struct device *dev,
+						   struct cptra_revoke_exported_cdi_handle_ia *input,
+						   struct cptra_revoke_exported_cdi_handle_oa *output);
 };
 
 static inline int caliptra_fw_upload(const struct device *dev, uint8_t *buf, int size)
@@ -1025,6 +1068,47 @@ static inline int caliptra_authorize_and_stash(const struct device *dev,
 
 	api = (struct cptra_driver_api *)dev->api;
 	tmp = api->caliptra_authorize_and_stash(dev, input, output);
+
+	return tmp;
+}
+
+static inline int caliptra_get_idevid_csr(const struct device *dev,
+					  struct cptra_get_idevid_csr_ia *input,
+					  struct cptra_get_idevid_csr_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_get_idevid_csr(dev, input, output);
+
+	return tmp;
+}
+
+static inline int
+caliptra_sign_with_exported_ecdsa(const struct device *dev,
+				  struct cptra_sign_with_exported_ecdsa_ia *input,
+				  struct cptra_sign_with_exported_ecdsa_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_sign_with_exported_ecdsa(dev, input, output);
+
+	return tmp;
+}
+
+static inline int
+caliptra_revoke_exported_cdi_handle(const struct device *dev,
+				    struct cptra_revoke_exported_cdi_handle_ia *input,
+				    struct cptra_revoke_exported_cdi_handle_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_revoke_exported_cdi_handle(dev, input, output);
 
 	return tmp;
 }

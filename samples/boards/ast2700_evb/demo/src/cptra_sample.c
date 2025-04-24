@@ -431,6 +431,45 @@ end:
 	LOG_INF("%s: Failed", __func__);
 }
 
+/* TODO: Caliptra should be provisioned */
+__attribute__((unused)) static void cptra_test_get_idevid_csr(void)
+{
+	struct cptra_get_idevid_csr_ia input;
+	struct cptra_get_idevid_csr_oa output;
+	int ret;
+
+	LOG_INF("Test caliptra_get_idevid_csr...");
+
+	memset(&input, 0, sizeof(struct cptra_get_idevid_csr_ia));
+	memset(&output, 0, sizeof(struct cptra_get_idevid_csr_oa));
+
+#if CONFIG_CPTRA_SAMPLE_BOOTMCU
+	const struct device *dev = device_get_binding(CPTRA_DICE_DRV_NAME);
+
+	ret = caliptra_get_idevid_csr(dev, &input, &output);
+#elif CONFIG_CPTRA_SAMPLE_SSP
+	ret = cptra_ipc_transfer(CPTRA_IPCCMD_GET_IDEVID_CSR,
+				 (uint32_t *)&input, sizeof(input),
+				 CPTRA_IPC_RX_TYPE_EXTERNAL,
+				 (uint32_t *)&output, sizeof(output));
+#endif
+
+	if (ret) {
+		LOG_ERR("caliptra_get_idevid_csr is failure, ret:0x%x", ret);
+		goto end;
+	} else
+		LOG_DBG("caliptra_get_idevid_csr is successful");
+
+	LOG_DBG("output: chksum:0x%x, data_size:0x%x",
+		output.chksum, output.data_size);
+	LOG_HEXDUMP_DBG(output.data, output.data_size, "CSR data:");
+
+	LOG_INF("%s: Pass", __func__);
+	return;
+end:
+	LOG_INF("%s: Failed", __func__);
+}
+
 static void cptra_test_invoke_dpe_command(void)
 {
 #if CONFIG_CPTRA_SAMPLE_BOOTMCU
@@ -1314,7 +1353,7 @@ end:
 	LOG_INF("%s: Failed", __func__);
 }
 
-static void cptra_test_set_auth_manifest(void)
+__attribute__((unused)) static void cptra_test_set_auth_manifest(void)
 {
 	struct cptra_set_auth_manifest_ia input;
 	struct cptra_set_auth_manifest_oa output;
@@ -1533,7 +1572,7 @@ end:
 	LOG_INF("%s: Failed", __func__);
 }
 
-static void cptra_test_authorize_and_stash(void)
+__attribute__((unused)) static void cptra_test_authorize_and_stash(void)
 {
 	struct cptra_authorize_and_stash_ia input;
 	struct cptra_authorize_and_stash_oa output;
@@ -1607,6 +1646,95 @@ end:
 	LOG_INF("%s: Failed", __func__);
 }
 
+__attribute__((unused)) static void cptra_test_sign_with_exported_ecdsa(void)
+{
+	struct cptra_sign_with_exported_ecdsa_ia input;
+	struct cptra_sign_with_exported_ecdsa_oa output;
+	int ret;
+
+	LOG_INF("Test caliptra_sign_with_exported_ecdsa...");
+
+	memset(&input, 0, sizeof(struct cptra_sign_with_exported_ecdsa_ia));
+	memset(&output, 0, sizeof(struct cptra_sign_with_exported_ecdsa_oa));
+
+	/* Set input data */
+	memcpy(input.exported_cdi_handle, "test", 4);
+	memcpy(input.tbs, "test_tbs", 8);
+
+#if CONFIG_CPTRA_SAMPLE_BOOTMCU
+	const struct device *dev = device_get_binding(CPTRA_DICE_DRV_NAME);
+
+	ret = caliptra_sign_with_exported_ecdsa(dev, &input, &output);
+	if (ret) {
+		LOG_ERR("caliptra_sign_with_exported_ecdsa failed, ret:0x%x", ret);
+		return;
+	}
+#elif CONFIG_CPTRA_SAMPLE_SSP
+	ret = cptra_ipc_transfer(CPTRA_IPCCMD_SIGN_WITH_EXPORTED_ECDSA, (uint32_t *)&input,
+				 sizeof(input), CPTRA_IPC_RX_TYPE_EXTERNAL, (uint32_t *)&output,
+				 sizeof(output));
+#endif
+	LOG_INF("Derived Public Key X:");
+	LOG_HEXDUMP_INF(output.derived_pubkey_x, sizeof(output.derived_pubkey_x), "X:");
+	LOG_INF("Derived Public Key Y:");
+	LOG_HEXDUMP_INF(output.derived_pubkey_y, sizeof(output.derived_pubkey_y), "Y:");
+	LOG_INF("Signature R:");
+	LOG_HEXDUMP_INF(output.signature_r, sizeof(output.signature_r), "R:");
+	LOG_INF("Signature S:");
+	LOG_HEXDUMP_INF(output.signature_s, sizeof(output.signature_s), "S:");
+
+	if (ret) {
+		LOG_ERR("caliptra_sign_with_exported_ecdsa is failure, ret:0x%x", ret);
+		goto end;
+	} else
+		LOG_DBG("caliptra_sign_with_exported_ecdsa is successful");
+
+	LOG_INF("%s: Pass", __func__);
+	return;
+end:
+	LOG_INF("%s: Failed", __func__);
+}
+
+__attribute__((unused)) static void cptra_test_revoke_exported_cdi_handle(void)
+{
+	struct cptra_revoke_exported_cdi_handle_ia input;
+	struct cptra_revoke_exported_cdi_handle_oa output;
+	int ret;
+
+	LOG_INF("Test caliptra_revoke_exported_cdi_handle...");
+
+	memset(&input, 0, sizeof(struct cptra_revoke_exported_cdi_handle_ia));
+	memset(&output, 0, sizeof(struct cptra_revoke_exported_cdi_handle_oa));
+
+	/* Set input data */
+	memcpy(input.exported_cdi_handle, "test_handle", 11);
+
+#if CONFIG_CPTRA_SAMPLE_BOOTMCU
+	const struct device *dev = device_get_binding(CPTRA_DICE_DRV_NAME);
+
+	ret = caliptra_revoke_exported_cdi_handle(dev, &input, &output);
+#elif CONFIG_CPTRA_SAMPLE_SSP
+	ret = cptra_ipc_transfer(CPTRA_IPCCMD_REVOKE_EXPORTED_CDI_HANDLE,
+				 (uint32_t *)&input, sizeof(input),
+				 CPTRA_IPC_RX_TYPE_EXTERNAL,
+				 (uint32_t *)&output, sizeof(output));
+#endif
+
+	if (ret) {
+		LOG_ERR("caliptra_revoke_exported_cdi_handle is failure, ret:0x%x", ret);
+		goto end;
+	} else
+		LOG_DBG("caliptra_revoke_exported_cdi_handle is successful");
+
+	LOG_DBG("output: chksum=0x%x, fips_status=0x%x",
+		output.chksum, output.fips_status);
+
+	LOG_INF("%s: Pass", __func__);
+	return;
+end:
+	LOG_INF("%s: Failed", __func__);
+}
+
 #if CONFIG_CPTRA_SAMPLE_BOOTMCU
 int cptra_test(void)
 {
@@ -1630,9 +1758,16 @@ int cptra_test(void)
 	cptra_test_fw_info();
 	cptra_test_capabilities();
 	cptra_test_version();
-	cptra_test_set_auth_manifest();
-	cptra_test_authorize_and_stash();
 	/* cptra_test_shutdown(); */
+
+	/* Caliptra 1.2 new mailbox commands */
+	/*
+	 * cptra_test_set_auth_manifest();
+	 * cptra_test_authorize_and_stash();
+	 * cptra_test_get_idevid_csr();
+	 * cptra_test_sign_with_exported_ecdsa();
+	 * cptra_test_revoke_exported_cdi_handle();
+	 */
 
 	return 0;
 }
@@ -1669,8 +1804,15 @@ static int cmd_cptra(const struct shell *shell, size_t argc, char **argv)
 	cptra_test_fw_info();
 	cptra_test_capabilities();
 	cptra_test_version();
-	cptra_test_set_auth_manifest();
-	cptra_test_authorize_and_stash();
+
+	/* Caliptra 1.2 new mailbox commands */
+	/*
+	 * cptra_test_set_auth_manifest();
+	 * cptra_test_authorize_and_stash();
+	 * cptra_test_get_idevid_csr();
+	 * cptra_test_sign_with_exported_ecdsa();
+	 * cptra_test_revoke_exported_cdi_handle();
+	 */
 
 	return 0;
 }
