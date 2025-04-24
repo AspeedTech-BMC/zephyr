@@ -383,6 +383,53 @@ static int aspeed_cptra_fw_info(const struct device *dev, struct cptra_fw_info_i
 	return rc;
 }
 
+static int aspeed_cptra_authorize_and_stash(const struct device *dev,
+					    struct cptra_authorize_and_stash_ia *input,
+					    struct cptra_authorize_and_stash_oa *output)
+{
+	struct cptra_misc_drv_state *state = DEV_DATA(dev);
+	uint32_t cmd = CPTRA_MBCMD_AUTHORIZE_AND_STASH;
+	uint32_t csum = 0, sts, dlen, ilen, olen;
+	int rc;
+
+	if (state->in_use) {
+		LOG_ERR("Peripheral in use");
+		return -EBUSY;
+	}
+
+	LOG_INF("Start doing authorize_and_stash");
+	state->in_use = true;
+
+	while (cptra_mbox_lock())
+		;
+
+	/* check MBOX is ready for command */
+	sts = cptra_mbox_status();
+	if (FIELD_GET(CPTRA_MBOX_STS_FSM_PS, sts) != CPTRA_MBFSM_RDY_FOR_CMD)
+		return -EACCES;
+
+	csum = cptra_mbox_csum(csum, (uint8_t *)&cmd, sizeof(cmd));
+	csum = cptra_mbox_csum(csum, (uint8_t *)input, sizeof(struct cptra_authorize_and_stash_ia));
+
+	/* init mbox parameters */
+	dlen = sizeof(csum) + sizeof(struct cptra_authorize_and_stash_ia);
+	ilen = sizeof(struct cptra_authorize_and_stash_ia);
+	olen = sizeof(struct cptra_authorize_and_stash_oa);
+	rc = cptra_mbox_trigger(cmd, dlen, csum, (uint8_t *)input, ilen, (uint8_t *)output, olen);
+	if (rc)
+		aspeed_cptra_ifc_error(dev);
+
+	while (cptra_mbox_unlock())
+		;
+
+	LOG_INF("chksum: 0x%x, fips_status: 0x%x, auth_req_result: 0x%x",
+		output->chksum, output->fips_status, output->auth_req_result);
+
+	state->in_use = false;
+
+	return rc;
+}
+
 int cptra_misc_init(const struct device *dev)
 {
 	struct cptra_misc_drv_state *state = DEV_DATA(dev);
@@ -408,6 +455,7 @@ static struct cptra_driver_api cptra_funcs = {
 	.caliptra_self_test_get_results = aspeed_cptra_self_test_get_results,
 	.caliptra_shutdown = aspeed_cptra_shutdown,
 	.caliptra_set_auth_manifest = aspeed_cptra_set_auth_manifest,
+	.caliptra_authorize_and_stash = aspeed_cptra_authorize_and_stash,
 };
 
 static const struct cptra_misc_config cptra_misc_config = {

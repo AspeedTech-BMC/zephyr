@@ -232,7 +232,7 @@ static int ecdsa_selftest(void)
 {
 	int ret;
 
-#if defined(CONFIG_MBEDTLS)
+#if defined(CONFIG_MBEDTLS) && defined(MBEDTLS_ECDSA_C)
 	ret = mbedtls_ecdsa_test(secp384r1_tv, ARRAY_SIZE(secp384r1_tv));
 	if (ret) {
 		LOG_ERR("mbedtls ecdsa test failed");

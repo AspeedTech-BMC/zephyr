@@ -60,6 +60,7 @@ enum cptra_mbox_cmd {
 	CPTRA_MBCMD_SHUTDOWN                        = 0x46505344, /* "FPSD" */
 	CPTRA_MBCMD_CAPABILITIES                    = 0x43415053, /* "CAPS" */
 	CPTRA_MBCMD_SET_AUTH_MANIFEST               = 0x41544D4E, /* "ATMN" */
+	CPTRA_MBCMD_AUTHORIZE_AND_STASH             = 0x41545348, /* "ATSH" */
 };
 
 union cptra_mbox_lock_s {
@@ -521,7 +522,34 @@ struct cptra_set_auth_manifest_oa {
 	uint32_t fips_status;
 };
 
-#define DPE_COMMAND_MAGIC		0x44504543	/* DPEC */
+struct cptra_authorize_and_stash_ia {
+	uint8_t fw_id[4];
+	uint8_t measurement[48];
+	uint8_t context[48];
+	uint32_t svn;
+	uint32_t flags;
+	uint32_t source;
+};
+
+struct cptra_authorize_and_stash_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+	uint32_t auth_req_result;
+};
+
+enum image_hash_source {
+	Invalid = 0,
+	InRequest,
+	ShaAcc,
+};
+
+#define AUTHORIZE_IMAGE				0xDEADC0DE
+#define IMAGE_NOT_AUTHORIZED			0x21523F21
+#define IMAGE_HASH_MISMATCH			0x8BFB95CB
+
+#define AUTHORIZE_AND_STASH_FLAGS_SKIP_STASH	BIT(0)
+
+#define DPE_COMMAND_MAGIC			0x44504543	/* DPEC */
 
 enum dpe_command {
 	GET_PROFILE		= 0x01,
@@ -678,6 +706,9 @@ __subsystem struct cptra_driver_api {
 	int (*caliptra_set_auth_manifest)(const struct device *dev,
 					  struct cptra_set_auth_manifest_ia *input,
 					  struct cptra_set_auth_manifest_oa *output);
+	int (*caliptra_authorize_and_stash)(const struct device *dev,
+					    struct cptra_authorize_and_stash_ia *input,
+					    struct cptra_authorize_and_stash_oa *output);
 };
 
 static inline int caliptra_fw_upload(const struct device *dev, uint8_t *buf, int size)
@@ -981,6 +1012,19 @@ static inline int caliptra_set_auth_manifest(const struct device *dev,
 
 	api = (struct cptra_driver_api *)dev->api;
 	tmp = api->caliptra_set_auth_manifest(dev, input, output);
+
+	return tmp;
+}
+
+static inline int caliptra_authorize_and_stash(const struct device *dev,
+					       struct cptra_authorize_and_stash_ia *input,
+					       struct cptra_authorize_and_stash_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_authorize_and_stash(dev, input, output);
 
 	return tmp;
 }

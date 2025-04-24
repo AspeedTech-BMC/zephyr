@@ -13,6 +13,10 @@
 #include <zephyr/crypto/hash.h>
 #include "cptra_sample.h"
 
+#if defined(CONFIG_MBEDTLS)
+#include <mbedtls/sha512.h>
+#endif
+
 LOG_MODULE_REGISTER(cptra_test, CONFIG_SOC_LOG_LEVEL);
 
 #if CONFIG_CPTRA_SAMPLE_BOOTMCU
@@ -1345,12 +1349,13 @@ static void cptra_test_set_auth_manifest(void)
 	range = sizeof(input.preamble.manifest_version) + sizeof(input.preamble.manifest_flags) +
 		sizeof(input.preamble.manifest_vendor_ecc384_key) +
 		sizeof(input.preamble.manifest_vendor_lms_key);
+#if defined(CONFIG_MBEDTLS)
 	ret = mbedtls_sha512((const uint8_t *)&input.preamble.manifest_version, range, hash, 1);
 	if (ret) {
 		LOG_ERR("Failed to hash message, ret: %d", ret);
 		goto end;
 	}
-
+#endif
 	LOG_HEXDUMP_DBG(hash, sizeof(hash), "Hash:");
 	ret = memcmp(hash, vnd_manifest_tv[0].m, 48);
 	if (ret) {
@@ -1397,13 +1402,14 @@ static void cptra_test_set_auth_manifest(void)
 	memset(hash, 0, sizeof(hash));
 	range = sizeof(input.preamble.manifest_owner_ecc384_key) +
 		sizeof(input.preamble.manifest_owner_lms_key);
+#if defined(CONFIG_MBEDTLS)
 	ret = mbedtls_sha512((const uint8_t *)&input.preamble.manifest_owner_ecc384_key, range,
 			     hash, 1);
 	if (ret) {
 		LOG_ERR("Failed to hash message, ret: %d", ret);
 		goto end;
 	}
-
+#endif
 	LOG_HEXDUMP_DBG(hash, sizeof(hash), "Hash:");
 	ret = memcmp(hash, own_manifest_tv[0].m, 48);
 	if (ret) {
@@ -1450,13 +1456,14 @@ static void cptra_test_set_auth_manifest(void)
 	memset(hash, 0, sizeof(hash));
 	range = sizeof(input.metadata_entry_entry_count) +
 		sizeof(input.metadata_entries);
+#if defined(CONFIG_MBEDTLS)
 	ret = mbedtls_sha512((const uint8_t *)&input.metadata_entry_entry_count, range,
 			     hash, 1);
 	if (ret) {
 		LOG_ERR("Failed to hash message, ret: %d", ret);
 		goto end;
 	}
-
+#endif
 	LOG_HEXDUMP_DBG(hash, sizeof(hash), "Hash:");
 	ret = memcmp(hash, metadata_manifest_tv[0].m, 48);
 	if (ret) {
@@ -1526,6 +1533,80 @@ end:
 	LOG_INF("%s: Failed", __func__);
 }
 
+static void cptra_test_authorize_and_stash(void)
+{
+	struct cptra_authorize_and_stash_ia input;
+	struct cptra_authorize_and_stash_oa output;
+	int ret;
+
+	LOG_INF("Test caliptra_authorize_and_stash...");
+
+	memset(&input, 0, sizeof(struct cptra_authorize_and_stash_ia));
+	memset(&output, 0, sizeof(struct cptra_authorize_and_stash_oa));
+
+	/* Set input data */
+	input.source = InRequest;
+
+#if CONFIG_CPTRA_SAMPLE_BOOTMCU
+	const struct device *dev = device_get_binding(CPTRA_MISC_DRV_NAME);
+
+	ret = caliptra_authorize_and_stash(dev, &input, &output);
+#elif CONFIG_CPTRA_SAMPLE_SSP
+	ret = cptra_ipc_transfer(CPTRA_IPCCMD_AUTHORIZE_AND_STASH,
+				 (uint32_t *)&input, sizeof(input),
+				 CPTRA_IPC_RX_TYPE_EXTERNAL,
+				 (uint32_t *)&output, sizeof(output));
+#endif
+
+	if (ret) {
+		LOG_ERR("caliptra_authorize_and_stash is failure, ret:0x%x", ret);
+		goto end;
+	} else
+		LOG_DBG("caliptra_authorize_and_stash is successful");
+
+	LOG_DBG("output: chksum=0x%x, fips_status=0x%x",
+		output.chksum, output.fips_status);
+	LOG_DBG("auth_req_result: 0x%x", output.auth_req_result);
+
+	if (output.auth_req_result != AUTHORIZE_IMAGE) {
+		LOG_ERR("authorize image failed");
+		goto end;
+	}
+
+	/* Set wrong measurement */
+	*input.measurement = 0x12;
+
+#if CONFIG_CPTRA_SAMPLE_BOOTMCU
+	dev = device_get_binding(CPTRA_MISC_DRV_NAME);
+
+	ret = caliptra_authorize_and_stash(dev, &input, &output);
+#elif CONFIG_CPTRA_SAMPLE_SSP
+	ret = cptra_ipc_transfer(CPTRA_IPCCMD_AUTHORIZE_AND_STASH,
+				 (uint32_t *)&input, sizeof(input),
+				 CPTRA_IPC_RX_TYPE_EXTERNAL,
+				 (uint32_t *)&output, sizeof(output));
+#endif
+	if (ret) {
+		LOG_ERR("caliptra_authorize_and_stash is failure, ret:0x%x", ret);
+		goto end;
+	} else
+		LOG_DBG("caliptra_authorize_and_stash is successful");
+
+	LOG_DBG("output: chksum=0x%x, fips_status=0x%x",
+		output.chksum, output.fips_status);
+	LOG_DBG("auth_req_result: 0x%x", output.auth_req_result);
+
+	if (output.auth_req_result != IMAGE_HASH_MISMATCH) {
+		LOG_ERR("authorize image failed, image hash should be mismatch");
+		goto end;
+	}
+
+	LOG_INF("%s: Pass", __func__);
+	return;
+end:
+	LOG_INF("%s: Failed", __func__);
+}
+
 #if CONFIG_CPTRA_SAMPLE_BOOTMCU
 int cptra_test(void)
 {
@@ -1549,6 +1630,8 @@ int cptra_test(void)
 	cptra_test_fw_info();
 	cptra_test_capabilities();
 	cptra_test_version();
+	cptra_test_set_auth_manifest();
+	cptra_test_authorize_and_stash();
 	/* cptra_test_shutdown(); */
 
 	return 0;
@@ -1586,6 +1669,8 @@ static int cmd_cptra(const struct shell *shell, size_t argc, char **argv)
 	cptra_test_fw_info();
 	cptra_test_capabilities();
 	cptra_test_version();
+	cptra_test_set_auth_manifest();
+	cptra_test_authorize_and_stash();
 
 	return 0;
 }
