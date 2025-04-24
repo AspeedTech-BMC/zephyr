@@ -23,7 +23,7 @@ int main(void)
 {
 	int rc = 0;
 
-	printk("%s demo\n", CONFIG_BOARD);
+	printk("%s demo (%s - %s)\n", CONFIG_BOARD, __DATE__, __TIME__);
 
 #if defined(CONFIG_LOAD_FIT_ENABLED)
 	void *func = (void *)CONFIG_AST_EXT_LOADER_ADDR;
