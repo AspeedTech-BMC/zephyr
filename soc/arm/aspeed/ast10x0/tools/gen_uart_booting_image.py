@@ -13,8 +13,10 @@ if __name__ == "__main__":
     src_len = len(src_image)
     src_len_align = (src_len + 3) & (~3)
     src_len_byte = src_len_align.to_bytes(4, byteorder='little', signed=False)
+    # calculate padding
+    padding = b'\x00' * (src_len_align - src_len)
 
-    dst_image = src_len_byte + src_image
+    dst_image = src_len_byte + src_image + padding
 
     with open(dst, 'w+b') as w:
         w.write(dst_image)
