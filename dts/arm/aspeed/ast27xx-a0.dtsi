@@ -28,7 +28,7 @@
 
 	soc {
 		intc_global: intc-global@72100000 {
-			compatible = "aspeed,ast2700-intc-global", "syscon";
+			compatible = "aspeed,ast2700a0-intc-global", "syscon";
 			reg = <0x72100000 0x2000>;
 			#global-reg-cells = <2>;
 			#address-cells = <1>;
