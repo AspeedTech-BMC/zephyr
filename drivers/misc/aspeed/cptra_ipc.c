@@ -29,6 +29,9 @@ LOG_MODULE_REGISTER(cptra_ipc, CONFIG_MISC_ASPEED_LOG_LEVEL);
 
 static int cptra_ipc_ecdsa384_verify(const struct device *dev, void *arg1, void *arg2);
 static int cptra_ipc_sha384(const struct device *dev, void *arg1, void *arg2);
+static int cptra_ipc_sha384_init(const struct device *dev, void *arg1, void *arg2);
+static int cptra_ipc_sha384_update(const struct device *dev, void *arg1, void *arg2);
+static int cptra_ipc_sha384_final(const struct device *dev, void *arg1, void *arg2);
 static int cptra_ipc_lms_verify(const struct device *dev, void *arg1, void *arg2);
 
 typedef int (*cptra_callback_t)(const struct device *dev, void *arg1, void *arg2);
@@ -41,7 +44,10 @@ struct cptra_ipc_callback_tbl {
 
 static const struct cptra_ipc_callback_tbl cptra_ipc_list[] = {
 	{ CPTRA_ECDSA_DRV_NAME, CPTRA_IPCCMD_ECDSA384_SIGNATURE_VERIFY, cptra_ipc_ecdsa384_verify },
-	{ CPTRA_HASH_DRV_NAME, CPTRA_IPCCMD_SHA384, (cptra_callback_t)cptra_ipc_sha384 },
+	{ CPTRA_HASH_DRV_NAME, CPTRA_IPCCMD_SHA384_DIGEST, (cptra_callback_t)cptra_ipc_sha384 },
+	{ CPTRA_HASH_DRV_NAME, CPTRA_IPCCMD_SHA384_INIT, (cptra_callback_t)cptra_ipc_sha384_init },
+	{ CPTRA_HASH_DRV_NAME, CPTRA_IPCCMD_SHA384_UPDATE, (cptra_callback_t)cptra_ipc_sha384_update },
+	{ CPTRA_HASH_DRV_NAME, CPTRA_IPCCMD_SHA384_FINAL, (cptra_callback_t)cptra_ipc_sha384_final },
 	{ CPTRA_LMS_DRV_NAME, CPTRA_IPCCMD_LMS_SIGNATURE_VERIFY, (cptra_callback_t)cptra_ipc_lms_verify },
 	{ CPTRA_UPDATE_DRV_NAME, CPTRA_IPCCMD_CALIPTRA_FW_LOAD, (cptra_callback_t)caliptra_fw_upload },
 	{ CPTRA_DICE_DRV_NAME, CPTRA_IPCCMD_STASH_MEASUREMENT, (cptra_callback_t)caliptra_stash_measurement },
@@ -191,6 +197,76 @@ static int cptra_ipc_sha384(const struct device *dev, void *arg1, void *arg2)
 
 end:
 	hash_free_session(dev, &ini);
+
+	return ret;
+}
+
+struct hash_ctx g_ini;
+struct hash_pkt g_pkt;
+
+static int cptra_ipc_sha384_init(const struct device *dev, void *arg1, void *arg2)
+{
+	struct cptra_hash_ctx *ctx = (struct cptra_hash_ctx *)arg1;
+	int ret;
+
+	LOG_DBG("algo: %d", ctx->algo);
+
+	/* initial */
+	ret = hash_begin_session(dev, &g_ini, ctx->algo);
+	if (ret) {
+		LOG_ERR("hash_begin_session error");
+		return -EINVAL;
+	}
+
+	return ret;
+}
+
+static int cptra_ipc_sha384_update(const struct device *dev, void *arg1, void *arg2)
+{
+	struct cptra_hash_ctx *ctx = (struct cptra_hash_ctx *)arg1;
+	int ret;
+
+	g_pkt.in_buf = ctx->in_buf;
+	g_pkt.in_len = ctx->in_len;
+
+	LOG_DBG("pkt.in_buf: 0x%x", (uint32_t)g_pkt.in_buf);
+	LOG_DBG("pkt.in_len: %d", g_pkt.in_len);
+	LOG_DBG("pkt.out_buf: 0x%x", (uint32_t)g_pkt.out_buf);
+	LOG_HEXDUMP_DBG(g_pkt.in_buf, g_pkt.in_len, "input:");
+
+	/* update */
+	ret = hash_update(&g_ini, &g_pkt);
+	if (ret) {
+		LOG_ERR("hash_update error");
+		goto end;
+	}
+
+	return 0;
+
+end:
+	hash_free_session(dev, &g_ini);
+
+	return ret;
+}
+
+static int cptra_ipc_sha384_final(const struct device *dev, void *arg1, void *arg2)
+{
+	struct cptra_hash_ctx *ctx = (struct cptra_hash_ctx *)arg1;
+	int ret;
+
+	g_pkt.out_buf = ctx->out_buf;
+
+	/* final */
+	ret = hash_compute(&g_ini, &g_pkt);
+	if (ret) {
+		LOG_ERR("hash_compute error");
+		goto end;
+	}
+
+	LOG_HEXDUMP_INF(g_pkt.out_buf, 48, "digest:");
+
+end:
+	hash_free_session(dev, &g_ini);
 
 	return ret;
 }

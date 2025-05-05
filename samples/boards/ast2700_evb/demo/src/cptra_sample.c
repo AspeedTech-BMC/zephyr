@@ -1068,7 +1068,7 @@ static int cptra_sha384(uint8_t *msg, int msg_size, uint8_t *output, int output_
 	uint8_t *p8_bmcu_out = (uint8_t *)IPC_CHANNEL_1_BOOTMCU_OUT_ADDR;
 	uint8_t *p8_bmcu_in = (uint8_t *)IPC_CHANNEL_1_BOOTMCU_IN_ADDR;
 	uint8_t *p8_ssp_in = (uint8_t *)IPC_CHANNEL_1_SSP_IN_ADDR;
-	int ipccmd = CPTRA_IPCCMD_SHA384;
+	int ipccmd = CPTRA_IPCCMD_SHA384_DIGEST;
 	struct cptra_hash_ctx ctx;
 	uint32_t data[2];
 	int ret;
