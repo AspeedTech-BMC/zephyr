@@ -239,6 +239,10 @@ LOG_MODULE_REGISTER(i2c_aspeed);
 #define AST_I2C_GET_TX_DMA_LEN(x)	((x) & 0x1fff)
 #define AST_I2C_GET_RX_DMA_LEN(x)	(((x) >> 16) & 0x1fff)
 
+/* 0x74 : Slave Device Address Register */
+#define MSIC_CONFIG_ACTIMING1		0x74
+#define MSIC_I2C_SET_TIMEOUT(s, m)		(((s) << 16) | (m))
+
 #define AST2600ID 0x05000000
 #define AST2700ID 0x07000000
 
@@ -246,7 +250,9 @@ LOG_MODULE_REGISTER(i2c_aspeed);
  * 1/(1000/4096) = 4.096ms * 8 = 32.768ms
  */
 #define I2C_TIMEOUT_CLK			0x2
+#define AST2700_I2C_TIMEOUT_CLK	0x3
 #define I2C_TIMEOUT_COUNT		0x8 /* i2c timeout setting (wait about 35ms) */
+
 /***************************************************************************/
 /* Use platform_data instead of module parameters */
 /* Fast Mode = 400 kHz, Standard = 100 kHz */
@@ -337,6 +343,8 @@ struct i2c_aspeed_data {
 	/* version */
 	enum i2c_version version;
 
+	uint8_t smbus_timeout;
+
 #ifdef CONFIG_I2C_TARGET
 	unsigned char slave_dma_buf[I2C_SLAVE_BUF_SIZE];
 	struct i2c_target_config *slave_cfg;
@@ -347,6 +355,50 @@ struct ast_i2c_timing_table {
 	uint32_t divisor;
 	uint32_t timing;
 };
+
+static uint32_t i2c_aspeed_ast2700_select_clock(const struct device *dev)
+{
+	const struct i2c_aspeed_config *config = DEV_CFG(dev);
+	struct i2c_aspeed_data *data = DEV_DATA(dev);
+	uint32_t i2c_base = DEV_BASE(dev);
+	unsigned long base_clk;
+	int baseclk_idx = 0;
+	int divisor = 0;
+	uint32_t scl_low;
+	uint32_t scl_high;
+	uint32_t ac_timing;
+
+	for (int i = 0; i < 0x100; i++) {
+		base_clk = (config->clk_src) / (i + 1);
+		if ((base_clk / data->bus_frequency) <= 32) {
+			baseclk_idx = i;
+			divisor = (base_clk / (unsigned long)(data->bus_frequency));
+			if ((base_clk / divisor) > (unsigned long)data->bus_frequency)
+				divisor++;
+			break;
+		}
+	}
+
+	baseclk_idx = MIN(baseclk_idx, 0xff);
+	divisor = MIN(divisor, 32);
+	scl_low = MIN(divisor * 9 / 16 - 1, 15);
+	scl_high = (divisor - scl_low - 2) & 0x1f;
+	ac_timing = (scl_high - 1) << 20 | scl_high << 16 | scl_low << 12 | baseclk_idx;
+
+	/* Set time out timer */
+	if (config->smbus_timeout) {
+		data->smbus_timeout = MIN(config->smbus_timeout, 255);
+		sys_write32(MSIC_I2C_SET_TIMEOUT(data->smbus_timeout, data->smbus_timeout),
+		i2c_base + AST_I2CC_FUN_CTRL);
+
+		/* timeout_base set as 1ms */
+		ac_timing |= AST_I2CC_toutBaseCLK(AST2700_I2C_TIMEOUT_CLK);
+	}
+
+	LOG_DBG("ac_timing %x", ac_timing);
+
+	return ac_timing;
+}
 
 static uint32_t i2c_aspeed_select_clock(const struct device *dev)
 {
@@ -576,7 +628,10 @@ static int i2c_aspeed_configure(const struct device *dev,
 	sys_write32(fun_ctrl, i2c_base + AST_I2CC_FUN_CTRL);
 
 	/*Set AC Timing*/
-	sys_write32(i2c_aspeed_select_clock(dev), i2c_base + AST_I2CC_AC_TIMING);
+	if (data->version == AST2700)
+		sys_write32(i2c_aspeed_ast2700_select_clock(dev), i2c_base + AST_I2CC_AC_TIMING);
+	else
+		sys_write32(i2c_aspeed_select_clock(dev), i2c_base + AST_I2CC_AC_TIMING);
 
 	/*Clear Interrupt*/
 	sys_write32(0xfffffff, i2c_base + AST_I2CM_ISR);
@@ -1795,6 +1850,10 @@ static int i2c_aspeed_init(const struct device *dev)
 	/* check the AST2700 */
 	if (((uint32_t)rev_id & 0xFF000000) == AST2700ID) {
 		data->version = AST2700;
+
+		/* AST2700 just support DMA mode */
+		if (config->mode != DMA_MODE)
+			return -EINVAL;
 	}
 
 	bitrate_cfg = i2c_map_dt_bitrate(config->bitrate);
