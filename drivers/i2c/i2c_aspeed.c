@@ -240,6 +240,7 @@ LOG_MODULE_REGISTER(i2c_aspeed);
 #define AST_I2C_GET_RX_DMA_LEN(x)	(((x) >> 16) & 0x1fff)
 
 #define AST2600ID 0x05000000
+#define AST2700ID 0x07000000
 
 /* i2c timeout counter: use base clk4 1Mhz
  * 1/(1000/4096) = 4.096ms * 8 = 32.768ms
@@ -269,6 +270,11 @@ enum i2c_xfer_mode {
 	BYTE_MODE,
 	BUFF_MODE,
 	DMA_MODE,
+};
+
+enum i2c_version {
+	AST2600,
+	AST2700,
 };
 
 struct i2c_aspeed_config {
@@ -327,6 +333,9 @@ struct i2c_aspeed_data {
 
 	/* byte mode check re-start */
 	uint8_t slave_addr_last;
+
+	/* version */
+	enum i2c_version version;
 
 #ifdef CONFIG_I2C_TARGET
 	unsigned char slave_dma_buf[I2C_SLAVE_BUF_SIZE];
@@ -1782,6 +1791,11 @@ static int i2c_aspeed_init(const struct device *dev)
 	clock_control_get_rate(config->clock_dev, config->clk_id, &config->clk_src);
 	LOG_INF("clk src %d, multi-master %d, xfer mode %d",
 		config->clk_src, config->multi_master, config->mode);
+
+	/* check the AST2700 */
+	if (((uint32_t)rev_id & 0xFF000000) == AST2700ID) {
+		data->version = AST2700;
+	}
 
 	bitrate_cfg = i2c_map_dt_bitrate(config->bitrate);
 	error = pinctrl_apply_state(config->pcfg, PINCTRL_STATE_DEFAULT);
