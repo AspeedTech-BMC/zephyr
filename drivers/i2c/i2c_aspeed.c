@@ -211,14 +211,23 @@ LOG_MODULE_REGISTER(i2c_aspeed);
 #define AST_I2CS_SET_TX_DMA_LEN(x)	((((x) - 1) & 0xfff) | BIT(15))
 #define AST_I2CS_TX_DMA_LEN_MASK	0xfff
 
-/* I2CM Master DMA Tx Buffer Register   */
+/* I2CM Master DMA Tx Buffer Register */
 #define AST_I2CM_TX_DMA			0x30
-/* I2CM Master DMA Rx Buffer Register   */
+/* I2CM Master DMA Rx Buffer Register */
 #define AST_I2CM_RX_DMA			0x34
-/* I2CS Slave DMA Tx Buffer Register   */
+/* I2CS Slave DMA Tx Buffer Register */
 #define AST_I2CS_TX_DMA			0x38
-/* I2CS Slave DMA Rx Buffer Register   */
+/* I2CS Slave DMA Rx Buffer Register */
 #define AST_I2CS_RX_DMA			0x3C
+
+/* I2CM Master DMA Tx Buffer High Register */
+#define AST_I2CM_TX_DMA_H		0x60
+/* I2CM Master DMA Rx Buffer High Register */
+#define AST_I2CM_RX_DMA_H		0x64
+/* I2CS Slave DMA Tx Buffer High Register */
+#define AST_I2CS_TX_DMA_H		0x68
+/* I2CS Slave DMA Rx Buffer High Register */
+#define AST_I2CS_RX_DMA_H		0x6C
 
 /* 0x40 : Slave Device Address Register */
 #define AST_I2CS_ADDR_CTRL		0x40
@@ -730,6 +739,10 @@ static void aspeed_new_i2c_do_start(const struct device *dev)
 	if (msg->flags & I2C_MSG_READ) {
 		cmd |= AST_I2CM_RX_CMD;
 		if (config->mode == DMA_MODE) {
+			uint64_t DMA_Addr = TO_PHY_ADDR(msg->buf);
+			uint32_t DMA_Addr_L = (uint32_t)(DMA_Addr & 0xFFFFFFFF);
+			uint32_t DMA_Addr_H = (uint32_t)(((DMA_Addr >> 32) & 0xFFFFFFFF));
+
 			/*dma mode*/
 			if (msg->len > ASPEED_I2C_DMA_SIZE) {
 				xfer_len = ASPEED_I2C_DMA_SIZE;
@@ -745,7 +758,8 @@ static void aspeed_new_i2c_do_start(const struct device *dev)
 				cmd |= AST_I2CM_RX_DMA_EN | AST_I2CM_RX_CMD;
 				sys_write32(AST_I2CM_SET_RX_DMA_LEN(xfer_len - 1),
 				i2c_base + AST_I2CM_DMA_LEN);
-				sys_write32(TO_PHY_ADDR(msg->buf), i2c_base + AST_I2CM_RX_DMA);
+				sys_write32(DMA_Addr_L, i2c_base + AST_I2CM_RX_DMA);
+				sys_write32(DMA_Addr_H, i2c_base + AST_I2CM_RX_DMA_H);
 			}
 		} else if (config->mode == BUFF_MODE) {
 			/*buff mode*/
@@ -780,6 +794,10 @@ static void aspeed_new_i2c_do_start(const struct device *dev)
 		}
 	} else {
 		if (config->mode == DMA_MODE) {
+			uint64_t DMA_Addr = TO_PHY_ADDR(msg->buf);
+			uint32_t DMA_Addr_L = (uint32_t)(DMA_Addr & 0xFFFFFFFF);
+			uint32_t DMA_Addr_H = (uint32_t)(((DMA_Addr >> 32) & 0xFFFFFFFF));
+
 			/*dma mode*/
 			if (msg->len > ASPEED_I2C_DMA_SIZE) {
 				xfer_len = ASPEED_I2C_DMA_SIZE;
@@ -795,7 +813,8 @@ static void aspeed_new_i2c_do_start(const struct device *dev)
 				cmd |= AST_I2CM_TX_DMA_EN | AST_I2CM_TX_CMD;
 				sys_write32(AST_I2CM_SET_TX_DMA_LEN(xfer_len - 1),
 				i2c_base + AST_I2CM_DMA_LEN);
-				sys_write32(TO_PHY_ADDR(msg->buf), i2c_base + AST_I2CM_TX_DMA);
+				sys_write32(DMA_Addr_L, i2c_base + AST_I2CM_TX_DMA);
+				sys_write32(DMA_Addr_H, i2c_base + AST_I2CM_TX_DMA_H);
 			}
 		} else if (config->mode == BUFF_MODE) {
 			uint8_t wbuf[4];
@@ -904,11 +923,16 @@ static int i2c_aspeed_transfer(const struct device *dev, struct i2c_msg *msgs,
 #ifdef CONFIG_I2C_TARGET
 			if (ctrl & AST_I2CC_SLAVE_EN) {
 				if (config->mode == DMA_MODE) {
+					uint64_t DMA_Addr = TO_PHY_ADDR(data->slave_dma_buf);
+					uint32_t DMA_Addr_L = (uint32_t)(DMA_Addr & 0xFFFFFFFF);
+					uint32_t DMA_Addr_H =
+					(uint32_t)(((DMA_Addr >> 32) & 0xFFFFFFFF));
+
 					cmd |= AST_I2CS_RX_DMA_EN;
-					sys_write32(TO_PHY_ADDR(data->slave_dma_buf),
-					i2c_base + AST_I2CS_RX_DMA);
-					sys_write32(TO_PHY_ADDR(data->slave_dma_buf),
-					i2c_base + AST_I2CS_TX_DMA);
+					sys_write32(DMA_Addr_L, i2c_base + AST_I2CS_RX_DMA);
+					sys_write32(DMA_Addr_H, i2c_base + AST_I2CS_RX_DMA_H);
+					sys_write32(DMA_Addr_L, i2c_base + AST_I2CS_TX_DMA);
+					sys_write32(DMA_Addr_H, i2c_base + AST_I2CS_TX_DMA_H);
 					sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE)
 					, i2c_base + AST_I2CS_DMA_LEN);
 				} else if (config->mode == BUFF_MODE) {
@@ -991,6 +1015,10 @@ void do_i2cm_tx(const struct device *dev)
 		/*do next tx*/
 		cmd |= AST_I2CM_TX_CMD;
 		if (config->mode == DMA_MODE) {
+			uint64_t DMA_Addr = TO_PHY_ADDR(data->msgs->buf);
+			uint32_t DMA_Addr_L = (uint32_t)(DMA_Addr & 0xFFFFFFFF);
+			uint32_t DMA_Addr_H = (uint32_t)(((DMA_Addr >> 32) & 0xFFFFFFFF));
+
 			cmd |= AST_I2CS_TX_DMA_EN;
 			xfer_len = msg->len - data->master_xfer_cnt;
 
@@ -1006,8 +1034,9 @@ void do_i2cm_tx(const struct device *dev)
 		, i2c_base + AST_I2CM_DMA_LEN);
 		LOG_DBG("next tx xfer_len: %d, offset %d\n"
 		, xfer_len, data->master_xfer_cnt);
-		sys_write32((TO_PHY_ADDR(data->msgs->buf) + data->master_xfer_cnt)
+		sys_write32((DMA_Addr_L + data->master_xfer_cnt)
 		, i2c_base + AST_I2CM_TX_DMA);
+		sys_write32(DMA_Addr_H, i2c_base + AST_I2CM_TX_DMA_H);
 	} else if (config->mode == BUFF_MODE) {
 		uint8_t wbuf[4];
 
@@ -1100,6 +1129,10 @@ void do_i2cm_rx(const struct device *dev)
 		/*next rx*/
 		cmd |= AST_I2CM_RX_CMD;
 		if (config->mode == DMA_MODE) {
+			uint64_t DMA_Addr = TO_PHY_ADDR(msg->buf);
+			uint32_t DMA_Addr_L = (uint32_t)(DMA_Addr & 0xFFFFFFFF);
+			uint32_t DMA_Addr_H = (uint32_t)(((DMA_Addr >> 32) & 0xFFFFFFFF));
+
 			cmd |= AST_I2CM_RX_DMA_EN;
 			xfer_len = msg->len - data->master_xfer_cnt;
 			if (xfer_len > ASPEED_I2C_DMA_SIZE) {
@@ -1117,8 +1150,9 @@ void do_i2cm_rx(const struct device *dev)
 			, i2c_base + AST_I2CM_DMA_LEN);
 			LOG_DBG("TODO check addr dma addr %x\n"
 			, (uint32_t)msg->buf);
-			sys_write32((TO_PHY_ADDR(msg->buf) + data->master_xfer_cnt)
+			sys_write32((DMA_Addr_L + data->master_xfer_cnt)
 			, i2c_base + AST_I2CM_RX_DMA);
+			sys_write32(DMA_Addr_H, i2c_base + AST_I2CM_RX_DMA_H);
 		} else if (config->mode == BUFF_MODE) {
 			cmd |= AST_I2CM_RX_BUFF_EN;
 			xfer_len = msg->len - data->master_xfer_cnt;
@@ -1308,15 +1342,13 @@ static inline void aspeed_i2c_trigger_package_cmd(uint32_t i2c_base, uint8_t mod
 
 void ast2700_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, uint32_t sts)
 {
-	struct i2c_aspeed_config *config = DEV_CFG(dev);
 	struct i2c_aspeed_data *data = DEV_DATA(dev);
 	const struct i2c_target_callbacks *slave_cb = data->slave_cfg->callbacks;
 	int slave_rx_len = 0;
 	uint32_t cmd = 0;
-	uint8_t value;
 	int i;
 	uint32_t sirq_log;
-	uint32_t sts, isr;
+	uint32_t isr;
 
 	sys_write32(AST_I2CS_SADDR_PENDING | AST_I2CS_WAIT_TX_DMA | AST_I2CS_WAIT_RX_DMA,
 	i2c_base + AST_I2CS_ISR);
@@ -1335,7 +1367,7 @@ void ast2700_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, u
 		/* clear sirq log */
 		while (sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG))
 			;
-		sys_write32(isr, ii2c_base + AST_I2CS_ISR);
+		sys_write32(isr, i2c_base + AST_I2CS_ISR);
 		if (slave_cb->stop) {
 			slave_cb->stop(data->slave_cfg);
 		}
@@ -1823,11 +1855,11 @@ void ast2600_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, u
 		aspeed_i2c_trigger_package_cmd(i2c_base, config->mode);
 		break;
 	case AST_I2CS_RX_DONE | AST_I2CS_STOP:
-	case AST_I2CS_RX_DONE | AST_I2CS_Wait_RX_DMA: /* wait for last package received data done */
-	case AST_I2CS_RX_DONE | AST_I2CS_Wait_RX_DMA | AST_I2CS_STOP:
+	case AST_I2CS_RX_DONE | AST_I2CS_WAIT_RX_DMA: /* wait for last package received data done */
+	case AST_I2CS_RX_DONE | AST_I2CS_WAIT_RX_DMA | AST_I2CS_STOP:
 	case AST_I2CS_RX_DONE_NAK | AST_I2CS_RX_DONE | AST_I2CS_STOP:
 	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE | AST_I2CS_STOP:
-	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE | AST_I2CS_Wait_RX_DMA | AST_I2CS_STOP:
+	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE | AST_I2CS_WAIT_RX_DMA | AST_I2CS_STOP:
 	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE_NAK | AST_I2CS_RX_DONE | AST_I2CS_STOP:
 		if (sts & AST_I2CS_STOP) {
 			if (sts & AST_I2CS_SLAVE_MATCH) {
@@ -1891,8 +1923,8 @@ void ast2600_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, u
 		aspeed_i2c_trigger_package_cmd(i2c_base, config->mode);
 		break;
 	/*it is Mw data Mr coming -> it need send tx*/
-	case AST_I2CS_RX_DONE | AST_I2CS_Wait_TX_DMA:
-	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE | AST_I2CS_Wait_TX_DMA:
+	case AST_I2CS_RX_DONE | AST_I2CS_WAIT_TX_DMA:
+	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE | AST_I2CS_WAIT_TX_DMA:
 		/*it should be repeat start read*/
 		if (sts & AST_I2CS_SLAVE_MATCH) {
 			LOG_DBG("S: I2CS_W_TX_DMA | I2CS_S_MATCH | I2CS_R_DONE\n");
@@ -1972,7 +2004,7 @@ void ast2600_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, u
 		sys_write32(cmd, i2c_base + AST_I2CS_CMD_STS);
 		break;
 
-	case AST_I2CS_SLAVE_MATCH | AST_I2CS_Wait_TX_DMA:
+	case AST_I2CS_SLAVE_MATCH | AST_I2CS_WAIT_TX_DMA:
 		/*First Start read*/
 		LOG_DBG("S: AST_I2CS_SLAVE_MATCH | AST_I2CS_Wait_TX_DMA\n");
 		cmd = SLAVE_TRIGGER_CMD;
@@ -2007,7 +2039,7 @@ void ast2600_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, u
 		sys_write32(cmd, i2c_base + AST_I2CS_CMD_STS);
 		break;
 
-	case AST_I2CS_Wait_TX_DMA:
+	case AST_I2CS_WAIT_TX_DMA:
 		/*it should be next start read*/
 		LOG_DBG("S: AST_I2CS_Wait_TX_DMA\n");
 		cmd = SLAVE_TRIGGER_CMD;
@@ -2083,7 +2115,7 @@ void aspeed_i2c_slave_byte_irq(const struct device *dev, uint32_t i2c_base, uint
 	LOG_DBG("byte mode\n");
 
 	switch (sts) {
-	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE | AST_I2CS_Wait_RX_DMA:
+	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE | AST_I2CS_WAIT_RX_DMA:
 		LOG_DBG("S : Sw|D\n");
 
 		/* first address match is address */
@@ -2102,9 +2134,9 @@ void aspeed_i2c_slave_byte_irq(const struct device *dev, uint32_t i2c_base, uint
 
 	/*pending stop and start address handle*/
 	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE |
-	AST_I2CS_Wait_RX_DMA | AST_I2CS_STOP | AST_I2CS_TX_NAK:
+	AST_I2CS_WAIT_RX_DMA | AST_I2CS_STOP | AST_I2CS_TX_NAK:
 	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE |
-	AST_I2CS_Wait_RX_DMA | AST_I2CS_STOP:
+	AST_I2CS_WAIT_RX_DMA | AST_I2CS_STOP:
 		LOG_DBG("S : Sw|D|P\n");
 
 		if (slave_cb->stop) {
@@ -2127,7 +2159,7 @@ void aspeed_i2c_slave_byte_irq(const struct device *dev, uint32_t i2c_base, uint
 		data->slave_addr_last = byte_data;
 		break;
 
-	case AST_I2CS_RX_DONE | AST_I2CS_Wait_RX_DMA:
+	case AST_I2CS_RX_DONE | AST_I2CS_WAIT_RX_DMA:
 		LOG_DBG("S : D\n");
 		byte_data =
 		AST_I2CC_GET_RX_BUFF(sys_read32(i2c_base + AST_I2CC_STS_AND_BUFF));
@@ -2138,7 +2170,7 @@ void aspeed_i2c_slave_byte_irq(const struct device *dev, uint32_t i2c_base, uint
 			, byte_data);
 		}
 		break;
-	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE | AST_I2CS_Wait_TX_DMA:
+	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE | AST_I2CS_WAIT_TX_DMA:
 		cmd |= AST_I2CS_TX_CMD;
 		LOG_DBG("S : Sr|D\n");
 		byte_data =
@@ -2153,7 +2185,7 @@ void aspeed_i2c_slave_byte_irq(const struct device *dev, uint32_t i2c_base, uint
 		LOG_DBG("tx: [%02x]\n", byte_data);
 		sys_write32(byte_data, i2c_base + AST_I2CC_STS_AND_BUFF);
 		break;
-	case AST_I2CS_TX_ACK | AST_I2CS_Wait_TX_DMA:
+	case AST_I2CS_TX_ACK | AST_I2CS_WAIT_TX_DMA:
 		cmd |= AST_I2CS_TX_CMD;
 		LOG_DBG("S : D\n");
 
@@ -2168,7 +2200,7 @@ void aspeed_i2c_slave_byte_irq(const struct device *dev, uint32_t i2c_base, uint
 	case AST_I2CS_STOP:
 	case AST_I2CS_STOP | AST_I2CS_TX_NAK:
 	case AST_I2CS_SLAVE_MATCH | AST_I2CS_STOP | AST_I2CS_TX_NAK:
-	case AST_I2CS_SLAVE_MATCH | AST_I2CS_Wait_RX_DMA | AST_I2CS_STOP | AST_I2CS_TX_NAK:
+	case AST_I2CS_SLAVE_MATCH | AST_I2CS_WAIT_RX_DMA | AST_I2CS_STOP | AST_I2CS_TX_NAK:
 		LOG_DBG("S : P\n");
 		if (slave_cb->stop) {
 			slave_cb->stop(data->slave_cfg);
@@ -2182,9 +2214,9 @@ void aspeed_i2c_slave_byte_irq(const struct device *dev, uint32_t i2c_base, uint
 			sts &= ~(AST_I2CS_SLAVE_MATCH);
 		}
 
-		if (sts & AST_I2CS_Wait_RX_DMA) {
+		if (sts & AST_I2CS_WAIT_RX_DMA) {
 			/* Don't handle this waiting for current condition*/
-			sts &= ~(AST_I2CS_Wait_RX_DMA);
+			sts &= ~(AST_I2CS_WAIT_RX_DMA);
 		}
 
 		break;
@@ -2345,6 +2377,9 @@ static int i2c_aspeed_slave_register(const struct device *dev,
 	struct i2c_aspeed_config *i2c_config = DEV_CFG(dev);
 	struct i2c_aspeed_data *data = dev->data;
 	uint32_t i2c_base = DEV_BASE(dev);
+	uint64_t DMA_Addr = TO_PHY_ADDR(data->slave_dma_buf);
+	uint32_t DMA_Addr_L = (uint32_t)(DMA_Addr & 0xFFFFFFFF);
+	uint32_t DMA_Addr_H = (uint32_t)(((DMA_Addr >> 32) & 0xFFFFFFFF));
 	uint32_t cmd = AST_I2CS_ACTIVE_ALL | AST_I2CS_PKT_MODE_EN;
 	uint32_t slave_en = (sys_read32(i2c_base + AST_I2CC_FUN_CTRL)
 		& AST_I2CC_SLAVE_EN);
@@ -2366,8 +2401,10 @@ static int i2c_aspeed_slave_register(const struct device *dev,
 	/* trigger rx buffer */
 	if (i2c_config->mode == DMA_MODE) {
 		cmd |= AST_I2CS_RX_DMA_EN;
-		sys_write32(TO_PHY_ADDR(data->slave_dma_buf), i2c_base + AST_I2CS_TX_DMA);
-		sys_write32(TO_PHY_ADDR(data->slave_dma_buf), i2c_base + AST_I2CS_RX_DMA);
+		sys_write32(DMA_Addr_L, i2c_base + AST_I2CS_TX_DMA);
+		sys_write32(DMA_Addr_H, i2c_base + AST_I2CS_TX_DMA_H);
+		sys_write32(DMA_Addr_L, i2c_base + AST_I2CS_RX_DMA);
+		sys_write32(DMA_Addr_H, i2c_base + AST_I2CS_RX_DMA_H);
 		sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE),
 		i2c_base + AST_I2CS_DMA_LEN);
 	} else if (i2c_config->mode == BUFF_MODE) {
