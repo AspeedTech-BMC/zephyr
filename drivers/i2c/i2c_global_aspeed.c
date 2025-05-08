@@ -33,6 +33,7 @@ LOG_MODULE_REGISTER(i2c_global);
 			ISSUE_NAK_EMPTY)
 
 #define AST2600ID 0x05000000
+#define AST2700ID 0x06000000
 
 /* Device config */
 struct i2c_global_config {
@@ -75,12 +76,14 @@ static int i2c_global_init(const struct device *dev)
 	size_t len;
 	uint32_t i2c_global_base = config->base;
 	uint32_t *base = (uint32_t *)ASPEED_I2C_SRAM_BASE;
+	uint32_t chip_id = 0;
 
 	/* check chip id*/
 	len = hwinfo_get_device_id((uint8_t *)&rev_id, sizeof(rev_id));
+	chip_id = ((uint32_t)rev_id & 0xFF000000);
 
 	/* skip i2c common config change when the zephyr is running on co-processer */
-	if (((uint32_t)rev_id & 0xFF000000) != AST2600ID) {
+	if (chip_id != AST2600ID && chip_id != AST2700ID) {
 		/* i2c controller reset / de-reset */
 		reset_line_assert_dt(&config->reset);
 		reset_line_deassert_dt(&config->reset);
