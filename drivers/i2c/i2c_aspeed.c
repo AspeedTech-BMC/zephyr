@@ -259,7 +259,7 @@ LOG_MODULE_REGISTER(i2c_aspeed);
 #define SLAVE_STOP				BIT(0)
 
 #define AST2600ID 0x05000000
-#define AST2700ID 0x07000000
+#define AST2700ID 0x06000000
 
 /* i2c timeout counter: use base clk4 1Mhz
  * 1/(1000/4096) = 4.096ms * 8 = 32.768ms
