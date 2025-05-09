@@ -267,9 +267,6 @@ LOG_MODULE_REGISTER(i2c_aspeed);
 #define STX_DONE				BIT(1)
 #define SLAVE_STOP				BIT(0)
 
-#define AST2600ID 0x05000000
-#define AST2700ID 0x06000000
-
 /* i2c timeout counter: use base clk4 1Mhz
  * 1/(1000/4096) = 4.096ms * 8 = 32.768ms
  */
@@ -415,7 +412,6 @@ static uint32_t i2c_aspeed_ast2700_select_clock(const struct device *dev)
 		sys_write32(MSIC_I2C_SET_TIMEOUT(data->smbus_timeout, data->smbus_timeout),
 		i2c_base + AST_I2CC_FUN_CTRL);
 
-		/* timeout_base set as 1ms */
 		ac_timing |= AST_I2CC_toutBaseCLK(AST2700_I2C_TIMEOUT_CLK);
 	}
 
@@ -739,7 +735,7 @@ static void aspeed_new_i2c_do_start(const struct device *dev)
 	if (msg->flags & I2C_MSG_READ) {
 		cmd |= AST_I2CM_RX_CMD;
 		if (config->mode == DMA_MODE) {
-			uint64_t DMA_Addr = TO_PHY_ADDR(msg->buf);
+			uint64_t DMA_Addr = TO_PHY_ADDR((uintptr_t)msg->buf);
 			uint32_t DMA_Addr_L = (uint32_t)(DMA_Addr & 0xFFFFFFFF);
 			uint32_t DMA_Addr_H = (uint32_t)(((DMA_Addr >> 32) & 0xFFFFFFFF));
 
@@ -794,7 +790,7 @@ static void aspeed_new_i2c_do_start(const struct device *dev)
 		}
 	} else {
 		if (config->mode == DMA_MODE) {
-			uint64_t DMA_Addr = TO_PHY_ADDR(msg->buf);
+			uint64_t DMA_Addr = TO_PHY_ADDR((uintptr_t)msg->buf);
 			uint32_t DMA_Addr_L = (uint32_t)(DMA_Addr & 0xFFFFFFFF);
 			uint32_t DMA_Addr_H = (uint32_t)(((DMA_Addr >> 32) & 0xFFFFFFFF));
 
@@ -923,8 +919,10 @@ static int i2c_aspeed_transfer(const struct device *dev, struct i2c_msg *msgs,
 #ifdef CONFIG_I2C_TARGET
 			if (ctrl & AST_I2CC_SLAVE_EN) {
 				if (config->mode == DMA_MODE) {
-					uint64_t DMA_Addr = TO_PHY_ADDR(data->slave_dma_buf);
-					uint32_t DMA_Addr_L = (uint32_t)(DMA_Addr & 0xFFFFFFFF);
+					uint64_t DMA_Addr =
+					TO_PHY_ADDR((uintptr_t)data->slave_dma_buf);
+					uint32_t DMA_Addr_L =
+					(uint32_t)(DMA_Addr & 0xFFFFFFFF);
 					uint32_t DMA_Addr_H =
 					(uint32_t)(((DMA_Addr >> 32) & 0xFFFFFFFF));
 
@@ -1015,7 +1013,7 @@ void do_i2cm_tx(const struct device *dev)
 		/*do next tx*/
 		cmd |= AST_I2CM_TX_CMD;
 		if (config->mode == DMA_MODE) {
-			uint64_t DMA_Addr = TO_PHY_ADDR(data->msgs->buf);
+			uint64_t DMA_Addr = TO_PHY_ADDR((uintptr_t)data->msgs->buf);
 			uint32_t DMA_Addr_L = (uint32_t)(DMA_Addr & 0xFFFFFFFF);
 			uint32_t DMA_Addr_H = (uint32_t)(((DMA_Addr >> 32) & 0xFFFFFFFF));
 
@@ -1129,7 +1127,7 @@ void do_i2cm_rx(const struct device *dev)
 		/*next rx*/
 		cmd |= AST_I2CM_RX_CMD;
 		if (config->mode == DMA_MODE) {
-			uint64_t DMA_Addr = TO_PHY_ADDR(msg->buf);
+			uint64_t DMA_Addr = TO_PHY_ADDR((uintptr_t)msg->buf);
 			uint32_t DMA_Addr_L = (uint32_t)(DMA_Addr & 0xFFFFFFFF);
 			uint32_t DMA_Addr_H = (uint32_t)(((DMA_Addr >> 32) & 0xFFFFFFFF));
 
@@ -1379,6 +1377,8 @@ void ast2700_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, u
 	switch (sts) {
 	case AST_I2CS_SADDR_PENDING | AST_I2CS_WAIT_RX_DMA |
 		AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE | AST_I2CS_STOP:
+	case AST_I2CS_SADDR_PENDING | AST_I2CS_WAIT_RX_DMA |
+		AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE:
 		sys_write32(AST_I2CS_SLAVE_MATCH, i2c_base + AST_I2CS_ISR);
 		isr = sys_read32(i2c_base + AST_I2CS_ISR);
 		sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG);
@@ -1400,8 +1400,10 @@ void ast2700_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, u
 				, data->slave_dma_buf[i]);
 			}
 		}
-		if (slave_cb->stop) {
-			slave_cb->stop(data->slave_cfg);
+		if (sts & AST_I2CS_STOP) {
+			if (slave_cb->stop) {
+				slave_cb->stop(data->slave_cfg);
+			}
 		}
 		sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG);
 		if (slave_cb->write_requested) {
@@ -2324,8 +2326,6 @@ static int i2c_aspeed_init(const struct device *dev)
 	uint32_t i2c_base_offset = I2C_BUF_BASE + (i2c_count * 0x20);
 	uint32_t bitrate_cfg;
 	int error;
-	uint64_t rev_id;
-	size_t len;
 
 	k_sem_init(&data->sync_sem, 0, UINT_MAX);
 
@@ -2343,20 +2343,19 @@ static int i2c_aspeed_init(const struct device *dev)
 	/* byte mode check re-start */
 	data->slave_addr_last = 0xFF;
 
-	/* check chip id*/
-	len = hwinfo_get_device_id((uint8_t *)&rev_id, sizeof(rev_id));
 	clock_control_get_rate(config->clock_dev, config->clk_id, &config->clk_src);
 	LOG_INF("clk src %d, multi-master %d, xfer mode %d",
 		config->clk_src, config->multi_master, config->mode);
 
-	/* check the AST2700 */
-	if (((uint32_t)rev_id & 0xFF000000) == AST2700ID) {
-		data->version = AST2700;
+#if defined(CONFIG_SOC_AST2700_SSP)
+	data->version = AST2700;
 
-		/* AST2700 just support DMA mode */
-		if (config->mode != DMA_MODE)
-			return -EINVAL;
-	}
+	/* AST2700 just support DMA mode */
+	if (config->mode != DMA_MODE)
+		return -EINVAL;
+#else
+	data->version = AST2600;
+#endif
 
 	bitrate_cfg = i2c_map_dt_bitrate(config->bitrate);
 	error = pinctrl_apply_state(config->pcfg, PINCTRL_STATE_DEFAULT);
@@ -2377,7 +2376,7 @@ static int i2c_aspeed_slave_register(const struct device *dev,
 	struct i2c_aspeed_config *i2c_config = DEV_CFG(dev);
 	struct i2c_aspeed_data *data = dev->data;
 	uint32_t i2c_base = DEV_BASE(dev);
-	uint64_t DMA_Addr = TO_PHY_ADDR(data->slave_dma_buf);
+	uint64_t DMA_Addr = TO_PHY_ADDR((uintptr_t)data->slave_dma_buf);
 	uint32_t DMA_Addr_L = (uint32_t)(DMA_Addr & 0xFFFFFFFF);
 	uint32_t DMA_Addr_H = (uint32_t)(((DMA_Addr >> 32) & 0xFFFFFFFF));
 	uint32_t cmd = AST_I2CS_ACTIVE_ALL | AST_I2CS_PKT_MODE_EN;
@@ -2394,7 +2393,7 @@ static int i2c_aspeed_slave_register(const struct device *dev,
 	LOG_DBG(" [%x]\n", config->address);
 
 	/* set slave addr */
-	sys_write32(config->address |
+	sys_write32(config->address | AST_I2CS_ADDR1_ENABLE |
 		    (sys_read32(i2c_base + AST_I2CS_ADDR_CTRL) & ~AST_I2CS_ADDR1_MASK),
 		    i2c_base + AST_I2CS_ADDR_CTRL);
 
@@ -2415,12 +2414,12 @@ static int i2c_aspeed_slave_register(const struct device *dev,
 		cmd &= ~AST_I2CS_PKT_MODE_EN;
 	}
 
-	/* apply slave device setting */
-	sys_write32(cmd, i2c_base + AST_I2CS_CMD_STS);
-
 	/* enable slave device */
 	sys_write32(AST_I2CC_SLAVE_EN | sys_read32(i2c_base + AST_I2CC_FUN_CTRL)
 	, i2c_base + AST_I2CC_FUN_CTRL);
+
+	/* apply slave device setting */
+	sys_write32(cmd, i2c_base + AST_I2CS_CMD_STS);
 
 	data->slave_attached = true;
 
