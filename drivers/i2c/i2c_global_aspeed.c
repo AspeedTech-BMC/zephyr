@@ -72,15 +72,22 @@ struct i2c_global_config {
 static int i2c_global_init(const struct device *dev)
 {
 	struct i2c_global_config *config = DEV_CFG(dev);
-	uint64_t rev_id = 0x0;
-	size_t len;
 	uint32_t i2c_global_base = config->base;
 	uint32_t *base = (uint32_t *)ASPEED_I2C_SRAM_BASE;
 	uint32_t chip_id = 0;
 
+#if defined(CONFIG_SOC_AST2700_SSP)
+	chip_id = AST2700ID;
+	/* set i2c global setting */
+	sys_write32(I2CG_SET, i2c_global_base + ASPEED_I2CG_CONTROL);
+#else
+	uint64_t rev_id = 0x0;
+	size_t len;
+
 	/* check chip id*/
 	len = hwinfo_get_device_id((uint8_t *)&rev_id, sizeof(rev_id));
 	chip_id = ((uint32_t)rev_id & 0xFF000000);
+#endif
 
 	/* skip i2c common config change when the zephyr is running on co-processer */
 	if (chip_id != AST2600ID && chip_id != AST2700ID) {
