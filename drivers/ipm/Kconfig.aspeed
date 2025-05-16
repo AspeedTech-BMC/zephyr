@@ -21,3 +21,10 @@ config IPM_BOOTMCU
 	depends on SOC_AST2700_BOOTMCU
 	help
 	  This option enables the IPC driver for ASPEED SoCs.
+
+config IPM_ASPEED_SHELL
+	bool "ASPEED AST2700 IPM Shell"
+	default y
+	depends on SHELL && (DT_HAS_ASPEED_AST2700_IPC_ENABLED || DT_HAS_ASPEED_AST2700_IPC_V2_ENABLED)
+	help
+	  Enable IPM Shell for ASPEED MCU IPM Usage.
