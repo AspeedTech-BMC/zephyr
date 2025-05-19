@@ -188,6 +188,94 @@ static int cmd_ipm_send(const struct shell *shell,
 	return 0;
 }
 
+/*
+ * IPM write share memory
+ */
+static int cmd_ipm_write_shm(const struct shell *shell,
+			size_t argc, char **argv)
+{
+	const struct device *ipmdev = NULL;
+	int channel = 0, offset = 0, size = 0;
+	int src = 0, dst = 0;
+
+	ipmdev = device_get_binding(argv[1]);
+	if (!ipmdev) {
+		shell_error(shell, "IPM: Device %s not found.",
+			    argv[1]);
+		return -ENODEV;
+	}
+
+	channel = strtol(argv[2], NULL, 16);
+	if (channel > 2) {
+		shell_error(shell, "IPM: Channel %d not found.",
+				channel);
+		return -EINVAL;
+	}
+
+	if (channel == 0) {
+		src = IPC_CHANNEL_0_SSP_OUT_ADDR;
+	} else {
+		src = IPC_CHANNEL_1_SSP_OUT_ADDR;
+	}
+
+	offset = strtol(argv[3], NULL, 16);
+	dst = strtol(argv[4], NULL, 16);
+	size = strtol(argv[5], NULL, 16);
+
+	if (offset + size > IPC_SHARE_MEM_SRAM_SIZE) {
+		shell_error(shell, "IPM: Write position and size over limit");
+		return -EINVAL;
+	}
+
+	memcpy((void *)(dst + offset), (void *)src, size);
+
+	return 0;
+}
+
+/*
+ * IPM read share memory
+ */
+static int cmd_ipm_read_shm(const struct shell *shell,
+			size_t argc, char **argv)
+{
+	const struct device *ipmdev = NULL;
+	int channel = 0, offset = 0, size = 0;
+	int src = 0, dst = 0;
+
+	ipmdev = device_get_binding(argv[1]);
+	if (!ipmdev) {
+		shell_error(shell, "IPM: Device %s not found.",
+			    argv[1]);
+		return -ENODEV;
+	}
+
+	channel = strtol(argv[2], NULL, 16);
+	if (channel > 2) {
+		shell_error(shell, "IPM: Channel %d not found.",
+				channel);
+		return -EINVAL;
+	}
+
+	if (channel == 0) {
+		dst = IPC_CHANNEL_0_SSP_IN_ADDR;
+	} else {
+		dst = IPC_CHANNEL_1_SSP_IN_ADDR;
+	}
+
+	offset = strtol(argv[3], NULL, 16);
+	src = strtol(argv[4], NULL, 16);
+	size = strtol(argv[5], NULL, 16);
+
+	if (offset + size > IPC_SHARE_MEM_SRAM_SIZE) {
+		shell_error(shell, "IPM: Read position and size over limit");
+		return -EINVAL;
+	}
+
+	memcpy((void *)(dst + offset), (void *)src, size);
+
+	return 0;
+}
+
 static void device_name_get(size_t idx, struct shell_static_entry *entry)
 {
 	const struct device *dev = shell_device_lookup(idx, NULL);
@@ -202,13 +290,17 @@ SHELL_DYNAMIC_CMD_CREATE(dsub_device_name, device_name_get);
 
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_ipm_cmds,
 			       SHELL_CMD(enable, &dsub_device_name,
-					 "Enable / Disable IPM function", cmd_ipm_enable),
+					"Enable / Disable IPM function", cmd_ipm_enable),
 			       SHELL_CMD(attach, &dsub_device_name,
-					 "Attach IPM callback function", cmd_ipm_attach),
+					"Attach IPM callback function", cmd_ipm_attach),
 			       SHELL_CMD(detach, &dsub_device_name,
-					 "Detach IPM callback function", cmd_ipm_detach),
+					"Detach IPM callback function", cmd_ipm_detach),
 			       SHELL_CMD(send, &dsub_device_name,
-					 "Send IPM command", cmd_ipm_send),
+					"Send IPM command", cmd_ipm_send),
+			       SHELL_CMD(write_shm, &dsub_device_name,
+					"Write IPM share memory", cmd_ipm_write_shm),
+			       SHELL_CMD(read_shm, &dsub_device_name,
+					"Read IPM share memory", cmd_ipm_read_shm),
 			       SHELL_SUBCMD_SET_END     /* Array terminated. */
 			       );
 
