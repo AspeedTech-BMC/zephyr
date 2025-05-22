@@ -1034,7 +1034,7 @@ void aspeed_decode_range_pre_init(const struct aspeed_spi_config *config,
 		LOG_DBG("cs: %d 0x%08x\n", cs,
 			sys_read32(config->ctrl_base + SPI30_CE0_ADDR_DEC + cs * 4));
 
-		data->decode_addr[cs].start = start_addr;
+		data->decode_addr[cs].start = start_addr + config->spi_mmap_base;
 		data->decode_addr[cs].len = unit_sz;
 		pre_end_addr = end_addr + 1;
 	}
