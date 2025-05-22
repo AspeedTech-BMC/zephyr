@@ -51,7 +51,12 @@ __pinned_bss atomic_t _cpus_active;
 #endif
 
 /* init/main and idle threads */
+#if DT_NODE_HAS_STATUS(DT_CHOSEN(zephyr_custom_stack), okay)
+Z_KERNEL_STACK_DEFINE_IN(z_main_stack, CONFIG_MAIN_STACK_SIZE, Z_GENERIC_SECTION(CUSTOM_STACK));
+#else
 K_THREAD_PINNED_STACK_DEFINE(z_main_stack, CONFIG_MAIN_STACK_SIZE);
+#endif
+
 struct k_thread z_main_thread;
 
 #ifdef CONFIG_MULTITHREADING
