@@ -6,6 +6,7 @@
 
 #define DT_DRV_COMPAT aspeed_spi_controller
 
+#include <soc.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/clock_control.h>
 #include <zephyr/drivers/flash.h>
@@ -905,7 +906,7 @@ static int aspeed_spi_decode_range_reinit(const struct device *dev,
 
 		sys_write32(data->segment_value(start_addr, end_addr),
 			    config->ctrl_base + SPI30_CE0_ADDR_DEC + cs * 4);
-		data->decode_addr[cs].start = start_addr;
+		data->decode_addr[cs].start = start_addr + config->spi_mmap_base;
 		if (cs == ctx->config->slave)
 			data->decode_addr[cs].len = flash_sz;
 
