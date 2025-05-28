@@ -37,7 +37,6 @@ struct ipm_ast2700_config {
 };
 
 struct ipm_ast2700_data {
-	ipm_callback_t g_callback;
 	void *g_user_data;
 	ipm_callback_t callback[IPC_NUM_OF_ID];
 	void *user_data[IPC_NUM_OF_ID];
@@ -56,9 +55,6 @@ static void ipm_ast2700_isr(const void *dev)
 		msg_base = base + IPCR_DATA0 + IPC_MAX_MSG_SIZE * i;
 		if ((status & BIT(i)) && data->callback[i]) {
 			data->callback[i](dev, data->user_data[i], i, (volatile void *)msg_base);
-		}
-		if (data->g_callback) {
-			data->g_callback(dev, data->g_user_data, i, (volatile void *)msg_base);
 		}
 		sys_write32(BIT(i), base + IPCR_STATUS);
 	}
@@ -116,15 +112,6 @@ static void ipm_ast2700_register_id_callback(const struct device *dev, uint32_t 
 	data->user_data[id] = user_data;
 }
 
-static void ipm_ast2700_register_callback(const struct device *dev,
-					     ipm_callback_t cb, void *user_data)
-{
-	struct ipm_ast2700_data *data = dev->data;
-
-	data->g_callback = cb;
-	data->g_user_data = user_data;
-}
-
 static int ipm_ast2700_max_data_size_get(const struct device *dev)
 {
 	return IPC_MAX_MSG_SIZE;
@@ -168,7 +155,6 @@ static int ipm_ast2700_init(const struct device *dev)
 
 static const struct ipm_driver_api ipm_ast2700_driver_api = {
 	.send = ipm_ast2700_send,
-	.register_callback = ipm_ast2700_register_callback,
 	.register_id_callback = ipm_ast2700_register_id_callback,
 	.max_data_size_get = ipm_ast2700_max_data_size_get,
 	.max_id_val_get = ipm_ast2700_max_id_val_get,
