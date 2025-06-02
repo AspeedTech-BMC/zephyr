@@ -17,7 +17,7 @@
 		zephyr,flash = &dram_ro_region;
 		zephyr,sram = &sram;
 		zephyr,entropy = &rng;
-		zephyr,custom-stack = &tck;
+		zephyr,custom-stack = &tcm;
 	};
 
 	dram_rw_region: memory@20000 {
@@ -38,7 +38,7 @@
 		reg = <0x70000000 DT_SIZE_K(128)>;  // 128KB
 	};
 
-	tck: memory@1fffe000 {
+	tcm: memory@1fffe000 {
 		compatible = "zephyr,memory-region";
 		reg = <0x1fffe000 0x00002000>;  // 8KB
 		zephyr,memory-region = "CUSTOM_STACK";
