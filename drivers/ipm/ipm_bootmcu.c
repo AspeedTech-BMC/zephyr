@@ -75,7 +75,7 @@ static void ipc_thread(const void *dev)
 			sys_write32(BIT(i), base + IPCR_STATUS);
 		}
 
-		ret = k_msleep(100);
+		ret = k_msleep(1);
 	}
 }
 
