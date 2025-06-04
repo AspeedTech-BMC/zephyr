@@ -14,6 +14,12 @@ if(CONFIG_ARM)
   zephyr_include_directories(${ZEPHYR_BASE}/soc/arm/common/cortex_m)
   zephyr_linker_sources(ROM_START SORT_KEY 0x1sboot sboot.ld)
   set(SOC_LINKER_SCRIPT ${ZEPHYR_BASE}/include/zephyr/arch/arm/cortex_m/scripts/linker.ld CACHE INTERNAL "")
+  # The vector table must be placed at the start of SRAM
+  zephyr_linker_sources_ifdef(CONFIG_SRAM_VECTOR_TABLE
+  RAM_SECTIONS
+  SORT_KEY 0
+  sram_vector_table.ld
+  )
 endif()
 
 if(CONFIG_RISCV)

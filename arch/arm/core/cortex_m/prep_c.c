@@ -41,10 +41,20 @@ void *_vector_table_pointer;
 
 #ifdef CONFIG_CPU_CORTEX_M_HAS_VTOR
 
+#if defined(CONFIG_SRAM_VECTOR_TABLE)
+#define VECTOR_ADDRESS ((uintptr_t)_ram_vector_start)
+extern char _ram_vector_start[];
+#else
 #define VECTOR_ADDRESS ((uintptr_t)_vector_start)
+#endif
 
 static inline void relocate_vector_table(void)
 {
+#if defined(CONFIG_SRAM_VECTOR_TABLE)
+	size_t vector_size = (size_t)_vector_end - (size_t)_vector_start;
+
+	memcpy(_ram_vector_start, _vector_start, vector_size);
+#endif
 	SCB->VTOR = VECTOR_ADDRESS & SCB_VTOR_TBLOFF_Msk;
 	barrier_dsync_fence_full();
 	barrier_isync_fence_full();
