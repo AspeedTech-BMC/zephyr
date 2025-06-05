@@ -125,6 +125,9 @@ config NUM_IRQS
 config PINCTRL
 	default y
 
+config SRAM_VECTOR_TABLE
+	default y
+
 endif # SOC_AST2700_TSP
 
 endif # SOC_AST2700_TSP || SOC_AST2700_A0_TSP
