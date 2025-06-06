@@ -80,6 +80,9 @@ uint64_t ast27xx_soc_virt_addr_to_phy_addr(uintptr_t addr)
 	uintptr_t limit = base + sys_read32(SCU0_REG + 0x154);
 	uint64_t phy_dram_base;
 
+	if (addr >= 0x70000000 && addr < 0x70020000)
+		return addr;
+
 	/* addr is in MBUS remap region */
 	if (addr >= base && addr < limit) {
 		phy_dram_base = (uint64_t)sys_read32(SCU0_REG + 0x128) << 4;
