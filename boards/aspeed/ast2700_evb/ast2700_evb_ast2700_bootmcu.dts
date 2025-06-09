@@ -72,3 +72,7 @@
 &cptra_misc {
 	status = "okay";
 };
+
+&otp {
+	status = "okay";
+};

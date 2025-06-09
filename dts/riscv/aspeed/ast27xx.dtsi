@@ -138,6 +138,12 @@
 			reg = <0x14c020f0 0x8>;
 		};
 
+		otp: otp@14c07000 {
+			compatible = "aspeed,ast27xx-otp";
+			reg = <0x14c07000 0x1000>;
+			status = "disabled";
+		};
+
 		uart12: serial@14c33b00 {
 			compatible = "ns16550";
 			reg = <0x14c33b00 0x100>;
