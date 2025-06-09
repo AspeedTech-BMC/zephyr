@@ -65,6 +65,12 @@ config SHELL_CMDS_OTP
 	help
 	  This option enables the OTP shell commands.
 
+config OTP_AST27XX
+	bool "ASPEED AST27XX OTP"
+	depends on SOC_FAMILY_ASPEED
+	help
+	  This option enables the OTP Utility for ASPEED AST27XX SoCs Series.
+
 config CPTRA_UPDATE
 	bool "ASPEED CPTRA Update driver"
 	depends on SOC_AST2700_BOOTMCU

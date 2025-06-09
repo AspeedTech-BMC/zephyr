@@ -42,8 +42,14 @@ __subsystem struct otp_driver_api {
 	/* Read OTP memory */
 	int (*otp_read)(const struct device *dev, uint32_t otp_addr, uint32_t *data);
 
+	/* Read multiple OTP memory */
+	int (*otp_read_multi)(const struct device *dev, uint32_t otp_addr, void *data, int size);
+
 	/* Program OTP memory by bit */
 	int (*otp_program)(const struct device *dev, uint32_t otp_addr, uint32_t prog_bit);
+
+	/* Program multiple OTP memory */
+	int (*otp_program_multi)(const struct device *dev, uint32_t otp_addr, void *data, int size);
 };
 
 /**
@@ -207,6 +213,46 @@ static inline int otp_program(const struct device *dev, uint32_t otp_addr,
 	api = (struct otp_driver_api *)dev->api;
 
 	return api->otp_program(dev, otp_addr, prog_bit);
+}
+
+/**
+ * @brief Perform otp read multi
+ *
+ * @param  dev           Pointer to the device structure for the driver instance.
+ * @param  otp_addr      Address of OTP memory.
+ * @param  data          Pointer to the contents of corresponding OTP memory.
+ * @param  size          Size of data to be read.
+ *
+ * @return 0 on success, negative errno code on fail.
+ */
+static inline int otp_read_multi(const struct device *dev, uint32_t otp_addr,
+				 void *data, int size)
+{
+	struct otp_driver_api *api;
+
+	api = (struct otp_driver_api *)dev->api;
+
+	return api->otp_read_multi(dev, otp_addr, data, size);
+}
+
+/**
+ * @brief Perform otp program multi
+ *
+ * @param  dev           Pointer to the device structure for the driver instance.
+ * @param  otp_addr      Address of OTP memory.
+ * @param  data          Pointer to the contents of corresponding OTP memory.
+ * @param  size          Size of data to be programmed.
+ *
+ * @return 0 on success, negative errno code on fail.
+ */
+static inline int otp_program_multi(const struct device *dev, uint32_t otp_addr,
+				    void *data, int size)
+{
+	struct otp_driver_api *api;
+
+	api = (struct otp_driver_api *)dev->api;
+
+	return api->otp_program_multi(dev, otp_addr, data, size);
 }
 
 #endif /* ZEPHYR_INCLUDE_DRIVERS_MISC_ASPEED_OTP_H_ */

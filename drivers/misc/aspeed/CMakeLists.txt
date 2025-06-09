@@ -21,5 +21,7 @@ zephyr_library_sources_ifdef(CONFIG_CPTRA_MISC		        cptra_misc.c)
 zephyr_library_sources_ifdef(CONFIG_CPTRA_IPC		        cptra_ipc.c)
 zephyr_library_sources_ifdef(CONFIG_CPTRA_IPC_SSP	        cptra_ipc_ssp.c)
 zephyr_library_sources_ifdef(CONFIG_PRIVILEGE_CTRL		prictrl_aspeed.c)
+zephyr_library_sources_ifdef(CONFIG_OTP_AST27XX			otp_ast2700.c)
+zephyr_library_sources_ifdef(CONFIG_OTP_AST27XX			lib_otp_ast2700.c)
 
 zephyr_library_link_libraries_ifdef(CONFIG_MBEDTLS mbedTLS)
