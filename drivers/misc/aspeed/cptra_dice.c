@@ -322,7 +322,7 @@ static int aspeed_cptra_get_idev_cert(const struct device *dev,
 		;
 
 	LOG_INF("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
-	LOG_INF("tbs_size: 0x%x", output->cert_size);
+	LOG_INF("cert_size: 0x%x", output->cert_size);
 	LOG_HEXDUMP_INF(output->cert, output->cert_size, "IDEVID CERT:");
 
 	state->in_use = false;
