@@ -81,6 +81,9 @@ int cptra_mbox_trigger(uint32_t cmd, uint32_t dlen, uint32_t csum,
 		for (int i = 0; i < (dlen / sizeof(uint32_t)); i++)
 			*p32++ = sys_read32(cptra_mbox_base + CPTRA_MBOX_DATAOUT);
 
+		if (dlen % sizeof(uint32_t))
+			*p32 = sys_read32(cptra_mbox_base + CPTRA_MBOX_DATAOUT);
+
 		rc = 0;
 	} else {
 		cptra_mbox_dump();
