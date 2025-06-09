@@ -58,10 +58,12 @@
 
 &ipc0_s_ca35 {
 	status = "okay";
+	shmem_ch0 = <0x70000000 0x5080000 0x1000 0x200000>;
 };
 
 &ipc0_ns_ca35 {
 	status = "okay";
+	shmem_ch0 = <0x70001000 0x5480000 0x1000 0x200000>;
 };
 
 &ipc0_tsp {
@@ -70,6 +72,8 @@
 
 &ipc1_bootmcu {
 	status = "okay";
+	shmem_ch0 = <0x70002000 0x70003000 0x1000 0x1000>;
+	shmem_ch1 = <0x70004000 0x70005000 0x1000 0x1000>;
 };
 
 &intc0_11 {
