@@ -359,9 +359,9 @@ struct cptra_disable_attestation_oa {
 };
 
 struct cptra_get_idev_cert_ia {
+	uint32_t tbs_size;
 	uint8_t signature_r[48];
 	uint8_t signature_s[48];
-	uint32_t tbs_size;
 	uint8_t tbs[916];
 };
 
