@@ -14,6 +14,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/drivers/ipm.h>
+#include <zephyr/drivers/ipm_ast.h>
 LOG_MODULE_REGISTER(ipm_shell, CONFIG_LOG_DEFAULT_LEVEL);
 
 #define IPC_NUM_OF_ID	4
@@ -188,6 +189,26 @@ static int cmd_ipm_send(const struct shell *shell,
 	return 0;
 }
 
+static int cmd_ipm_list(const struct shell *shell,
+			size_t argc, char **argv)
+{
+	const struct device *ipmdev = NULL;
+
+	ipmdev = device_get_binding(argv[1]);
+	if (!ipmdev) {
+		shell_error(shell, "IPM: Device %s not found.",
+			    argv[1]);
+		return -ENODEV;
+	}
+
+	shell_info(shell, "\nmailbox name: %s\n", argv[1]);
+
+	/* show share memory information */
+	ast_ipm_list(ipmdev);
+
+	return 0;
+}
+
 /*
  * IPM write share memory
  */
@@ -297,6 +318,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_ipm_cmds,
 					"Detach IPM callback function", cmd_ipm_detach),
 			       SHELL_CMD(send, &dsub_device_name,
 					"Send IPM command", cmd_ipm_send),
+			       SHELL_CMD(list, &dsub_device_name,
+					"List IPM info", cmd_ipm_list),
 			       SHELL_CMD(write_shm, &dsub_device_name,
 					"Write IPM share memory", cmd_ipm_write_shm),
 			       SHELL_CMD(read_shm, &dsub_device_name,

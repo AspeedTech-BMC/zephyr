@@ -6,6 +6,7 @@
 #define DT_DRV_COMPAT aspeed_ast2700_ipc
 
 #include <zephyr/drivers/ipm.h>
+#include <zephyr/drivers/ipm_ast.h>
 #include <zephyr/sys/util.h>
 #include <zephyr/device.h>
 #include <zephyr/kernel.h>
@@ -36,11 +37,39 @@ struct ipm_ast2700_config {
 	uintptr_t reg_rx_offset;
 };
 
-struct ipm_ast2700_data {
-	void *g_user_data;
-	ipm_callback_t callback[IPC_NUM_OF_ID];
-	void *user_data[IPC_NUM_OF_ID];
+struct ipm_ast2700_shmem {
+	uintptr_t shmem_tx_base;
+	uintptr_t shmem_rx_base;
+	unsigned int shmem_tx_size;
+	unsigned int shmem_rx_size;
 };
+
+struct ipm_ast2700_data {
+	void *user_data[IPC_NUM_OF_ID];
+	ipm_callback_t callback[IPC_NUM_OF_ID];
+	struct ipm_ast2700_shmem shmem_info[IPC_NUM_OF_ID]; /* share memory info */
+};
+
+/* list  */
+void ast_ipm_list(const struct device *dev)
+{
+	const struct ipm_ast2700_data *data = ((const struct device *)dev)->data;
+
+	for (int i = 0 ; i < IPC_NUM_OF_ID; i++) {
+		if (data->shmem_info[i].shmem_tx_base) {
+			printf("Ch[%d] TX-SHMEM : 0x%08lx\n",
+			i, data->shmem_info[i].shmem_tx_base);
+			printf("Ch[%d] TX-MSIZE : 0x%08x\n\n",
+			i, data->shmem_info[i].shmem_tx_size);
+		}
+		if (data->shmem_info[i].shmem_rx_base) {
+			printf("Ch[%d] RX-SHMEM : 0x%08lx\n",
+			i, data->shmem_info[i].shmem_rx_base);
+			printf("Ch[%d] RX-MSIZE : 0x%08x\n\n",
+			i, data->shmem_info[i].shmem_rx_size);
+		}
+	}
+}
 
 static void ipm_ast2700_isr(const void *dev)
 {
@@ -169,7 +198,12 @@ static const struct ipm_driver_api ipm_ast2700_driver_api = {
 		.reg_tx_offset = DT_INST_PROP(n, reg_tx_offset),                                   \
 		.reg_rx_offset = DT_INST_PROP(n, reg_rx_offset),                                   \
 	};                                                                                         \
-	static struct ipm_ast2700_data ipm_ast2700_data_##n;                                       \
+	struct ipm_ast2700_data ipm_ast2700_data_##n = {                       \
+		.shmem_info[0] = DT_PROP_OR(DT_DRV_INST(n), shmem_ch0, {0}),  \
+		.shmem_info[1] = DT_PROP_OR(DT_DRV_INST(n), shmem_ch1, {0}),  \
+		.shmem_info[2] = DT_PROP_OR(DT_DRV_INST(n), shmem_ch2, {0}),  \
+		.shmem_info[3] = DT_PROP_OR(DT_DRV_INST(n), shmem_ch3, {0}),  \
+	};                                                                     \
 	DEVICE_DT_INST_DEFINE(n, &ipm_ast2700_config_func_##n, NULL, &ipm_ast2700_data_##n,        \
 			      &ipm_ast2700_config_##n, POST_KERNEL,                                \
 			      CONFIG_KERNEL_INIT_PRIORITY_DEVICE, &ipm_ast2700_driver_api);        \
