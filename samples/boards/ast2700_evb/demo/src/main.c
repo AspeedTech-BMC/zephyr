@@ -16,6 +16,7 @@
 #if defined(CONFIG_CPTRA_SAMPLE)
 #include "cptra_sample.h"
 #endif
+#include "cptra_idevid.h"
 
 int aspeed_load_image(void);
 
@@ -43,6 +44,11 @@ int main(void)
 
 #if defined(CONFIG_AST2700_IROT_LOAD_IMAGE)
 	aspeed_load_image();
+#endif
+
+#if defined(CONFIG_SOC_AST2700_BOOTMCU)
+	/* Populate IDEVID Certificate */
+	cptra_populate_idevid();
 #endif
 
 	return rc;
