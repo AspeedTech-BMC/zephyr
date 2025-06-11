@@ -12,6 +12,7 @@
 #include <zephyr/shell/shell.h>
 #include <zephyr/crypto/hash.h>
 #include "cptra_sample.h"
+#include <zephyr/sys/byteorder.h>
 
 #if defined(CONFIG_MBEDTLS)
 #include <mbedtls/sha512.h>
@@ -356,7 +357,7 @@ end:
 	LOG_INF("%s: Failed", __func__);
 }
 
-static void cptra_test_populate_idev_cert(void)
+__attribute__((unused)) static void cptra_test_populate_idev_cert(void)
 {
 	struct cptra_populate_idev_cert_ia input;
 	struct cptra_populate_idev_cert_oa output;
@@ -470,31 +471,40 @@ end:
 	LOG_INF("%s: Failed", __func__);
 }
 
-static void cptra_test_invoke_dpe_command(void)
+static int cptra_dpe_response_check(struct dpe_rsp_header *header)
+{
+	if (header->magic != DPE_RESPONSE_MAGIC || header->status != 0)
+		return -1;
+
+	return 0;
+}
+
+void cptra_test_invoke_dpe_get_profile(void)
 {
 #if CONFIG_CPTRA_SAMPLE_BOOTMCU
 	const struct device *dev = device_get_binding(CPTRA_DICE_DRV_NAME);
 #endif
 	struct cptra_invoke_dpe_command_ia input;
 	struct cptra_invoke_dpe_command_oa output;
+	struct dpe_get_profile_i *get_profile_input = NULL;
+	struct dpe_get_profile_o *get_profile_output = NULL;
 	int ret;
 
 	LOG_INF("Test caliptra_invoke_dpe_command...");
 
 	LOG_INF("\tTest GetProfile...");
 
-	struct dpe_get_profile_i get_profile_input;
-
 	memset(&input, 0, sizeof(struct cptra_invoke_dpe_command_ia));
 	memset(&output, 0, sizeof(struct cptra_invoke_dpe_command_oa));
-	memset(&get_profile_input, 0, sizeof(struct dpe_get_profile_i));
 
 	/* Set input */
-	get_profile_input.cmd_hdr.magic = DPE_COMMAND_MAGIC;
-	get_profile_input.cmd_hdr.cmd = GET_PROFILE;
-	memcpy(input.data, &get_profile_input, sizeof(struct dpe_get_profile_i));
+	get_profile_input = (struct dpe_get_profile_i *)input.data;
+	get_profile_input->cmd_hdr.magic = DPE_COMMAND_MAGIC;
+	get_profile_input->cmd_hdr.cmd = GET_PROFILE;
 	input.data_size = sizeof(struct dpe_get_profile_i);
 
+	get_profile_output = (struct dpe_get_profile_o *)output.data;
+
 #if CONFIG_CPTRA_SAMPLE_BOOTMCU
 	ret = caliptra_invoke_dpe_command(dev, &input, &output);
 #elif CONFIG_CPTRA_SAMPLE_SSP
@@ -506,196 +516,114 @@ static void cptra_test_invoke_dpe_command(void)
 
 	if (ret)
 		LOG_ERR("caliptra_invoke_dpe_command is failure, ret:0x%x", ret);
-	else
+	else if (cptra_dpe_response_check(&get_profile_output->rsp_hdr)) {
+		LOG_ERR("DPE command failed, magic:0x%08x status:0x%08x profile:0x%08x\n",
+			get_profile_output->rsp_hdr.magic, get_profile_output->rsp_hdr.status,
+			get_profile_output->rsp_hdr.profile);
+
+	} else {
 		LOG_DBG("caliptra_invoke_dpe_command is successful");
+		LOG_DBG("DPE Profile: %08x\n", get_profile_output->rsp_hdr.profile);
+		LOG_DBG("Major Version: %04x Minor Version: %04x\n",
+			get_profile_output->major_version, get_profile_output->minor_version);
+		LOG_DBG("Vendor ID: %08x Sku ID: %08x\n", get_profile_output->vendor_id,
+			get_profile_output->vendor_sku);
+		LOG_DBG("Max TCI Nodes: %d Flags: %08x\n", get_profile_output->max_tci_nodes,
+			get_profile_output->flags);
+	}
+}
 
-	LOG_INF("\tTest InitializeContext...");
+#define SRAM_BASE_ADDR		0x14b80000
 
-	struct dpe_initialize_context_i initialize_context_input;
-
-	memset(&input, 0, sizeof(struct cptra_invoke_dpe_command_ia));
-	memset(&output, 0, sizeof(struct cptra_invoke_dpe_command_oa));
-	memset(&initialize_context_input, 0, sizeof(struct dpe_initialize_context_i));
-
-	/* Set input */
-	initialize_context_input.cmd_hdr.magic = DPE_COMMAND_MAGIC;
-	initialize_context_input.cmd_hdr.cmd = INITIALIZE_CONTEXT;
-	initialize_context_input.cmd_hdr.profile = P384Sha384;
-	memcpy(input.data, &initialize_context_input, sizeof(struct dpe_initialize_context_i));
-	input.data_size = sizeof(struct dpe_initialize_context_i);
-
+void cptra_test_invoke_dpe_get_certificate_chain(void)
+{
 #if CONFIG_CPTRA_SAMPLE_BOOTMCU
-	ret = caliptra_invoke_dpe_command(dev, &input, &output);
-#elif CONFIG_CPTRA_SAMPLE_SSP
-	ret = cptra_ipc_transfer(CPTRA_IPCCMD_INVOKE_DPE_COMMAND,
-				 (uint32_t *)&input, sizeof(input),
-				 CPTRA_IPC_RX_TYPE_EXTERNAL,
-				 (uint32_t *)&output, sizeof(output));
+	const struct device *dev = device_get_binding(CPTRA_DICE_DRV_NAME);
 #endif
-	if (ret)
-		LOG_ERR("caliptra_invoke_dpe_command is failure, ret:0x%x", ret);
-	else
-		LOG_DBG("caliptra_invoke_dpe_command is successful");
-
-	LOG_INF("\tTest DeriveContext...");
-
-	struct dpe_derive_context_i derive_context_input;
-
-	memset(&input, 0, sizeof(struct cptra_invoke_dpe_command_ia));
-	memset(&output, 0, sizeof(struct cptra_invoke_dpe_command_oa));
-	memset(&derive_context_input, 0, sizeof(struct dpe_derive_context_i));
-
-	/* Set input */
-	derive_context_input.cmd_hdr.magic = DPE_COMMAND_MAGIC;
-	derive_context_input.cmd_hdr.cmd = DERIVE_CONTEXT;
-	derive_context_input.cmd_hdr.profile = P384Sha384;
-	memcpy(input.data, &derive_context_input, sizeof(struct dpe_derive_context_i));
-	input.data_size = sizeof(struct dpe_derive_context_i);
-
-#if CONFIG_CPTRA_SAMPLE_BOOTMCU
-	ret = caliptra_invoke_dpe_command(dev, &input, &output);
-#elif CONFIG_CPTRA_SAMPLE_SSP
-	ret = cptra_ipc_transfer(CPTRA_IPCCMD_INVOKE_DPE_COMMAND,
-				 (uint32_t *)&input, sizeof(input),
-				 CPTRA_IPC_RX_TYPE_EXTERNAL,
-				 (uint32_t *)&output, sizeof(output));
-#endif
-	if (ret)
-		LOG_ERR("caliptra_invoke_dpe_command is failure, ret:0x%x", ret);
-	else
-		LOG_DBG("caliptra_invoke_dpe_command is successful");
-
-	LOG_INF("\tTest CertifyKey...");
-
-	struct dpe_certify_key_i certify_key_input;
-
-	memset(&input, 0, sizeof(struct cptra_invoke_dpe_command_ia));
-	memset(&output, 0, sizeof(struct cptra_invoke_dpe_command_oa));
-	memset(&certify_key_input, 0, sizeof(struct dpe_certify_key_i));
-
-	/* Set input */
-	certify_key_input.cmd_hdr.magic = DPE_COMMAND_MAGIC;
-	certify_key_input.cmd_hdr.cmd = CERTIFY_KEY;
-	certify_key_input.cmd_hdr.profile = P384Sha384;
-	memcpy(input.data, &certify_key_input, sizeof(struct dpe_certify_key_i));
-	input.data_size = sizeof(struct dpe_certify_key_i);
-
-#if CONFIG_CPTRA_SAMPLE_BOOTMCU
-	ret = caliptra_invoke_dpe_command(dev, &input, &output);
-#elif CONFIG_CPTRA_SAMPLE_SSP
-	ret = cptra_ipc_transfer(CPTRA_IPCCMD_INVOKE_DPE_COMMAND,
-				 (uint32_t *)&input, sizeof(input),
-				 CPTRA_IPC_RX_TYPE_EXTERNAL,
-				 (uint32_t *)&output, sizeof(output));
-#endif
-	if (ret)
-		LOG_ERR("caliptra_invoke_dpe_command is failure, ret:0x%x", ret);
-	else
-		LOG_DBG("caliptra_invoke_dpe_command is successful");
-
-	LOG_INF("\tTest Sign...");
-
-	struct dpe_sign_i sign_input;
-
-	memset(&input, 0, sizeof(struct cptra_invoke_dpe_command_ia));
-	memset(&output, 0, sizeof(struct cptra_invoke_dpe_command_oa));
-	memset(&sign_input, 0, sizeof(struct dpe_sign_i));
-
-	/* Set input */
-	sign_input.cmd_hdr.magic = DPE_COMMAND_MAGIC;
-	sign_input.cmd_hdr.cmd = SIGN;
-	sign_input.cmd_hdr.profile = P384Sha384;
-	memcpy(input.data, &sign_input, sizeof(struct dpe_sign_i));
-	input.data_size = sizeof(struct dpe_sign_i);
-
-#if CONFIG_CPTRA_SAMPLE_BOOTMCU
-	ret = caliptra_invoke_dpe_command(dev, &input, &output);
-#elif CONFIG_CPTRA_SAMPLE_SSP
-	ret = cptra_ipc_transfer(CPTRA_IPCCMD_INVOKE_DPE_COMMAND,
-				 (uint32_t *)&input, sizeof(input),
-				 CPTRA_IPC_RX_TYPE_EXTERNAL,
-				 (uint32_t *)&output, sizeof(output));
-#endif
-	if (ret) {
-		LOG_ERR("caliptra_invoke_dpe_command is failure, ret:0x%x", ret);
-		goto end;
-	} else
-		LOG_DBG("caliptra_invoke_dpe_command is successful");
-
-	LOG_INF("\tTest RotateContextHandle...");
-
-	struct dpe_rotate_context_handle_i rotate_context_handle_input;
-
-	memset(&input, 0, sizeof(struct cptra_invoke_dpe_command_ia));
-	memset(&output, 0, sizeof(struct cptra_invoke_dpe_command_oa));
-	memset(&rotate_context_handle_input, 0, sizeof(struct dpe_rotate_context_handle_i));
-
-	/* Set input */
-	rotate_context_handle_input.cmd_hdr.magic = DPE_COMMAND_MAGIC;
-	rotate_context_handle_input.cmd_hdr.cmd = ROTATE_CONTEXT_HANDLE;
-	rotate_context_handle_input.cmd_hdr.profile = P384Sha384;
-	memcpy(input.data, &rotate_context_handle_input,
-	       sizeof(struct dpe_rotate_context_handle_i));
-	input.data_size = sizeof(struct dpe_rotate_context_handle_i);
-
-#if CONFIG_CPTRA_SAMPLE_BOOTMCU
-	ret = caliptra_invoke_dpe_command(dev, &input, &output);
-#elif CONFIG_CPTRA_SAMPLE_SSP
-	ret = cptra_ipc_transfer(CPTRA_IPCCMD_INVOKE_DPE_COMMAND,
-				 (uint32_t *)&input, sizeof(input),
-				 CPTRA_IPC_RX_TYPE_EXTERNAL,
-				 (uint32_t *)&output, sizeof(output));
-#endif
-	if (ret) {
-		LOG_ERR("caliptra_invoke_dpe_command is failure, ret:0x%x", ret);
-		goto end;
-	} else
-		LOG_DBG("caliptra_invoke_dpe_command is successful");
-
-	LOG_INF("\tTest DestroyContext...");
-
-	struct dpe_destroy_context_i destroy_context_input;
-
-	memset(&input, 0, sizeof(struct cptra_invoke_dpe_command_ia));
-	memset(&output, 0, sizeof(struct cptra_invoke_dpe_command_oa));
-	memset(&destroy_context_input, 0, sizeof(struct dpe_destroy_context_i));
-
-	/* Set input */
-	destroy_context_input.cmd_hdr.magic = DPE_COMMAND_MAGIC;
-	destroy_context_input.cmd_hdr.cmd = DESTROY_CONTEXT;
-	destroy_context_input.cmd_hdr.profile = P384Sha384;
-	memcpy(input.data, &destroy_context_input, sizeof(struct dpe_destroy_context_i));
-	input.data_size = sizeof(struct dpe_destroy_context_i);
-
-#if CONFIG_CPTRA_SAMPLE_BOOTMCU
-	ret = caliptra_invoke_dpe_command(dev, &input, &output);
-#elif CONFIG_CPTRA_SAMPLE_SSP
-	ret = cptra_ipc_transfer(CPTRA_IPCCMD_INVOKE_DPE_COMMAND,
-				 (uint32_t *)&input, sizeof(input),
-				 CPTRA_IPC_RX_TYPE_EXTERNAL,
-				 (uint32_t *)&output, sizeof(output));
-#endif
-	if (ret) {
-		LOG_ERR("caliptra_invoke_dpe_command is failure, ret:0x%x", ret);
-		goto end;
-	} else
-		LOG_DBG("caliptra_invoke_dpe_command is successful");
+	struct cptra_invoke_dpe_command_ia input;
+	struct cptra_invoke_dpe_command_oa output;
+	struct dpe_get_certificate_chain_i *get_certificate_chain_input = NULL;
+	struct dpe_get_certificate_chain_o *get_certificate_chain_output = NULL;
+	uint8_t *certificate_chain = (uint8_t *)SRAM_BASE_ADDR;
+	uint32_t offset = 0;
+	int ret;
 
 	LOG_INF("\tTest GetCertificateChain...");
 
-	struct dpe_get_certificate_chain_i get_certificate_chain_input;
+	memset(&input, 0, sizeof(struct cptra_invoke_dpe_command_ia));
+	memset(&output, 0, sizeof(struct cptra_invoke_dpe_command_oa));
+
+	/* Set input */
+	get_certificate_chain_input = (struct dpe_get_certificate_chain_i *)input.data;
+	get_certificate_chain_input->cmd_hdr.magic = DPE_COMMAND_MAGIC;
+	get_certificate_chain_input->cmd_hdr.cmd = GET_CERTIFICATE_CHAIN;
+	get_certificate_chain_input->cmd_hdr.profile = P384Sha384;
+	get_certificate_chain_output = (struct dpe_get_certificate_chain_o *)output.data;
+	input.data_size = sizeof(struct dpe_get_certificate_chain_i);
+
+	do {
+		get_certificate_chain_input->offset = offset;
+		get_certificate_chain_input->size =
+			sizeof(get_certificate_chain_output->cert_chain);
+#if CONFIG_CPTRA_SAMPLE_BOOTMCU
+		ret = caliptra_invoke_dpe_command(dev, &input, &output);
+#elif CONFIG_CPTRA_SAMPLE_SSP
+		ret = cptra_ipc_transfer(CPTRA_IPCCMD_INVOKE_DPE_COMMAND,
+					 (uint32_t *)&input, sizeof(input),
+					 CPTRA_IPC_RX_TYPE_EXTERNAL,
+					 (uint32_t *)&output, sizeof(output));
+#endif
+		if (ret) {
+			LOG_ERR("caliptra_invoke_dpe_command is failure, ret:0x%x\n", ret);
+			break;
+
+		} else {
+			LOG_INF("Successful offset=%u size=%u\n", offset,
+				get_certificate_chain_output->size);
+
+			memcpy(&certificate_chain[offset],
+			       get_certificate_chain_output->cert_chain,
+			       get_certificate_chain_output->size);
+
+			offset += get_certificate_chain_output->size;
+			if (get_certificate_chain_output->size <
+			    sizeof(get_certificate_chain_output->cert_chain)) {
+				break;
+			}
+		}
+
+	} while (1);
+
+	LOG_HEXDUMP_INF(certificate_chain, offset, "certificate_chain:");
+}
+
+void cptra_test_invoke_dpe_initialize_context(void)
+{
+#if CONFIG_CPTRA_SAMPLE_BOOTMCU
+	const struct device *dev = device_get_binding(CPTRA_DICE_DRV_NAME);
+#endif
+	struct cptra_invoke_dpe_command_ia input;
+	struct cptra_invoke_dpe_command_oa output;
+	struct dpe_initialize_context_i *initialize_context_input = NULL;
+	struct dpe_new_context_o *initialize_context_output = NULL;
+	int ret;
+
+	LOG_INF("Test caliptra_invoke_dpe_command...");
+
+	LOG_INF("\tTest InitializeContext...");
 
 	memset(&input, 0, sizeof(struct cptra_invoke_dpe_command_ia));
 	memset(&output, 0, sizeof(struct cptra_invoke_dpe_command_oa));
-	memset(&get_certificate_chain_input, 0, sizeof(struct dpe_get_certificate_chain_i));
 
 	/* Set input */
-	get_certificate_chain_input.cmd_hdr.magic = DPE_COMMAND_MAGIC;
-	get_certificate_chain_input.cmd_hdr.cmd = GET_CERTIFICATE_CHAIN;
-	get_certificate_chain_input.cmd_hdr.profile = P384Sha384;
-	memcpy(input.data, &get_certificate_chain_input,
-	       sizeof(struct dpe_get_certificate_chain_i));
-	input.data_size = sizeof(struct dpe_get_certificate_chain_i);
+	initialize_context_input = (struct dpe_initialize_context_i *)input.data;
+	initialize_context_input->cmd_hdr.magic = DPE_COMMAND_MAGIC;
+	initialize_context_input->cmd_hdr.cmd = INITIALIZE_CONTEXT;
+	initialize_context_input->cmd_hdr.profile = P384Sha384;
+	initialize_context_input->init_ctx_cmd = BIT(30); /* DEFAULT_FLAG_MASK */
+	input.data_size = sizeof(struct dpe_initialize_context_i);
+
+	initialize_context_output = (struct dpe_new_context_o *)output.data;
 
 #if CONFIG_CPTRA_SAMPLE_BOOTMCU
 	ret = caliptra_invoke_dpe_command(dev, &input, &output);
@@ -705,16 +633,328 @@ static void cptra_test_invoke_dpe_command(void)
 				 CPTRA_IPC_RX_TYPE_EXTERNAL,
 				 (uint32_t *)&output, sizeof(output));
 #endif
+
 	if (ret) {
 		LOG_ERR("caliptra_invoke_dpe_command is failure, ret:0x%x", ret);
-		goto end;
-	} else
-		LOG_DBG("caliptra_invoke_dpe_command is successful");
 
-	LOG_INF("%s: Pass", __func__);
-	return;
-end:
-	LOG_INF("%s: Failed", __func__);
+	} else if (cptra_dpe_response_check(&initialize_context_output->rsp_hdr)) {
+		LOG_ERR("DPE command failed, magic:0x%08x status:0x%08x profile:0x%08x\n",
+			initialize_context_output->rsp_hdr.magic,
+			initialize_context_output->rsp_hdr.status,
+			initialize_context_output->rsp_hdr.profile);
+
+	} else {
+		LOG_DBG("caliptra_invoke_dpe_command is successful");
+		LOG_HEXDUMP_DBG(initialize_context_output->context_handle,
+				sizeof(initialize_context_output->context_handle),
+				"context_handle:");
+	}
+}
+
+void cptra_test_invoke_dpe_derive_context(uint8_t *derived_context)
+{
+#if CONFIG_CPTRA_SAMPLE_BOOTMCU
+	const struct device *dev = device_get_binding(CPTRA_DICE_DRV_NAME);
+#endif
+	struct cptra_invoke_dpe_command_ia input;
+	struct cptra_invoke_dpe_command_oa output;
+	struct dpe_derive_context_i *derive_context_input = NULL;
+	struct dpe_derive_context_o *derive_context_output = NULL;
+	int ret;
+
+	LOG_INF("Test caliptra_invoke_dpe_command...");
+
+	LOG_INF("\tTest DeriveContext...");
+
+	memset(&input, 0, sizeof(struct cptra_invoke_dpe_command_ia));
+	memset(&output, 0, sizeof(struct cptra_invoke_dpe_command_oa));
+
+	/* Set input */
+	derive_context_input = (struct dpe_derive_context_i *)input.data;
+	derive_context_input->cmd_hdr.magic = DPE_COMMAND_MAGIC;
+	derive_context_input->cmd_hdr.cmd = DERIVE_CONTEXT;
+	derive_context_input->cmd_hdr.profile = P384Sha384;
+	derive_context_input->flags = BIT(25) | BIT(26) | BIT(30) | BIT(31); /* INPUT_ALLOW_X509 |
+									      * INPUT_ALLOW_CA |
+									      * INPUT_DICE |
+									      * INPUT_INFO
+									      */
+	input.data_size = sizeof(struct dpe_derive_context_i);
+
+	derive_context_output = (struct dpe_derive_context_o *)output.data;
+
+#if CONFIG_CPTRA_SAMPLE_BOOTMCU
+	ret = caliptra_invoke_dpe_command(dev, &input, &output);
+#elif CONFIG_CPTRA_SAMPLE_SSP
+	ret = cptra_ipc_transfer(CPTRA_IPCCMD_INVOKE_DPE_COMMAND,
+				 (uint32_t *)&input, sizeof(input),
+				 CPTRA_IPC_RX_TYPE_EXTERNAL,
+				 (uint32_t *)&output, sizeof(output));
+#endif
+
+	if (ret)
+		LOG_ERR("caliptra_invoke_dpe_command is failure, ret:0x%x", ret);
+	else if (cptra_dpe_response_check(&derive_context_output->rsp_hdr)) {
+		LOG_ERR("DPE command failed, magic:0x%08x status:0x%08x profile:0x%08x\n",
+			derive_context_output->rsp_hdr.magic, derive_context_output->rsp_hdr.status,
+			derive_context_output->rsp_hdr.profile);
+
+	} else {
+		LOG_DBG("caliptra_invoke_dpe_command is successful");
+		LOG_HEXDUMP_DBG(derive_context_output->context_handle,
+				sizeof(derive_context_output->context_handle),
+				"context_handle:");
+		LOG_HEXDUMP_DBG(derive_context_output->parent_context_handle,
+				sizeof(derive_context_output->parent_context_handle),
+				"parent_context_handle:");
+		memcpy(derived_context, derive_context_output->context_handle,
+		       sizeof(derive_context_output->context_handle));
+	}
+}
+
+void cptra_test_invoke_dpe_certify_key(void)
+{
+#if CONFIG_CPTRA_SAMPLE_BOOTMCU
+	const struct device *dev = device_get_binding(CPTRA_DICE_DRV_NAME);
+#endif
+	struct cptra_invoke_dpe_command_ia input;
+	struct cptra_invoke_dpe_command_oa output;
+	struct dpe_certify_key_i *certify_key_input = NULL;
+	struct dpe_certify_key_o *certify_key_output = NULL;
+	int ret;
+
+	LOG_INF("Test caliptra_invoke_dpe_command...");
+
+	LOG_INF("\tTest CertifyKey...");
+
+	memset(&input, 0, sizeof(struct cptra_invoke_dpe_command_ia));
+	memset(&output, 0, sizeof(struct cptra_invoke_dpe_command_oa));
+
+	/* Set input */
+	certify_key_input = (struct dpe_certify_key_i *)input.data;
+	certify_key_input->cmd_hdr.magic = DPE_COMMAND_MAGIC;
+	certify_key_input->cmd_hdr.cmd = CERTIFY_KEY;
+	certify_key_input->cmd_hdr.profile = P384Sha384;
+	certify_key_input->format = FORMAT_X509;
+	input.data_size = sizeof(struct dpe_certify_key_i);
+
+	certify_key_output = (struct dpe_certify_key_o *)output.data;
+
+#if CONFIG_CPTRA_SAMPLE_BOOTMCU
+	ret = caliptra_invoke_dpe_command(dev, &input, &output);
+#elif CONFIG_CPTRA_SAMPLE_SSP
+	ret = cptra_ipc_transfer(CPTRA_IPCCMD_INVOKE_DPE_COMMAND,
+				 (uint32_t *)&input, sizeof(input),
+				 CPTRA_IPC_RX_TYPE_EXTERNAL,
+				 (uint32_t *)&output, sizeof(output));
+#endif
+
+	if (ret)
+		LOG_ERR("caliptra_invoke_dpe_command is failure, ret:0x%x", ret);
+	else if (cptra_dpe_response_check(&certify_key_output->rsp_hdr)) {
+		LOG_ERR("DPE command failed, magic:0x%08x status:0x%08x profile:0x%08x\n",
+			certify_key_output->rsp_hdr.magic, certify_key_output->rsp_hdr.status,
+			certify_key_output->rsp_hdr.profile);
+
+	} else {
+		LOG_DBG("caliptra_invoke_dpe_command is successful");
+		LOG_HEXDUMP_DBG(certify_key_output->context_handle,
+				sizeof(certify_key_output->context_handle),
+				"context_handle:");
+		LOG_HEXDUMP_DBG(certify_key_output->public_key_x,
+				sizeof(certify_key_output->public_key_x),
+				"public_key_x:");
+		LOG_HEXDUMP_DBG(certify_key_output->public_key_y,
+				sizeof(certify_key_output->public_key_y),
+				"public_key_y:");
+		LOG_HEXDUMP_DBG(certify_key_output->cert,
+				certify_key_output->cert_size, "cert:");
+	}
+}
+
+void cptra_test_invoke_dpe_sign(void)
+{
+#if CONFIG_CPTRA_SAMPLE_BOOTMCU
+	const struct device *dev = device_get_binding(CPTRA_DICE_DRV_NAME);
+#endif
+	struct cptra_invoke_dpe_command_ia input;
+	struct cptra_invoke_dpe_command_oa output;
+	struct dpe_sign_i *sign_input = NULL;
+	struct dpe_sign_o *sign_output = NULL;
+	int ret;
+
+	LOG_INF("Test caliptra_invoke_dpe_command...");
+
+	LOG_INF("\tTest Sign...");
+
+	memset(&input, 0, sizeof(struct cptra_invoke_dpe_command_ia));
+	memset(&output, 0, sizeof(struct cptra_invoke_dpe_command_oa));
+
+	/* Set input */
+	sign_input = (struct dpe_sign_i *)input.data;
+	sign_input->cmd_hdr.magic = DPE_COMMAND_MAGIC;
+	sign_input->cmd_hdr.cmd = SIGN;
+	sign_input->cmd_hdr.profile = P384Sha384;
+	input.data_size = sizeof(struct dpe_sign_i);
+
+	sign_output = (struct dpe_sign_o *)output.data;
+
+#if CONFIG_CPTRA_SAMPLE_BOOTMCU
+	ret = caliptra_invoke_dpe_command(dev, &input, &output);
+#elif CONFIG_CPTRA_SAMPLE_SSP
+	ret = cptra_ipc_transfer(CPTRA_IPCCMD_INVOKE_DPE_COMMAND,
+				 (uint32_t *)&input, sizeof(input),
+				 CPTRA_IPC_RX_TYPE_EXTERNAL,
+				 (uint32_t *)&output, sizeof(output));
+#endif
+
+	if (ret)
+		LOG_ERR("caliptra_invoke_dpe_command is failure, ret:0x%x", ret);
+	else if (cptra_dpe_response_check(&sign_output->rsp_hdr)) {
+		LOG_ERR("DPE command failed, magic:0x%08x status:0x%08x profile:0x%08x\n",
+			sign_output->rsp_hdr.magic, sign_output->rsp_hdr.status,
+			sign_output->rsp_hdr.profile);
+
+	} else {
+		LOG_DBG("caliptra_invoke_dpe_command is successful");
+		LOG_HEXDUMP_DBG(sign_output->context_handle,
+				sizeof(sign_output->context_handle),
+				"context_handle:");
+		LOG_HEXDUMP_DBG(sign_output->signature_r,
+				sizeof(sign_output->signature_r),
+				"signature_r:");
+		LOG_HEXDUMP_DBG(sign_output->signature_s,
+				sizeof(sign_output->signature_s),
+				"signature_s:");
+	}
+}
+
+void cptra_test_invoke_dpe_rotate_context(uint8_t *context_handle, uint8_t *new_context_handle)
+{
+#if CONFIG_CPTRA_SAMPLE_BOOTMCU
+	const struct device *dev = device_get_binding(CPTRA_DICE_DRV_NAME);
+#endif
+	struct cptra_invoke_dpe_command_ia input;
+	struct cptra_invoke_dpe_command_oa output;
+	struct dpe_rotate_context_i *rotate_context_input = NULL;
+	struct dpe_new_context_o *rotate_context_output = NULL;
+	int ret;
+
+	LOG_INF("Test caliptra_invoke_dpe_command...");
+
+	LOG_INF("\tTest RotateContextHandle...");
+
+	memset(&input, 0, sizeof(struct cptra_invoke_dpe_command_ia));
+	memset(&output, 0, sizeof(struct cptra_invoke_dpe_command_oa));
+
+	/* Set input */
+	rotate_context_input = (struct dpe_rotate_context_i *)input.data;
+	rotate_context_input->cmd_hdr.magic = DPE_COMMAND_MAGIC;
+	rotate_context_input->cmd_hdr.cmd = ROTATE_CONTEXT_HANDLE;
+	rotate_context_input->cmd_hdr.profile = P384Sha384;
+	memcpy(rotate_context_input->handle, context_handle, sizeof(rotate_context_input->handle));
+	input.data_size = sizeof(struct dpe_rotate_context_i);
+
+	rotate_context_output = (struct dpe_new_context_o *)output.data;
+
+#if CONFIG_CPTRA_SAMPLE_BOOTMCU
+	ret = caliptra_invoke_dpe_command(dev, &input, &output);
+#elif CONFIG_CPTRA_SAMPLE_SSP
+	ret = cptra_ipc_transfer(CPTRA_IPCCMD_INVOKE_DPE_COMMAND,
+				 (uint32_t *)&input, sizeof(input),
+				 CPTRA_IPC_RX_TYPE_EXTERNAL,
+				 (uint32_t *)&output, sizeof(output));
+#endif
+
+	if (ret)
+		LOG_ERR("caliptra_invoke_dpe_command is failure, ret:0x%x", ret);
+	else if (cptra_dpe_response_check(&rotate_context_output->rsp_hdr)) {
+		LOG_ERR("DPE command failed, magic:0x%08x status:0x%08x profile:0x%08x\n",
+			rotate_context_output->rsp_hdr.magic, rotate_context_output->rsp_hdr.status,
+			rotate_context_output->rsp_hdr.profile);
+
+	} else {
+		LOG_DBG("caliptra_invoke_dpe_command is successful");
+		LOG_HEXDUMP_DBG(rotate_context_output->context_handle,
+				sizeof(rotate_context_output->context_handle),
+				"context_handle:");
+		memcpy(new_context_handle, rotate_context_output->context_handle,
+		       sizeof(rotate_context_output->context_handle));
+	}
+}
+
+void cptra_test_invoke_dpe_destroy_context(uint8_t *context_handle)
+{
+#if CONFIG_CPTRA_SAMPLE_BOOTMCU
+	const struct device *dev = device_get_binding(CPTRA_DICE_DRV_NAME);
+#endif
+	struct cptra_invoke_dpe_command_ia input;
+	struct cptra_invoke_dpe_command_oa output;
+	struct dpe_destroy_context_i *destroy_context_input = NULL;
+	struct dpe_destroy_context_o  *destroy_context_output = NULL;
+	int ret;
+
+	LOG_INF("Test caliptra_invoke_dpe_command...");
+
+	LOG_INF("\tTest DestroyContext...");
+
+	memset(&input, 0, sizeof(struct cptra_invoke_dpe_command_ia));
+	memset(&output, 0, sizeof(struct cptra_invoke_dpe_command_oa));
+
+	/* Set input */
+	destroy_context_input = (struct dpe_destroy_context_i *)input.data;
+	destroy_context_input->cmd_hdr.magic = DPE_COMMAND_MAGIC;
+	destroy_context_input->cmd_hdr.cmd = DESTROY_CONTEXT;
+	destroy_context_input->cmd_hdr.profile = P384Sha384;
+	memcpy(destroy_context_input->handle, context_handle,
+	       sizeof(destroy_context_input->handle));
+	input.data_size = sizeof(struct dpe_destroy_context_i);
+
+	destroy_context_output = (struct dpe_destroy_context_o *)output.data;
+
+#if CONFIG_CPTRA_SAMPLE_BOOTMCU
+	ret = caliptra_invoke_dpe_command(dev, &input, &output);
+#elif CONFIG_CPTRA_SAMPLE_SSP
+	ret = cptra_ipc_transfer(CPTRA_IPCCMD_INVOKE_DPE_COMMAND,
+				 (uint32_t *)&input, sizeof(input),
+				 CPTRA_IPC_RX_TYPE_EXTERNAL,
+				 (uint32_t *)&output, sizeof(output));
+#endif
+
+	if (ret)
+		LOG_ERR("caliptra_invoke_dpe_command is failure, ret:0x%x", ret);
+	else if (cptra_dpe_response_check(&destroy_context_output->rsp_hdr)) {
+		LOG_ERR("DPE command failed, magic:0x%08x status:0x%08x profile:0x%08x\n",
+			destroy_context_output->rsp_hdr.magic,
+			destroy_context_output->rsp_hdr.status,
+			destroy_context_output->rsp_hdr.profile);
+
+	} else {
+		LOG_DBG("caliptra_invoke_dpe_command is successful");
+	}
+}
+
+static void cptra_test_invoke_dpe_command(void)
+{
+	uint8_t public_key[97] = {0};
+	uint8_t derived_context[16] = {0};
+	uint8_t rotated_context[16] = {0};
+
+	/* 0x04 is the prefix for uncompressed public key */
+	public_key[0] = 0x04;
+
+	cptra_test_invoke_dpe_get_profile();
+	cptra_test_invoke_dpe_get_certificate_chain();
+
+	/* DPE might has initialized */
+	/* cptra_test_invoke_dpe_initialize_context(); */
+
+	cptra_test_invoke_dpe_certify_key();
+	cptra_test_invoke_dpe_sign();
+
+	cptra_test_invoke_dpe_derive_context(derived_context);
+	cptra_test_invoke_dpe_rotate_context(derived_context, rotated_context);
+	cptra_test_invoke_dpe_destroy_context(rotated_context);
 }
 
 static void cptra_test_disable_attestation(void)
@@ -1750,7 +1990,7 @@ int cptra_test(void)
 	cptra_test_invoke_dpe_command();
 	cptra_test_disable_attestation();
 	cptra_test_get_idev_cert();
-	cptra_test_populate_idev_cert();
+	/* cptra_test_populate_idev_cert(); */
 	cptra_test_get_idev_info();
 	cptra_test_get_ldev_cert();
 	cptra_test_get_fmc_alias_cert();

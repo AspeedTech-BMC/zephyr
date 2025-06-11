@@ -584,6 +584,7 @@ struct cptra_revoke_exported_cdi_handle_oa {
 };
 
 #define DPE_COMMAND_MAGIC			0x44504543	/* DPEC */
+#define DPE_RESPONSE_MAGIC			0x44504552	/* DPER */
 
 enum dpe_command {
 	GET_PROFILE		= 0x01,
@@ -608,13 +609,34 @@ struct dpe_cmd_header {
 	uint32_t profile;
 };
 
+struct dpe_rsp_header {
+	uint32_t magic;
+	uint32_t status;
+	uint32_t profile;
+};
+
 struct dpe_get_profile_i {
 	struct dpe_cmd_header cmd_hdr;
+};
+
+struct dpe_get_profile_o {
+	struct dpe_rsp_header rsp_hdr;
+	uint16_t major_version;
+	uint16_t minor_version;
+	uint32_t vendor_id;
+	uint32_t vendor_sku;
+	uint32_t max_tci_nodes;
+	uint32_t flags;
 };
 
 struct dpe_initialize_context_i {
 	struct dpe_cmd_header cmd_hdr;
 	uint32_t init_ctx_cmd;
+};
+
+struct dpe_new_context_o {
+	struct dpe_rsp_header rsp_hdr;
+	uint8_t context_handle[16];
 };
 
 struct dpe_derive_context_i {
@@ -626,12 +648,32 @@ struct dpe_derive_context_i {
 	uint32_t target_locality;
 };
 
+struct dpe_derive_context_o {
+	struct dpe_rsp_header rsp_hdr;
+	uint8_t context_handle[16];
+	uint8_t parent_context_handle[16];
+};
+
+enum certify_key_cmd {
+	FORMAT_X509 = 0x0,
+	FORMAT_CSR = 0x1,
+};
+
 struct dpe_certify_key_i {
 	struct dpe_cmd_header cmd_hdr;
 	uint8_t handle[16];
 	uint32_t flags;
 	uint32_t format;
 	uint8_t label[48];
+};
+
+struct dpe_certify_key_o {
+	struct dpe_rsp_header rsp_hdr;
+	uint8_t context_handle[16];
+	uint8_t public_key_x[48];
+	uint8_t public_key_y[48];
+	uint32_t cert_size;
+	uint8_t cert[0];
 };
 
 struct dpe_sign_i {
@@ -642,7 +684,14 @@ struct dpe_sign_i {
 	uint8_t digest[48];
 };
 
-struct dpe_rotate_context_handle_i {
+struct dpe_sign_o {
+	struct dpe_rsp_header rsp_hdr;
+	uint8_t context_handle[16];
+	uint8_t signature_r[48];
+	uint8_t signature_s[48];
+};
+
+struct dpe_rotate_context_i {
 	struct dpe_cmd_header cmd_hdr;
 	uint8_t handle[16];
 	uint32_t flags;
@@ -653,10 +702,20 @@ struct dpe_destroy_context_i {
 	uint8_t handle[16];
 };
 
+struct dpe_destroy_context_o {
+	struct dpe_rsp_header rsp_hdr;
+};
+
 struct dpe_get_certificate_chain_i {
 	struct dpe_cmd_header cmd_hdr;
 	uint32_t offset;
 	uint32_t size;
+};
+
+struct dpe_get_certificate_chain_o {
+	struct dpe_rsp_header rsp_hdr;
+	uint32_t size;
+	uint8_t cert_chain[2048];
 };
 
 struct cptra_invoke_dpe_command_ia {
@@ -668,7 +727,7 @@ struct cptra_invoke_dpe_command_oa {
 	uint32_t chksum;
 	uint32_t fips_status;
 	uint32_t data_size;
-	uint8_t data[2304];
+	uint8_t data[8192];
 };
 
 /* The API a cptra driver should implement */

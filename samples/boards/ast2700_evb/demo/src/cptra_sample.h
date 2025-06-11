@@ -7,7 +7,17 @@
 #ifndef CPTRA_SAMPLE_H_
 #define CPTRA_SAMPLE_H_
 
+#include <stdint.h>
+
 int cptra_test(void);
+void cptra_test_invoke_dpe_get_profile(void);
+void cptra_test_invoke_dpe_get_certificate_chain(void);
+void cptra_test_invoke_dpe_initialize_context(void);
+void cptra_test_invoke_dpe_derive_context(uint8_t *derived_context);
+void cptra_test_invoke_dpe_certify_key(void);
+void cptra_test_invoke_dpe_sign(void);
+void cptra_test_invoke_dpe_rotate_context(uint8_t *context_handle, uint8_t *new_context_handle);
+void cptra_test_invoke_dpe_destroy_context(uint8_t *context_handle);
 
 struct hash_testvec {
 	const char *plaintext;
