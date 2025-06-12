@@ -1155,15 +1155,6 @@ int usb_dc_ep_write(const uint8_t ep, const uint8_t *const data,
 	int ep_num;
 	int tx_len;
 
-	if (!data_len) {
-		LOG_DBG("Send ZLP");
-		dev_data.ep_data[0].tx_len = 0;
-		dev_data.ep_data[0].tx_last = 0;
-		aspeed_udc_ep0_tx(0);
-
-		return 0;
-	}
-
 	LOG_DBG("[Write] ep:0x%x, data:0x%x, data_len:0x%x, ret_bytes:0x%x",
 		ep, (uint32_t)data, data_len, *ret_bytes);
 
