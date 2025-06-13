@@ -1369,7 +1369,6 @@ int usb_dc_ep_read_wait(uint8_t ep, uint8_t *data, uint32_t max_data_len,
 				"data_len", data_len);
 			cache_data_invd_range(dev_data.ep_data[0].rx_dma, data_len);
 			memcpy(data, dev_data.ep_data[0].rx_dma, data_len);
-			memset(dev_data.ep_data[0].rx_dma, 0, RX_DMA_BUFF_SIZE);
 			*read_bytes = data_len;
 
 		} else {
@@ -1394,8 +1393,6 @@ int usb_dc_ep_read_wait(uint8_t ep, uint8_t *data, uint32_t max_data_len,
 		if (byte_to_copy <= RX_DMA_BUFF_SIZE) {
 			memcpy(data, dev_data.ep_data[ep_num].rx_dma,
 				byte_to_copy);
-			memset(dev_data.ep_data[ep_num].rx_dma, 0,
-				RX_DMA_BUFF_SIZE);
 		} else {
 			LOG_ERR("%s:0x%x is out-of-bound",
 				"byte_to_copy", byte_to_copy);
