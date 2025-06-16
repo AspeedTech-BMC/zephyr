@@ -35,7 +35,7 @@
 			#global-reg-cells = <2>;
 			#address-cells = <1>;
 			#size-cells = <1>;
-			status = "okay";
+			status = "disabled";
 
 			ipc_legacy: ipc_legacy@0 {
 				compatible = "aspeed,ast2600-ipc";
@@ -212,7 +212,7 @@
 			#global-reg-cells = <2>;
 			#address-cells = <1>;
 			#size-cells = <1>;
-			status = "okay";
+			status = "disabled";
 		};
 
 		uart0: serial@74c33000 {

@@ -55,6 +55,14 @@
 	status = "okay";
 };
 
+&intc_global {
+	status = "okay";
+};
+
+&intc1_global {
+	status = "okay";
+};
+
 &intc0_11 {
 	status = "okay";
 };
