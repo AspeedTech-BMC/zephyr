@@ -51,7 +51,7 @@ struct cptra_sha_drv_state {
 static int cptra_sha_update(struct hash_ctx *ctx, struct hash_pkt *pkt)
 {
 	struct cptra_sha_config *cfg = DEV_CFG(ctx->device);
-	uint32_t din_be;
+	uint32_t din_be, last;
 	uint32_t dlen_sum;
 	uint8_t *p8;
 	uint32_t i;
@@ -60,21 +60,20 @@ static int cptra_sha_update(struct hash_ctx *ctx, struct hash_pkt *pkt)
 	dlen_sum = sys_read32(cfg->base + CPTRA_SHA_DLEN) + pkt->in_len;
 	sys_write32(dlen_sum, cfg->base + CPTRA_SHA_DLEN);
 
-	din_be = 0;
-	for (i = 0, p8 = (uint8_t *)pkt->in_buf; i < pkt->in_len; ++i) {
-		if (i && (i % sizeof(din_be) == 0)) {
-			sys_write32(din_be, cfg->base + CPTRA_SHA_DATAIN);
-			din_be = 0;
-		}
+	p8 = (uint8_t *)pkt->in_buf;
+	for (i = 0; i + 4 <= pkt->in_len; i += 4) {
+		din_be = sys_cpu_to_be32(*(uint32_t *)(p8 + i));
 
-		din_be <<= 8;
-		din_be |= p8[i];
+		sys_write32(din_be, cfg->base + CPTRA_SHA_DATAIN);
 	}
 
-	if (i % sizeof(din_be))
-		din_be <<= (8 * (sizeof(din_be) - (i % sizeof(din_be))));
+	if (i < pkt->in_len) {
+		last = 0;
+		for (int j = 0; j < pkt->in_len - i; ++j)
+			last |= p8[i + j] << (8 * (3 - j));
 
-	sys_write32(din_be, cfg->base + CPTRA_SHA_DATAIN);
+		sys_write32(last, cfg->base + CPTRA_SHA_DATAIN);
+	}
 
 	return 0;
 }
