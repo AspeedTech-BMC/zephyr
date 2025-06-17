@@ -20,6 +20,20 @@ LOG_MODULE_REGISTER(ipm_shell, CONFIG_LOG_DEFAULT_LEVEL);
 #define IPC_NUM_OF_ID	4
 #define IPC_MAX_MSG_SIZE	0x20
 #define DEFAULT_LINE_LENGTH_BYTES	(16)
+#define STRESSHEADER 0xf0
+#define STRESSSTOPHEADER 0xf1
+#define STRESSIZE 0x1000
+
+/*stress count setting*/
+uint32_t stress_count;
+uint32_t stress_set;
+
+/* stress irq call back*/
+static void stress_cb(const struct device *ipmdev, void *user_data,
+		       uint32_t id, volatile void *msg_data)
+{
+
+}
 
 /* sample irq call back*/
 static void ch_ipm_cb(const struct device *ipmdev, void *user_data,
@@ -297,6 +311,66 @@ static int cmd_ipm_read_shm(const struct shell *shell,
 	return 0;
 }
 
+/*
+ * IPM stress
+ */
+static int cmd_ipm_stress(const struct shell *shell,
+			size_t argc, char **argv)
+{
+	const struct device *ipmdev = NULL;
+	uint32_t buf[IPC_MAX_MSG_SIZE];
+	uint32_t channel = 0; /*wait for further usage*/
+	uint32_t test_pattern = 0, i;
+	struct ipm_shell_shmem shmem_info;
+	uint32_t *tx_buff = NULL;
+	int ret = 0;
+
+	ipmdev = device_get_binding(argv[1]);
+	if (!ipmdev) {
+		shell_error(shell, "IPM: Device %s not found.",
+			    argv[1]);
+		return -ENODEV;
+	}
+
+	stress_set = strtol(argv[2], NULL, 16);
+	stress_count = stress_set;
+
+	/* get share memory information */
+	ast_ipm_shmem_info(ipmdev, channel, &shmem_info);
+	if (shmem_info.shmem_tx_base == 0) {
+		shell_error(shell, "IPM: %s ch[%d] tx shmem not found.",
+			    argv[1], channel);
+		return -ENODEV;
+	}
+
+	tx_buff = (uint32_t *)shmem_info.shmem_tx_base;
+
+	/* attach ipm call back */
+	ipm_register_id_callback(ipmdev, channel, (void *)stress_cb, NULL);
+
+	/* enable ipm channel */
+	ipm_set_id_enabled(ipmdev, channel, true);
+
+	/* send stress message */
+	buf[0] = ((STRESSIZE << 8) | STRESSHEADER);
+	buf[1] = test_pattern;
+
+	/* fill the share memory data */
+	for (i = 0; i < STRESSIZE / 4; i++, test_pattern++) {
+		*(tx_buff + i) = test_pattern;
+	}
+
+	/* send message */
+	ret = ipm_send(ipmdev, 0, channel, (void *)buf, IPC_MAX_MSG_SIZE);
+
+	if (ret) {
+		shell_error(shell, "IPM: Send message failed cause %d.", ret);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static void device_name_get(size_t idx, struct shell_static_entry *entry)
 {
 	const struct device *dev = shell_device_lookup(idx, NULL);
@@ -324,6 +398,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_ipm_cmds,
 					"Write IPM share memory", cmd_ipm_write_shm),
 			       SHELL_CMD(read_shm, &dsub_device_name,
 					"Read IPM share memory", cmd_ipm_read_shm),
+			       SHELL_CMD(stress, &dsub_device_name,
+					"Stress IPM ", cmd_ipm_stress),
 			       SHELL_SUBCMD_SET_END     /* Array terminated. */
 			       );
 

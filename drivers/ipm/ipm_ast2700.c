@@ -71,6 +71,29 @@ void ast_ipm_list(const struct device *dev)
 	}
 }
 
+void ast_ipm_shmem_info(const struct device *dev, uint32_t channel, struct ipm_shell_shmem *info)
+{
+	const struct ipm_ast2700_data *data = ((const struct device *)dev)->data;
+
+	if (info) {
+		if (data->shmem_info[channel].shmem_rx_base) {
+			info->shmem_rx_base = data->shmem_info[channel].shmem_rx_base;
+			info->shmem_rx_size = data->shmem_info[channel].shmem_rx_size;
+		} else {
+			info->shmem_rx_base = 0;
+			info->shmem_rx_size = 0;
+		}
+
+		if (data->shmem_info[channel].shmem_tx_base) {
+			info->shmem_tx_base = data->shmem_info[channel].shmem_tx_base;
+			info->shmem_tx_size = data->shmem_info[channel].shmem_tx_size;
+		} else {
+			info->shmem_tx_base = 0;
+			info->shmem_tx_size = 0;
+		}
+	}
+}
+
 static void ipm_ast2700_isr(const void *dev)
 {
 	const struct ipm_ast2700_data *data = ((const struct device *)dev)->data;
