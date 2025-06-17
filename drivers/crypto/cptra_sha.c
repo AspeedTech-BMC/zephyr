@@ -67,7 +67,7 @@ static int cptra_sha_update(struct hash_ctx *ctx, struct hash_pkt *pkt)
 		sys_write32(din_be, cfg->base + CPTRA_SHA_DATAIN);
 	}
 
-	if (i < pkt->in_len) {
+	if (i < pkt->in_len || pkt->in_len == 0x0) {
 		last = 0;
 		for (int j = 0; j < pkt->in_len - i; ++j)
 			last |= p8[i + j] << (8 * (3 - j));
