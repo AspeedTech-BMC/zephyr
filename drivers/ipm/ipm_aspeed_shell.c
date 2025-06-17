@@ -32,7 +32,69 @@ uint32_t stress_set;
 static void stress_cb(const struct device *ipmdev, void *user_data,
 		       uint32_t id, volatile void *msg_data)
 {
+	uint32_t tx_msg_data[IPC_MAX_MSG_SIZE];
+	uint32_t *buf = (uint32_t *)msg_data;
+	uint32_t size, test_pattern, i, ret;
+	struct ipm_shell_shmem shmem_info;
+	uint32_t *tx_buff = NULL;
+	uint32_t *rx_buff = NULL;
 
+	LOG_DBG("msg ch%d with data at %p", id, buf);
+	stress_count--;
+
+	/* check message header */
+	if ((buf[0] & 0xff) != STRESSHEADER) {
+		LOG_DBG("msg 0 is invalid 0x%08x\n", buf[0]);
+		return;
+	}
+
+	/* get share memory information from driver */
+	ast_ipm_shmem_info(ipmdev, id, &shmem_info);
+	tx_buff = (uint32_t *)shmem_info.shmem_tx_base;
+	rx_buff = (uint32_t *)shmem_info.shmem_rx_base;
+
+	/* get information from message */
+	size = buf[0] >> 8;
+	LOG_DBG("size 0x%x\n", size);
+	test_pattern = buf[1];
+	LOG_DBG("test_pattern 0x%x\n", test_pattern);
+	LOG_DBG("rx_buff 0x%p\n", rx_buff);
+
+	/* check rx buffer */
+	for (i = 0; i < size / 4; i++, test_pattern++) {
+		if (*(rx_buff + i) != test_pattern) {
+			LOG_ERR("rx data not expected, %d: 0x%x 0x%x\n",
+			i, *(rx_buff + i), test_pattern);
+			return;
+		}
+	}
+
+	LOG_INF("Zephyr stress round-%d pass\n", stress_set - stress_count);
+
+	if (stress_count) {
+		/* format send message */
+		tx_msg_data[0] = ((STRESSIZE << 8) | STRESSHEADER);
+		LOG_DBG("Zephyr msg[0] : 0x%08x\n", tx_msg_data[0]);
+		tx_msg_data[1] = test_pattern;
+		LOG_DBG("Zephyr msg[1] : 0x%08x\n", tx_msg_data[1]);
+
+		/* prepare send share memory */
+		for (i = 0; i < STRESSIZE / 4; i++, test_pattern++) {
+			*(tx_buff + i) = test_pattern;
+		}
+	} else {
+		tx_msg_data[0] = STRESSSTOPHEADER;
+		LOG_INF("Zephyr arrive testing count\n");
+	}
+
+	/* send the tx message */
+	ret = ipm_send(ipmdev, 0, id, (void *)tx_msg_data, IPC_MAX_MSG_SIZE);
+
+	if (ret) {
+		LOG_ERR("IPM: Send message failed cause %d.", ret);
+	}
+
+	return;
 }
 
 /* sample irq call back*/
@@ -318,7 +380,7 @@ static int cmd_ipm_stress(const struct shell *shell,
 			size_t argc, char **argv)
 {
 	const struct device *ipmdev = NULL;
-	uint32_t buf[IPC_MAX_MSG_SIZE];
+	uint32_t tx_msg_data[IPC_MAX_MSG_SIZE];
 	uint32_t channel = 0; /*wait for further usage*/
 	uint32_t test_pattern = 0, i;
 	struct ipm_shell_shmem shmem_info;
@@ -352,16 +414,20 @@ static int cmd_ipm_stress(const struct shell *shell,
 	ipm_set_id_enabled(ipmdev, channel, true);
 
 	/* send stress message */
-	buf[0] = ((STRESSIZE << 8) | STRESSHEADER);
-	buf[1] = test_pattern;
+	tx_msg_data[0] = ((STRESSIZE << 8) | STRESSHEADER);
+	LOG_DBG("msg[0] : 0x%08x\n", tx_msg_data[0]);
+	tx_msg_data[1] = test_pattern;
+	LOG_DBG("msg[1] : 0x%08x\n", tx_msg_data[1]);
 
 	/* fill the share memory data */
 	for (i = 0; i < STRESSIZE / 4; i++, test_pattern++) {
 		*(tx_buff + i) = test_pattern;
 	}
 
+	LOG_DBG("send stress msg\n");
+
 	/* send message */
-	ret = ipm_send(ipmdev, 0, channel, (void *)buf, IPC_MAX_MSG_SIZE);
+	ret = ipm_send(ipmdev, 0, channel, (void *)tx_msg_data, IPC_MAX_MSG_SIZE);
 
 	if (ret) {
 		shell_error(shell, "IPM: Send message failed cause %d.", ret);
