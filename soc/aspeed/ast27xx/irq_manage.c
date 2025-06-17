@@ -30,7 +30,7 @@
 #define LOG_LEVEL CONFIG_SOC_LOG_LEVEL
 LOG_MODULE_REGISTER(soc, LOG_LEVEL_ERR);
 
-#define NUM_IRQS_PER_REG 32
+#define NUM_IRQS_PER_REG  32
 #define REG_FROM_IRQ(irq) ((irq) / NUM_IRQS_PER_REG)
 #define BIT_FROM_IRQ(irq) ((irq) % NUM_IRQS_PER_REG)
 
@@ -43,31 +43,31 @@ LOG_MODULE_REGISTER(soc, LOG_LEVEL_ERR);
  * sirq_csel: intcg_base + INTCG_IRQ_ROUTE_REG0
  * sirq_csel1: intcg_base + INTCG_IRQ_ROUTE_REG1
  */
-#define INTCG_DEV		DT_ALIAS(intc)
-#define INTCG_BASE		(DT_REG_ADDR(INTCG_DEV))
-#define INTCG_IRQ_ROUTE_SEL	DT_ENUM_IDX(INTCG_DEV, irq_route_select)
+#define INTCG_DEV           DT_ALIAS(intc)
+#define INTCG_BASE          (DT_REG_ADDR(INTCG_DEV))
+#define INTCG_IRQ_ROUTE_SEL DT_ENUM_IDX(INTCG_DEV, irq_route_select)
 
-#define INTCG_IRQ_ROUTE_REG0	0x200
-#define INTCG_IRQ_ROUTE_REG1	0x300
-#define INTCG_IRQ_ROUTE_REG2	0x400
+#define INTCG_IRQ_ROUTE_REG0 0x200
+#define INTCG_IRQ_ROUTE_REG1 0x300
+#define INTCG_IRQ_ROUTE_REG2 0x400
 
 /*
  * sirqio_csel0: intc1g_base + INTC1G_IRQ_ROUTE_REG0
  * sirqio_csel1: intc1g_base + INTC1G_IRQ_ROUTE_REG1
  * sirqio_csel2: intc1g_base + INTC1G_IRQ_ROUTE_REG2
  */
-#define INTC1G_DEV		DT_ALIAS(intc1)
-#define INTC1G_BASE		(DT_REG_ADDR(INTC1G_DEV))
-#define INTC1G_IRQ_ROUTE_SEL	DT_ENUM_IDX(INTC1G_DEV, irq_route_select)
-#define INTC1G_IRQ_ROUTE_REG0	0x80
-#define INTC1G_IRQ_ROUTE_REG1	0xa0
-#define INTC1G_IRQ_ROUTE_REG2	0xc0
+#define INTC1G_DEV            DT_ALIAS(intc1)
+#define INTC1G_BASE           (DT_REG_ADDR(INTC1G_DEV))
+#define INTC1G_IRQ_ROUTE_SEL  DT_ENUM_IDX(INTC1G_DEV, irq_route_select)
+#define INTC1G_IRQ_ROUTE_REG0 0x80
+#define INTC1G_IRQ_ROUTE_REG1 0xa0
+#define INTC1G_IRQ_ROUTE_REG2 0xc0
 
 /* 1-1 INTC: INTC0_0~INTC0_10 NVIC128~138 */
 /* 1-1 INTC: INTC0_11 bit0~bit9 NVIC160~192 */
 /* 6-1 INTC: INTC1_0~INTC1_5 which's parent is INTC0_11 bit0~bit5 */
-#define NUM_OF_INTC		10
-#define NUM_OF_2ND_3RD_LVL_IRQS	(NUM_IRQS_PER_REG * NUM_OF_INTC)
+#define NUM_OF_INTC             10
+#define NUM_OF_2ND_3RD_LVL_IRQS (NUM_IRQS_PER_REG * NUM_OF_INTC)
 /*
  * | irq_raw  | level 1 |level 2 | level 3 |
  * |          | irqn    | irqn   | irqn    |
@@ -193,6 +193,15 @@ static void intcg_set_irq_route(unsigned int irq_raw, int select)
 	} else {
 		LOG_ERR("Unknown interrupt route select=0x%x", select);
 	}
+
+	LOG_DBG("%s: irq_raw=0x%x, select=0x%x, base=0x%lx, byte_offset=0x%x, "
+		"bit_pos=0x%x",
+		__func__, irq_raw, select, base, byte_offset, bit_pos);
+	LOG_DBG("INTCG_IRQ_ROUTE_REG0=0x%x, "
+		"INTCG_IRQ_ROUTE_REG1=0x%x, INTCG_IRQ_ROUTE_REG2=0x%x",
+		sys_read32(base + INTCG_IRQ_ROUTE_REG0 + byte_offset),
+		sys_read32(base + INTCG_IRQ_ROUTE_REG1 + byte_offset),
+		sys_read32(base + INTCG_IRQ_ROUTE_REG2 + byte_offset));
 }
 
 /*
@@ -240,6 +249,15 @@ static void intc1g_set_irq_route(unsigned int irq_raw, int select)
 	} else {
 		sys_clear_bit(base + INTC1G_IRQ_ROUTE_REG2 + byte_offset, bit_pos);
 	}
+
+	LOG_DBG("%s: irq_raw=0x%x, select=0x%x, base=0x%lx, byte_offset=0x%x, "
+		"bit_pos=0x%x",
+		__func__, irq_raw, select, base, byte_offset, bit_pos);
+	LOG_DBG("INTC1G_IRQ_ROUTE_REG0=0x%x, "
+		"INTC1G_IRQ_ROUTE_REG1=0x%x, INTC1G_IRQ_ROUTE_REG2=0x%x",
+		sys_read32(base + INTC1G_IRQ_ROUTE_REG0 + byte_offset),
+		sys_read32(base + INTC1G_IRQ_ROUTE_REG1 + byte_offset),
+		sys_read32(base + INTC1G_IRQ_ROUTE_REG2 + byte_offset));
 }
 
 /**
@@ -255,6 +273,7 @@ static const struct _irq_parent_entry *get_intc_entry_for_irq(unsigned int irq)
 
 	/* 1st level aggregator is not registered */
 	if (level == 1) {
+		LOG_ERR("%s, %d: No aggregator for level 1 irq %d", __func__, __LINE__, irq);
 		return NULL;
 	}
 
@@ -268,12 +287,15 @@ static const struct _irq_parent_entry *get_intc_entry_for_irq(unsigned int irq)
 	unsigned int intc_irq = irq_get_intc_irq(irq_from_level(irq, level - 1));
 
 	/* Find an aggregator entry that matches the level & intc_irq */
-	STRUCT_SECTION_FOREACH_ALTERNATE(intc_table, _irq_parent_entry, intc) {
+	STRUCT_SECTION_FOREACH_ALTERNATE(intc_table, _irq_parent_entry, intc)
+	{
 		if (intc->level == level && intc->irq == intc_irq) {
 			return intc;
 		}
 	}
 
+	LOG_ERR("%s, %d: No aggregator found for irq %d, level %d, intc_irq %d", __func__, __LINE__,
+		irq, level, intc_irq);
 	return NULL;
 }
 
@@ -285,6 +307,8 @@ const struct device *aspeed_get_sw_isr_device_from_irq(unsigned int irq)
 
 	/* Check intc and intc->dev or not, return NULL. */
 	if (!intc || !intc->dev) {
+		LOG_ERR("%s, %d: can't find an aggregator to handle irq(%X)", __func__, __LINE__,
+			irq);
 		return NULL;
 	}
 
@@ -297,8 +321,11 @@ static int intc_aspeed_enable_irq(unsigned int irq)
 	unsigned int level = irq_get_level(irq);
 	unsigned int local_irq = irq_from_level(irq, level);
 
+	LOG_DBG("%s, %d: irq=%d, level=%d, local_irq=%d", __func__, __LINE__, irq, level,
+		local_irq);
 	dev = aspeed_get_sw_isr_device_from_irq(irq);
 	if (!dev) {
+		LOG_ERR("%s, %d: Failed to get device for irq %d", __func__, __LINE__, irq);
 		return -ENOSYS;
 	}
 
@@ -314,8 +341,11 @@ static int intc_aspeed_disable_irq(unsigned int irq)
 	unsigned int level = irq_get_level(irq);
 	unsigned int local_irq = irq_from_level(irq, level);
 
+	LOG_DBG("%s, %d: irq=%d, level=%d, local_irq=%d", __func__, __LINE__, irq, level,
+		local_irq);
 	dev = aspeed_get_sw_isr_device_from_irq(irq);
 	if (!dev) {
+		LOG_ERR("%s, %d: Failed to get device for irq %d", __func__, __LINE__, irq);
 		return -ENOSYS;
 	}
 
@@ -331,8 +361,11 @@ static int intc_aspeed_irq_is_enabled(unsigned int irq)
 	unsigned int level = irq_get_level(irq);
 	unsigned int local_irq = irq_from_level(irq, level);
 
+	LOG_DBG("%s, %d: irq=%d, level=%d, local_irq=%d", __func__, __LINE__, irq, level,
+		local_irq);
 	dev = aspeed_get_sw_isr_device_from_irq(irq);
 	if (!dev) {
+		LOG_ERR("%s, %d: Failed to get device for irq %d", __func__, __LINE__, irq);
 		return -ENOSYS;
 	}
 
@@ -344,6 +377,7 @@ void z_soc_irq_enable(unsigned int irq)
 {
 	unsigned int irq_raw;
 
+	LOG_DBG("%s, %d: irq=%d", __func__, __LINE__, irq);
 	irq_raw = irq_to_raw_irq(irq);
 	if (irq_raw < CONFIG_2ND_LVL_INTR_00_OFFSET) {
 		/* level 1 nvic irqn selection*/
@@ -362,6 +396,7 @@ void z_soc_irq_enable(unsigned int irq)
 
 void z_soc_irq_disable(unsigned int irq)
 {
+	LOG_DBG("%s, %d: irq=%d", __func__, __LINE__, irq);
 	if (irq_get_level(irq) == 1) {
 		NVIC_DisableIRQ((IRQn_Type)irq);
 	} else {
@@ -371,6 +406,7 @@ void z_soc_irq_disable(unsigned int irq)
 
 int z_soc_irq_is_enabled(unsigned int irq)
 {
+	LOG_DBG("%s, %d: irq=%d", __func__, __LINE__, irq);
 	if (irq_get_level(irq) == 1) {
 		return NVIC->ISER[REG_FROM_IRQ(irq)] & BIT(BIT_FROM_IRQ(irq));
 	} else {
@@ -416,8 +452,7 @@ void z_soc_irq_priority_set(unsigned int irq, unsigned int prio, uint32_t flags)
 	 */
 	__ASSERT(prio <= (BIT(NUM_IRQ_PRIO_BITS) - 1),
 		 "invalid priority %d for %d irq! values must be less than %lu\n",
-		 prio - _IRQ_PRIO_OFFSET, irq,
-		 BIT(NUM_IRQ_PRIO_BITS) - (_IRQ_PRIO_OFFSET));
+		 prio - _IRQ_PRIO_OFFSET, irq, BIT(NUM_IRQ_PRIO_BITS) - (_IRQ_PRIO_OFFSET));
 
 	/* 2nd level INTC does not support IRQ priority */
 	if (irq_get_level(irq) == 1) {

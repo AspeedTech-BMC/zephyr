@@ -18,14 +18,14 @@
 #define LOG_LEVEL CONFIG_INTC_LOG_LEVEL
 LOG_MODULE_REGISTER(intc_ast2700_ic, LOG_LEVEL_ERR);
 
-#define MAX_INTC_NUMBER (CONFIG_MAX_IRQ_PER_AGGREGATOR * CONFIG_NUM_3RD_LEVEL_AGGREGATORS)
+#define MAX_INTC_NUMBER       (CONFIG_MAX_IRQ_PER_AGGREGATOR * CONFIG_NUM_3RD_LEVEL_AGGREGATORS)
 #define INTC_2ND_LEVEL_NUMBER 11
 
 /* Each bit in the register represents an IPC ID */
-#define INTC_IER	0x0
-#define INTC_RAW	0x4
+#define INTC_IER 0x0
+#define INTC_RAW 0x4
 
-#define IS_BIT_SET(reg, bit)	((((reg) >> (bit)) & (0x1)) != 0)
+#define IS_BIT_SET(reg, bit) ((((reg) >> (bit)) & (0x1)) != 0)
 
 /* Driver config */
 struct intc_ast2700_config {
@@ -48,7 +48,7 @@ static int intc_ast2700_isr(const void *dev)
 	unsigned int enable;
 	unsigned int status;
 	unsigned int i;
-	unsigned int intc_num;
+	unsigned int intc_num = 0;
 	unsigned int irqn_from_intc = 0;
 	unsigned int offset = 0;
 
@@ -59,7 +59,7 @@ static int intc_ast2700_isr(const void *dev)
 
 	if (level == 1) {
 		intc_num = INTC_2ND_LEVEL_NUMBER; /* INTC0_11 in NVIC */
-		irqn_from_intc = irqn; /* IRQN of INTC0_11 is NVIC#160~NVIC#165 */
+		irqn_from_intc = irqn;            /* IRQN of INTC0_11 is NVIC#160~NVIC#165 */
 		offset = CONFIG_2ND_LVL_ISR_TBL_OFFSET;
 	} else if (level == 2) {
 		/*
@@ -84,8 +84,9 @@ static int intc_ast2700_isr(const void *dev)
 			LOG_DBG("offset at %d", offset + i);
 			if (_sw_isr_table[offset + i].isr) {
 				_sw_isr_table[offset + i].isr(_sw_isr_table[offset + i].arg);
-			} else
+			} else {
 				LOG_ERR("IRQ %u has not been requested", irqn_from_intc + i);
+			}
 
 			/* Clear INTC0_11 or INTC1_x status bit */
 			LOG_DBG("base 0x%lx, write 0x%lx", base + INTC_RAW, BIT(i));
@@ -170,16 +171,16 @@ static int intc_ast2700_init(const struct device *dev)
 	if (sys_read32(base + INTC_RAW)) {
 		LOG_ERR("init isr incorrect INTC%d ", intc_num);
 		LOG_ERR("%lx:", base + INTC_RAW);
-		LOG_ERR("%x\n", sys_read32(base + INTC_RAW));
+		LOG_ERR("%x", sys_read32(base + INTC_RAW));
 		ret = 1;
 	}
 	return ret;
 }
 
 static const struct intc_driver_api intc_ast2700_driver_api = {
-	.disable_irq	= intc_ast2700_irq_mask,
-	.enable_irq	= intc_ast2700_irq_unmask,
-	.irq_enabled	= intc_ast2700_irq_is_enabled,
+	.disable_irq = intc_ast2700_irq_mask,
+	.enable_irq = intc_ast2700_irq_unmask,
+	.irq_enabled = intc_ast2700_irq_is_enabled,
 };
 
 #define INTC_AST2700_IRQ_CONNECT(index, inst)                                                      \
