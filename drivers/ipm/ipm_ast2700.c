@@ -13,6 +13,7 @@
 #include <zephyr/init.h>
 #include <zephyr/sys/sys_io.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/cache.h>
 
 #define LOG_LEVEL CONFIG_IPM_LOG_LEVEL
 LOG_MODULE_REGISTER(ipm_ast2700, LOG_LEVEL_ERR);
@@ -106,6 +107,10 @@ static void ipm_ast2700_isr(const void *dev)
 	for (i = 0; i < IPC_NUM_OF_ID; i++) {
 		msg_base = base + IPCR_DATA0 + IPC_MAX_MSG_SIZE * i;
 		if ((status & BIT(i)) && data->callback[i]) {
+			if (data->shmem_info[i].shmem_rx_size) {
+				sys_cache_data_invd_range((void *)data->shmem_info[i].shmem_rx_base,
+					data->shmem_info[i].shmem_rx_size);
+			}
 			data->callback[i](dev, data->user_data[i], i, (volatile void *)msg_base);
 		}
 		sys_write32(BIT(i), base + IPCR_STATUS);
