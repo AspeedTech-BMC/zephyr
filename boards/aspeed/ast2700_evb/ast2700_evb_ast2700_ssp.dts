@@ -33,9 +33,51 @@
 		zephyr,memory-region = "RAM_NC";
 	};
 
-	sram: memory@70010000 {
+	ipc_s_ca35_data: memory@70000000 {
+		compatible = "zephyr,memory-region";
 		device_type = "memory";
-		reg = <0x70000000 DT_SIZE_K(128)>;  // 128KB
+		reg = <0x70000000 DT_SIZE_K(4)>;
+		zephyr,memory-region = "IPC_SHARE_MEM_LOCAL_S_CA35_DATA";
+	};
+
+	ipc_ns_ca35_data: memory@70001000 {
+		compatible = "zephyr,memory-region";
+		device_type = "memory";
+		reg = <0x70001000 DT_SIZE_K(4)>;
+		zephyr,memory-region = "IPC_SHARE_MEM_LOCAL_NS_CA35_DATA";
+	};
+
+	ipc_bootmcu_ro_data: memory@70002000 {
+		compatible = "zephyr,memory-region";
+		device_type = "memory";
+		reg = <0x70002000 DT_SIZE_K(4)>;
+		zephyr,memory-region = "IPC_SHARE_MEM_REMOTE_BOOTMCU_DATA";
+	};
+
+	ipc_bootmcu_ro_caliptra: memory@70003000 {
+		compatible = "zephyr,memory-region";
+		device_type = "memory";
+		reg = <0x70003000 DT_SIZE_K(4)>;
+		zephyr,memory-region = "IPC_SHARE_MEM_REMOTE_BOOTMCU_CALIPTRA";
+	};
+
+	ipc_bootmcu_data: memory@70004000 {
+		compatible = "zephyr,memory-region";
+		device_type = "memory";
+		reg = <0x70004000 DT_SIZE_K(4)>;
+		zephyr,memory-region = "IPC_SHARE_MEM_LOCAL_BOOTMCU_DATA";
+	};
+
+	ipc_bootmcu_caliptra: memory@70005000 {
+		compatible = "zephyr,memory-region";
+		device_type = "memory";
+		reg = <0x70005000 DT_SIZE_K(4)>;
+		zephyr,memory-region = "IPC_SHARE_MEM_LOCAL_BOOTMCU_CALIPTRA";
+	};
+
+	sram: memory@70006000 {
+		device_type = "memory";
+		reg = <0x70006000 DT_SIZE_K(104)>;  // 104KB
 	};
 
 	tcm: memory@1fffe000 {

@@ -31,6 +31,19 @@ extern "C" {
 
 #define IPC_SHARE_MEM_SRAM_SIZE		(0x1000) /* 4KB */
 
+#define IPC_SHARE_MEM_LOCAL_S_CA35_DATA                                                            \
+	__attribute__((__section__("IPC_SHARE_MEM_LOCAL_S_CA35_DATA")))
+#define IPC_SHARE_MEM_LOCAL_NS_CA35_DATA                                                           \
+	__attribute__((__section__("IPC_SHARE_MEM_LOCAL_NS_CA35_DATA")))
+#define IPC_SHARE_MEM_REMOTE_BOOTMCU_DATA                                                          \
+	__attribute__((__section__("IPC_SHARE_MEM_REMOTE_BOOTMCU_DATA")))
+#define IPC_SHARE_MEM_REMOTE_BOOTMCU_CALIPTRA                                                      \
+	__attribute__((__section__("IPC_SHARE_MEM_REMOTE_BOOTMCU_CALIPTRA")))
+#define IPC_SHARE_MEM_LOCAL_BOOTMCU_DATA                                                           \
+	__attribute__((__section__("IPC_SHARE_MEM_LOCAL_BOOTMCU_DATA")))
+#define IPC_SHARE_MEM_LOCAL_BOOTMCU_CALIPTRA                                                       \
+	__attribute__((__section__("IPC_SHARE_MEM_LOCAL_BOOTMCU_CALIPTRA")))
+
 #define IPC_CHANNEL_ID_CH0			0
 #define IPC_CHANNEL_0_SSP_IN_ADDR		(0x70004000)
 #define IPC_CHANNEL_0_SSP_OUT_ADDR		(0x70002000)
