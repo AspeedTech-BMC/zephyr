@@ -7,6 +7,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/syscon.h>
 #include <zephyr/sys/barrier.h>
+#include <zephyr/devicetree.h>
 
 #if defined(CONFIG_SOC_AST2700_SSP) || defined(CONFIG_SOC_AST2700_TSP)
 /*
@@ -44,14 +45,17 @@
 #define CACHE_AREA_SIZE_LOG2	15
 #endif
 
-#ifdef CONFIG_XIP
-#define CACHED_SRAM_ADDR	CONFIG_FLASH_BASE_ADDRESS
-#define CACHED_SRAM_SIZE	KB(CONFIG_FLASH_SIZE + CONFIG_SRAM_SIZE)
+#if DT_NODE_HAS_STATUS(DT_CHOSEN(zephyr_cached_memory), okay)
+#define CACHED_MEM_ADDR		DT_REG_ADDR(DT_CHOSEN(zephyr_cached_memory))
+#define CACHED_MEM_SIZE		DT_REG_SIZE(DT_CHOSEN(zephyr_cached_memory))
+#elif CONFIG_XIP
+#define CACHED_MEM_ADDR		CONFIG_FLASH_BASE_ADDRESS
+#define CACHED_MEM_SIZE		KB(CONFIG_FLASH_SIZE + CONFIG_SRAM_SIZE)
 #else
-#define CACHED_SRAM_ADDR	CONFIG_SRAM_BASE_ADDRESS
-#define CACHED_SRAM_SIZE	KB(CONFIG_SRAM_SIZE)
+#define CACHED_MEM_ADDR		CONFIG_SRAM_BASE_ADDRESS
+#define CACHED_MEM_SIZE		KB(CONFIG_SRAM_SIZE)
 #endif
-#define CACHED_SRAM_END		(CACHED_SRAM_ADDR + CACHED_SRAM_SIZE - 1)
+#define CACHED_MEM_END		(CACHED_MEM_ADDR + CACHED_MEM_SIZE - 1)
 #define CACHE_AREA_SIZE		BIT(CACHE_AREA_SIZE_LOG2)
 
 #define DCACHE_INVALID(addr)	(BIT(31) | (((addr) & GENMASK(10, 0)) << 16))
@@ -204,8 +208,8 @@ int cache_data_invd_range(void *addr, size_t size)
 	uintptr_t base = CACHE_BASE;
 	unsigned int key = 0;
 
-	if (((uint32_t)addr < CACHED_SRAM_ADDR) ||
-	    ((uint32_t)addr > CACHED_SRAM_END)) {
+	if (((uint32_t)addr < CACHED_MEM_ADDR) ||
+	    ((uint32_t)addr > CACHED_MEM_END)) {
 		return 0;
 	}
 
@@ -265,8 +269,8 @@ int cache_instr_invd_range(void *addr, size_t size)
 	uintptr_t base = CACHE_BASE;
 	unsigned int key = 0;
 
-	if (((uint32_t)addr < CACHED_SRAM_ADDR) ||
-	    ((uint32_t)addr > CACHED_SRAM_END)) {
+	if (((uint32_t)addr < CACHED_MEM_ADDR) ||
+	    ((uint32_t)addr > CACHED_MEM_END)) {
 		return 0;
 	}
 

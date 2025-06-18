@@ -18,6 +18,7 @@
 		zephyr,sram = &sram;
 		zephyr,entropy = &rng;
 		zephyr,custom-stack = &tcm;
+		zephyr,cached-memory = &dram_c_region;
 	};
 
 	dram_rw_region: memory@20000 {
@@ -31,6 +32,11 @@
 		device_type = "memory";
 		reg = <0x1000000 DT_SIZE_K(16384)>;
 		zephyr,memory-region = "RAM_NC";
+	};
+
+	dram_c_region: memory@5080000 {
+		device_type = "memory";
+		reg = <0x5080000 DT_SIZE_K(8192)>;
 	};
 
 	ipc_s_ca35_data: memory@70000000 {
