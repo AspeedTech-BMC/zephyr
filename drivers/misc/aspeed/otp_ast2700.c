@@ -118,13 +118,6 @@ static void otp_unlock(const struct device *dev)
 	sys_write32(OTP_PASSWD, cfg->base + OTP_KEY);
 }
 
-static void otp_lock(const struct device *dev)
-{
-	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
-
-	sys_write32(0x1, cfg->base + OTP_KEY);
-}
-
 static int wait_complete(const struct device *dev)
 {
 	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
@@ -194,7 +187,6 @@ static int aspeed_otp_read(const struct device *dev, uint32_t offset, void *buf,
 	int ret;
 	uint16_t *data = (uint16_t *)buf;
 
-	otp_unlock(dev);
 	for (int i = 0; i < size; i++) {
 		ret = otp_read_data(dev, offset + i, data + i);
 		if (ret) {
@@ -203,7 +195,6 @@ static int aspeed_otp_read(const struct device *dev, uint32_t offset, void *buf,
 		}
 	}
 
-	otp_lock(dev);
 	return ret;
 }
 
@@ -213,8 +204,6 @@ static int aspeed_otp_write(const struct device *dev, uint32_t offset, void *buf
 	uint16_t *data = (uint16_t *)buf;
 	int ret;
 
-	otp_unlock(dev);
-
 	if (size == 1)
 		ret = otp_prog_data(dev, offset, data[0]);
 	else
@@ -223,7 +212,6 @@ static int aspeed_otp_write(const struct device *dev, uint32_t offset, void *buf
 	if (ret)
 		LOG_ERR("%s: prog failed\n", __func__);
 
-	otp_lock(dev);
 	return ret;
 }
 
@@ -232,8 +220,6 @@ static int aspeed_otp_ecc_init(const struct device *dev)
 	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
 	int ret;
 	uint32_t val;
-
-	otp_unlock(dev);
 
 	/* Check cfg_ecc_en */
 	sys_write32(0, cfg->base + OTP_ECC_EN);
@@ -249,8 +235,6 @@ static int aspeed_otp_ecc_init(const struct device *dev)
 	else
 		cfg->gbl_ecc_en = 0x0;
 
-	otp_lock(dev);
-
 	return 0;
 }
 
@@ -258,6 +242,8 @@ static int otp_ast27xx_init(const struct device *dev)
 {
 	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
 	int rc;
+
+	otp_unlock(dev);
 
 	/* OTP ECC init */
 	rc = aspeed_otp_ecc_init(dev);
