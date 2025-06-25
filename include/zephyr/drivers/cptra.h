@@ -31,6 +31,7 @@
 #define CPTRA_ECDSA_SIG_LEN			96	/* ECDSA384 */
 #define CPTRA_ECDSA_SHA_LEN			48	/* SHA384 */
 #define CPTRA_MBOX_SZ				0x20000	/* 128KB */
+#define CPTRA_IMC_ENTRY_COUNT			127	/* Max IMC entry count */
 
 /* Mailbox commands */
 enum cptra_mbox_cmd {
@@ -508,16 +509,18 @@ struct cptra_manifest_preamble {
 	uint32_t metadata_owner_LMS_sig[405];
 };
 
+struct cptra_manifest_ime {
+	uint32_t fw_id;
+	uint32_t flags;
+	uint8_t digest[48]; /* SHA384 */
+};
+
 struct cptra_set_auth_manifest_ia {
 	uint32_t manifest_size;
 
 	struct cptra_manifest_preamble preamble;
 	uint32_t metadata_entry_entry_count;
-	struct {
-		uint32_t fw_id;
-		uint32_t flags;
-		uint8_t digest[48];
-	} metadata_entries[1];
+	struct cptra_manifest_ime metadata_entries[CPTRA_IMC_ENTRY_COUNT];
 };
 
 struct cptra_set_auth_manifest_oa {

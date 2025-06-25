@@ -1607,7 +1607,9 @@ __attribute__((unused)) static void cptra_test_set_auth_manifest(void)
 	memset(&output, 0, sizeof(struct cptra_set_auth_manifest_oa));
 
 	/* Set input data */
-	input.manifest_size = sizeof(struct cptra_set_auth_manifest_ia) - 4;
+	input.manifest_size = sizeof(struct cptra_manifest_preamble) +
+			      sizeof(uint32_t) +
+			      sizeof(struct cptra_manifest_ime);
 	input.preamble.manifest_marker = CPTRA_MBCMD_SET_AUTH_MANIFEST;
 	input.preamble.preamble_size = sizeof(struct cptra_manifest_preamble);
 	input.preamble.manifest_version = 1;
@@ -1734,7 +1736,7 @@ __attribute__((unused)) static void cptra_test_set_auth_manifest(void)
 	LOG_DBG("Hashing metadata entries");
 	memset(hash, 0, sizeof(hash));
 	range = sizeof(input.metadata_entry_entry_count) +
-		sizeof(input.metadata_entries);
+		sizeof(input.metadata_entries[0]);
 #if defined(CONFIG_MBEDTLS)
 	ret = mbedtls_sha512((const uint8_t *)&input.metadata_entry_entry_count, range,
 			     hash, 1);
