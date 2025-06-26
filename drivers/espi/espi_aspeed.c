@@ -1307,7 +1307,7 @@ static int espi_aspeed_flash_rwe(const struct device *dev, struct espi_flash_pac
 	flash_rwe->tag = FLASH_TAG;
 	flash_rwe->len_h = pckt->len >> 8;
 	flash_rwe->len_l = pckt->len & 0xff;
-	flash_rwe->addr_be = __bswap_32(pckt->flash_addr);
+	flash_rwe->addr_be = BSWAP_32(pckt->flash_addr);
 
 	memcpy(flash_rwe + 1, pckt->buf, pckt->len);
 
