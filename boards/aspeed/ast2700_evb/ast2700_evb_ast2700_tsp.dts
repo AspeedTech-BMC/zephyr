@@ -15,7 +15,7 @@
 		zephyr,console = &uart7;
 		zephyr,shell-uart = &uart7;
 		zephyr,flash = &dram_ro_region;
-		zephyr,sram = &dram_rw_region;
+		zephyr,sram = &sram;
 	};
 
 	dram_rw_region: memory@20000 {
@@ -29,6 +29,12 @@
 		device_type = "memory";
 		reg = <0x1000000 DT_SIZE_K(16384)>;
 		zephyr,memory-region = "RAM_NC";
+	};
+
+	/* SSP will use the 72KB, remain: 128 - 72 = 56 */
+	sram: memory@70014000 {
+		device_type = "memory";
+		reg = <0x70014000 DT_SIZE_K(56)>;  // 56KB
 	};
 };
 
