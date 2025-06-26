@@ -7,6 +7,8 @@ board:
     - name: ddr
       cpucluster: ssp
     - name: ddr
+      cpucluster: ssp-tsp
+    - name: ddr
       cpucluster: tsp
     - name: sram
       cpucluster: bootmcu

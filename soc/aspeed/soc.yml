@@ -15,6 +15,7 @@ family:
           - name: ast2700
             cpuclusters:
             - name: ssp
+            - name: ssp-tsp
             - name: tsp
             - name: bootmcu
           - name: ast2700-a0
