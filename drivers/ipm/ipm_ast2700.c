@@ -51,7 +51,7 @@ struct ipm_ast2700_data {
 	struct ipm_ast2700_shmem shmem_info[IPC_NUM_OF_ID]; /* share memory info */
 };
 
-/* list  */
+/* list */
 void ast_ipm_list(const struct device *dev)
 {
 	const struct ipm_ast2700_data *data = ((const struct device *)dev)->data;
@@ -72,6 +72,7 @@ void ast_ipm_list(const struct device *dev)
 	}
 }
 
+/* shmem information */
 void ast_ipm_shmem_info(const struct device *dev, uint32_t channel, struct ipm_shell_shmem *info)
 {
 	const struct ipm_ast2700_data *data = ((const struct device *)dev)->data;
@@ -93,6 +94,22 @@ void ast_ipm_shmem_info(const struct device *dev, uint32_t channel, struct ipm_s
 			info->shmem_tx_size = 0;
 		}
 	}
+}
+
+/* tx shmem information */
+int ast_ipm_max_tx_shmem_size(const struct device *dev, uint32_t channel)
+{
+	const struct ipm_ast2700_data *data = ((const struct device *)dev)->data;
+
+	return data->shmem_info[channel].shmem_tx_size;
+}
+
+/* rx shmem information */
+int ast_ipm_max_rx_shmem_size(const struct device *dev, uint32_t channel)
+{
+	const struct ipm_ast2700_data *data = ((const struct device *)dev)->data;
+
+	return data->shmem_info[channel].shmem_rx_size;
 }
 
 static void ipm_ast2700_isr(const void *dev)

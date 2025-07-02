@@ -26,4 +26,9 @@ void ast_ipm_list(const struct device *dev);
 /* Get share memory information */
 void ast_ipm_shmem_info(const struct device *dev, uint32_t channel, struct ipm_shell_shmem *info);
 
+/* Get tx share memory size */
+int ast_ipm_max_tx_shmem_size(const struct device *dev, uint32_t channel);
+
+/* Get rx share memory size */
+int ast_ipm_max_rx_shmem_size(const struct device *dev, uint32_t channel);
 #endif /* ZEPHYR_INCLUDE_DRIVERS_IPM_H_ */
