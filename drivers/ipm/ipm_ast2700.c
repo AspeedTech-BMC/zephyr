@@ -104,12 +104,66 @@ int ast_ipm_max_tx_shmem_size(const struct device *dev, uint32_t channel)
 	return data->shmem_info[channel].shmem_tx_size;
 }
 
+/* Write the tx shmem */
+int ast_ipm_shmem_write(const struct device *dev, uint32_t channel,
+uint32_t offset, const void *buf, uint32_t size)
+{
+	const struct ipm_ast2700_data *data = ((const struct device *)dev)->data;
+	uintptr_t dst = 0;
+
+	if (data->shmem_info[channel].shmem_tx_base) {
+		if (data->shmem_info[channel].shmem_tx_size) {
+			if (offset + size > data->shmem_info[channel].shmem_tx_size) {
+				LOG_DBG("Write out of tx range");
+				goto shmem_write_fail;
+			} else {
+				dst = data->shmem_info[channel].shmem_tx_base;
+				memcpy((void *)(dst + offset), buf, size);
+			}
+		} else
+			goto shmem_write_fail;
+	} else
+		goto shmem_write_fail;
+
+	return size;
+
+shmem_write_fail:
+	return -EINVAL;
+}
+
 /* rx shmem information */
 int ast_ipm_max_rx_shmem_size(const struct device *dev, uint32_t channel)
 {
 	const struct ipm_ast2700_data *data = ((const struct device *)dev)->data;
 
 	return data->shmem_info[channel].shmem_rx_size;
+}
+
+/* Read the rx shmem */
+int ast_ipm_shmem_read(const struct device *dev, uint32_t channel,
+uint32_t offset, void *buf, uint32_t size)
+{
+	const struct ipm_ast2700_data *data = ((const struct device *)dev)->data;
+	uintptr_t src = 0;
+
+	if (data->shmem_info[channel].shmem_rx_base) {
+		if (data->shmem_info[channel].shmem_rx_size) {
+			if (offset + size > data->shmem_info[channel].shmem_rx_size) {
+				LOG_DBG("Read out of rx range");
+				goto shmem_read_fail;
+			} else {
+				src = data->shmem_info[channel].shmem_rx_base;
+				memcpy((void *)buf, (void *)(src + offset), size);
+			}
+		} else
+			goto shmem_read_fail;
+	} else
+		goto shmem_read_fail;
+
+	return size;
+
+shmem_read_fail:
+	return -EINVAL;
 }
 
 static void ipm_ast2700_isr(const void *dev)
