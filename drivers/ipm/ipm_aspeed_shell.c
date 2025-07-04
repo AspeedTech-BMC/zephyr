@@ -292,8 +292,8 @@ static int cmd_ipm_write_shm(const struct shell *shell,
 			size_t argc, char **argv)
 {
 	const struct device *ipmdev = NULL;
-	int channel = 0, offset = 0, size = 0;
-	int src = 0, dst = 0;
+	int channel = 0, offset = 0, size = 0, ret_size = 0;
+	int dst = 0;
 
 	ipmdev = device_get_binding(argv[1]);
 	if (!ipmdev) {
@@ -303,28 +303,24 @@ static int cmd_ipm_write_shm(const struct shell *shell,
 	}
 
 	channel = strtol(argv[2], NULL, 16);
-	if (channel > 2) {
+	if (channel > IPC_NUM_OF_ID) {
 		shell_error(shell, "IPM: Channel %d not found.",
 				channel);
 		return -EINVAL;
-	}
-
-	if (channel == 0) {
-		src = IPC_CHANNEL_0_SSP_OUT_ADDR;
-	} else {
-		src = IPC_CHANNEL_1_SSP_OUT_ADDR;
 	}
 
 	offset = strtol(argv[3], NULL, 16);
 	dst = strtol(argv[4], NULL, 16);
 	size = strtol(argv[5], NULL, 16);
 
-	if (offset + size > IPC_SHARE_MEM_SRAM_SIZE) {
-		shell_error(shell, "IPM: Write position and size over limit");
+	ret_size = ast_ipm_shmem_write(ipmdev, channel, offset, (void *)dst, size);
+
+	/* check copy size */
+	if (ret_size != size) {
+		shell_error(shell, "IPM: write channel %d tx shmem failed.",
+				channel);
 		return -EINVAL;
 	}
-
-	memcpy((void *)(dst + offset), (void *)src, size);
 
 	return 0;
 }
@@ -336,8 +332,8 @@ static int cmd_ipm_read_shm(const struct shell *shell,
 			size_t argc, char **argv)
 {
 	const struct device *ipmdev = NULL;
-	int channel = 0, offset = 0, size = 0;
-	int src = 0, dst = 0;
+	int channel = 0, offset = 0, size = 0, ret_size = 0;
+	int src = 0;
 
 	ipmdev = device_get_binding(argv[1]);
 	if (!ipmdev) {
@@ -347,28 +343,24 @@ static int cmd_ipm_read_shm(const struct shell *shell,
 	}
 
 	channel = strtol(argv[2], NULL, 16);
-	if (channel > 2) {
+	if (channel > IPC_NUM_OF_ID) {
 		shell_error(shell, "IPM: Channel %d not found.",
 				channel);
 		return -EINVAL;
-	}
-
-	if (channel == 0) {
-		dst = IPC_CHANNEL_0_SSP_IN_ADDR;
-	} else {
-		dst = IPC_CHANNEL_1_SSP_IN_ADDR;
 	}
 
 	offset = strtol(argv[3], NULL, 16);
 	src = strtol(argv[4], NULL, 16);
 	size = strtol(argv[5], NULL, 16);
 
-	if (offset + size > IPC_SHARE_MEM_SRAM_SIZE) {
-		shell_error(shell, "IPM: Read position and size over limit");
+	ret_size = ast_ipm_shmem_read(ipmdev, channel, offset, (void *)src, size);
+
+	/* check copy size */
+	if (ret_size != size) {
+		shell_error(shell, "IPM: read channel %d rx shmem failed.",
+				channel);
 		return -EINVAL;
 	}
-
-	memcpy((void *)(dst + offset), (void *)src, size);
 
 	return 0;
 }
