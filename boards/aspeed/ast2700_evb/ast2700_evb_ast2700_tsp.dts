@@ -34,7 +34,7 @@
 	/* SSP will use the 72KB, remain: 128 - 72 = 56 */
 	sram: memory@70014000 {
 		device_type = "memory";
-		reg = <0x70014000 DT_SIZE_K(56)>;  // 56KB
+		reg = <0x70012000 DT_SIZE_K(56)>;  // 56KB
 	};
 };
 
