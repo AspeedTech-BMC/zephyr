@@ -35,9 +35,9 @@ static void stress_cb(const struct device *ipmdev, void *user_data,
 	uint32_t tx_msg_data[IPC_MAX_MSG_SIZE];
 	uint32_t *buf = (uint32_t *)msg_data;
 	uint32_t size, test_pattern, i, ret;
-	struct ipm_shell_shmem shmem_info;
 	uint32_t *tx_buff = NULL;
 	uint32_t *rx_buff = NULL;
+	int mem_size = 0, cpy_size = 0;
 
 	LOG_DBG("msg ch%d with data at %p", id, buf);
 	stress_count--;
@@ -48,10 +48,19 @@ static void stress_cb(const struct device *ipmdev, void *user_data,
 		return;
 	}
 
-	/* get share memory information from driver */
-	ast_ipm_shmem_info(ipmdev, id, &shmem_info);
-	tx_buff = (uint32_t *)shmem_info.shmem_tx_base;
-	rx_buff = (uint32_t *)shmem_info.shmem_rx_base;
+	/* get tx share memory size */
+	mem_size = ast_ipm_max_tx_shmem_size(ipmdev, id);
+	tx_buff = k_malloc(sizeof(uint32_t) * mem_size);
+	if (!tx_buff) {
+		LOG_ERR("stress tx buffer could not be located.");
+		goto stree_cb_fail;
+	}
+
+	rx_buff = k_malloc(sizeof(uint32_t) * mem_size);
+	if (!rx_buff) {
+		LOG_ERR("stress rx buffer could not be located.");
+		goto stree_cb_fail;
+	}
 
 	/* get information from message */
 	size = buf[0] >> 8;
@@ -59,6 +68,13 @@ static void stress_cb(const struct device *ipmdev, void *user_data,
 	test_pattern = buf[1];
 	LOG_DBG("test_pattern 0x%x\n", test_pattern);
 	LOG_DBG("rx_buff 0x%p\n", rx_buff);
+
+	/* read the rx buffer into buffer */
+	cpy_size = ast_ipm_shmem_read(ipmdev, id, 0x0, (void *)rx_buff, size);
+	if (cpy_size != size) {
+		LOG_ERR("stress read rx buffer failed.");
+		goto stree_cb_fail;
+	}
 
 	/* check rx buffer */
 	for (i = 0; i < size / 4; i++, test_pattern++) {
@@ -82,6 +98,13 @@ static void stress_cb(const struct device *ipmdev, void *user_data,
 		for (i = 0; i < STRESSIZE / 4; i++, test_pattern++) {
 			*(tx_buff + i) = test_pattern;
 		}
+
+		/* write the tx buffer data into share */
+		cpy_size = ast_ipm_shmem_write(ipmdev, id, 0x0, (void *)tx_buff, mem_size);
+		if (cpy_size != mem_size) {
+			LOG_ERR("stress write tx buffer failed.");
+			goto stree_cb_fail;
+		}
 	} else {
 		tx_msg_data[0] = STRESSSTOPHEADER;
 		LOG_INF("Zephyr arrive testing count\n");
@@ -89,9 +112,19 @@ static void stress_cb(const struct device *ipmdev, void *user_data,
 
 	/* send the tx message */
 	ret = ipm_send(ipmdev, 0, id, (void *)tx_msg_data, IPC_MAX_MSG_SIZE);
-
 	if (ret) {
 		LOG_ERR("IPM: Send message failed cause %d.", ret);
+	}
+
+stree_cb_fail:
+	if (tx_buff) {
+		k_free(tx_buff);
+		tx_buff = NULL;
+	}
+
+	if (rx_buff) {
+		k_free(rx_buff);
+		rx_buff = NULL;
 	}
 
 	return;
@@ -375,29 +408,30 @@ static int cmd_ipm_stress(const struct shell *shell,
 	uint32_t tx_msg_data[IPC_MAX_MSG_SIZE];
 	uint32_t channel = 0; /*wait for further usage*/
 	uint32_t test_pattern = 0, i;
-	struct ipm_shell_shmem shmem_info;
 	uint32_t *tx_buff = NULL;
+	int send_ret, mem_size = 0, cpy_size = 0;
 	int ret = 0;
 
 	ipmdev = device_get_binding(argv[1]);
 	if (!ipmdev) {
 		shell_error(shell, "IPM: Device %s not found.",
 			    argv[1]);
-		return -ENODEV;
+		ret = -ENODEV;
+		goto stree_fail;
 	}
 
 	stress_set = strtol(argv[2], NULL, 16);
 	stress_count = stress_set;
 
-	/* get share memory information */
-	ast_ipm_shmem_info(ipmdev, channel, &shmem_info);
-	if (shmem_info.shmem_tx_base == 0) {
-		shell_error(shell, "IPM: %s ch[%d] tx shmem not found.",
-			    argv[1], channel);
-		return -ENODEV;
-	}
+	/* get tx share memory size */
+	mem_size = ast_ipm_max_tx_shmem_size(ipmdev, channel);
 
-	tx_buff = (uint32_t *)shmem_info.shmem_tx_base;
+	tx_buff = k_malloc(sizeof(uint32_t) * mem_size);
+	if (!tx_buff) {
+		shell_error(shell, "IPM: stress tx buffer could not be located.");
+		return -ENODEV;
+		goto stree_fail;
+	}
 
 	/* attach ipm call back */
 	ipm_register_id_callback(ipmdev, channel, (void *)stress_cb, NULL);
@@ -406,7 +440,7 @@ static int cmd_ipm_stress(const struct shell *shell,
 	ipm_set_id_enabled(ipmdev, channel, true);
 
 	/* send stress message */
-	tx_msg_data[0] = ((STRESSIZE << 8) | STRESSHEADER);
+	tx_msg_data[0] = ((mem_size << 8) | STRESSHEADER);
 	LOG_DBG("msg[0] : 0x%08x\n", tx_msg_data[0]);
 	tx_msg_data[1] = test_pattern;
 	LOG_DBG("msg[1] : 0x%08x\n", tx_msg_data[1]);
@@ -416,17 +450,29 @@ static int cmd_ipm_stress(const struct shell *shell,
 		*(tx_buff + i) = test_pattern;
 	}
 
+	/* write the tx buffer data into share */
+	cpy_size = ast_ipm_shmem_write(ipmdev, channel, 0x0, (void *)tx_buff, mem_size);
+	if (cpy_size != mem_size) {
+		shell_error(shell, "IPM: stress write tx buffer failed.");
+		ret = -EINVAL;
+		goto stree_fail;
+	}
+
 	LOG_DBG("send stress msg\n");
 
 	/* send message */
-	ret = ipm_send(ipmdev, 0, channel, (void *)tx_msg_data, IPC_MAX_MSG_SIZE);
-
-	if (ret) {
-		shell_error(shell, "IPM: Send message failed cause %d.", ret);
-		return -EINVAL;
+	send_ret = ipm_send(ipmdev, 0, channel, (void *)tx_msg_data, IPC_MAX_MSG_SIZE);
+	if (send_ret) {
+		shell_error(shell, "IPM: Send message failed cause %d.", send_ret);
+		ret = -EINVAL;
 	}
 
-	return 0;
+stree_fail:
+	if (tx_buff) {
+		k_free(tx_buff);
+	}
+
+	return ret;
 }
 
 static void device_name_get(size_t idx, struct shell_static_entry *entry)
