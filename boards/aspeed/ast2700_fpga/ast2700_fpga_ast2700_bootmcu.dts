@@ -1,0 +1,78 @@
+/*
+ * Copyright (c) 2024 Aspeed Technology Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+
+#include <aspeed/ast27xx.dtsi>
+
+/ {
+	model = "AST2700-FPGA AST2700-BOOTMCU";
+	compatible = "aspeed,ast2700-fpga-ast2700-bootmcu";
+
+	chosen {
+		zephyr,sram = &sram;
+		zephyr,entropy = &rng;
+	};
+
+	aliases {
+		systick = &systick;
+		emmc = &emmc;
+	};
+};
+
+&uart12 {
+	status = "okay";
+	clock-frequency = <1846153>;
+	current-speed = <115200>;
+};
+
+#if 0
+&ipc1_s_ca35 {
+	status = "okay";
+};
+
+&ipc1_ns_ca35 {
+	status = "okay";
+};
+#endif
+
+&ipc1_ssp {
+	status = "okay";
+};
+
+#if 0
+&ipc1_tsp {
+	status = "okay";
+};
+#endif
+
+&cptra_ecdsa {
+	status = "okay";
+};
+
+&cptra_sha {
+	status = "okay";
+};
+
+&cptra_lms {
+	status = "okay";
+};
+
+&cptra_update {
+	status = "okay";
+};
+
+&cptra_dice {
+	status = "okay";
+};
+
+&cptra_misc {
+	status = "okay";
+};
+
+&otp {
+	status = "okay";
+};
