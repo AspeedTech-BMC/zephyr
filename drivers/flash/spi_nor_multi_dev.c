@@ -1579,6 +1579,9 @@ static int sfdp_post_fixup(const struct device *dev)
 			}
 		}
 
+		if (data->jedec_4bai_support && data->flag_access_32bit)
+			spi_nor_assign_pp_cmd(data, JESD216_MODE_114, SPI_NOR_CMD_PP_1_1_4_4B);
+
 		break;
 	default:
 		/* do nothing */
