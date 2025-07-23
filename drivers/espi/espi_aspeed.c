@@ -412,7 +412,7 @@ static struct espi_aspeed_vw espi_aspeed_vw;
 static void espi_aspeed_vw_isr(uint32_t sts, struct espi_aspeed_data *data)
 {
 	uint32_t evt_int;
-	struct espi_event evt_vw = { ESPI_BUS_EVENT_VWIRE_RECEIVED, 0, 0 };
+	struct espi_event evt_vw = { ESPI_BUS_EVENT_VWIRE_RECEIVED, ESPI_CHANNEL_VWIRE, sts };
 
 	espi_send_callbacks(&data->callbacks, data->dev, evt_vw);
 
