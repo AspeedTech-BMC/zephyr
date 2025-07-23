@@ -33,6 +33,7 @@ static int cptra_ipc_sha384_init(const struct device *dev, void *arg1, void *arg
 static int cptra_ipc_sha384_update(const struct device *dev, void *arg1, void *arg2);
 static int cptra_ipc_sha384_final(const struct device *dev, void *arg1, void *arg2);
 static int cptra_ipc_lms_verify(const struct device *dev, void *arg1, void *arg2);
+static int cptra_ipc_fw_upload(const struct device *dev, void *arg1, void *arg2);
 
 typedef int (*cptra_callback_t)(const struct device *dev, void *arg1, void *arg2);
 
@@ -49,7 +50,7 @@ static const struct cptra_ipc_callback_tbl cptra_ipc_list[] = {
 	{ CPTRA_HASH_DRV_NAME, CPTRA_IPCCMD_SHA384_UPDATE, (cptra_callback_t)cptra_ipc_sha384_update },
 	{ CPTRA_HASH_DRV_NAME, CPTRA_IPCCMD_SHA384_FINAL, (cptra_callback_t)cptra_ipc_sha384_final },
 	{ CPTRA_LMS_DRV_NAME, CPTRA_IPCCMD_LMS_SIGNATURE_VERIFY, (cptra_callback_t)cptra_ipc_lms_verify },
-	{ CPTRA_UPDATE_DRV_NAME, CPTRA_IPCCMD_CALIPTRA_FW_LOAD, (cptra_callback_t)caliptra_fw_upload },
+	{ CPTRA_UPDATE_DRV_NAME, CPTRA_IPCCMD_CALIPTRA_FW_LOAD, (cptra_callback_t)cptra_ipc_fw_upload },
 	{ CPTRA_DICE_DRV_NAME, CPTRA_IPCCMD_STASH_MEASUREMENT, (cptra_callback_t)caliptra_stash_measurement },
 	{ CPTRA_DICE_DRV_NAME, CPTRA_IPCCMD_QUOTE_PCRS, (cptra_callback_t)caliptra_quote_pcrs },
 	{ CPTRA_DICE_DRV_NAME, CPTRA_IPCCMD_GET_IDEV_CERT, (cptra_callback_t)caliptra_get_idev_cert },
@@ -77,6 +78,47 @@ static const struct cptra_ipc_callback_tbl cptra_ipc_list[] = {
 	{ CPTRA_DICE_DRV_NAME, CPTRA_IPCCMD_REVOKE_EXPORTED_CDI_HANDLE, (cptra_callback_t)caliptra_revoke_exported_cdi_handle },
 	{ NULL, 0, NULL }
 };
+
+static bool ipc_fw_upload_init;
+
+static int cptra_ipc_fw_upload(const struct device *dev, void *arg1, void *arg2)
+{
+	uint8_t *buf;
+	int size;
+	int rc;
+
+	buf = (uint8_t *)arg1;
+	size = (int)(uintptr_t)arg2;
+
+	if (size == IPC_SHARE_MEM_SRAM_SIZE) {
+		rc = caliptra_fw_upload_init(dev);
+		if (rc)
+			goto end;
+
+		ipc_fw_upload_init = true;
+
+		rc = caliptra_fw_upload_update(dev, buf, size);
+
+	} else if (size == CPTRA_MBOX_SZ) {
+		rc = caliptra_fw_upload_update(dev, buf, IPC_SHARE_MEM_SRAM_SIZE);
+		if (rc)
+			goto end;
+
+		rc = caliptra_fw_upload_final(dev, size);
+		ipc_fw_upload_init = false;
+
+	} else {
+		if (!ipc_fw_upload_init) {
+			LOG_ERR("Firmware upload not initialized");
+			return -EINVAL;
+		}
+
+		rc = caliptra_fw_upload_update(dev, buf, IPC_SHARE_MEM_SRAM_SIZE);
+	}
+
+end:
+	return rc;
+}
 
 static int cptra_ipc_lms_verify(const struct device *dev, void *arg1, void *arg2)
 {

@@ -35,6 +35,100 @@ struct cptra_update_drv_state {
 	((struct cptra_update_drv_state *)	\
 	(dev)->data)
 
+static int aspeed_cptra_fw_upload_init(const struct device *dev)
+{
+	struct cptra_update_drv_state *state = DEV_DATA(dev);
+	struct cptra_update_config *cfg = DEV_CFG(dev);
+	uint32_t cmd, csum;
+	uint32_t sts;
+
+	if (state->in_use) {
+		LOG_ERR("Peripheral in use");
+		return -EBUSY;
+	}
+
+	state->in_use = true;
+
+	/* Get mbox lock */
+	while (cptra_mbox_lock())
+		;
+
+	/* check MBOX is ready for command */
+	sts = cptra_mbox_status();
+	if (FIELD_GET(CPTRA_MBOX_STS_FSM_PS, sts) != CPTRA_MBFSM_RDY_FOR_CMD)
+		return -EACCES;
+
+	/* init mbox parameters */
+	cmd = CPTRA_MBCMD_CALIPTRA_FW_LOAD;
+	csum = 0;
+
+	sys_write32(CPTRA_MBCMD_CALIPTRA_FW_LOAD, cfg->base + CPTRA_MBOX_CMD);
+	sys_write32(CPTRA_MBOX_SZ, cfg->base + CPTRA_MBOX_DLEN);
+
+	return 0;
+}
+
+static int aspeed_cptra_fw_upload_update(const struct device *dev, uint8_t *buf, int size)
+{
+	struct cptra_update_drv_state *state = DEV_DATA(dev);
+	struct cptra_update_config *cfg = DEV_CFG(dev);
+	uint32_t data;
+	int i;
+
+	if (!state->in_use) {
+		LOG_ERR("Peripheral in not use, wrong state.");
+		return -EBUSY;
+	}
+
+	for (i = 0; i < size; i += sizeof(data)) {
+		if ((size - i) < sizeof(data))
+			break;
+
+		data = sys_read32((mem_addr_t)buf + i);
+		sys_write32(data, cfg->base + CPTRA_MBOX_DATAIN);
+	}
+
+	return 0;
+}
+
+static int aspeed_cptra_fw_upload_final(const struct device *dev, int size)
+{
+	struct cptra_update_drv_state *state = DEV_DATA(dev);
+	struct cptra_update_config *cfg = DEV_CFG(dev);
+	uint32_t sts;
+	int count = 0;
+
+	if (!state->in_use) {
+		LOG_ERR("Peripheral in not use, wrong state.");
+		return -EBUSY;
+	}
+
+	sys_write32(0x1, cfg->base + CPTRA_MBOX_EXEC);
+
+	/* check update reset occurs */
+	while (count++ < CPTRA_UPD_RST_TIMEOUT) {
+		sts = sys_read32(cfg->ifc_base + CPTRA_RST_REASON);
+		if (sts & CPTRA_FW_UPD_RESET) {
+			LOG_INF("FW Update Reset !!!");
+			break;
+		}
+	}
+
+	/* poll for result */
+	while (1) {
+		sts = FIELD_GET(CPTRA_MBOX_STS_PS, cptra_mbox_status());
+		if (sts != CPTRA_MBSTS_CMD_BUSY)
+			break;
+	}
+
+	while (cptra_mbox_unlock())
+		;
+
+	state->in_use = false;
+
+	return (sts == CPTRA_MBSTS_CMD_COMPLETE) ? 0 : -EIO;
+}
+
 static int aspeed_cptra_fw_upload(const struct device *dev, uint8_t *buf, int size)
 {
 	struct cptra_update_drv_state *state = DEV_DATA(dev);
@@ -134,6 +228,9 @@ int cptra_update_init(const struct device *dev)
 
 static struct cptra_driver_api cptra_funcs = {
 	.caliptra_fw_upload = aspeed_cptra_fw_upload,
+	.caliptra_fw_upload_init = aspeed_cptra_fw_upload_init,
+	.caliptra_fw_upload_update = aspeed_cptra_fw_upload_update,
+	.caliptra_fw_upload_final = aspeed_cptra_fw_upload_final,
 };
 
 static const struct cptra_update_config cptra_update_config = {

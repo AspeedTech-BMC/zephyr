@@ -129,7 +129,7 @@ struct cptra_mbox_register_s {
 };
 
 enum cptra_mbox_sts {
-	CPTRA_MBSTS_CMD_BUSY,
+	CPTRA_MBSTS_CMD_BUSY = 0,
 	CPTRA_MBSTS_DATA_READY,
 	CPTRA_MBSTS_CMD_COMPLETE,
 	CPTRA_MBSTS_CMD_FAILURE,
@@ -736,6 +736,9 @@ struct cptra_invoke_dpe_command_oa {
 /* The API a cptra driver should implement */
 __subsystem struct cptra_driver_api {
 	int (*caliptra_fw_upload)(const struct device *dev, uint8_t *buf, int size);
+	int (*caliptra_fw_upload_init)(const struct device *dev);
+	int (*caliptra_fw_upload_update)(const struct device *dev, uint8_t *buf, int size);
+	int (*caliptra_fw_upload_final)(const struct device *dev, int size);
 	int (*caliptra_stash_measurement)(const struct device *dev,
 					  struct cptra_stash_measurement_ia *input,
 					  struct cptra_stash_measurement_oa *output);
@@ -823,6 +826,39 @@ static inline int caliptra_fw_upload(const struct device *dev, uint8_t *buf, int
 
 	api = (struct cptra_driver_api *)dev->api;
 	tmp = api->caliptra_fw_upload(dev, buf, size);
+
+	return tmp;
+}
+
+static inline int caliptra_fw_upload_init(const struct device *dev)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_fw_upload_init(dev);
+
+	return tmp;
+}
+
+static inline int caliptra_fw_upload_update(const struct device *dev, uint8_t *buf, int size)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_fw_upload_update(dev, buf, size);
+
+	return tmp;
+}
+
+static inline int caliptra_fw_upload_final(const struct device *dev, int size)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_fw_upload_final(dev, size);
 
 	return tmp;
 }
