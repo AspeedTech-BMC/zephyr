@@ -89,6 +89,10 @@ LOG_MODULE_REGISTER(spi_aspeed, CONFIG_SPI_LOG_LEVEL);
 #define ASPEED_SPI_SZ_16M           0x1000000
 #define ASPEED_SPI_SZ_768M          0x30000000
 
+#define ASPEED_DRAM_PHY_BASE        0x400000000
+#define ASPEED_IO_SRAM_PHY_BASE     0x14b80000
+#define ASPEED_IO_SRAM_SIZE         0x40000
+
 #define ASPEED_SPI_CTRL_VAL(io_mode, opcode, dummy_cycle) \
 		((io_mode) | (((opcode) & 0xff) << 16) | (dummy_cycle))
 
@@ -450,7 +454,11 @@ static void aspeed_spi_read_dma(const struct device *dev,
 	}
 
 	sys_write32(0x0, config->ctrl_base + SPI80_DMA_CTRL);
-	sys_write32(0x4, config->ctrl_base + SPI7C_DMA_HI_ADDR_REG);
+
+	sys_write32(0x0, config->ctrl_base + SPI7C_DMA_HI_ADDR_REG);
+	if (ast27xx_soc_virt_addr_to_phy_addr((uintptr_t)op_info.buf) > ASPEED_DRAM_PHY_BASE)
+		sys_write32(0x4, config->ctrl_base + SPI7C_DMA_HI_ADDR_REG);
+
 	sys_write32(data->decode_addr[cs].start + op_info.addr,
 		    config->ctrl_base + SPI84_DMA_FLASH_ADDR);
 
@@ -753,6 +761,24 @@ no_calib:
 		k_free(calib_res);
 }
 
+#ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
+static bool aspeed_spi_ram_region(uintptr_t virt_addr)
+{
+#if defined(CONFIG_SOC_AST2700_BOOTMCU)
+	uint64_t phy_addr = ast27xx_soc_virt_addr_to_phy_addr(virt_addr);
+
+	if (phy_addr > ASPEED_DRAM_PHY_BASE ||
+	    (phy_addr >= ASPEED_IO_SRAM_PHY_BASE &&
+	     phy_addr < (ASPEED_IO_SRAM_PHY_BASE + ASPEED_IO_SRAM_SIZE)))
+		return true;
+
+	return false;
+#else
+	return true;
+#endif
+}
+#endif
+
 static int aspeed_spi_nor_transceive(const struct device *dev,
 						const struct spi_config *spi_cfg,
 						struct spi_nor_op_info op_info)
@@ -767,11 +793,13 @@ static int aspeed_spi_nor_transceive(const struct device *dev,
 		ctx->config = spi_cfg;
 
 #ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
+	uintptr_t buf_addr = (uintptr_t)(&((uint8_t *)op_info.buf)[0]);
 	if (op_info.data_direct == SPI_NOR_DATA_DIRECT_IN) {
-		if (!config->pure_spi_mode_only &&
+		if (aspeed_spi_ram_region(buf_addr) &&
+		    !config->pure_spi_mode_only &&
 		    op_info.data_len > SPI_DMA_TRIGGER_LEN &&
 		    (op_info.addr % 4) == 0 &&
-		    ((uint32_t)(&((uint8_t *)op_info.buf)[0]) % 4) == 0) {
+		    ((uint32_t)buf_addr % 4) == 0) {
 			aspeed_spi_read_dma(dev, spi_cfg, op_info);
 		} else {
 			aspeed_spi_nor_transceive_user(dev, spi_cfg, op_info);
