@@ -779,20 +779,25 @@ static void i3c_aspeed_rd_rx_fifo(struct i3c_aspeed_obj *obj, uint8_t *bytes, in
 	int i;
 
 	for (i = 0; i < nwords; i++) {
-		*dst++ = i3c_register->rx_tx_data_port;
+		uint32_t val = i3c_register->rx_tx_data_port;
+
+		if (dst)
+			dst[i] = val;
 	}
 
 	if (nbytes & 0x3) {
 		uint32_t tmp;
 
 		tmp = i3c_register->rx_tx_data_port;
-		memcpy(bytes + (nbytes & ~0x3), &tmp, nbytes & 3);
+		if (!bytes)
+			memcpy(bytes + (nbytes & ~0x3), &tmp, nbytes & 3);
 	}
 	if (obj->config->priv_xfer_pec) {
 		ret = pec_valid(obj->dev, bytes, nbytes);
 		if (ret) {
 			LOG_ERR("PEC error");
-			memset(bytes, 0, nbytes);
+			if (!bytes)
+				memset(bytes, 0, nbytes);
 		}
 	}
 }
@@ -959,7 +964,8 @@ static void i3c_aspeed_slave_resp_handler(struct i3c_aspeed_obj *obj, union i3c_
 		if (resp.fields.data_length && !resp.fields.err_status &&
 		    resp.fields.tid == SLAVE_TID_MASTER_WRITE_DATA) {
 			if (!cb) {
-				__ASSERT(0, "flush rx fifo is TBD");
+				LOG_WRN("Miss callbacks: flush the rx fifo");
+				i3c_aspeed_rd_rx_fifo(obj, NULL, resp.fields.data_length);
 				continue;
 			}
 			if (cb->write_requested) {
