@@ -59,6 +59,8 @@ LOG_MODULE_REGISTER(spi_aspeed, CONFIG_SPI_LOG_LEVEL);
 #define SPIA8_REG_LOCK_SRST         (0x00A8)
 #define SPIAC_REG_LOCK_WDT          (0x00AC)
 
+#define SPI1F4_SOCRST_LOCK          (0x01F4)
+
 #define SPI200_DATA_FIFO_REG        (0x0200)
 
 #define SPI_CALIB_LEN               0x200
@@ -985,6 +987,9 @@ static int aspeed_spi_nor_read_init(const struct device *dev,
 		sys_write32(sys_read32(config->ctrl_base + SPI04_CE_CTRL) |
 			    (0x11 << ctx->config->slave),
 			    config->ctrl_base + SPI04_CE_CTRL);
+		sys_write32(sys_read32(config->ctrl_base + SPI1F4_SOCRST_LOCK) |
+			    ((0x11 << 4) << ctx->config->slave),
+			    config->ctrl_base + SPI1F4_SOCRST_LOCK);
 	}
 
 	aspeed_spi_pinctrl_post_init(dev, JESD216_GET_DATA_BUSWIDTH(op_info.mode));
