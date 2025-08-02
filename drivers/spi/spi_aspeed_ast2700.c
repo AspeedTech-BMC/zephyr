@@ -20,9 +20,9 @@ LOG_MODULE_REGISTER(spi_aspeed, CONFIG_SPI_LOG_LEVEL);
 #include <zephyr/sys/__assert.h>
 #include <zephyr/drivers/misc/aspeed/pfr_aspeed.h>
 
-#define FMC_CTRL_BASE               (0x74000000)
-#define SPI0_CTRL_BASE              (0x74010000)
-#define SPI1_CTRL_BASE              (0x74020000)
+#define FMC_CTRL_BASE               (0x14000000)
+#define SPI0_CTRL_BASE              (0x14010000)
+#define SPI1_CTRL_BASE              (0x14020000)
 
 #define SPI00_CE_TYPE_SETTING       (0x0000)
 #define SPI04_CE_CTRL               (0x0004)
@@ -440,6 +440,7 @@ static void aspeed_spi_read_dma(const struct device *dev,
 	uint32_t cs = ctx->config->slave;
 	uintptr_t dram_virt_addr;
 	uint32_t dram_phy_addr;
+	uint32_t flash_dma_addr;
 	uint32_t dma_busy;
 
 	if (op_info.data_len > data->decode_addr[cs].len) {
@@ -461,8 +462,9 @@ static void aspeed_spi_read_dma(const struct device *dev,
 	if (ast27xx_soc_virt_addr_to_phy_addr((uintptr_t)op_info.buf) > ASPEED_DRAM_PHY_BASE)
 		sys_write32(0x4, config->ctrl_base + SPI7C_DMA_HI_ADDR_REG);
 
-	sys_write32(data->decode_addr[cs].start + op_info.addr,
-		    config->ctrl_base + SPI84_DMA_FLASH_ADDR);
+	flash_dma_addr = (data->decode_addr[cs].start + op_info.addr -
+			  config->spi_mmap_base) & 0x7fffffff;
+	sys_write32(flash_dma_addr, config->ctrl_base + SPI84_DMA_FLASH_ADDR);
 
 	dram_virt_addr = (uintptr_t)op_info.buf;
 	dram_phy_addr = (uint32_t)ast27xx_soc_virt_addr_to_phy_addr(dram_virt_addr);
@@ -820,9 +822,9 @@ static int aspeed_spi_nor_transceive(const struct device *dev,
 	return ret;
 }
 
-#define FMC_PINCTRL_SCU_REG	0x74c02450
-#define SPI0_PINCTRL_SCU_REG	0x74c02434
-#define SPI1_PINCTRL_SCU_REG	0x74c02438
+#define FMC_PINCTRL_SCU_REG	0x14c02450
+#define SPI0_PINCTRL_SCU_REG	0x14c02434
+#define SPI1_PINCTRL_SCU_REG	0x14c02438
 
 static void aspeed_spi_pinctrl_early_init(const struct device *dev)
 {

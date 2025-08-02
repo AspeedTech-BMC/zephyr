@@ -95,7 +95,7 @@
 
 		fmc: spi@14000000 {
 			compatible = "aspeed,spi-controller";
-			reg = <0x14000000 0xc4>, <0x20000000 0x10000000>;
+			reg = <0x14000000 0x200>, <0x20000000 0x10000000>;
 			reg-names = "ctrl_reg", "spi_mmap";
 			clocks = <&sysclk1 SCU1_CLK_AHB>;
 			num-cs = <1>;
