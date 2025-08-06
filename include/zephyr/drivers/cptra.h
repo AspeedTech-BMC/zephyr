@@ -63,6 +63,7 @@ enum cptra_mbox_cmd {
 	CPTRA_MBCMD_SET_AUTH_MANIFEST               = 0x41544D4E, /* "ATMN" */
 	CPTRA_MBCMD_AUTHORIZE_AND_STASH             = 0x41545348, /* "ATSH" */
 	CPTRA_MBCMD_GET_IDEVID_CSR                  = 0x49444352, /* "IDCR" */
+	CPTRA_MBCMD_GET_FMC_ALIAS_CSR               = 0x464D4352, /* "FMCR" */
 	CPTRA_MBCMD_SIGN_WITH_EXPORTED_ECDSA        = 0x53574545, /* "SWEE" */
 	CPTRA_MBCMD_REVOKE_EXPORTED_CDI_HANDLE      = 0x52564348, /* "RVCH" */
 };
@@ -555,6 +556,16 @@ enum image_hash_source {
 
 #define AUTHORIZE_AND_STASH_FLAGS_SKIP_STASH	BIT(0)
 
+struct cptra_get_fmc_alias_csr_ia {
+};
+
+struct cptra_get_fmc_alias_csr_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+	uint32_t data_size;
+	uint8_t data[512]; /* Maximum size for the DER-encoded CSR */
+};
+
 struct cptra_get_idevid_csr_ia {
 };
 
@@ -577,7 +588,6 @@ struct cptra_sign_with_exported_ecdsa_oa {
 };
 
 struct cptra_revoke_exported_cdi_handle_ia {
-	uint32_t chksum;
 	uint8_t exported_cdi_handle[32];
 };
 
@@ -642,6 +652,18 @@ struct dpe_new_context_o {
 	uint8_t context_handle[16];
 };
 
+/* DeriveContextFlags */
+#define INTERNAL_INPUT_INFO		BIT(31)
+#define INTERNAL_INPUT_DICE		BIT(30)
+#define RETAIN_PARENT_CONTEXT		BIT(29)
+#define MAKE_DEFAULT			BIT(28)
+#define CHANGE_LOCALITY			BIT(27)
+#define INPUT_ALLOW_CA			BIT(26)
+#define INPUT_ALLOW_X509		BIT(25)
+#define RECURSIVE			BIT(24)
+#define EXPORT_CDI			BIT(23)
+#define CREATE_CERTIFICATE		BIT(22)
+
 struct dpe_derive_context_i {
 	struct dpe_cmd_header cmd_hdr;
 	uint8_t handle[16];
@@ -655,6 +677,15 @@ struct dpe_derive_context_o {
 	struct dpe_rsp_header rsp_hdr;
 	uint8_t context_handle[16];
 	uint8_t parent_context_handle[16];
+};
+
+struct dpe_derive_context_exported_cdi_o {
+	struct dpe_rsp_header rsp_hdr;
+	uint8_t context_handle[16];
+	uint8_t parent_context_handle[16];
+	uint8_t exported_cdi[32];
+	int certificate_size;
+	uint8_t new_certificate[6144];
 };
 
 enum certify_key_cmd {
@@ -811,6 +842,9 @@ __subsystem struct cptra_driver_api {
 	int (*caliptra_get_idevid_csr)(const struct device *dev,
 				       struct cptra_get_idevid_csr_ia *input,
 				       struct cptra_get_idevid_csr_oa *output);
+	int (*caliptra_get_fmc_alias_csr)(const struct device *dev,
+					  struct cptra_get_fmc_alias_csr_ia *input,
+					  struct cptra_get_fmc_alias_csr_oa *output);
 	int (*caliptra_sign_with_exported_ecdsa)(const struct device *dev,
 						 struct cptra_sign_with_exported_ecdsa_ia *input,
 						 struct cptra_sign_with_exported_ecdsa_oa *output);
@@ -1179,6 +1213,19 @@ static inline int caliptra_get_idevid_csr(const struct device *dev,
 
 	api = (struct cptra_driver_api *)dev->api;
 	tmp = api->caliptra_get_idevid_csr(dev, input, output);
+
+	return tmp;
+}
+
+static inline int caliptra_get_fmc_alias_csr(const struct device *dev,
+					     struct cptra_get_fmc_alias_csr_ia *input,
+					     struct cptra_get_fmc_alias_csr_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_get_fmc_alias_csr(dev, input, output);
 
 	return tmp;
 }

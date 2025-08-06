@@ -432,6 +432,44 @@ end:
 	LOG_INF("%s: Failed", __func__);
 }
 
+static void cptra_test_get_fmc_alias_csr(void)
+{
+	struct cptra_get_fmc_alias_csr_ia input;
+	struct cptra_get_fmc_alias_csr_oa output;
+	int ret;
+
+	LOG_INF("Test caliptra_get_fmc_alias_csr...");
+
+	memset(&input, 0, sizeof(struct cptra_get_fmc_alias_csr_ia));
+	memset(&output, 0, sizeof(struct cptra_get_fmc_alias_csr_oa));
+
+#if CONFIG_CPTRA_SAMPLE_BOOTMCU
+	const struct device *dev = device_get_binding(CPTRA_DICE_DRV_NAME);
+
+	ret = caliptra_get_fmc_alias_csr(dev, &input, &output);
+#elif CONFIG_CPTRA_SAMPLE_SSP
+	ret = cptra_ipc_transfer(CPTRA_IPCCMD_GET_FMC_ALIAS_CSR,
+				 (uint32_t *)&input, sizeof(input),
+				 CPTRA_IPC_RX_TYPE_EXTERNAL,
+				 (uint32_t *)&output, sizeof(output));
+#endif
+
+	if (ret) {
+		LOG_ERR("caliptra_get_fmc_alias_csr is failure, ret:0x%x", ret);
+		goto end;
+	} else
+		LOG_DBG("caliptra_get_fmc_alias_csr is successful");
+
+	LOG_DBG("output: chksum:0x%x, fips_status:0x%x, data_size:0x%x",
+		output.chksum, output.fips_status, output.data_size);
+	LOG_HEXDUMP_DBG(output.data, output.data_size, "CSR data:");
+
+	LOG_INF("%s: Pass", __func__);
+	return;
+end:
+	LOG_INF("%s: Failed", __func__);
+}
+
 /* TODO: Caliptra should be provisioned */
 __attribute__((unused)) static void cptra_test_get_idevid_csr(void)
 {
@@ -651,6 +689,70 @@ void cptra_test_invoke_dpe_initialize_context(void)
 	}
 }
 
+void cptra_test_invoke_dpe_derive_context_exported_cdi(uint8_t *derived_context)
+{
+#if CONFIG_CPTRA_SAMPLE_BOOTMCU
+	const struct device *dev = device_get_binding(CPTRA_DICE_DRV_NAME);
+#endif
+	struct cptra_invoke_dpe_command_ia input;
+	struct cptra_invoke_dpe_command_oa output;
+	struct dpe_derive_context_i *derive_context_input = NULL;
+	struct dpe_derive_context_exported_cdi_o *derive_context_output = NULL;
+	int ret;
+
+	LOG_INF("Test caliptra_invoke_dpe_command...");
+
+	LOG_INF("\tTest DeriveContext...");
+
+	memset(&input, 0, sizeof(struct cptra_invoke_dpe_command_ia));
+	memset(&output, 0, sizeof(struct cptra_invoke_dpe_command_oa));
+
+	/* Set input */
+	derive_context_input = (struct dpe_derive_context_i *)input.data;
+	derive_context_input->cmd_hdr.magic = DPE_COMMAND_MAGIC;
+	derive_context_input->cmd_hdr.cmd = DERIVE_CONTEXT;
+	derive_context_input->cmd_hdr.profile = P384Sha384;
+	derive_context_input->flags = EXPORT_CDI | CREATE_CERTIFICATE;
+
+	input.data_size = sizeof(struct dpe_derive_context_i);
+
+	derive_context_output = (struct dpe_derive_context_exported_cdi_o *)output.data;
+
+#if CONFIG_CPTRA_SAMPLE_BOOTMCU
+	ret = caliptra_invoke_dpe_command(dev, &input, &output);
+#elif CONFIG_CPTRA_SAMPLE_SSP
+	ret = cptra_ipc_transfer(CPTRA_IPCCMD_INVOKE_DPE_COMMAND,
+				 (uint32_t *)&input, sizeof(input),
+				 CPTRA_IPC_RX_TYPE_EXTERNAL,
+				 (uint32_t *)&output, sizeof(output));
+#endif
+
+	if (ret)
+		LOG_ERR("caliptra_invoke_dpe_command is failure, ret:0x%x", ret);
+	else if (cptra_dpe_response_check(&derive_context_output->rsp_hdr)) {
+		LOG_ERR("DPE command failed, magic:0x%08x status:0x%08x profile:0x%08x\n",
+			derive_context_output->rsp_hdr.magic, derive_context_output->rsp_hdr.status,
+			derive_context_output->rsp_hdr.profile);
+
+	} else {
+		LOG_DBG("caliptra_invoke_dpe_command is successful");
+		LOG_HEXDUMP_DBG(derive_context_output->context_handle,
+				sizeof(derive_context_output->context_handle),
+				"context_handle:");
+		LOG_HEXDUMP_DBG(derive_context_output->parent_context_handle,
+				sizeof(derive_context_output->parent_context_handle),
+				"parent_context_handle:");
+		LOG_HEXDUMP_DBG(derive_context_output->exported_cdi,
+				sizeof(derive_context_output->exported_cdi),
+				"exported_cdi:");
+		LOG_HEXDUMP_DBG(derive_context_output->new_certificate,
+				derive_context_output->certificate_size,
+				"new_certificate:");
+		memcpy(derived_context, derive_context_output->exported_cdi,
+		       sizeof(derive_context_output->exported_cdi));
+	}
+}
+
 void cptra_test_invoke_dpe_derive_context(uint8_t *derived_context)
 {
 #if CONFIG_CPTRA_SAMPLE_BOOTMCU
@@ -674,11 +776,9 @@ void cptra_test_invoke_dpe_derive_context(uint8_t *derived_context)
 	derive_context_input->cmd_hdr.magic = DPE_COMMAND_MAGIC;
 	derive_context_input->cmd_hdr.cmd = DERIVE_CONTEXT;
 	derive_context_input->cmd_hdr.profile = P384Sha384;
-	derive_context_input->flags = BIT(25) | BIT(26) | BIT(30) | BIT(31); /* INPUT_ALLOW_X509 |
-									      * INPUT_ALLOW_CA |
-									      * INPUT_DICE |
-									      * INPUT_INFO
-									      */
+	derive_context_input->flags = INTERNAL_INPUT_INFO | INTERNAL_INPUT_DICE |
+				      INPUT_ALLOW_CA | INPUT_ALLOW_X509;
+
 	input.data_size = sizeof(struct dpe_derive_context_i);
 
 	derive_context_output = (struct dpe_derive_context_o *)output.data;
@@ -1888,7 +1988,7 @@ end:
 	LOG_INF("%s: Failed", __func__);
 }
 
-__attribute__((unused)) static void cptra_test_sign_with_exported_ecdsa(void)
+__attribute__((unused)) static void cptra_test_sign_with_exported_ecdsa(uint8_t *exported_cdi)
 {
 	struct cptra_sign_with_exported_ecdsa_ia input;
 	struct cptra_sign_with_exported_ecdsa_oa output;
@@ -1899,8 +1999,12 @@ __attribute__((unused)) static void cptra_test_sign_with_exported_ecdsa(void)
 	memset(&input, 0, sizeof(struct cptra_sign_with_exported_ecdsa_ia));
 	memset(&output, 0, sizeof(struct cptra_sign_with_exported_ecdsa_oa));
 
+	cptra_test_invoke_dpe_derive_context_exported_cdi(exported_cdi);
+
+	LOG_HEXDUMP_INF(exported_cdi, sizeof(exported_cdi), "exported_cdi");
+
 	/* Set input data */
-	memcpy(input.exported_cdi_handle, "test", 4);
+	memcpy(input.exported_cdi_handle, exported_cdi, 32);
 	memcpy(input.tbs, "test_tbs", 8);
 
 #if CONFIG_CPTRA_SAMPLE_BOOTMCU
@@ -1937,7 +2041,7 @@ end:
 	LOG_INF("%s: Failed", __func__);
 }
 
-__attribute__((unused)) static void cptra_test_revoke_exported_cdi_handle(void)
+__attribute__((unused)) static void cptra_test_revoke_exported_cdi_handle(uint8_t *exported_cdi)
 {
 	struct cptra_revoke_exported_cdi_handle_ia input;
 	struct cptra_revoke_exported_cdi_handle_oa output;
@@ -1949,7 +2053,7 @@ __attribute__((unused)) static void cptra_test_revoke_exported_cdi_handle(void)
 	memset(&output, 0, sizeof(struct cptra_revoke_exported_cdi_handle_oa));
 
 	/* Set input data */
-	memcpy(input.exported_cdi_handle, "test_handle", 11);
+	memcpy(input.exported_cdi_handle, exported_cdi, 32);
 
 #if CONFIG_CPTRA_SAMPLE_BOOTMCU
 	const struct device *dev = device_get_binding(CPTRA_DICE_DRV_NAME);
@@ -1980,6 +2084,8 @@ end:
 #if CONFIG_CPTRA_SAMPLE_BOOTMCU
 int cptra_test(void)
 {
+	uint8_t exported_cdi[32] = {0};
+
 	cptra_test_fw_upload();
 	cptra_test_stash_measurement();
 	cptra_test_quote_pcrs();
@@ -2006,9 +2112,9 @@ int cptra_test(void)
 	/*
 	 * cptra_test_set_auth_manifest();
 	 * cptra_test_authorize_and_stash();
-	 * cptra_test_get_idevid_csr();
-	 * cptra_test_sign_with_exported_ecdsa();
-	 * cptra_test_revoke_exported_cdi_handle();
+	 * cptra_test_get_fmc_alias_csr();
+	 * cptra_test_sign_with_exported_ecdsa(exported_cdi);
+	 * cptra_test_revoke_exported_cdi_handle(exported_cdi);
 	 */
 
 	return 0;

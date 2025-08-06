@@ -73,7 +73,7 @@ static const struct cptra_ipc_callback_tbl cptra_ipc_list[] = {
 	{ CPTRA_MISC_DRV_NAME, CPTRA_IPCCMD_CAPABILITIES, (cptra_callback_t)caliptra_capabilities },
 	{ CPTRA_MISC_DRV_NAME, CPTRA_IPCCMD_SET_AUTH_MANIFEST, (cptra_callback_t)caliptra_set_auth_manifest },
 	{ CPTRA_MISC_DRV_NAME, CPTRA_IPCCMD_AUTHORIZE_AND_STASH, (cptra_callback_t)caliptra_authorize_and_stash },
-	{ CPTRA_DICE_DRV_NAME, CPTRA_IPCCMD_GET_IDEVID_CSR, (cptra_callback_t)caliptra_get_idevid_csr },
+	{ CPTRA_DICE_DRV_NAME, CPTRA_IPCCMD_GET_FMC_ALIAS_CSR, (cptra_callback_t)caliptra_get_fmc_alias_csr },
 	{ CPTRA_DICE_DRV_NAME, CPTRA_IPCCMD_SIGN_WITH_EXPORTED_ECDSA, (cptra_callback_t)caliptra_sign_with_exported_ecdsa },
 	{ CPTRA_DICE_DRV_NAME, CPTRA_IPCCMD_REVOKE_EXPORTED_CDI_HANDLE, (cptra_callback_t)caliptra_revoke_exported_cdi_handle },
 	{ NULL, 0, NULL }
