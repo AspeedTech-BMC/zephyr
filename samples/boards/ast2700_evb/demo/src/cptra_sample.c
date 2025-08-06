@@ -432,7 +432,7 @@ end:
 	LOG_INF("%s: Failed", __func__);
 }
 
-static void cptra_test_get_fmc_alias_csr(void)
+__attribute__((unused)) static void cptra_test_get_fmc_alias_csr(void)
 {
 	struct cptra_get_fmc_alias_csr_ia input;
 	struct cptra_get_fmc_alias_csr_oa output;
@@ -462,45 +462,6 @@ static void cptra_test_get_fmc_alias_csr(void)
 
 	LOG_DBG("output: chksum:0x%x, fips_status:0x%x, data_size:0x%x",
 		output.chksum, output.fips_status, output.data_size);
-	LOG_HEXDUMP_DBG(output.data, output.data_size, "CSR data:");
-
-	LOG_INF("%s: Pass", __func__);
-	return;
-end:
-	LOG_INF("%s: Failed", __func__);
-}
-
-/* TODO: Caliptra should be provisioned */
-__attribute__((unused)) static void cptra_test_get_idevid_csr(void)
-{
-	struct cptra_get_idevid_csr_ia input;
-	struct cptra_get_idevid_csr_oa output;
-	int ret;
-
-	LOG_INF("Test caliptra_get_idevid_csr...");
-
-	memset(&input, 0, sizeof(struct cptra_get_idevid_csr_ia));
-	memset(&output, 0, sizeof(struct cptra_get_idevid_csr_oa));
-
-#if CONFIG_CPTRA_SAMPLE_BOOTMCU
-	const struct device *dev = device_get_binding(CPTRA_DICE_DRV_NAME);
-
-	ret = caliptra_get_idevid_csr(dev, &input, &output);
-#elif CONFIG_CPTRA_SAMPLE_SSP
-	ret = cptra_ipc_transfer(CPTRA_IPCCMD_GET_IDEVID_CSR,
-				 (uint32_t *)&input, sizeof(input),
-				 CPTRA_IPC_RX_TYPE_EXTERNAL,
-				 (uint32_t *)&output, sizeof(output));
-#endif
-
-	if (ret) {
-		LOG_ERR("caliptra_get_idevid_csr is failure, ret:0x%x", ret);
-		goto end;
-	} else
-		LOG_DBG("caliptra_get_idevid_csr is successful");
-
-	LOG_DBG("output: chksum:0x%x, data_size:0x%x",
-		output.chksum, output.data_size);
 	LOG_HEXDUMP_DBG(output.data, output.data_size, "CSR data:");
 
 	LOG_INF("%s: Pass", __func__);
@@ -2084,7 +2045,7 @@ end:
 #if CONFIG_CPTRA_SAMPLE_BOOTMCU
 int cptra_test(void)
 {
-	uint8_t exported_cdi[32] = {0};
+	/* uint8_t exported_cdi[32] = {0}; */
 
 	cptra_test_fw_upload();
 	cptra_test_stash_measurement();
