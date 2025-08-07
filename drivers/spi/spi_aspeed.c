@@ -635,8 +635,7 @@ static void aspeed_spi_write_dma(const struct device *dev,
 	if (data->aspeed_spim_proprietary_pre_config)
 		data->aspeed_spim_proprietary_pre_config();
 #endif
-
-	ctrl_reg = data->cmd_mode[cs].normal_write & SPI_CTRL_FREQ_MASK;
+	ctrl_reg = data->cmd_mode[cs].normal_write;
 	/* io mode */
 	ctrl_reg |= aspeed_spi_io_mode(op_info.mode);
 	/* cmd */
@@ -1152,7 +1151,8 @@ static int aspeed_spi_nor_write_init(const struct device *dev,
 
 	spi_context_lock(ctx, false, NULL, NULL, spi_cfg);
 
-	data->cmd_mode[ctx->config->slave].normal_write =
+	data->cmd_mode[ctx->config->slave].normal_write &= (SPI_CTRL_FREQ_MASK);
+	data->cmd_mode[ctx->config->slave].normal_write |=
 			ASPEED_SPI_CTRL_VAL(aspeed_spi_io_mode(op_info.mode),
 				op_info.opcode, 0) | ASPEED_SPI_NORMAL_WRITE;
 
