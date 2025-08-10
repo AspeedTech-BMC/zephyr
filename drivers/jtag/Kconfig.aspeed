@@ -10,3 +10,9 @@ config JTAG_ASPEED
 	  This option enables the JTAG driver for ASPEED family of
 	  processors.
 	  Say y if you wish to use JTAG channels on ASPEED MCU.
+
+config JTAG_ASPEED_HW_MODE2
+	bool "ASPEED JTAG HW Mode 2"
+	depends on JTAG_ASPEED
+	help
+	  This option enables the JTAG HW Mode 2 for ASPEED JTAG controller

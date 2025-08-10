@@ -206,6 +206,10 @@ struct jtag_register_s {
 #define JTAG_ASPEED_DATA_COMPLETE               BIT(16)
 #define JTAG_ASPEED_INT_PEND_MASK               GENMASK(19, 16)
 
+/* Hareware mode 2: Interrupt Control */
+#define JTAG_ASPEED_HW2_IRQ_EN BIT(16)
+#define JTAG_ASPEED_HW2_IRQ_STAT BIT(0)
+
 #define JTAG_ASPEED_MAX_FREQUENCY 10000000
 
 #endif /* end of "#ifndef _JTAG_ASPEED_H_" */
