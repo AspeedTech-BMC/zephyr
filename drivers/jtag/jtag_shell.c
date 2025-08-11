@@ -106,6 +106,30 @@ static int cmd_frequency(const struct shell *shell, size_t argc, char **argv)
 	return 0;
 }
 
+static int cmd_tck_run(const struct shell *shell, size_t argc, char **argv)
+{
+	const struct device *dev;
+	uint32_t tck;
+	int err;
+
+	dev = device_get_binding(argv[-1]);
+	if (!dev) {
+		shell_error(shell, "JTAG device not found");
+		return -EINVAL;
+	}
+
+	tck = strtoul(argv[1], NULL, 0);
+
+	err = jtag_tck_run(dev, tck);
+	if (err) {
+		shell_error(shell, "failed to run JTAG TCK (err %d)",
+			    err);
+		return err;
+	}
+
+	return 0;
+}
+
 static int cmd_tap_state(const struct shell *shell, size_t argc, char **argv, void *data)
 {
 	const struct device *dev;
@@ -187,6 +211,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_action_cmds,
 SHELL_STATIC_SUBCMD_SET_CREATE(
 	sub_jtag_cmds,
 	SHELL_CMD_ARG(frequency, NULL, "<frequency>", cmd_frequency, 2,
+		      0),
+	SHELL_CMD_ARG(tck_run, NULL, "<run_count>", cmd_tck_run, 2,
 		      0),
 	SHELL_CMD_ARG(ir_scan, NULL, "<len> <value>", cmd_ir_scan, 3,
 		      0),
