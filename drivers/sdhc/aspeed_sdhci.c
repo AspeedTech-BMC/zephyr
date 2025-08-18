@@ -281,6 +281,7 @@ struct aspeed_sdhci_config {
 static int sdhci_set_voltage(const struct device *dev, enum sd_voltage signal_voltage)
 {
 	volatile struct sdhci_reg *regs = (struct sdhci_reg *)DEVICE_MMIO_GET(dev);
+	struct sdhci_data *sdhci = dev->data;
 	bool power_state = regs->power_ctrl & SDHCI_HOST_POWER_CTRL_SD_BUS_POWER ? true : false;
 	int ret = 0;
 
@@ -291,7 +292,7 @@ static int sdhci_set_voltage(const struct device *dev, enum sd_voltage signal_vo
 
 	switch (signal_voltage) {
 	case SD_VOL_3_3_V:
-		if (regs->capabilities & SDHCI_HOST_VOL_3_3_V_SUPPORT) {
+		if (sdhci->props.host_caps.vol_330_support) {
 			regs->host_ctrl2 &=
 				~(SDHCI_HOST_CTRL2_1P8V_SIG_EN << SDHCI_HOST_CTRL2_1P8V_SIG_LOC);
 
@@ -305,7 +306,7 @@ static int sdhci_set_voltage(const struct device *dev, enum sd_voltage signal_vo
 		break;
 
 	case SD_VOL_3_0_V:
-		if (regs->capabilities & SDHCI_HOST_VOL_3_0_V_SUPPORT) {
+		if (sdhci->props.host_caps.vol_300_support) {
 			regs->host_ctrl2 &=
 				~(SDHCI_HOST_CTRL2_1P8V_SIG_EN << SDHCI_HOST_CTRL2_1P8V_SIG_LOC);
 
@@ -319,7 +320,7 @@ static int sdhci_set_voltage(const struct device *dev, enum sd_voltage signal_vo
 		break;
 
 	case SD_VOL_1_8_V:
-		if (regs->capabilities & SDHCI_HOST_VOL_1_8_V_SUPPORT) {
+		if (sdhci->props.host_caps.vol_180_support) {
 			regs->host_ctrl2 |= SDHCI_HOST_CTRL2_1P8V_SIG_EN
 					    << SDHCI_HOST_CTRL2_1P8V_SIG_LOC;
 
@@ -817,6 +818,9 @@ static int sdhci_reset(const struct device *dev)
 
 	LOG_DBG("");
 
+	sys_write32(0xff, 0x12c02400);
+	k_busy_wait(10u);
+
 	if (!(regs->present_state & SDHCI_HOST_PSTATE_CARD_INSERTED)) {
 		LOG_ERR("No SDHCI card found");
 		return -ENODEV;
@@ -1044,9 +1048,11 @@ static int sdhci_get_host_props(const struct device *dev,
 	 * default max speed is 25MHZ, as per SCR register
 	 * it will switch accordingly
 	 */
-	props->f_max = SD_CLOCK_25MHZ;
+	props->f_max = MMC_CLOCK_HS200;
 	props->power_delay = 0;
-	props->host_caps.vol_330_support = true;
+	props->host_caps.vol_330_support = false;
+	props->host_caps.vol_180_support = true;
+	props->host_caps.hs200_support = true;
 	props->is_spi = false;
 
 	sdhci->props = *props;
@@ -1166,6 +1172,14 @@ static int sdhci_set_io(const struct device *dev, struct sdhc_io *ios)
 	return 0;
 }
 
+static int sdhci_execute_tuning(const struct device *dev)
+{
+	LOG_DBG("sdhci execute tuning\n");
+
+	LOG_DBG("EMMC12C: %x", sys_read32(0x1209012c));
+	return 0;
+}
+
 static struct sdhc_driver_api aspeed_sdhci_api = {
 	.request = sdhci_request,
 	.set_io = sdhci_set_io,
@@ -1173,6 +1187,7 @@ static struct sdhc_driver_api aspeed_sdhci_api = {
 	.get_card_present = sdhci_get_card_present,
 	.reset = sdhci_reset,
 	.card_busy = sdhci_card_busy,
+	.execute_tuning = sdhci_execute_tuning,
 };
 
 #define ASPEED_SDHCI_INIT(inst)						\
