@@ -12,6 +12,12 @@ config BOARD_AST2700_EVB
 	select SOC_AST2700_A0_SSP if BOARD_AST2700_EVB_AST2700_A0_SSP
 	select SOC_AST2700_A0_TSP if BOARD_AST2700_EVB_AST2700_A0_TSP
 
+config SOC_FMC_LOAD_MANIFEST_ADDRESS
+	hex "FMC load manifest address"
+	default 0x20100000
+	help
+	  Set the address to load the manifest file for FMC
+
 if SHELL
 config SHELL_PROMPT_UART
 	default "ssp:~$ " if BOARD_AST2700_EVB_AST2700_SSP || BOARD_AST2700_EVB_AST2700_A0_SSP
