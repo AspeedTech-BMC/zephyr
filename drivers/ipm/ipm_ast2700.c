@@ -58,15 +58,15 @@ void ast_ipm_list(const struct device *dev)
 
 	for (int i = 0 ; i < IPC_NUM_OF_ID; i++) {
 		if (data->shmem_info[i].shmem_tx_base) {
-			printf("Ch[%d] TX-SHMEM : 0x%08lx\n",
+			LOG_INF("Ch[%d] TX-SHMEM : 0x%08lx\n",
 			i, data->shmem_info[i].shmem_tx_base);
-			printf("Ch[%d] TX-MSIZE : 0x%08x\n\n",
+			LOG_INF("Ch[%d] TX-MSIZE : 0x%08x\n\n",
 			i, data->shmem_info[i].shmem_tx_size);
 		}
 		if (data->shmem_info[i].shmem_rx_base) {
-			printf("Ch[%d] RX-SHMEM : 0x%08lx\n",
+			LOG_INF("Ch[%d] RX-SHMEM : 0x%08lx\n",
 			i, data->shmem_info[i].shmem_rx_base);
-			printf("Ch[%d] RX-MSIZE : 0x%08x\n\n",
+			LOG_INF("Ch[%d] RX-MSIZE : 0x%08x\n\n",
 			i, data->shmem_info[i].shmem_rx_size);
 		}
 	}
