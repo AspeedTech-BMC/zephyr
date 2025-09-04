@@ -8,13 +8,33 @@ compatible: "aspeed,bootmcu-ipc"
 include: base.yaml
 
 properties:
-  reg:
-    required: true
+    reg:
+      required: true
 
-  reg-tx-offset:
-    type: int
-    required: true
+    reg-tx-offset:
+      type: int
+      required: true
 
-  reg-rx-offset:
-    type: int
-    required: true
+    reg-rx-offset:
+      type: int
+      required: true
+
+    shmem_ch0:
+      description: Arrary to the shared memory region used for data exchange on channel 0
+      required: false
+      type: array
+
+    shmem_ch1:
+      description: Arrary to the shared memory region used for data exchange on channel 1
+      required: false
+      type: array
+
+    shmem_ch2:
+      description: Arrary to the shared memory region used for data exchange on channel 2
+      required: false
+      type: array
+
+    shmem_ch3:
+      description: Arrary to the shared memory region used for data exchange on channel 3
+      required: false
+      type: array
