@@ -304,7 +304,12 @@ static const struct ipm_driver_api ipc_driver_api = {
 		.reg_tx_offset = DT_INST_PROP(n, reg_tx_offset),                                   \
 		.reg_rx_offset = DT_INST_PROP(n, reg_rx_offset),                                   \
 	};                                                                                         \
-	static struct bootmcu_ipc_data bootmcu_ipc_data_##n;                                       \
+	struct bootmcu_ipc_data bootmcu_ipc_data_##n = {                      \
+		.shmem_info[0] = DT_PROP_OR(DT_DRV_INST(n), shmem_ch0, {0}),  \
+		.shmem_info[1] = DT_PROP_OR(DT_DRV_INST(n), shmem_ch1, {0}),  \
+		.shmem_info[2] = DT_PROP_OR(DT_DRV_INST(n), shmem_ch2, {0}),  \
+		.shmem_info[3] = DT_PROP_OR(DT_DRV_INST(n), shmem_ch3, {0}),  \
+	};                                                                    \
 	DEVICE_DT_INST_DEFINE(n, &bootmcu_ipc_config_func_##n, NULL, &bootmcu_ipc_data_##n,        \
 			      &bootmcu_ipc_config_##n, POST_KERNEL,                                \
 			      CONFIG_KERNEL_INIT_PRIORITY_DEVICE, &ipc_driver_api);                \
