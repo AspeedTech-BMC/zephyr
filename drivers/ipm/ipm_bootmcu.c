@@ -6,6 +6,7 @@
 #define DT_DRV_COMPAT aspeed_bootmcu_ipc
 
 #include <zephyr/drivers/ipm.h>
+#include <zephyr/drivers/ipm_ast.h>
 #include <zephyr/sys/util.h>
 #include <zephyr/device.h>
 #include <zephyr/kernel.h>
@@ -37,12 +38,6 @@ enum {
 #define IPCR_DATA2	0x50
 #define IPCR_DATA3	0x70
 
-struct bootmcu_ipc_config {
-	uintptr_t base;
-	uintptr_t reg_tx_offset;
-	uintptr_t reg_rx_offset;
-};
-
 struct bootmcu_ipc_state {
 	bool in_use;
 	struct k_thread thread_data;
@@ -51,11 +46,116 @@ struct bootmcu_ipc_state {
 	struct k_sem sem;
 };
 
+struct bootmcu_ipc_config {
+	uintptr_t base;
+	uintptr_t reg_tx_offset;
+	uintptr_t reg_rx_offset;
+};
+
+struct bootmcu_ipc_shmem {
+	uintptr_t shmem_tx_base;
+	uintptr_t shmem_rx_base;
+	unsigned int shmem_tx_size;
+	unsigned int shmem_rx_size;
+};
+
 struct bootmcu_ipc_data {
 	struct bootmcu_ipc_state state;
-	ipm_callback_t callback[IPC_NUM_OF_ID];
 	void *user_data[IPC_NUM_OF_ID];
+	ipm_callback_t callback[IPC_NUM_OF_ID];
+	struct bootmcu_ipc_shmem shmem_info[IPC_NUM_OF_ID]; /* share memory info */
 };
+
+/* list */
+void ast_ipm_list(const struct device *dev)
+{
+	const struct bootmcu_ipc_data *data = ((const struct device *)dev)->data;
+
+	for (int i = 0 ; i < IPC_NUM_OF_ID; i++) {
+		if (data->shmem_info[i].shmem_tx_base) {
+			LOG_INF("Ch[%d] TX-SHMEM : 0x%08lx\n",
+			i, data->shmem_info[i].shmem_tx_base);
+			LOG_INF("Ch[%d] TX-MSIZE : 0x%08x\n\n",
+			i, data->shmem_info[i].shmem_tx_size);
+		}
+		if (data->shmem_info[i].shmem_rx_base) {
+			LOG_INF("Ch[%d] RX-SHMEM : 0x%08lx\n",
+			i, data->shmem_info[i].shmem_rx_base);
+			LOG_INF("Ch[%d] RX-MSIZE : 0x%08x\n\n",
+			i, data->shmem_info[i].shmem_rx_size);
+		}
+	}
+}
+
+/* tx shmem information */
+int ast_ipm_max_tx_shmem_size(const struct device *dev, uint32_t channel)
+{
+	const struct bootmcu_ipc_data *data = ((const struct device *)dev)->data;
+
+	return data->shmem_info[channel].shmem_tx_size;
+}
+
+/* Write the tx shmem */
+int ast_ipm_shmem_write(const struct device *dev, uint32_t channel,
+uint32_t offset, const void *buf, uint32_t size)
+{
+	const struct bootmcu_ipc_data *data = ((const struct device *)dev)->data;
+	uintptr_t dst = 0;
+
+	if (data->shmem_info[channel].shmem_tx_base) {
+		if (data->shmem_info[channel].shmem_tx_size) {
+			if (offset + size > data->shmem_info[channel].shmem_tx_size) {
+				LOG_DBG("Write out of tx range");
+				goto shmem_write_fail;
+			} else {
+				dst = data->shmem_info[channel].shmem_tx_base;
+				memcpy((void *)(dst + offset), buf, size);
+			}
+		} else
+			goto shmem_write_fail;
+	} else
+		goto shmem_write_fail;
+
+	return size;
+
+shmem_write_fail:
+	return -EINVAL;
+}
+
+/* rx shmem information */
+int ast_ipm_max_rx_shmem_size(const struct device *dev, uint32_t channel)
+{
+	const struct bootmcu_ipc_data *data = ((const struct device *)dev)->data;
+
+	return data->shmem_info[channel].shmem_rx_size;
+}
+
+/* Read the rx shmem */
+int ast_ipm_shmem_read(const struct device *dev, uint32_t channel,
+uint32_t offset, void *buf, uint32_t size)
+{
+	const struct bootmcu_ipc_data *data = ((const struct device *)dev)->data;
+	uintptr_t src = 0;
+
+	if (data->shmem_info[channel].shmem_rx_base) {
+		if (data->shmem_info[channel].shmem_rx_size) {
+			if (offset + size > data->shmem_info[channel].shmem_rx_size) {
+				LOG_DBG("Read out of rx range");
+				goto shmem_read_fail;
+			} else {
+				src = data->shmem_info[channel].shmem_rx_base;
+				memcpy((void *)buf, (void *)(src + offset), size);
+			}
+		} else
+			goto shmem_read_fail;
+	} else
+		goto shmem_read_fail;
+
+	return size;
+
+shmem_read_fail:
+	return -EINVAL;
+}
 
 static void ipc_thread(const void *dev)
 {
