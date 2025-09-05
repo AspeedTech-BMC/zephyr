@@ -25,6 +25,7 @@ LOG_MODULE_REGISTER(cptra_ipc, CONFIG_MISC_ASPEED_LOG_LEVEL);
 #define CPTRA_MISC_DRV_NAME		DEVICE_DT_NAME(DT_INST(0, aspeed_cptra_misc))
 
 #define IPC_DEV_SSP_BOOTMCU		"ipc1@400"
+#define IPC_DEV_NS_CA35_BOOTMCU		"ipc1@200"
 #define IPC_CHANNEL_ID_CPTRA		1
 
 static int cptra_ipc_ecdsa384_verify(const struct device *dev, void *arg1, void *arg2);
@@ -100,12 +101,25 @@ static int cptra_ipc_fw_upload(const struct device *dev, void *arg1, void *arg2)
 		rc = caliptra_fw_upload_update(dev, buf, size);
 
 	} else if (size == CPTRA_MBOX_SZ) {
-		rc = caliptra_fw_upload_update(dev, buf, IPC_SHARE_MEM_SRAM_SIZE);
-		if (rc)
-			goto end;
+		if (!ipc_fw_upload_init) {
+			rc = caliptra_fw_upload_init(dev);
+			if (rc)
+				goto end;
 
-		rc = caliptra_fw_upload_final(dev, size);
-		ipc_fw_upload_init = false;
+			rc = caliptra_fw_upload_update(dev, buf, CPTRA_MBOX_SZ);
+			if (rc)
+				goto end;
+
+			rc = caliptra_fw_upload_final(dev, size);
+
+		} else {
+			rc = caliptra_fw_upload_update(dev, buf, IPC_SHARE_MEM_SRAM_SIZE);
+			if (rc)
+				goto end;
+
+			rc = caliptra_fw_upload_final(dev, size);
+			ipc_fw_upload_init = false;
+		}
 
 	} else {
 		if (!ipc_fw_upload_init) {
@@ -345,25 +359,31 @@ static void cptra_ipc_cb(const struct device *ipmdev, void *user_data,
 
 int cptra_ipc_enable(void)
 {
-	char ipc_name[32] = IPC_DEV_SSP_BOOTMCU;
+	static const char * const ipc_name[] = {
+		IPC_DEV_SSP_BOOTMCU,
+		IPC_DEV_NS_CA35_BOOTMCU,
+	};
 	int device_id = IPC_CHANNEL_ID_CPTRA;
 	const struct device *ipmdev;
 	int rc = 0;
 
 	LOG_INF("%s", __func__);
 
-	ipmdev = device_get_binding(ipc_name);
-	if (!ipmdev) {
-		printk("%s: device_get_binding failed to find device\n", ipc_name);
-		rc = -1;
-		return rc;
-	}
+	for (int i = 0; i < ARRAY_SIZE(ipc_name); i++) {
+		LOG_INF("Register IPC %s channel %d callback", ipc_name[i], device_id);
+		ipmdev = device_get_binding(ipc_name[i]);
+		if (!ipmdev) {
+			printk("%s: device_get_binding failed to find device\n", ipc_name[i]);
+			rc = -1;
+			return rc;
+		}
 
-	ipm_register_id_callback(ipmdev, device_id, cptra_ipc_cb, NULL);
-	rc = ipm_set_id_enabled(ipmdev, device_id, 1);
-	if (rc) {
-		printk("%s: cannot ipm_set_enabled\n", ipc_name);
-		return rc;
+		ipm_register_id_callback(ipmdev, device_id, cptra_ipc_cb, NULL);
+		rc = ipm_set_id_enabled(ipmdev, device_id, 1);
+		if (rc) {
+			printk("%s: cannot ipm_set_enabled\n", ipc_name[i]);
+			return rc;
+		}
 	}
 
 	return 0;
