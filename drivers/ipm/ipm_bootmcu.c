@@ -171,8 +171,8 @@ static void ipc_thread(const void *dev)
 			if ((status & BIT(i)) && data->callback[i]) {
 				msg_base = base + IPCR_DATA0 + IPC_MAX_MSG_SIZE * i;
 				data->callback[i](dev, data->user_data[i], i, (void *)msg_base);
+				sys_write32(BIT(i), base + IPCR_STATUS);
 			}
-			sys_write32(BIT(i), base + IPCR_STATUS);
 		}
 
 		ret = k_msleep(1);

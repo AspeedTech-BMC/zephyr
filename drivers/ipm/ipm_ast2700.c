@@ -159,8 +159,8 @@ static void ipm_ast2700_isr(const void *dev)
 					data->shmem_info[i].shmem_rx_size);
 			}
 			data->callback[i](dev, data->user_data[i], i, (volatile void *)msg_base);
+			sys_write32(BIT(i), base + IPCR_STATUS);
 		}
-		sys_write32(BIT(i), base + IPCR_STATUS);
 	}
 }
 
