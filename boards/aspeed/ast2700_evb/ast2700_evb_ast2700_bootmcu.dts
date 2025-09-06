@@ -7,6 +7,7 @@
 /dts-v1/;
 
 #include <aspeed/ast27xx.dtsi>
+#include <zephyr/dt-bindings/memory-controller/ast27xx-mpu.h>
 
 / {
 	model = "AST2700-EVB AST2700-BOOTMCU";
@@ -21,6 +22,81 @@
 		systick = &systick;
 		emmc = &emmc;
 	};
+
+	ca35_s: ca35-s {
+		compatible = "aspeed,ast27xx-mpu";
+		#mpu-cells = <0>;
+		protect-name = "ca35-s";
+		protect-start = <0x30000000>;
+		protect-end = <0x31080000>;
+		allow = <MPU_ID_CA35 S_READWRITE>, < MPU_ID_SLIM S_READWRITE>;
+		status = "okay";
+	};
+
+	ssp: ssp {
+		compatible = "aspeed,ast27xx-mpu";
+		#mpu-cells = <0>;
+		protect-name = "ssp";
+		protect-start = <0x2c000000>;
+		protect-end = <0x2d000000>;
+		allow = <MPU_ID_SSP_INST S_READONLY>,
+			<MPU_ID_SSP_DATA S_READWRITE>,
+			<MPU_ID_SLIM S_READWRITE>;
+		status = "okay";
+	};
+
+	tsp: tsp {
+		compatible = "aspeed,ast27xx-mpu";
+		#mpu-cells = <0>;
+		protect-name = "tsp";
+		protect-start = <0x2e000000>;
+		protect-end = <0x30000000>;
+		allow = <MPU_ID_TSP_INST S_READONLY>,
+			<MPU_ID_TSP_DATA S_READWRITE>,
+			<MPU_ID_SLIM S_READWRITE>;
+		status = "okay";
+	};
+
+	/* ipc: ssp <=> optee (ca35_s) */
+	share_1: share-1 {
+		compatible = "aspeed,ast27xx-mpu";
+		#mpu-cells = <0>;
+		protect-name = "share-1";
+		protect-start = <0x31080000>;
+		protect-end = <0x31480000>;
+		allow = <MPU_ID_SSP_DATA S_READONLY>,
+			<MPU_ID_CA35 S_READWRITE>;
+		status = "okay";
+	};
+
+	/* ipc: ssp <=> linux (ca35_ns) */
+	share_2: share-2 {
+		compatible = "aspeed,ast27xx-mpu";
+		#mpu-cells = <0>;
+		protect-name = "share-2";
+		protect-start = <0x31480000>;
+		protect-end = <0x31880000>;
+		allow = <MPU_ID_SSP_DATA S_READONLY>,
+			<MPU_ID_CA35 NS_READWRITE>;
+		status = "okay";
+	};
+
+	vb: v-bios {
+		compatible = "aspeed,ast27xx-mpu";
+		#mpu-cells = <0>;
+		protect-name = "v-bios";
+		protect-start = <0x31bb0000>;
+		protect-end = <0x31bd0000>;
+		allow = <MPU_ID_E2M S_READONLY>,
+			<MPU_ID_E2M1 S_READONLY>;
+		status = "okay";
+	};
+};
+
+&sdrammc {
+	status = "okay";
+
+	mpus = <&ca35_s>, <&ssp>, <&tsp>, <&share_1>, <&share_2>, <&vb>;
 };
 
 &uart12 {

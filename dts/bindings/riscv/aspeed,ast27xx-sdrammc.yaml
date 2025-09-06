@@ -1,0 +1,13 @@
+# sdrammc.yaml
+
+description: Binding for SDRAMMC with MPU region configuration
+
+compatible: "aspeed,ast27xx-sdrammc"
+
+include: base.yaml
+
+properties:
+  mpus:
+    type: phandle-array
+    required: false
+    description: Reference to MPU region

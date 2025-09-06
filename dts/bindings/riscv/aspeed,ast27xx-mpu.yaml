@@ -1,0 +1,35 @@
+# ast27xx-mpu.yaml
+
+description: Binding for SDRAMMC with MPU region configuration
+
+compatible: "aspeed,ast27xx-mpu"
+
+include: base.yaml
+
+description: MPU region definition node
+
+properties:
+  "#mpu-cells":
+    type: int
+    const: 0
+    required: true
+
+  protect-name:
+    type: string
+    required: true
+    description: Human-readable name for the protected region
+
+  protect-start:
+    type: int
+    required: true
+    description: Start address of the protected memory region
+
+  protect-end:
+    type: int
+    required: true
+    description: End address of the protected memory region
+
+  allow:
+    type: array
+    required: true
+    description: Flattened list of <MPU_ID, permission> pairs

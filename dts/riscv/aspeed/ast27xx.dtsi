@@ -51,6 +51,12 @@
 			status = "disabled";
 		};
 
+		sdrammc: memory-controller@12c00000 {
+			compatible = "aspeed,ast27xx-sdrammc";
+			reg = <0x12c00000 0x1000>;
+			status = "disabled";
+		};
+
 		syscon0: syscon@12c02000 {
 			compatible = "syscon";
 			reg = <0x12c02000 0x1000>;
