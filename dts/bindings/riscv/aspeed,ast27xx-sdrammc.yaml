@@ -11,3 +11,11 @@ properties:
     type: phandle-array
     required: false
     description: Reference to MPU region
+  ecc-enable:
+    type: boolean
+    required: false
+    description: Enable ECC for SDRAM
+  ecc-size:
+    type: int
+    required: false
+    description: Size of ECC memory in bytes
