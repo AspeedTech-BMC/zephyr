@@ -1,0 +1,51 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Copyright (c) 2023 ASPEED Technology Inc.
+ */
+
+#include <arm/armv7-m.dtsi>
+#include <mem.h>
+#include <aspeed/ast1040-irq.h>
+#include <zephyr/dt-bindings/clock/ast27xx_clock.h>
+#include <zephyr/dt-bindings/reset/ast27xx_reset.h>
+
+/ {
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu@0 {
+			device_type = "cpu";
+			compatible = "arm,cortex-m4f";
+			reg = <0>;
+		};
+	};
+
+	dram_ro_region: memory@0 {
+		device_type = "memory";
+	};
+
+	soc {
+		syscon: syscon@74c02000 {
+			compatible = "syscon";
+			reg = <0x74c02000 0x1000>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges;
+		};
+
+		uart12: serial@74c33c00 {
+			compatible = "ns16550";
+			reg = <0x74c33c00 0x100>;
+			interrupts = <INTR_UART12 AST1040_IRQ_DEFAULT_PRIORITY>;
+			status = "disabled";
+			reg-shift = <2>;
+		};
+	};
+};
+
+&nvic {
+	arm,num-irq-priority-bits = <3>;
+};
+

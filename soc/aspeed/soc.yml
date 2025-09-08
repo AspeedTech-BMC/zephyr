@@ -5,6 +5,9 @@ family:
         socs:
           - name: ast1030
           - name: ast1060
+      - name: ast1040
+        socs:
+          - name: ast1040
       - name: ast26xx
         socs:
           - name: ast2600

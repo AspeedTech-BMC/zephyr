@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Copyright (c) 2023 ASPEED Technology Inc.
+
+config SOC_SERIES_AST1040
+	bool
+	select SOC_FAMILY_ASPEED
+	help
+	  Enable support for ASPEED AST1040 series
+
+config SOC_AST1040
+	bool
+	select SOC_SERIES_AST1040
+	help
+	  AST1040
+
+config SOC_SERIES
+	default "ast1040" if SOC_SERIES_AST1040
+
+config SOC
+	default "ast1040" if SOC_AST1040
