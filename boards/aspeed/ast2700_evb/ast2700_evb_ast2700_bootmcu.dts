@@ -108,6 +108,10 @@
 	mpus = <&ca35_s>, <&ssp>, <&tsp>, <&share_1>, <&share_2>, <&vb>;
 };
 
+&ufs {
+	status = "okay";
+};
+
 &uart12 {
 	status = "okay";
 	clock-frequency = <1846153>;

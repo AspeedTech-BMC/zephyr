@@ -72,6 +72,14 @@
 			};
 		};
 
+		ufs: ufshc@12c08000 {
+			compatible = "aspeed,ast2700-ufs";
+			reg = <0x12c08000 0x100>;
+			clocks = <&sysclk0 SCU0_CLK_GATE_UFSCLK>;
+			resets = <&sysrst0 SCU0_RESET_UFS>;
+			status = "disabled";
+		};
+
 		uart4: serial@12c1a000 {
 			compatible = "ns16550";
 			reg = <0x12c1a000 0x100>;
