@@ -1,0 +1,12 @@
+# Copyright (c) 2024 Aspeed Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+identifier: ast1040_evb
+name: Aspeed AST1040-EVB
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+ram: 16384
+supported:
+  - serial
+vendor: aspeed
