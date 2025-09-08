@@ -24,7 +24,7 @@
 #define CACHE_INVALID_REG	0xa44
 #define CACHE_FUNC_CTRL_REG	0xa48
 #define CACHE_AREA_SIZE_LOG2	24
-#elif defined(CONFIG_SOC_SERIES_AST10X0)
+#elif defined(CONFIG_SOC_SERIES_AST10X0) || defined(CONFIG_SOC_SERIES_AST1040)
 /*
  * cache area control: each bit controls 32KB cache area
  *	1: cacheable
