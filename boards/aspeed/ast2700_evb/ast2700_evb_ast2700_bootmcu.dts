@@ -96,6 +96,15 @@
 &sdrammc {
 	status = "okay";
 
+	/*
+	 * Example of dram ECC enable
+	 * The max ECC size = ((Capacity - VGA size) * 8) / 9;
+	 * ecc-size for customization, if not set, it will be dynamic detected.
+	 * For example, to reserve 853MB ecc-size for dual node.
+	 */
+	ecc-enable;
+	//ecc-size = <0x35500000>; /* 853MB */
+
 	mpus = <&ca35_s>, <&ssp>, <&tsp>, <&share_1>, <&share_2>, <&vb>;
 };
 
