@@ -88,7 +88,8 @@
 		protect-start = <0x31bb0000>;
 		protect-end = <0x31bd0000>;
 		allow = <MPU_ID_E2M S_READONLY>,
-			<MPU_ID_E2M1 S_READONLY>;
+			<MPU_ID_E2M1 S_READONLY>,
+			<MPU_ID_SLIM S_READWRITE>;
 		status = "okay";
 	};
 };
