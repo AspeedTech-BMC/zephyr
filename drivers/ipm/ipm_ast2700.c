@@ -117,7 +117,7 @@ int ast_ipm_max_rx_shmem_size(const struct device *dev, uint32_t channel)
 
 /* Read the rx shmem */
 int ast_ipm_shmem_read(const struct device *dev, uint32_t channel,
-uint32_t offset, void *buf, uint32_t size)
+uint32_t offset, void **buf, uint32_t size)
 {
 	const struct ipm_ast2700_data *data = ((const struct device *)dev)->data;
 	uintptr_t src = 0;
@@ -129,7 +129,7 @@ uint32_t offset, void *buf, uint32_t size)
 				goto shmem_read_fail;
 			} else {
 				src = data->shmem_info[channel].shmem_rx_base;
-				memcpy((void *)buf, (void *)(src + offset), size);
+				*buf = (void *)src;
 			}
 		} else
 			goto shmem_read_fail;

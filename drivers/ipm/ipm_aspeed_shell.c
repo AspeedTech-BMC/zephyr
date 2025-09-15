@@ -56,12 +56,6 @@ static void stress_cb(const struct device *ipmdev, void *user_data,
 		goto stree_cb_fail;
 	}
 
-	rx_buff = k_malloc(sizeof(uint32_t) * mem_size);
-	if (!rx_buff) {
-		LOG_ERR("stress rx buffer could not be located.");
-		goto stree_cb_fail;
-	}
-
 	/* get information from message */
 	size = buf[0] >> 8;
 	LOG_DBG("size 0x%x\n", size);
@@ -70,7 +64,7 @@ static void stress_cb(const struct device *ipmdev, void *user_data,
 	LOG_DBG("rx_buff 0x%p\n", rx_buff);
 
 	/* read the rx buffer into buffer */
-	cpy_size = ast_ipm_shmem_read(ipmdev, id, 0x0, (void *)rx_buff, size);
+	cpy_size = ast_ipm_shmem_read(ipmdev, id, 0x0, (void *)&rx_buff, size);
 	if (cpy_size != size) {
 		LOG_ERR("stress read rx buffer failed.");
 		goto stree_cb_fail;
@@ -123,7 +117,6 @@ stree_cb_fail:
 	}
 
 	if (rx_buff) {
-		k_free(rx_buff);
 		rx_buff = NULL;
 	}
 
@@ -366,7 +359,7 @@ static int cmd_ipm_read_shm(const struct shell *shell,
 {
 	const struct device *ipmdev = NULL;
 	int channel = 0, offset = 0, size = 0, ret_size = 0;
-	int src = 0;
+	int *src = NULL;
 
 	ipmdev = device_get_binding(argv[1]);
 	if (!ipmdev) {
@@ -383,10 +376,10 @@ static int cmd_ipm_read_shm(const struct shell *shell,
 	}
 
 	offset = strtol(argv[3], NULL, 16);
-	src = strtol(argv[4], NULL, 16);
+	src = (int *)strtol(argv[4], NULL, 16);
 	size = strtol(argv[5], NULL, 16);
 
-	ret_size = ast_ipm_shmem_read(ipmdev, channel, offset, (void *)src, size);
+	ret_size = ast_ipm_shmem_read(ipmdev, channel, offset, (void *)&src, size);
 
 	/* check copy size */
 	if (ret_size != size) {
