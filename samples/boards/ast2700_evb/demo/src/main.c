@@ -9,6 +9,7 @@
 #include <zephyr/drivers/ipm.h>
 #include <zephyr/sys/printk.h>
 #include <zephyr/drivers/misc/aspeed/cptra_ipc.h>
+#include <zephyr/drivers/misc/aspeed/ltpi_ipc.h>
 #include <string.h>
 #if defined(CONFIG_IPC_SAMPLE)
 #include "ipc_sample.h"
@@ -34,6 +35,11 @@ int main(void)
 #if defined(CONFIG_CPTRA_IPC) || defined(CONFIG_CPTRA_IPC_SSP)
 	cptra_ipc_enable();
 #endif
+
+#if defined(CONFIG_LTPI_IPC)
+	ltpi_ipc_enable();
+#endif
+
 #if defined(CONFIG_IPC_SAMPLE)
 	ipc_test();
 #endif
