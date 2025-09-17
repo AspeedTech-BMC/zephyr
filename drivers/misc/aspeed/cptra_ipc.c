@@ -200,7 +200,7 @@ static int cptra_ipc_ecdsa384_verify(const struct device *dev, void *arg1, void 
 		LOG_ERR("ecdsa384 verify failed\n");
 		rc = -1;
 	} else {
-		LOG_INF("ecdsa384 verify pass\n");
+		LOG_DBG("ecdsa384 verify pass\n");
 		rc = 0;
 	}
 
@@ -249,7 +249,7 @@ static int cptra_ipc_sha384(const struct device *dev, void *arg1, void *arg2)
 		goto end;
 	}
 
-	LOG_HEXDUMP_INF(pkt.out_buf, 48, "digest:");
+	LOG_HEXDUMP_DBG(pkt.out_buf, 48, "digest:");
 
 end:
 	hash_free_session(dev, &ini);
@@ -319,7 +319,7 @@ static int cptra_ipc_sha384_final(const struct device *dev, void *arg1, void *ar
 		goto end;
 	}
 
-	LOG_HEXDUMP_INF(g_pkt.out_buf, 48, "digest:");
+	LOG_HEXDUMP_DBG(g_pkt.out_buf, 48, "digest:");
 
 end:
 	hash_free_session(dev, &g_ini);
