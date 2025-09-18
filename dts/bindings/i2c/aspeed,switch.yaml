@@ -1,0 +1,23 @@
+#
+# Copyright (c) ASPEED
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+description: ASPEED I2C switch device
+
+compatible: "aspeed,switch"
+
+include:
+  - name: i2c-device.yaml
+  - name: pinctrl-device.yaml
+
+properties:
+  reg:
+    required: true
+
+  enable_gpio:
+  	type: phandle-array
+
+  switch_gpio:
+  	type: phandle-array
