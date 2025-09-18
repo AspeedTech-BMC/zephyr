@@ -17,7 +17,7 @@ properties:
     required: true
 
   enable_gpio:
-  	type: phandle-array
+    type: phandle-array
 
   switch_gpio:
-  	type: phandle-array
+    type: phandle-array
