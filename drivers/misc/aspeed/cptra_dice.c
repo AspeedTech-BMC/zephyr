@@ -58,7 +58,7 @@ static int aspeed_cptra_get_fmc_alias_csr(const struct device *dev,
 		return -EBUSY;
 	}
 
-	LOG_INF("Start doing get_fmc_alias_csr");
+	LOG_DBG("Start doing get_fmc_alias_csr");
 	state->in_use = true;
 
 	while (cptra_mbox_lock())
@@ -85,8 +85,8 @@ static int aspeed_cptra_get_fmc_alias_csr(const struct device *dev,
 	while (cptra_mbox_unlock())
 		;
 
-	LOG_INF("chksum: 0x%x, data_size: 0x%x", output->chksum, output->data_size);
-	LOG_HEXDUMP_INF(output->data, output->data_size, "FMC ALIAS CSR:");
+	LOG_DBG("chksum: 0x%x, data_size: 0x%x", output->chksum, output->data_size);
+	LOG_HEXDUMP_DBG(output->data, output->data_size, "FMC ALIAS CSR:");
 
 	state->in_use = false;
 
@@ -107,7 +107,7 @@ static int aspeed_cptra_get_rt_alias_cert(const struct device *dev,
 		return -EBUSY;
 	}
 
-	LOG_INF("Start doing get_rt_alias_cert");
+	LOG_DBG("Start doing get_rt_alias_cert");
 	state->in_use = true;
 
 	while (cptra_mbox_lock())
@@ -132,9 +132,9 @@ static int aspeed_cptra_get_rt_alias_cert(const struct device *dev,
 	while (cptra_mbox_unlock())
 		;
 
-	LOG_INF("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
-	LOG_INF("data_size: 0x%x", output->data_size);
-	LOG_HEXDUMP_INF(output->data, output->data_size, "RT ALIAS CERT:");
+	LOG_DBG("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
+	LOG_DBG("data_size: 0x%x", output->data_size);
+	LOG_HEXDUMP_DBG(output->data, output->data_size, "RT ALIAS CERT:");
 
 	state->in_use = false;
 
@@ -155,7 +155,7 @@ static int aspeed_cptra_get_fmc_alias_cert(const struct device *dev,
 		return -EBUSY;
 	}
 
-	LOG_INF("Start doing get_fmc_alias_cert");
+	LOG_DBG("Start doing get_fmc_alias_cert");
 	state->in_use = true;
 
 	while (cptra_mbox_lock())
@@ -180,9 +180,9 @@ static int aspeed_cptra_get_fmc_alias_cert(const struct device *dev,
 	while (cptra_mbox_unlock())
 		;
 
-	LOG_INF("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
-	LOG_INF("data_size: 0x%x", output->data_size);
-	LOG_HEXDUMP_INF(output->data, output->data_size, "FMC ALIAS CERT:");
+	LOG_DBG("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
+	LOG_DBG("data_size: 0x%x", output->data_size);
+	LOG_HEXDUMP_DBG(output->data, output->data_size, "FMC ALIAS CERT:");
 
 	state->in_use = false;
 
@@ -203,7 +203,7 @@ static int aspeed_cptra_get_ldev_cert(const struct device *dev,
 		return -EBUSY;
 	}
 
-	LOG_INF("Start doing get_ldev_cert");
+	LOG_DBG("Start doing get_ldev_cert");
 	state->in_use = true;
 
 	while (cptra_mbox_lock())
@@ -228,9 +228,9 @@ static int aspeed_cptra_get_ldev_cert(const struct device *dev,
 	while (cptra_mbox_unlock())
 		;
 
-	LOG_INF("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
-	LOG_INF("data_size: 0x%x", output->data_size);
-	LOG_HEXDUMP_INF(output->data, output->data_size, "LDEVID CERT:");
+	LOG_DBG("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
+	LOG_DBG("data_size: 0x%x", output->data_size);
+	LOG_HEXDUMP_DBG(output->data, output->data_size, "LDEVID CERT:");
 
 	state->in_use = false;
 
@@ -251,7 +251,7 @@ static int aspeed_cptra_get_idev_info(const struct device *dev,
 		return -EBUSY;
 	}
 
-	LOG_INF("Start doing get_idev_info");
+	LOG_DBG("Start doing get_idev_info");
 	state->in_use = true;
 
 	while (cptra_mbox_lock())
@@ -276,9 +276,9 @@ static int aspeed_cptra_get_idev_info(const struct device *dev,
 	while (cptra_mbox_unlock())
 		;
 
-	LOG_INF("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
-	LOG_HEXDUMP_INF(output->idev_pub_x, sizeof(output->idev_pub_x), "idev_pub_x:");
-	LOG_HEXDUMP_INF(output->idev_pub_y, sizeof(output->idev_pub_y), "idev_pub_y:");
+	LOG_DBG("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
+	LOG_HEXDUMP_DBG(output->idev_pub_x, sizeof(output->idev_pub_x), "idev_pub_x:");
+	LOG_HEXDUMP_DBG(output->idev_pub_y, sizeof(output->idev_pub_y), "idev_pub_y:");
 
 	state->in_use = false;
 
@@ -299,7 +299,7 @@ static int aspeed_cptra_populate_idev_cert(const struct device *dev,
 		return -EBUSY;
 	}
 
-	LOG_INF("Start doing populate_idev_cert");
+	LOG_DBG("Start doing populate_idev_cert");
 	state->in_use = true;
 
 	while (cptra_mbox_lock())
@@ -324,7 +324,7 @@ static int aspeed_cptra_populate_idev_cert(const struct device *dev,
 	while (cptra_mbox_unlock())
 		;
 
-	LOG_INF("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
+	LOG_DBG("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
 
 	state->in_use = false;
 
@@ -345,7 +345,7 @@ static int aspeed_cptra_get_idev_cert(const struct device *dev,
 		return -EBUSY;
 	}
 
-	LOG_INF("Start doing get_idev_cert");
+	LOG_DBG("Start doing get_idev_cert");
 	state->in_use = true;
 
 	while (cptra_mbox_lock())
@@ -370,9 +370,9 @@ static int aspeed_cptra_get_idev_cert(const struct device *dev,
 	while (cptra_mbox_unlock())
 		;
 
-	LOG_INF("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
-	LOG_INF("cert_size: 0x%x", output->cert_size);
-	LOG_HEXDUMP_INF(output->cert, output->cert_size, "IDEVID CERT:");
+	LOG_DBG("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
+	LOG_DBG("cert_size: 0x%x", output->cert_size);
+	LOG_HEXDUMP_DBG(output->cert, output->cert_size, "IDEVID CERT:");
 
 	state->in_use = false;
 
@@ -393,7 +393,7 @@ static int aspeed_cptra_get_idevid_csr(const struct device *dev,
 		return -EBUSY;
 	}
 
-	LOG_INF("Start doing get_idevid_csr");
+	LOG_DBG("Start doing get_idevid_csr");
 	state->in_use = true;
 
 	while (cptra_mbox_lock())
@@ -420,8 +420,8 @@ static int aspeed_cptra_get_idevid_csr(const struct device *dev,
 	while (cptra_mbox_unlock())
 		;
 
-	LOG_INF("chksum: 0x%x, data_size: 0x%x", output->chksum, output->data_size);
-	LOG_HEXDUMP_INF(output->data, output->data_size, "IDEVID CSR:");
+	LOG_DBG("chksum: 0x%x, data_size: 0x%x", output->chksum, output->data_size);
+	LOG_HEXDUMP_DBG(output->data, output->data_size, "IDEVID CSR:");
 
 	state->in_use = false;
 
@@ -442,7 +442,7 @@ static int aspeed_cptra_invoke_dpe_command(const struct device *dev,
 		return -EBUSY;
 	}
 
-	LOG_INF("Start doing invoke_dpe_command");
+	LOG_DBG("Start doing invoke_dpe_command");
 	state->in_use = true;
 
 	while (cptra_mbox_lock())
@@ -467,12 +467,12 @@ static int aspeed_cptra_invoke_dpe_command(const struct device *dev,
 	while (cptra_mbox_unlock())
 		;
 
-	LOG_INF("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
+	LOG_DBG("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
 	if (output->data_size > 0x400)
 		dlen = 0x400;
 	else
 		dlen = output->data_size;
-	LOG_HEXDUMP_INF(output->data, dlen, "DPE COMMAND RESP:");
+	LOG_HEXDUMP_DBG(output->data, dlen, "DPE COMMAND RESP:");
 
 	state->in_use = false;
 
@@ -493,7 +493,7 @@ static int aspeed_cptra_disable_attestation(const struct device *dev,
 		return -EBUSY;
 	}
 
-	LOG_INF("Start doing disable_attestation");
+	LOG_DBG("Start doing disable_attestation");
 	state->in_use = true;
 
 	while (cptra_mbox_lock())
@@ -518,7 +518,7 @@ static int aspeed_cptra_disable_attestation(const struct device *dev,
 	while (cptra_mbox_unlock())
 		;
 
-	LOG_INF("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
+	LOG_DBG("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
 
 	state->in_use = false;
 
@@ -539,7 +539,7 @@ static int aspeed_cptra_certify_key_extended(const struct device *dev,
 		return -EBUSY;
 	}
 
-	LOG_INF("Start doing certify_key_extended");
+	LOG_DBG("Start doing certify_key_extended");
 	state->in_use = true;
 
 	while (cptra_mbox_lock())
@@ -565,8 +565,8 @@ static int aspeed_cptra_certify_key_extended(const struct device *dev,
 	while (cptra_mbox_unlock())
 		;
 
-	LOG_INF("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
-	LOG_HEXDUMP_INF(output->certify_key_resp, sizeof(output->certify_key_resp),
+	LOG_DBG("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
+	LOG_HEXDUMP_DBG(output->certify_key_resp, sizeof(output->certify_key_resp),
 			"certify_key_resp:");
 
 	state->in_use = false;
@@ -588,7 +588,7 @@ static int aspeed_cptra_add_subject_alt_name(const struct device *dev,
 		return -EBUSY;
 	}
 
-	LOG_INF("Start doing add_subject_alt_name");
+	LOG_DBG("Start doing add_subject_alt_name");
 	state->in_use = true;
 
 	while (cptra_mbox_lock())
@@ -614,7 +614,7 @@ static int aspeed_cptra_add_subject_alt_name(const struct device *dev,
 	while (cptra_mbox_unlock())
 		;
 
-	LOG_INF("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
+	LOG_DBG("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
 
 	state->in_use = false;
 
@@ -635,7 +635,7 @@ static int aspeed_cptra_dpe_get_tagged_tci(const struct device *dev,
 		return -EBUSY;
 	}
 
-	LOG_INF("Start doing dpe_get_tagged_tci");
+	LOG_DBG("Start doing dpe_get_tagged_tci");
 	state->in_use = true;
 
 	while (cptra_mbox_lock())
@@ -660,9 +660,9 @@ static int aspeed_cptra_dpe_get_tagged_tci(const struct device *dev,
 	while (cptra_mbox_unlock())
 		;
 
-	LOG_INF("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
-	LOG_HEXDUMP_INF(output->tci_cumulative, sizeof(output->tci_cumulative), "tci_cumulative:");
-	LOG_HEXDUMP_INF(output->tci_current, sizeof(output->tci_current), "tci_current:");
+	LOG_DBG("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
+	LOG_HEXDUMP_DBG(output->tci_cumulative, sizeof(output->tci_cumulative), "tci_cumulative:");
+	LOG_HEXDUMP_DBG(output->tci_current, sizeof(output->tci_current), "tci_current:");
 
 	state->in_use = false;
 
@@ -682,7 +682,7 @@ static int aspeed_cptra_dpe_tag_tci(const struct device *dev, struct cptra_dpe_t
 		return -EBUSY;
 	}
 
-	LOG_INF("Start doing dpe_tag_tci");
+	LOG_DBG("Start doing dpe_tag_tci");
 	state->in_use = true;
 
 	while (cptra_mbox_lock())
@@ -707,7 +707,7 @@ static int aspeed_cptra_dpe_tag_tci(const struct device *dev, struct cptra_dpe_t
 	while (cptra_mbox_unlock())
 		;
 
-	LOG_INF("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
+	LOG_DBG("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
 
 	state->in_use = false;
 
@@ -729,7 +729,7 @@ aspeed_cptra_increment_pcr_reset_counter(const struct device *dev,
 		return -EBUSY;
 	}
 
-	LOG_INF("Start doing increment_pcr_reset_counter");
+	LOG_DBG("Start doing increment_pcr_reset_counter");
 	state->in_use = true;
 
 	while (cptra_mbox_lock())
@@ -755,7 +755,7 @@ aspeed_cptra_increment_pcr_reset_counter(const struct device *dev,
 	while (cptra_mbox_unlock())
 		;
 
-	LOG_INF("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
+	LOG_DBG("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
 
 	state->in_use = false;
 
@@ -775,7 +775,7 @@ static int aspeed_cptra_extend_pcr(const struct device *dev, struct cptra_extend
 		return -EBUSY;
 	}
 
-	LOG_INF("Start doing extend pcr");
+	LOG_DBG("Start doing extend pcr");
 	state->in_use = true;
 
 	while (cptra_mbox_lock())
@@ -800,7 +800,7 @@ static int aspeed_cptra_extend_pcr(const struct device *dev, struct cptra_extend
 	while (cptra_mbox_unlock())
 		;
 
-	LOG_INF("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
+	LOG_DBG("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
 
 	state->in_use = false;
 
@@ -820,7 +820,7 @@ static int aspeed_cptra_quote_pcrs(const struct device *dev, struct cptra_quote_
 		return -EBUSY;
 	}
 
-	LOG_INF("Start doing quote pcrs");
+	LOG_DBG("Start doing quote pcrs");
 
 	state->in_use = true;
 
@@ -846,13 +846,13 @@ static int aspeed_cptra_quote_pcrs(const struct device *dev, struct cptra_quote_
 	while (cptra_mbox_unlock())
 		;
 
-	LOG_INF("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
-	LOG_HEXDUMP_INF(output->PCRs[31], sizeof(output->PCRs[31]), "PCRs[31]:");
-	LOG_HEXDUMP_INF(output->nonce, sizeof(output->nonce), "nonce:");
-	LOG_HEXDUMP_INF(output->digest, sizeof(output->digest), "digest:");
-	LOG_HEXDUMP_INF(output->reset_ctrs, sizeof(output->reset_ctrs), "reset_ctrs:");
-	LOG_HEXDUMP_INF(output->signature_r, sizeof(output->signature_r), "signature_r:");
-	LOG_HEXDUMP_INF(output->signature_s, sizeof(output->signature_s), "signature_s:");
+	LOG_DBG("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
+	LOG_HEXDUMP_DBG(output->PCRs[31], sizeof(output->PCRs[31]), "PCRs[31]:");
+	LOG_HEXDUMP_DBG(output->nonce, sizeof(output->nonce), "nonce:");
+	LOG_HEXDUMP_DBG(output->digest, sizeof(output->digest), "digest:");
+	LOG_HEXDUMP_DBG(output->reset_ctrs, sizeof(output->reset_ctrs), "reset_ctrs:");
+	LOG_HEXDUMP_DBG(output->signature_r, sizeof(output->signature_r), "signature_r:");
+	LOG_HEXDUMP_DBG(output->signature_s, sizeof(output->signature_s), "signature_s:");
 
 	state->in_use = false;
 
@@ -873,7 +873,7 @@ static int aspeed_cptra_stash_measurement(const struct device *dev,
 		return -EBUSY;
 	}
 
-	LOG_INF("Start doing stash measurement");
+	LOG_DBG("Start doing stash measurement");
 
 	state->in_use = true;
 
@@ -899,7 +899,7 @@ static int aspeed_cptra_stash_measurement(const struct device *dev,
 	while (cptra_mbox_unlock())
 		;
 
-	LOG_INF("chksum: 0x%x, fips_status: 0x%x, dpe_result: 0x%x",
+	LOG_DBG("chksum: 0x%x, fips_status: 0x%x, dpe_result: 0x%x",
 		output->chksum, output->fips_status, output->dpe_result);
 
 	state->in_use = false;
@@ -921,7 +921,7 @@ static int aspeed_cptra_sign_with_exported_ecdsa(const struct device *dev,
 		return -EBUSY;
 	}
 
-	LOG_INF("Start doing sign_with_exported_ecdsa");
+	LOG_DBG("Start doing sign_with_exported_ecdsa");
 	state->in_use = true;
 
 	while (cptra_mbox_lock())
@@ -951,14 +951,14 @@ unlock:
 	while (cptra_mbox_unlock())
 		;
 
-	LOG_INF("Derived Public Key X:");
-	LOG_HEXDUMP_INF(output->derived_pubkey_x, sizeof(output->derived_pubkey_x), "X:");
-	LOG_INF("Derived Public Key Y:");
-	LOG_HEXDUMP_INF(output->derived_pubkey_y, sizeof(output->derived_pubkey_y), "Y:");
-	LOG_INF("Signature R:");
-	LOG_HEXDUMP_INF(output->signature_r, sizeof(output->signature_r), "R:");
-	LOG_INF("Signature S:");
-	LOG_HEXDUMP_INF(output->signature_s, sizeof(output->signature_s), "S:");
+	LOG_DBG("Derived Public Key X:");
+	LOG_HEXDUMP_DBG(output->derived_pubkey_x, sizeof(output->derived_pubkey_x), "X:");
+	LOG_DBG("Derived Public Key Y:");
+	LOG_HEXDUMP_DBG(output->derived_pubkey_y, sizeof(output->derived_pubkey_y), "Y:");
+	LOG_DBG("Signature R:");
+	LOG_HEXDUMP_DBG(output->signature_r, sizeof(output->signature_r), "R:");
+	LOG_DBG("Signature S:");
+	LOG_HEXDUMP_DBG(output->signature_s, sizeof(output->signature_s), "S:");
 
 	state->in_use = false;
 
@@ -980,7 +980,7 @@ aspeed_cptra_revoke_exported_cdi_handle(const struct device *dev,
 		return -EBUSY;
 	}
 
-	LOG_INF("Start doing revoke_exported_cdi_handle");
+	LOG_DBG("Start doing revoke_exported_cdi_handle");
 	state->in_use = true;
 
 	while (cptra_mbox_lock())
@@ -1010,7 +1010,7 @@ unlock:
 	while (cptra_mbox_unlock())
 		;
 
-	LOG_INF("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
+	LOG_DBG("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
 
 	state->in_use = false;
 
@@ -1029,7 +1029,7 @@ int cptra_dice_init(const struct device *dev)
 		return -ENODEV;
 	}
 
-	LOG_INF("0x%x: Aspeed Caliptra dice service is ready", (uint32_t)cfg->base);
+	LOG_DBG("0x%x: Aspeed Caliptra dice service is ready", (uint32_t)cfg->base);
 
 	return 0;
 }
