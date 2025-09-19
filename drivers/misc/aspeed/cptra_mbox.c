@@ -75,7 +75,8 @@ int cptra_mbox_trigger(uint32_t cmd, uint32_t dlen, uint32_t csum,
 
 	if (sts == CPTRA_MBSTS_DATA_READY) {
 		dlen = sys_read32(cptra_mbox_base + CPTRA_MBOX_DLEN);
-		LOG_DBG("output dlen:0x%x", dlen);
+		LOG_DBG("output dlen:0x%x, olen:0x%x", dlen, olen);
+		dlen = MIN(dlen, olen);
 
 		p32 = (uint32_t *)output;
 		for (int i = 0; i < (dlen / sizeof(uint32_t)); i++)
