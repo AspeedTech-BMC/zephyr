@@ -611,8 +611,8 @@ enum dpe_command {
 };
 
 enum dpe_profile {
-	P256Sha256 = 1,
-	P384Sha384 = 2,
+	P256Sha256 = 3,
+	P384Sha384 = 4,
 };
 
 /* TODO: DPE command */
