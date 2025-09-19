@@ -16,8 +16,8 @@ properties:
   reg:
     required: true
 
-  enable_gpio:
+  enable-gpios:
     type: phandle-array
 
-  switch_gpio:
+  switch-gpios:
     type: phandle-array
