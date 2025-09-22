@@ -16,6 +16,12 @@ LOG_MODULE_REGISTER(ltpi_ipc, CONFIG_MISC_ASPEED_LOG_LEVEL);
 #define LTPISHEADER 0xf0000000
 #define LTPIMISCREAD 0x00000000
 #define LTPIMISCWRITE 0x00000001
+#define LTPICHANNEL0 0x10000
+#define LTPICHANNEL1 0x20000
+#define LTPICH0ADDRSHOW 0x30000000
+#define LTPICH1ADDRSHOW 0x50000000
+#define LTPICH0ADDR 0x50000000
+#define LTPICH1ADDR 0x60000000
 
 struct ltpi_ipc_data {
 	uint32_t misc;
@@ -31,6 +37,7 @@ static void ltpi_ipc_cb(const struct device *ipmdev, void *user_data,
 	struct ltpi_ipc_data *data = NULL;
 	int cpy_size = 0, size = 0;
 	uint32_t *handle_buff = NULL;
+	uint32_t offset = 0;
 
 	/* check message header */
 	if ((buf[0] & LTPISHEADER) != LTPISHEADER) {
@@ -52,10 +59,23 @@ static void ltpi_ipc_cb(const struct device *ipmdev, void *user_data,
 	data = (struct ltpi_ipc_data *)handle_buff;
 
 	for (int i = 0; i < count; i++) {
-		if ((data->misc & LTPIMISCWRITE) == LTPIMISCWRITE) {
-			sys_write32(data->value, data->port);
-		} else {
-			data->value = sys_read32(data->port);
+		/* Check the ltpi address setting */
+		if ((data->misc & (LTPICHANNEL0 | LTPICHANNEL1)) != 0) {
+			offset = data->port & GENMASK(23, 0);
+
+			if (data->misc & LTPICHANNEL0) {
+				data->port = (offset | LTPICH0ADDRSHOW);
+				offset |= LTPICH0ADDR;
+			} else {
+				data->port = (offset | LTPICH1ADDRSHOW);
+				offset |= LTPICH1ADDR;
+			}
+
+			if ((data->misc & LTPIMISCWRITE) == LTPIMISCWRITE) {
+				sys_write32(data->value, offset);
+			} else {
+				data->value = sys_read32(offset);
+			}
 		}
 		data++;
 	}
