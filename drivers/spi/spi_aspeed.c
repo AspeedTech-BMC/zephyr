@@ -145,35 +145,35 @@ struct aspeed_spi_config {
 	{	\
 		.scu_reg_addr = __scu_reg__,	\
 		.scu_bit_mask = __scu_bit__,	\
-		.gpio_reg_addr = __gpio_reg__,	\
+		.gpio_addr = __gpio_reg__,	\
 		.gpio_bit_mask = __gpio_bit__,	\
 		.gpio_ori_val = 0,	\
 	}
 
 /*
- * SPIM1CLKOUT: SCU690[7]   GPIO_A7 0x7e780004[7]
- * SPIM2CLKOUT: SCU690[21]  GPIO_C5 0x7e780004[21]
- * SPIM3CLKOUT: SCU694[3]   GPIO_E3 0x7e780024[3]
- * SPIM4CLKOUT: SCU694[17]  GPIO_G1 0x7e780024[17]
+ * SPIM1CLKOUT: SCU690[7]   GPIO_A7 0x7e780000[7]
+ * SPIM2CLKOUT: SCU690[21]  GPIO_C5 0x7e780000[21]
+ * SPIM3CLKOUT: SCU694[3]   GPIO_E3 0x7e780020[3]
+ * SPIM4CLKOUT: SCU694[17]  GPIO_G1 0x7e780020[17]
  */
 struct spim_gpio_info g_ast1060_spim_clk_gpio[4] = {
-	SPIM_GPIO_INFO(0x7e6e2690, BIT(7), 0x7e780004, BIT(7)),
-	SPIM_GPIO_INFO(0x7e6e2690, BIT(21), 0x7e780004, BIT(21)),
-	SPIM_GPIO_INFO(0x7e6e2694, BIT(3), 0x7e780024, BIT(3)),
-	SPIM_GPIO_INFO(0x7e6e2694, BIT(17), 0x7e780024, BIT(17)),
+	SPIM_GPIO_INFO(0x7e6e2690, BIT(7), 0x7e780000, BIT(7)),
+	SPIM_GPIO_INFO(0x7e6e2690, BIT(21), 0x7e780000, BIT(21)),
+	SPIM_GPIO_INFO(0x7e6e2694, BIT(3), 0x7e780020, BIT(3)),
+	SPIM_GPIO_INFO(0x7e6e2694, BIT(17), 0x7e780020, BIT(17)),
 };
 
 /*
- * SPIM1CSOUT: SCU690[1]   GPIO_A6 0x7e780004[6]
- * SPIM2CSOUT: SCU690[20]  GPIO_C4 0x7e780004[20]
- * SPIM3CSOUT: SCU694[2]   GPIO_E2 0x7e780024[2]
- * SPIM4CSOUT: SCU694[16]  GPIO_G0 0x7e780024[16]
+ * SPIM1CSOUT: SCU690[1]   GPIO_A6 0x7e780000[6]
+ * SPIM2CSOUT: SCU690[20]  GPIO_C4 0x7e780000[20]
+ * SPIM3CSOUT: SCU694[2]   GPIO_E2 0x7e780020[2]
+ * SPIM4CSOUT: SCU694[16]  GPIO_G0 0x7e780020[16]
  */
 struct spim_gpio_info g_ast1060_spim_cs_gpio[4] = {
-	SPIM_GPIO_INFO(0x7e6e2690, BIT(1), 0x7e780004, BIT(6)),
-	SPIM_GPIO_INFO(0x7e6e2690, BIT(20), 0x7e780004, BIT(20)),
-	SPIM_GPIO_INFO(0x7e6e2694, BIT(2), 0x7e780024, BIT(2)),
-	SPIM_GPIO_INFO(0x7e6e2694, BIT(16), 0x7e780024, BIT(16)),
+	SPIM_GPIO_INFO(0x7e6e2690, BIT(1), 0x7e780000, BIT(6)),
+	SPIM_GPIO_INFO(0x7e6e2690, BIT(20), 0x7e780000, BIT(20)),
+	SPIM_GPIO_INFO(0x7e6e2694, BIT(2), 0x7e780020, BIT(2)),
+	SPIM_GPIO_INFO(0x7e6e2694, BIT(16), 0x7e780020, BIT(16)),
 };
 
 uint32_t ast2600_segment_addr_start(uint32_t reg_val)
@@ -1281,11 +1281,11 @@ void aspeed_ast1060_spim_proprietary_pre_config(void)
 			sys_write32(reg_val, g_ast1060_spim_clk_gpio[idx].scu_reg_addr);
 
 			/* change GPIO related to spim clk output pin to input mode. */
-			reg_val = sys_read32(g_ast1060_spim_clk_gpio[idx].gpio_reg_addr);
+			reg_val = sys_read32(g_ast1060_spim_clk_gpio[idx].gpio_addr + 0x4);
 			g_ast1060_spim_clk_gpio[idx].gpio_ori_val =
 				(reg_val & g_ast1060_spim_clk_gpio[idx].gpio_bit_mask);
 			reg_val &= ~(g_ast1060_spim_clk_gpio[idx].gpio_bit_mask);
-			sys_write32(reg_val, g_ast1060_spim_clk_gpio[idx].gpio_reg_addr);
+			sys_write32(reg_val, g_ast1060_spim_clk_gpio[idx].gpio_addr + 0x4);
 		}
 	}
 
@@ -1297,17 +1297,19 @@ void aspeed_ast1060_spim_proprietary_pre_config(void)
 	else
 		return;
 
+	/* change GPIO related to spim CS output pin to output mode. */
+	reg_val = sys_read32(g_ast1060_spim_cs_gpio[block_cs_idx].gpio_addr);
+	reg_val |= g_ast1060_spim_cs_gpio[block_cs_idx].gpio_bit_mask;
+	sys_write32(reg_val, g_ast1060_spim_cs_gpio[block_cs_idx].gpio_addr);
+
+	reg_val = sys_read32(g_ast1060_spim_cs_gpio[block_cs_idx].gpio_addr + 0x4);
+	reg_val |= g_ast1060_spim_cs_gpio[block_cs_idx].gpio_bit_mask;
+	sys_write32(reg_val, g_ast1060_spim_cs_gpio[block_cs_idx].gpio_addr + 0x4);
+
 	/* change multiple function pin to GPIO mode. */
 	reg_val = sys_read32(g_ast1060_spim_cs_gpio[block_cs_idx].scu_reg_addr);
 	reg_val &= ~(g_ast1060_spim_cs_gpio[block_cs_idx].scu_bit_mask);
 	sys_write32(reg_val, g_ast1060_spim_cs_gpio[block_cs_idx].scu_reg_addr);
-
-	/* change GPIO related to spim CS output pin to input mode. */
-	reg_val = sys_read32(g_ast1060_spim_cs_gpio[block_cs_idx].gpio_reg_addr);
-	g_ast1060_spim_cs_gpio[block_cs_idx].gpio_ori_val =
-		(reg_val & g_ast1060_spim_cs_gpio[block_cs_idx].gpio_bit_mask);
-	reg_val &= ~(g_ast1060_spim_cs_gpio[block_cs_idx].gpio_bit_mask);
-	sys_write32(reg_val, g_ast1060_spim_cs_gpio[block_cs_idx].gpio_reg_addr);
 }
 
 void aspeed_ast1060_spim_proprietary_post_config(void)
@@ -1330,10 +1332,10 @@ void aspeed_ast1060_spim_proprietary_post_config(void)
 	for (idx = 0; idx < 4; idx++) {
 		if (idx != spim_idx) {
 			/* restore its GPIO value related to spim clk output pin. */
-			reg_val = sys_read32(g_ast1060_spim_clk_gpio[idx].gpio_reg_addr);
+			reg_val = sys_read32(g_ast1060_spim_clk_gpio[idx].gpio_addr + 0x4);
 			reg_val &= ~(g_ast1060_spim_clk_gpio[idx].gpio_bit_mask);
 			reg_val |= g_ast1060_spim_clk_gpio[idx].gpio_ori_val;
-			sys_write32(reg_val, g_ast1060_spim_clk_gpio[idx].gpio_reg_addr);
+			sys_write32(reg_val, g_ast1060_spim_clk_gpio[idx].gpio_addr + 0x4);
 
 			/* change multiple function pin back to SPIM mode. */
 			reg_val = sys_read32(g_ast1060_spim_clk_gpio[idx].scu_reg_addr);
@@ -1349,12 +1351,6 @@ void aspeed_ast1060_spim_proprietary_post_config(void)
 		block_cs_idx = 2;
 	else
 		return;
-
-	/* restore its GPIO value related to spim CS output pin. */
-	reg_val = sys_read32(g_ast1060_spim_cs_gpio[block_cs_idx].gpio_reg_addr);
-	reg_val &= ~(g_ast1060_spim_cs_gpio[block_cs_idx].gpio_bit_mask);
-	reg_val |= g_ast1060_spim_cs_gpio[block_cs_idx].gpio_ori_val;
-	sys_write32(reg_val, g_ast1060_spim_cs_gpio[block_cs_idx].gpio_reg_addr);
 
 	/* change multiple function pin back to SPIM mode. */
 	reg_val = sys_read32(g_ast1060_spim_cs_gpio[block_cs_idx].scu_reg_addr);

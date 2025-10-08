@@ -150,7 +150,7 @@ bool get_wdt_timeout_status(const struct device *dev);
 struct spim_gpio_info {
 	mm_reg_t scu_reg_addr;
 	uint32_t scu_bit_mask;
-	mm_reg_t gpio_reg_addr;
+	mm_reg_t gpio_addr;
 	uint32_t gpio_bit_mask;
 	uint32_t gpio_ori_val;
 };
