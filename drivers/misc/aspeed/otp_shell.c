@@ -14,7 +14,7 @@
 #include "mbedtls/sha512.h"
 #include "otp_info_10x0.h"
 
-#define OTP_DRV_NAME		CONFIG_OTP_ASPEED_DRV_NAME
+#define OTP_DRV_NAME		DEVICE_DT_NAME(DT_INST(0, aspeed_otp))
 
 #define OTPTOOL_VERSION(a, b, c) (((a) << 24) + ((b) << 12) + (c))
 #define OTPTOOL_VERSION_MAJOR(x) (((x) >> 24) & 0xff)
