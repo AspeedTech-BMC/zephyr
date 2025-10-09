@@ -1515,7 +1515,12 @@ static struct otp_aspeed_config otp_aspeed_config = {
 	.otpstrap_dt_setting_num = DT_PROP_LEN(DT_DRV_INST(0), otpstrap),
 };
 
-DEVICE_DEFINE(otp_aspeed, CONFIG_OTP_ASPEED_DRV_NAME, aspeed_otp_init,
-		NULL, &otp_aspeed_data, &otp_aspeed_config,
-		POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEVICE,
-		(void *)&otp_funcs);
+#define ASPEED_OTP_INIT(inst)						\
+	DEVICE_DT_INST_DEFINE(inst, aspeed_otp_init, NULL,		\
+			      &otp_aspeed_data,				\
+			      &otp_aspeed_config,			\
+			      POST_KERNEL,				\
+			      CONFIG_KERNEL_INIT_PRIORITY_DEVICE,	\
+			      (void *)&otp_funcs);
+
+DT_INST_FOREACH_STATUS_OKAY(ASPEED_OTP_INIT)
