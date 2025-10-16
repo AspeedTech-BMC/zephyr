@@ -81,6 +81,18 @@
 		status = "okay";
 	};
 
+	/* ipc: bootmcu <=> linux (ca35_ns) */
+	share_3: share-3 {
+		compatible = "aspeed,ast27xx-mpu";
+		#mpu-cells = <0>;
+		protect-name = "share-3";
+		protect-start = <0x31880000>;
+		protect-end = <0x31b30000>;
+		allow = <MPU_ID_SLIM S_READWRITE>,
+			<MPU_ID_CA35 NS_READWRITE>;
+		status = "okay";
+	};
+
 	vb: v-bios {
 		compatible = "aspeed,ast27xx-mpu";
 		#mpu-cells = <0>;
@@ -106,7 +118,7 @@
 	//ecc-enable;
 	//ecc-size = <0x35500000>; /* 853MB */
 
-	mpus = <&ca35_s>, <&ssp>, <&tsp>, <&share_1>, <&share_2>, <&vb>;
+	mpus = <&ca35_s>, <&ssp>, <&tsp>, <&share_1>, <&share_2>, <&share_3>, <&vb>;
 };
 
 &ufs {
