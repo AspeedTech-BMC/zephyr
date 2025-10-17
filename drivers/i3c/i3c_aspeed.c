@@ -1401,7 +1401,7 @@ static void aspeed_i3c_init_clock(struct aspeed_i3c_data *data)
 		     SDA_TX_HOLD_MIN, SDA_TX_HOLD_MAX);
 	reg = sys_read32(config->base + SDA_HOLD_SWITCH_DLY_TIMING);
 	reg &= ~SDA_TX_HOLD;
-	reg |= lcnt;
+	reg |= FIELD_PREP(SDA_TX_HOLD, lcnt);
 	sys_write32(reg, config->base + SDA_HOLD_SWITCH_DLY_TIMING);
 
 	sys_write32(0xffff007c, config->base + BUS_FREE_TIMING);
