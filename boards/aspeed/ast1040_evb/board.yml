@@ -3,3 +3,8 @@ board:
   vendor: aspeed
   socs:
   - name: ast1040
+    variants:
+    - name: cm4
+      cpucluster: cm4
+    - name: bootmcu
+      cpucluster: bootmcu
