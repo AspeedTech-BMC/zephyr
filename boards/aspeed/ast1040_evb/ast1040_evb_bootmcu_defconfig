@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Copyright (c) 2023 Aspeed Technology Inc.
+#
+
+# CONFIG_XIP is not set
+CONFIG_MAIN_STACK_SIZE=4096
+CONFIG_SERIAL=y
+CONFIG_CLOCK_CONTROL=y
+CONFIG_HEAP_MEM_POOL_SIZE=16384
