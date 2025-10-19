@@ -9,4 +9,10 @@ zephyr_linker_sources(ROM_START SORT_KEY 0x1sboot sboot.ld)
 
 string(TOUPPER "${SOC_NAME}" soc_name_upper)
 
-set(SOC_LINKER_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/linker.ld CACHE INTERNAL "")
+if(CONFIG_RISCV)
+  set(SOC_LINKER_SCRIPT ${ZEPHYR_BASE}/include/zephyr/arch/riscv/common/linker.ld CACHE INTERNAL "")
+endif()
+
+if(CONFIG_ARM)
+  set(SOC_LINKER_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/linker.ld CACHE INTERNAL "")
+endif()

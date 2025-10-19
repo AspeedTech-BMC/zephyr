@@ -4,26 +4,7 @@
 
 if SOC_SERIES_AST1040
 
-rsource "Kconfig.defconfig.ast1040"
-
-config ICACHE_LINE_SIZE
-	default 32
-
-config DCACHE_LINE_SIZE
-	default 32
-
-choice CACHE_TYPE
-	default EXTERNAL_CACHE
-endchoice
-
-config LINKER_LAST_SECTION_ID
-	default n
-
-config CLOCK_CONTROL_INIT_PRIORITY
-	default SYSCON_INIT_PRIORITY
-
-config RESET_INIT_PRIORITY
-	default SYSCON_INIT_PRIORITY
-
+rsource "Kconfig.defconfig.cm4"
+rsource "Kconfig.defconfig.bootmcu"
 
 endif # SOC_SERIES_AST1040
