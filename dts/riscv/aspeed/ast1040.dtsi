@@ -61,5 +61,10 @@
 			interrupt-parent = <&hlic>;
 			interrupts = <7 0>;
 		};
+
+		rng: hwrng@14c020f0 {
+			compatible = "aspeed,hwrng";
+			reg = <0x14c020f0 0x8>;
+		};
 	};
 };
