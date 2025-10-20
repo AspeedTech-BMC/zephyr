@@ -771,9 +771,7 @@ static bool aspeed_spi_ram_region(uintptr_t virt_addr)
 #if defined(CONFIG_SOC_AST2700_BOOTMCU)
 	uint64_t phy_addr = ast27xx_soc_virt_addr_to_phy_addr(virt_addr);
 
-	if (phy_addr > ASPEED_DRAM_PHY_BASE ||
-	    (phy_addr >= ASPEED_IO_SRAM_PHY_BASE &&
-	     phy_addr < (ASPEED_IO_SRAM_PHY_BASE + ASPEED_IO_SRAM_SIZE)))
+	if (phy_addr >= ASPEED_DRAM_PHY_BASE)
 		return true;
 
 	return false;
