@@ -1259,9 +1259,8 @@ void aspeed_ast1060_spim_proprietary_pre_config(void)
 {
 	uint32_t scu0f0_val;
 	uint32_t spim_idx;
-	uint32_t idx;
 	uint32_t reg_val;
-	uint32_t block_cs_idx;
+	uint32_t op_idx;
 
 	scu0f0_val = sys_read32(0x7e6e20f0);
 	/* configure SPI CLK pin to GPIO input */
@@ -1269,93 +1268,74 @@ void aspeed_ast1060_spim_proprietary_pre_config(void)
 		return;
 
 	spim_idx = (scu0f0_val & 0x7) - 1;
-	if (spim_idx > 3)
-		return;
-
-	/* if the SPIM CS and CLK is unused, config it to GPIO input mode. */
-	for (idx = 0; idx < 4; idx++) {
-		if (idx != spim_idx) {
-			/* change multiple function pin to GPIO mode. */
-			reg_val = sys_read32(g_ast1060_spim_clk_gpio[idx].scu_reg_addr);
-			reg_val &= ~(g_ast1060_spim_clk_gpio[idx].scu_bit_mask);
-			sys_write32(reg_val, g_ast1060_spim_clk_gpio[idx].scu_reg_addr);
-
-			/* change GPIO related to spim clk output pin to input mode. */
-			reg_val = sys_read32(g_ast1060_spim_clk_gpio[idx].gpio_addr + 0x4);
-			g_ast1060_spim_clk_gpio[idx].gpio_ori_val =
-				(reg_val & g_ast1060_spim_clk_gpio[idx].gpio_bit_mask);
-			reg_val &= ~(g_ast1060_spim_clk_gpio[idx].gpio_bit_mask);
-			sys_write32(reg_val, g_ast1060_spim_clk_gpio[idx].gpio_addr + 0x4);
-		}
-	}
-
-	/* config the SPIM_CS_OUT to SPIM mode. */
 	if (spim_idx == 2)
-		block_cs_idx = 3;
+		op_idx = 3;
 	else if (spim_idx == 3)
-		block_cs_idx = 2;
+		op_idx = 2;
 	else
 		return;
 
-	/* change GPIO related to spim CS output pin to output mode. */
-	reg_val = sys_read32(g_ast1060_spim_cs_gpio[block_cs_idx].gpio_addr);
-	reg_val |= g_ast1060_spim_cs_gpio[block_cs_idx].gpio_bit_mask;
-	sys_write32(reg_val, g_ast1060_spim_cs_gpio[block_cs_idx].gpio_addr);
+	/* change multiple function pin to GPIO mode. */
+	reg_val = sys_read32(g_ast1060_spim_clk_gpio[op_idx].scu_reg_addr);
+	reg_val &= ~(g_ast1060_spim_clk_gpio[op_idx].scu_bit_mask);
+	sys_write32(reg_val, g_ast1060_spim_clk_gpio[op_idx].scu_reg_addr);
 
-	reg_val = sys_read32(g_ast1060_spim_cs_gpio[block_cs_idx].gpio_addr + 0x4);
-	reg_val |= g_ast1060_spim_cs_gpio[block_cs_idx].gpio_bit_mask;
-	sys_write32(reg_val, g_ast1060_spim_cs_gpio[block_cs_idx].gpio_addr + 0x4);
+	/* change GPIO related to spim clk output pin to input mode. */
+	reg_val = sys_read32(g_ast1060_spim_clk_gpio[op_idx].gpio_addr + 0x4);
+	g_ast1060_spim_clk_gpio[op_idx].gpio_ori_val =
+		(reg_val & g_ast1060_spim_clk_gpio[op_idx].gpio_bit_mask);
+	reg_val &= ~(g_ast1060_spim_clk_gpio[op_idx].gpio_bit_mask);
+	sys_write32(reg_val, g_ast1060_spim_clk_gpio[op_idx].gpio_addr + 0x4);
+
+	/* change GPIO related to spim CS output pin to output mode. */
+	reg_val = sys_read32(g_ast1060_spim_cs_gpio[op_idx].gpio_addr);
+	reg_val |= g_ast1060_spim_cs_gpio[op_idx].gpio_bit_mask;
+	sys_write32(reg_val, g_ast1060_spim_cs_gpio[op_idx].gpio_addr);
+
+	reg_val = sys_read32(g_ast1060_spim_cs_gpio[op_idx].gpio_addr + 0x4);
+	reg_val |= g_ast1060_spim_cs_gpio[op_idx].gpio_bit_mask;
+	sys_write32(reg_val, g_ast1060_spim_cs_gpio[op_idx].gpio_addr + 0x4);
 
 	/* change multiple function pin to GPIO mode. */
-	reg_val = sys_read32(g_ast1060_spim_cs_gpio[block_cs_idx].scu_reg_addr);
-	reg_val &= ~(g_ast1060_spim_cs_gpio[block_cs_idx].scu_bit_mask);
-	sys_write32(reg_val, g_ast1060_spim_cs_gpio[block_cs_idx].scu_reg_addr);
+	reg_val = sys_read32(g_ast1060_spim_cs_gpio[op_idx].scu_reg_addr);
+	reg_val &= ~(g_ast1060_spim_cs_gpio[op_idx].scu_bit_mask);
+	sys_write32(reg_val, g_ast1060_spim_cs_gpio[op_idx].scu_reg_addr);
 }
 
 void aspeed_ast1060_spim_proprietary_post_config(void)
 {
 	uint32_t scu0f0_val;
 	uint32_t spim_idx;
-	uint32_t idx;
 	uint32_t reg_val;
-	uint32_t block_cs_idx;
+	uint32_t op_idx;
 
 	scu0f0_val = sys_read32(0x7e6e20f0);
 	if ((scu0f0_val & 0x7) == 0)
 		return;
 
 	spim_idx = (scu0f0_val & 0x7) - 1;
-	if (spim_idx > 3)
-		return;
-
-	/* if the SPIMCLK is unused, config it back to SPIM mode. */
-	for (idx = 0; idx < 4; idx++) {
-		if (idx != spim_idx) {
-			/* restore its GPIO value related to spim clk output pin. */
-			reg_val = sys_read32(g_ast1060_spim_clk_gpio[idx].gpio_addr + 0x4);
-			reg_val &= ~(g_ast1060_spim_clk_gpio[idx].gpio_bit_mask);
-			reg_val |= g_ast1060_spim_clk_gpio[idx].gpio_ori_val;
-			sys_write32(reg_val, g_ast1060_spim_clk_gpio[idx].gpio_addr + 0x4);
-
-			/* change multiple function pin back to SPIM mode. */
-			reg_val = sys_read32(g_ast1060_spim_clk_gpio[idx].scu_reg_addr);
-			reg_val |= g_ast1060_spim_clk_gpio[idx].scu_bit_mask;
-			sys_write32(reg_val, g_ast1060_spim_clk_gpio[idx].scu_reg_addr);
-		}
-	}
-
-	/* config the SPIM_CS_OUT to SPIM mode. */
 	if (spim_idx == 2)
-		block_cs_idx = 3;
+		op_idx = 3;
 	else if (spim_idx == 3)
-		block_cs_idx = 2;
+		op_idx = 2;
 	else
 		return;
 
+	/* restore its GPIO value related to spim clk output pin. */
+	reg_val = sys_read32(g_ast1060_spim_clk_gpio[op_idx].gpio_addr + 0x4);
+	reg_val &= ~(g_ast1060_spim_clk_gpio[op_idx].gpio_bit_mask);
+	reg_val |= g_ast1060_spim_clk_gpio[op_idx].gpio_ori_val;
+	sys_write32(reg_val, g_ast1060_spim_clk_gpio[op_idx].gpio_addr + 0x4);
+
 	/* change multiple function pin back to SPIM mode. */
-	reg_val = sys_read32(g_ast1060_spim_cs_gpio[block_cs_idx].scu_reg_addr);
-	reg_val |= g_ast1060_spim_cs_gpio[block_cs_idx].scu_bit_mask;
-	sys_write32(reg_val, g_ast1060_spim_cs_gpio[block_cs_idx].scu_reg_addr);
+	reg_val = sys_read32(g_ast1060_spim_clk_gpio[op_idx].scu_reg_addr);
+	reg_val |= g_ast1060_spim_clk_gpio[op_idx].scu_bit_mask;
+	sys_write32(reg_val, g_ast1060_spim_clk_gpio[op_idx].scu_reg_addr);
+
+	/* change multiple function pin back to SPIM mode. */
+	reg_val = sys_read32(g_ast1060_spim_cs_gpio[op_idx].scu_reg_addr);
+	reg_val |= g_ast1060_spim_cs_gpio[op_idx].scu_bit_mask;
+	sys_write32(reg_val, g_ast1060_spim_cs_gpio[op_idx].scu_reg_addr);
 }
 
 static int aspeed_spi_init(const struct device *dev)
