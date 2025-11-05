@@ -30,3 +30,7 @@ properties:
     required: true
     description: mandatory data byte (MDB) when sending IBI.
                  See https://www.mipi.org/MIPI_I3C_mandatory_data_byte_values_public for detail.
+  ibi-append-pec:
+    required: false
+    type: int
+    description: Append PEC byte to the IBI data.  Enable this option if the master device is AST2600 or AST1030A0.

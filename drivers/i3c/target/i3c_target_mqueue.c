@@ -3,6 +3,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+#include <stdbool.h>
 #define DT_DRV_COMPAT i3c_target_mqueue
 
 #include <zephyr/sys/util.h>
@@ -23,6 +24,7 @@ struct i3c_target_mqueue_config {
 	int msg_size;
 	int num_of_msgs;
 	int mdb;
+	bool ibi_append_pec;
 };
 
 struct mq_msg {
@@ -53,14 +55,18 @@ int i3c_target_mqueue_write(const struct device *dev, uint8_t *buf, int len)
 		return -ENOTCONN;
 	}
 
-	addr_rnw = (data->target_config.address << 1) | 0x1;
-	pec_v = crc8_ccitt(0, &addr_rnw, 1);
-	pec_v = crc8_ccitt(pec_v, ibi_payload, 1);
-	ibi_payload[1] = pec_v;
-
+	if (config->ibi_append_pec) {
+		addr_rnw = (data->target_config.address << 1) | 0x1;
+		pec_v = crc8_ccitt(0, &addr_rnw, 1);
+		pec_v = crc8_ccitt(pec_v, ibi_payload, 1);
+		ibi_payload[1] = pec_v;
+		ibi.payload_len = 2;
+	} else {
+		ibi.payload_len = 1;
+	}
 	ibi.ibi_type = I3C_IBI_TARGET_INTR;
 	ibi.payload = ibi_payload;
-	ibi.payload_len = 2;
+
 	return i3c_target_pending_read_notify(config->controller, buf, len, &ibi);
 }
 
@@ -201,6 +207,7 @@ static int i3c_target_mqueue_init(const struct device *dev)
 		.msg_size = DT_INST_PROP(n, msg_size),                                             \
 		.num_of_msgs = DT_INST_PROP(n, num_of_msgs),                                       \
 		.mdb = DT_INST_PROP(n, mandatory_data_byte),                                       \
+		.ibi_append_pec = DT_INST_PROP_OR(n, ibi_append_pec, 1),                           \
 	};                                                                                         \
                                                                                                    \
 	static struct i3c_target_mqueue_data i3c_target_mqueue_data_##n;                           \
