@@ -116,7 +116,7 @@
 	};
 
 	ipc0_ns_ca35: ipc0@600 {
-		compatible = "aspeed,ast2700-ipc-v2";
+		compatible = "aspeed,ast2700-ipc";
 		reg = <0x600 0x200>;
 		reg-tx-offset = <0x100>;
 		reg-rx-offset = <0>;
@@ -125,7 +125,7 @@
 	};
 
 	ipc0_ssp: ipc0@800 {
-		compatible = "aspeed,ast2700-ipc-v2";
+		compatible = "aspeed,ast2700-ipc";
 		reg = <0x800 0x200>;
 		reg-tx-offset = <0x100>;
 		reg-rx-offset = <0>;
@@ -136,7 +136,7 @@
 
 &ipc1 {
 	ipc1_bootmcu: ipc1@600 {
-		compatible = "aspeed,ast2700-ipc-v2";
+		compatible = "aspeed,ast2700-ipc";
 		reg = <0x600 0x200>;
 		reg-tx-offset = <0x0>;
 		reg-rx-offset = <0x100>;
