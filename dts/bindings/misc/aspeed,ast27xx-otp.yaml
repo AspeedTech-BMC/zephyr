@@ -6,3 +6,9 @@ description: ASPEED OTP (One-Time-Programmable) Memory Controller
 compatible: "aspeed,ast27xx-otp"
 
 include: base.yaml
+
+properties:
+    aspeed,scu:
+      type: phandle
+      required: true
+      description: phandle to SCU device tree node

@@ -155,6 +155,7 @@
 		otp: otp@14c07000 {
 			compatible = "aspeed,ast27xx-otp";
 			reg = <0x14c07000 0x1000>;
+			aspeed,scu = <&syscon1>;
 			status = "disabled";
 		};
 
