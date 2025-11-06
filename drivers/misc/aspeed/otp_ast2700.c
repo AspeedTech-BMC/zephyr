@@ -89,6 +89,8 @@ LOG_MODULE_REGISTER(otp_ast2700, CONFIG_LOG_DEFAULT_LEVEL);
 #define OTPSTRAP0_ADDR			STRAP_REGION_START_ADDR
 #define OTPSTRAP14_ADDR			(OTPSTRAP0_ADDR + 0xe)
 
+#define SCU1_ROM_PATCH_OFFSET		0x180
+
 enum otp_error_code {
 	OTP_SUCCESS,
 	OTP_READ_FAIL,
@@ -106,8 +108,16 @@ enum aspeed_otp_master_id {
 	OTP_MID_MAX,
 };
 
+enum rom_patch_version {
+	OTP_ROM_PATCH_NONE =	0x0,
+	OTP_ROM_PATCH_V1 =	0x3,
+	OTP_ROM_PATCH_V2 =	0x3276,
+	OTP_ROM_PATCH_V3 =	0x3376,
+};
+
 struct otp_ast27xx_config {
 	uintptr_t base;
+	uintptr_t scu_base;
 	int gbl_ecc_en;
 };
 
@@ -190,7 +200,7 @@ static int aspeed_otp_read(const struct device *dev, uint32_t offset, void *buf,
 	for (int i = 0; i < size; i++) {
 		ret = otp_read_data(dev, offset + i, data + i);
 		if (ret) {
-			LOG_ERR("%s: read failed\n", __func__);
+			LOG_ERR("%s: read failed", __func__);
 			break;
 		}
 	}
@@ -210,7 +220,7 @@ static int aspeed_otp_write(const struct device *dev, uint32_t offset, void *buf
 		ret = otp_prog_multi_data(dev, offset, data32, size / 2);
 
 	if (ret)
-		LOG_ERR("%s: prog failed\n", __func__);
+		LOG_ERR("%s: prog failed", __func__);
 
 	return ret;
 }
@@ -238,6 +248,35 @@ static int aspeed_otp_ecc_init(const struct device *dev)
 	return 0;
 }
 
+static void aspeed_otp_rom_info(const struct device *dev)
+{
+	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
+	int rom_patch_ver;
+	char *rom_ver_str;
+
+	/* Check ROM patch version */
+	rom_patch_ver = sys_read32(cfg->scu_base + SCU1_ROM_PATCH_OFFSET);
+	switch (rom_patch_ver) {
+	case OTP_ROM_PATCH_NONE:
+		rom_ver_str = "None";
+		break;
+	case OTP_ROM_PATCH_V1:
+		rom_ver_str = "v1";
+		break;
+	case OTP_ROM_PATCH_V2:
+		rom_ver_str = "v2";
+		break;
+	case OTP_ROM_PATCH_V3:
+		rom_ver_str = "v3";
+		break;
+	default:
+		rom_ver_str = "Unknown";
+		break;
+	}
+
+	LOG_INF("\tROM patch: %s", rom_ver_str);
+}
+
 static int otp_ast27xx_init(const struct device *dev)
 {
 	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
@@ -248,11 +287,13 @@ static int otp_ast27xx_init(const struct device *dev)
 	/* OTP ECC init */
 	rc = aspeed_otp_ecc_init(dev);
 	if (rc) {
-		LOG_ERR("OTP ECC init failed, rc:%d\n", rc);
+		LOG_ERR("OTP ECC init failed, rc:%d", rc);
 		return rc;
 	}
 
-	LOG_INF("0x%x: Aspeed OTP driver Initialized\n", (uint32_t)cfg->base);
+	aspeed_otp_rom_info(dev);
+
+	LOG_INF("\t0x%x: OTP driver initialized", (uint32_t)cfg->base);
 
 	return rc;
 }
@@ -268,6 +309,7 @@ struct otp_ast27xx_drv_state {
 
 static const struct otp_ast27xx_config otp_ast27xx_config = {
 	.base = DT_REG_ADDR(DT_DRV_INST(0)),
+	.scu_base = DT_REG_ADDR_BY_IDX(DT_INST_PHANDLE_BY_IDX(0, aspeed_scu, 0), 0),
 };
 
 static struct otp_ast27xx_drv_state otp_ast27xx_state;
