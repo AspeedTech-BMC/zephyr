@@ -162,7 +162,7 @@ int cptra_ecdsa_init(const struct device *dev)
 		return -ENODEV;
 	}
 
-	LOG_INF("0x%x: Aspeed Caliptra ECDSA Hardware Accelerator successfully registered",
+	LOG_INF("\t0x%x: Caliptra ECDSA HW accelerator registered",
 		(uint32_t)cfg->base);
 
 	return 0;

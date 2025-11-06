@@ -221,7 +221,7 @@ int cptra_update_init(const struct device *dev)
 		return -ENODEV;
 	}
 
-	LOG_INF("0x%x: Aspeed Caliptra update service is ready", (uint32_t)cfg->base);
+	LOG_INF("\t0x%x: Caliptra update driver initialized", (uint32_t)cfg->base);
 
 	return 0;
 }

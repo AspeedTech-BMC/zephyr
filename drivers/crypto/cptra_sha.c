@@ -206,7 +206,7 @@ static int cptra_sha_init(const struct device *dev)
 		return -ENODEV;
 	}
 
-	LOG_INF("0x%x: Aspeed Caliptra SHA Hardware Accelerator successfully registered",
+	LOG_INF("\t0x%x: Caliptra SHA HW accelerator registered",
 		(uint32_t)cfg->base);
 
 	return 0;

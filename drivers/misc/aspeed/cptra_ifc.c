@@ -65,7 +65,7 @@ int cptra_ifc_init(const struct device *dev)
 	struct cptra_ifc_drv_state *state = DEV_DATA(dev);
 	k_tid_t tid;
 
-	LOG_INF("0x%x: Create threads to service trng requests", (uint32_t)cfg->base);
+	LOG_DBG("0x%x: Create threads to service trng requests", (uint32_t)cfg->base);
 
 	tid = k_thread_create(&state->thread_data, state->thread_stack, THREAD_STACK_SIZE,
 			      (k_thread_entry_t)cptra_trng_thread, (void *)dev,

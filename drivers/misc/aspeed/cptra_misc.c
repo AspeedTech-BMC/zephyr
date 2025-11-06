@@ -442,7 +442,7 @@ int cptra_misc_init(const struct device *dev)
 		return -ENODEV;
 	}
 
-	LOG_INF("0x%x: Aspeed Caliptra misc service is ready", (uint32_t)cfg->base);
+	LOG_INF("\t0x%x: Caliptra misc driver initialized", (uint32_t)cfg->base);
 
 	return 0;
 }

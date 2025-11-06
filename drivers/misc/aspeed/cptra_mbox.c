@@ -166,7 +166,7 @@ static int cptra_mbox_init(const struct device *dev)
 
 	k_mutex_init(&cptra_mbox_mutex);
 
-	LOG_INF("0x%x: Initialized", (uint32_t)cfg->base);
+	LOG_DBG("0x%x: Initialized", (uint32_t)cfg->base);
 
 	return 0;
 }

@@ -206,7 +206,7 @@ int cptra_lms_init(const struct device *dev)
 		return -ENODEV;
 	}
 
-	LOG_INF("0x%x: Aspeed Caliptra LMS Hardware Accelerator successfully registered",
+	LOG_INF("\t0x%x: Caliptra LMS HW accelerator registered",
 		(uint32_t)cfg->base);
 
 	return 0;

@@ -182,7 +182,7 @@ static int hw_ecdsa_test(const struct ecdsa_testvec *tv, int tv_size)
 	struct ecdsa_key ek;
 	int ret, rc = 0;
 
-	LOG_INF("Start...");
+	LOG_DBG("Start...");
 	for (int i = 0; i < tv_size; i++) {
 		/* Doing hash first for Caliptra secure IP case */
 #ifdef CONFIG_CPTRA_ECDSA
@@ -223,7 +223,7 @@ static int hw_ecdsa_test(const struct ecdsa_testvec *tv, int tv_size)
 		}
 	}
 
-	LOG_INF("Pass");
+	LOG_DBG("Pass");
 
 	return 0;
 }
@@ -256,7 +256,7 @@ static int hw_lms_test(const struct lms_testvec *tv, int tv_size)
 	struct lms_pkt pkt;
 	int ret, rc = 0;
 
-	LOG_INF("Start...");
+	LOG_DBG("Start...");
 	for (int i = 0; i < tv_size; i++) {
 		/* Doing hash first for Caliptra secure IP case */
 		hw_gen_sha((uint8_t *)tv[i].raw, tv[i].raw_size,
@@ -295,7 +295,7 @@ static int hw_lms_test(const struct lms_testvec *tv, int tv_size)
 		}
 	}
 
-	LOG_INF("Pass");
+	LOG_DBG("Pass");
 
 	return 0;
 }
