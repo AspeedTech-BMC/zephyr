@@ -54,7 +54,9 @@
 &ipc1_tsp {
 	status = "okay";
 };
+#endif
 
+#if 1
 &cptra_ecdsa {
 	status = "okay";
 };
@@ -79,8 +81,7 @@
 	status = "okay";
 };
 
-&otp {
-	status = "okay";
+&fmc {
+	timing-calibration-disabled;
 };
-
 #endif
