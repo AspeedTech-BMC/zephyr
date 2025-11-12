@@ -40,12 +40,44 @@
 		#size-cells = <0x01>;
 		ranges;
 
-		syscon: syscon@14c02000 {
+		fmc: spi@14000000 {
+			compatible = "aspeed,spi-controller";
+			reg = <0x14000000 0x200>, <0x20000000 0x10000000>;
+			reg-names = "ctrl_reg", "spi_mmap";
+			clocks = <&sysclk SCU1_CLK_AHB>;
+			num-cs = <1>;
+			ctrl-type = "bspi";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			spi-ctrl-caps-mask = <0x000e0e0c>;
+
+			fmc_cs0: fmc@0 {
+				compatible = "jedec,spi-nor";
+				reg = <0>;
+				spi-max-buswidth = <1>;
+				spi-max-frequency = <25000000>;
+				jedec-id = [];
+				write-block-size = <4096>;
+			};
+		};
+
+		syscon1: syscon@14c02000 {
 			compatible = "syscon";
 			reg = <0x14c02000 0x1000>;
-			#address-cells = <1>;
-			#size-cells = <1>;
-			ranges;
+
+			sysrst: reset-controller {
+				compatible = "aspeed,ast27xx-reset";
+				#reset-cells = <1>;
+			};
+
+			sysclk: system-clock {
+				compatible = "aspeed,ast27xx-scu1-clock";
+				#clock-cells = <1>;
+			};
+
+			pinctrl: pinctrl {
+				compatible = "aspeed,g7-soc1-pinctrl";
+			};
 		};
 
 		uart12: serial@14c33c00 {
@@ -66,5 +98,50 @@
 			compatible = "aspeed,hwrng";
 			reg = <0x14c020f0 0x8>;
 		};
+
+		cptra_mbox: cptra-mbox@14c60000 {
+			compatible = "aspeed,cptra-mbox";
+			reg = <0x14c60000 0x1000>;
+			aspeed,scu = <&syscon1>;
+			aspeed,cptra-ifc = <&cptra_ifc>;
+
+			cptra_ecdsa: cptra-ecdsa {
+				compatible = "aspeed,cptra-ecdsa";
+				status = "disabled";
+			};
+
+			cptra_lms: cptra-lms {
+				compatible = "aspeed,cptra-lms";
+				status = "disabled";
+			};
+
+			cptra_update: cptra-update {
+				compatible = "aspeed,cptra-update";
+				status = "disabled";
+			};
+
+			cptra_dice: cptra-dice {
+				compatible = "aspeed,cptra-dice";
+				status = "disabled";
+			};
+
+			cptra_misc: cptra-misc {
+				compatible = "aspeed,cptra-misc";
+				status = "disabled";
+			};
+		};
+
+		cptra_sha: cptra-sha@14c61000 {
+			compatible = "aspeed,cptra-sha";
+			reg = <0x14c61000 0x1000>;
+			aspeed,scu = <&syscon1>;
+			status = "disabled";
+		};
+
+		cptra_ifc: cptra-ifc@14c70000 {
+			compatible = "aspeed,cptra-ifc";
+			reg = <0x14c70000 0x1000>;
+		};
+
 	};
 };
