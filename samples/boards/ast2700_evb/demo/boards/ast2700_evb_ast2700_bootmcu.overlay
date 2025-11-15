@@ -22,3 +22,25 @@
 		reg = <0x14ba8000 0x17800>;
 	};
 };
+
+&fmc {
+	status = "okay";
+};
+
+&fmc_cs0 {
+	status = "okay";
+	spi-max-buswidth = <1>;
+	spi-max-frequency = <25000000>;
+};
+
+&spi0 {
+	status = "okay";
+	spi-ctrl-fifo-enabled;
+};
+
+&spi0_cs0 {
+	status = "okay";
+	spi-max-buswidth = <4>;
+	spi-max-frequency = <50000000>;
+};
+
