@@ -38,6 +38,7 @@ LOG_MODULE_REGISTER(spi_aspeed, CONFIG_SPI_LOG_LEVEL);
 #define SPI38_CE2_ADDR_DEC          (0x0038)
 
 #define SPI50_SOFT_RST_CTRL         (0x0050)
+#define SPI54_MISC_CTRL             (0x0054)
 
 #define SPI60_WDT1                  (0x0060)
 #define SPI64_WDT2                  (0x0064)
@@ -365,6 +366,7 @@ static void aspeed_spi_nor_transceive_user(const struct device *dev,
 	uint32_t cs = ctx->config->slave;
 	mm_reg_t mem_reg = data->decode_addr[cs].start;
 	uint8_t dummy[12] = {0};
+	uint32_t hspi_ctrl;
 
 	if (config->spi_ctrl_fifo_enabled) {
 		mem_reg = config->ctrl_base + SPI200_DATA_FIFO_REG +
@@ -377,6 +379,9 @@ static void aspeed_spi_nor_transceive_user(const struct device *dev,
 		op_info.opcode, op_info.addr, op_info.addr_len,
 		aspeed_spi_io_mode_user(JESD216_GET_ADDR_BUSWIDTH(op_info.mode)),
 		op_info.dummy_cycle, op_info.data_len);
+
+	hspi_ctrl = sys_read32(config->ctrl_base + SPI54_MISC_CTRL);
+	sys_write32(0x0, config->ctrl_base + SPI54_MISC_CTRL);
 
 	sys_write32(data->cmd_mode[cs].user | ASPEED_SPI_USER_INACTIVE,
 		    config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
@@ -426,6 +431,8 @@ static void aspeed_spi_nor_transceive_user(const struct device *dev,
 
 	sys_write32(data->cmd_mode[cs].normal_read,
 		    config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
+
+	sys_write32(hspi_ctrl, config->ctrl_base + SPI54_MISC_CTRL);
 
 	spi_context_complete(ctx, dev, 0);
 }
@@ -619,6 +626,7 @@ static int aspeed_get_mid_point_of_longest_one(uint8_t *buf, uint32_t len)
 }
 
 #define CALIBRATION_RESULT_BUF_LEN	(6 * 17)
+static uint8_t check_buf[SPI_CALIB_LEN] NON_CACHED_BSS_ALIGN16;
 
 void aspeed_spi_timing_calibration(const struct device *dev)
 {
@@ -631,7 +639,6 @@ void aspeed_spi_timing_calibration(const struct device *dev)
 	/* HCLK/2, ..., HCKL/5 */
 	uint32_t hclk_masks[] = {7, 14, 6, 13};
 	uint8_t *calib_res = NULL;
-	void *check_buf = NULL;
 	uint32_t reg_val;
 	uint32_t checksum, gold_checksum;
 	uint32_t i, hcycle, delay_ns, final_delay = 0;
@@ -661,12 +668,6 @@ void aspeed_spi_timing_calibration(const struct device *dev)
 	reg_val = sys_read32(ctrl_reg + SPI10_CE0_CTRL + cs * 4);
 	reg_val &= (~SPI_CTRL_FREQ_MASK);
 	sys_write32(reg_val, ctrl_reg + SPI10_CE0_CTRL + cs * 4);
-
-	check_buf = k_malloc(SPI_CALIB_LEN);
-	if (!check_buf) {
-		LOG_ERR("Insufficient buffer for calibration.");
-		goto no_calib;
-	}
 
 	memset(check_buf, 0x0, SPI_CALIB_LEN);
 
@@ -759,8 +760,6 @@ no_calib:
 	/* add clock setting info for CE ctrl setting */
 	LOG_DBG("freq: %dMHz", max_freq / 1000000);
 
-	if (check_buf)
-		k_free(check_buf);
 	if (calib_res)
 		k_free(calib_res);
 }
@@ -1080,6 +1079,7 @@ static int aspeed_spi_init(const struct device *dev)
 	struct aspeed_spi_data *data = dev->data;
 	uint32_t cs;
 	uint32_t reg_val;
+	int ret;
 
 	for (cs = 0; cs < config->max_cs; cs++) {
 		reg_val = sys_read32(config->ctrl_base + SPI00_CE_TYPE_SETTING);
@@ -1089,7 +1089,10 @@ static int aspeed_spi_init(const struct device *dev)
 		data->cmd_mode[cs].user = ASPEED_SPI_USER;
 	}
 
-	data->hclk = 200000000;
+	ret = clock_control_get_rate(config->clock_dev, config->clk_id,
+			       &data->hclk);
+	if (ret != 0)
+		return ret;
 
 	aspeed_spi_pinctrl_early_init(dev);
 
@@ -1119,6 +1122,8 @@ static const struct spi_driver_api aspeed_spi_driver_api = {
 		.spi_mmap_base = DT_INST_REG_ADDR_BY_NAME(n, spi_mmap),	\
 		.max_cs = DT_INST_PROP(n, num_cs),	\
 		.ctrl_type = DT_ENUM_IDX(DT_INST(n, DT_DRV_COMPAT), ctrl_type),	\
+		.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(n)),	\
+		.clk_id = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(n, clk_id),	\
 		.timing_calibration_disabled = DT_PROP(DT_INST(n, DT_DRV_COMPAT),	\
 						       timing_calibration_disabled),	\
 		.timing_calibration_start_off =	\

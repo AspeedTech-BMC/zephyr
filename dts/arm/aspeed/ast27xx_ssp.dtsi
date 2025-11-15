@@ -95,6 +95,7 @@
 			compatible = "aspeed,spi-controller";
 			reg = <0x74000000 0x300>, <0x20000000 0x10000000>;
 			reg-names = "ctrl_reg", "spi_mmap";
+			clocks = <&sysclk1 SCU1_CLK_AHB>;
 			num-cs = <2>;
 			ctrl-type = "bspi";
 			#address-cells = <1>;
