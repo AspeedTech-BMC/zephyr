@@ -22,12 +22,6 @@ config ASPEED_HAPS
 	help
 	  Enable support for ASPEED HAPS devices.
 
-config SOC_FMC_LOAD_MANIFEST_ADDRESS
-	hex "FMC load manifest address"
-	default 0x20000000
-	help
-	  Set the address to load the manifest file for FMC
-
 if SHELL
 config SHELL_PROMPT_UART
 	default "ssp:~$ " if BOARD_AST2700_EVB_AST2700_SSP || BOARD_AST2700_EVB_AST2700_A0_SSP
