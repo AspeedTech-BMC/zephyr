@@ -1506,6 +1506,14 @@ static int sfdp_post_fixup(const struct device *dev)
 			spi_nor_assign_pp_cmd(data, JESD216_MODE_114, SPI_NOR_CMD_PP_1_1_4_4B);
 
 		break;
+	case SPI_NOR_MFR_ID_CYPRESS:
+		if ((SPI_NOR_GET_JESDID(data->jedec_id) & 0xff00) == 0x2a00 ||
+		    (SPI_NOR_GET_JESDID(data->jedec_id) & 0xff00) == 0x2b00) {
+			if (data->cmd_info.read_opcode == SPI_NOR_CMD_READ_FAST_4B)
+				data->cmd_info.read_dummy = 16;
+		}
+
+		break;
 	default:
 		/* do nothing */
 		break;
