@@ -97,6 +97,8 @@ struct cmd_table_info cmds_array[] = {
 		.cmd_table_val = CMD_TABLE_VALUE(1, 0, 0, 0, 0, 0, 0, 0, 0, CMD_VSR_WREN)},
 	{.cmd = CMD_WREAR,
 		.cmd_table_val = CMD_TABLE_VALUE(0, 1, 0, 0, 1, 0, 0, 0, 0, CMD_WREAR)},
+	{.cmd = CMD_WINBOND_DIE_SEL,
+		.cmd_table_val = CMD_TABLE_VALUE(1, 1, 0, 0, 1, 0, 0, 0, 0, CMD_WINBOND_DIE_SEL)},
 };
 
 static uint8_t spim_log_arr[SPIM_LOG_RAM_TOTAL_SIZE] NON_CACHED_BSS_ALIGN16;
