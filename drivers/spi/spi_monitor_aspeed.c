@@ -616,8 +616,10 @@ void spim_allow_cmd_table_init(const struct device *dev,
 			idx++;
 		}
 
-		if (idx == 31)
+		if (idx > 31) {
 			LOG_ERR("The allowed command number may exceed the expected.");
+			break;
+		}
 
 		sys_write32(reg_val, table_base + idx * 4);
 	}
