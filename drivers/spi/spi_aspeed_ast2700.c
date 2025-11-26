@@ -626,7 +626,12 @@ static int aspeed_get_mid_point_of_longest_one(uint8_t *buf, uint32_t len)
 }
 
 #define CALIBRATION_RESULT_BUF_LEN	(6 * 17)
+
+#if defined(CONFIG_SOC_AST2700_BOOTMCU)
+static __aligned(4) uint8_t check_buf[SPI_CALIB_LEN];
+#else
 static uint8_t check_buf[SPI_CALIB_LEN] NON_CACHED_BSS_ALIGN16;
+#endif
 
 void aspeed_spi_timing_calibration(const struct device *dev)
 {
