@@ -178,3 +178,37 @@
 &otp {
 	status = "okay";
 };
+
+&edaf_bridge0 {
+	status = "okay";
+	espi-base = <0x14c05000>;
+#if 0 //DDR mode using edaf0 reserved memory
+	edaf-ddr-mode;
+	edaf-erase-with-1;
+	mem-base = <0x4 0x28000000>; //edaf0 reserved memory
+#else //Flash mode using SPI0
+	mem-base = <0x1 0x80000000>; //SPI0
+	ctl-base = <0x14010000>;
+	cmd-read = <0x130401>;
+	cmd-write-enable = <0x6041e>;
+	cmd-write = <0x120403>;
+	cmd-read-status = <0x50415>;
+	cmd-erase-4k = <0x21040e>;
+	cmd-erase-32k = <0x5c040e>;
+	cmd-erase-64k = <0xdc040e>;
+#endif
+};
+
+&edaf_bridge1 {
+	status = "okay";
+	espi-base = <0x14c06000>;
+	mem-base = <0x2 0x00000000>; //SPI1
+	ctl-base = <0x14020000>;
+	cmd-read = <0x130401>;
+	cmd-write-enable = <0x6041e>;
+	cmd-write = <0x120402>;
+	cmd-read-status = <0x50415>;
+	cmd-erase-4k = <0x21040e>;
+	cmd-erase-32k = <0x5c040e>;
+	cmd-erase-64k = <0xdc040e>;
+};
