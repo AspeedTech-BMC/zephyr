@@ -150,6 +150,11 @@
 			};
 		};
 
+		edaf_bridge_cfg: edaf-bridge-cfg@140ec100 {
+			compatible = "aspeed,ast2700-edaf-bridge-cfg";
+			reg = <0x140ec100 0x100>;
+		};
+
 		syscon1: syscon@14c02000 {
 			compatible = "syscon";
 			reg = <0x14c02000 0x1000>;
@@ -217,6 +222,22 @@
 			reg = <0x14c36000 0x40>;
 			interrupt-parent = <&hlic>;
 			interrupts = <7 0>;
+		};
+
+		edaf_bridge0: edaf-bridge@14c38000 {
+			compatible = "aspeed,edaf-bridge";
+			reg = <0x14c38000 0x200>;
+			aspeed,scu = <&syscon1>;
+			aspeed,edaf_bridge_cfg= <&edaf_bridge_cfg>;
+			status = "disabled";
+		};
+
+		edaf_bridge1: edaf-bridge@14c38200 {
+			compatible = "aspeed,edaf-bridge";
+			reg = <0x14c38200 0x200>;
+			aspeed,scu = <&syscon1>;
+			aspeed,edaf_bridge_cfg= <&edaf_bridge_cfg>;
+			status = "disabled";
 		};
 
 		ipc1: bus@14c39000 {
