@@ -127,6 +127,14 @@ config PRIVILEGE_CTRL
 	  This option enables privilege control for aspeed
 	  board isolation.
 
+config EDAF_BRIDGE_ASPEED
+	bool "Enable ASPEED eDAF bridge controller"
+	default y
+	depends on SOC_AST2700_BOOTMCU
+	help
+	  This option enables the eDAF bridge controller
+	  for ASPEED SoCs.
+
 module = MISC_ASPEED
 module-str = misc-aspeed
 source "subsys/logging/Kconfig.template.log_config"
