@@ -1,0 +1,70 @@
+# Copyright (c) 2021, ASPEED
+# SPDX-License-Identifier: Apache-2.0
+
+description: ASPEED EDAF Bridge Controller
+
+compatible: "aspeed,edaf-bridge"
+
+include: base.yaml
+
+properties:
+  reg:
+    required: true
+
+  aspeed,scu:
+    type: phandle
+    required: true
+    description: Phandle to SCU syscon node used to control EDAF enable bits.
+
+  aspeed,edaf_bridge_cfg:
+    type: phandle
+    required: false
+    description: Phandle to global EDAF bridge config block.
+
+  mem-base:
+    type: array
+    required: false
+
+  ctl-base:
+    type: int
+    required: false
+
+  espi-base:
+    type: int
+    required: false
+
+  edaf-ddr-mode:
+    type: boolean
+    required: false
+
+  edaf-erase-with-1:
+    type: boolean
+    required: false
+
+  cmd-read:
+    type: int
+    required: false
+
+  cmd-write-enable:
+    type: int
+    required: false
+
+  cmd-write:
+    type: int
+    required: false
+
+  cmd-read-status:
+    type: int
+    required: false
+
+  cmd-erase-4k:
+    type: int
+    required: false
+
+  cmd-erase-32k:
+    type: int
+    required: false
+
+  cmd-erase-64k:
+    type: int
+    required: false
