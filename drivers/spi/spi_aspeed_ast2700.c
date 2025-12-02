@@ -18,7 +18,6 @@ LOG_MODULE_REGISTER(spi_aspeed, CONFIG_SPI_LOG_LEVEL);
 #include "spi_context.h"
 #include <zephyr/sys/sys_io.h>
 #include <zephyr/sys/__assert.h>
-#include <zephyr/drivers/misc/aspeed/pfr_aspeed.h>
 
 #define FMC_CTRL_BASE               (0x14000000)
 #define SPI0_CTRL_BASE              (0x14010000)
@@ -565,36 +564,7 @@ static bool aspeed_spi_calibriation_enable(const uint8_t *buf, uint32_t sz)
 	return false;
 }
 
-static uint32_t aspeed_spi_dma_checksum(const struct device *dev,
-	uint32_t div, uint32_t delay)
-{
-	struct aspeed_spi_data *data = dev->data;
-	const struct aspeed_spi_config *config = dev->config;
-	struct spi_context *ctx = &data->ctx;
-	uint32_t ctrl_reg = config->ctrl_base;
-	uint32_t ctrl_val;
-	uint32_t checksum;
-
-	sys_write32(0x0, ctrl_reg + SPI80_DMA_CTRL);
-	sys_write32(data->decode_addr[ctx->config->slave].start +
-		    config->timing_calibration_start_off,
-		    ctrl_reg + SPI84_DMA_FLASH_ADDR);
-	sys_write32(SPI_CALIB_LEN, ctrl_reg + SPI8C_DMA_LEN);
-
-	ctrl_val = SPI_DMA_ENABLE | SPI_DMA_CALC_CKSUM | SPI_DMA_CALIB_MODE |
-		   (delay << 8) | ((div & 0xf) << 16);
-	sys_write32(ctrl_val, ctrl_reg + SPI80_DMA_CTRL);
-	while (!(sys_read32(ctrl_reg + SPI08_INTR_CTRL) & SPI_DMA_STATUS))
-		;
-
-	checksum = sys_read32(ctrl_reg + SPI90_CHECKSUM_RESULT);
-
-	sys_write32(0x0, ctrl_reg + SPI80_DMA_CTRL);
-
-	return checksum;
-}
-
-static int aspeed_get_mid_point_of_longest_one(uint8_t *buf, uint32_t len)
+static int aspeed_optimized_timing(uint8_t *buf, uint32_t len)
 {
 	int i;
 	int start = 0, mid_point = 0;
@@ -627,11 +597,32 @@ static int aspeed_get_mid_point_of_longest_one(uint8_t *buf, uint32_t len)
 
 #define CALIBRATION_RESULT_BUF_LEN	(6 * 17)
 
-#if defined(CONFIG_SOC_AST2700_BOOTMCU)
-static __aligned(4) uint8_t check_buf[SPI_CALIB_LEN];
-#else
-static uint8_t check_buf[SPI_CALIB_LEN] NON_CACHED_BSS_ALIGN16;
-#endif
+static __aligned(4) uint8_t check_buf[SPI_CALIB_LEN * 2];
+
+static void aspeed_spi_calibriation_read(uint32_t ahb_addr, uint8_t *buf,
+					 uint32_t len)
+{
+	uint32_t i;
+	uint32_t *ptr = (uint32_t *)buf;
+
+	for (i = 0; i < len; i += 4, ptr++)
+		*ptr = sys_read32(ahb_addr + i);
+}
+
+static bool aspeed_spi_check_reads(uint32_t ahb_addr, uint8_t *buf, uint32_t len)
+{
+	uint32_t i;
+	uint32_t *ptr = (uint32_t *)(buf + SPI_CALIB_LEN);
+
+	for (i = 0; i < len; i += 4, ptr++)
+		*ptr = sys_read32(ahb_addr + i);
+
+	if (memcmp((void *)buf, (void *)(buf + SPI_CALIB_LEN),
+		   SPI_CALIB_LEN) != 0)
+		return false;
+
+	return true;
+}
 
 void aspeed_spi_timing_calibration(const struct device *dev)
 {
@@ -641,25 +632,23 @@ void aspeed_spi_timing_calibration(const struct device *dev)
 	uint32_t ctrl_reg = config->ctrl_base;
 	uint32_t cs = ctx->config->slave;
 	uint32_t max_freq = ctx->config->frequency;
+	uint32_t timing_reg = ctrl_reg + SPI94_CE0_TIMING_CTRL + cs * 4;
 	/* HCLK/2, ..., HCKL/5 */
-	uint32_t hclk_masks[] = {7, 14, 6, 13};
-	uint8_t *calib_res = NULL;
+	uint8_t calib_res[CALIBRATION_RESULT_BUF_LEN] = {0};
 	uint32_t reg_val;
-	uint32_t checksum, gold_checksum;
-	uint32_t i, hcycle, delay_ns, final_delay = 0;
-	uint32_t hclk_div;
+	uint32_t hdiv = 2, hcycle, delay_ns, timing_val;
+	uint32_t hdiv_reg;
 	bool pass;
 	int calib_point;
-	struct spi_nor_op_info op_info =
-		SPI_NOR_OP_INFO(0, 0, 0, 0, 0, NULL, SPI_CALIB_LEN,
-				SPI_NOR_DATA_DIRECT_IN);
+	uint32_t calib_offset = data->decode_addr[cs].start +
+				config->timing_calibration_start_off;
 
 	LOG_DBG("device name: %s (%d)", dev->name, cs);
 
 	if (config->timing_calibration_disabled)
 		goto no_calib;
 
-	reg_val = sys_read32(ctrl_reg + SPI94_CE0_TIMING_CTRL + cs * 4);
+	reg_val = sys_read32(timing_reg);
 	if (reg_val != 0) {
 		LOG_DBG("Already executed calibration.");
 		goto no_calib;
@@ -674,62 +663,51 @@ void aspeed_spi_timing_calibration(const struct device *dev)
 	reg_val &= (~SPI_CTRL_FREQ_MASK);
 	sys_write32(reg_val, ctrl_reg + SPI10_CE0_CTRL + cs * 4);
 
-	memset(check_buf, 0x0, SPI_CALIB_LEN);
-
-	op_info.addr = config->timing_calibration_start_off;
-	op_info.buf = (void *)check_buf;
-
-	aspeed_spi_read_dma(dev, NULL, op_info);
+	memset(check_buf, 0x0, SPI_CALIB_LEN * 2);
+	aspeed_spi_calibriation_read(calib_offset, check_buf, SPI_CALIB_LEN);
 
 	if (!aspeed_spi_calibriation_enable(check_buf, SPI_CALIB_LEN)) {
 		LOG_INF("Flash data is monotonous, skip calibration.");
 		goto no_calib;
 	}
 
-	gold_checksum = aspeed_spi_dma_checksum(dev, 0, 0);
-
-	/*
-	 * allocate a space to record calibration result for
-	 * different timing compensation with fixed
-	 * HCLK division.
-	 */
-	calib_res = k_malloc(CALIBRATION_RESULT_BUF_LEN);
-	if (!calib_res) {
-		LOG_ERR("Insufficient buffer for calibration result.");
-		goto no_calib;
-	}
-
 	/* From HCLK/2 to HCLK/5 */
-	for (i = 0; i < ARRAY_SIZE(hclk_masks); i++) {
-		if (max_freq < data->hclk / (i + 2)) {
-			LOG_DBG("skipping freq %d", data->hclk / (i + 2));
+	for (hdiv = 2; hdiv < 6; hdiv++) {
+		if (max_freq < data->hclk / hdiv) {
+			LOG_DBG("skipping freq %d", data->hclk / hdiv);
 			continue;
 		}
-		max_freq = data->hclk / (i + 2);
+		max_freq = data->hclk / hdiv;
 
-		checksum = aspeed_spi_dma_checksum(dev, hclk_masks[i], 0);
-		pass = (checksum == gold_checksum);
-		LOG_DBG("HCLK/%d, no timing compensation: %s", i + 2,
+		reg_val = sys_read32(ctrl_reg + SPI10_CE0_CTRL + cs * 4);
+		reg_val &= (~SPI_CTRL_FREQ_MASK);
+		reg_val |= aspeed_get_spi_freq_div(data->hclk, max_freq);
+		sys_write32(reg_val, ctrl_reg + SPI10_CE0_CTRL + cs * 4);
+
+		sys_write32(0x0, timing_reg);
+		pass = aspeed_spi_check_reads(calib_offset, check_buf, SPI_CALIB_LEN);
+		LOG_DBG("HCLK/%d, no timing compensation: %s", hdiv,
 			pass ? "PASS" : "FAIL");
-
-		memset(calib_res, 0x0, CALIBRATION_RESULT_BUF_LEN);
 
 		for (hcycle = 0; hcycle <= 5; hcycle++) {
 			/* increase DI delay by the step of 0.5ns */
 			LOG_DBG("Delay Enable : hcycle %x", hcycle);
 			for (delay_ns = 0; delay_ns <= 0xf; delay_ns++) {
-				checksum = aspeed_spi_dma_checksum(dev, hclk_masks[i],
-					BIT(3) | hcycle | (delay_ns << 4));
-				pass = (checksum == gold_checksum);
+				timing_val = BIT(3) | hcycle | (delay_ns << 4);
+				timing_val <<= (hdiv - 2) << 3;
+				sys_write32(timing_val, timing_reg);
+
+				pass = aspeed_spi_check_reads(calib_offset, check_buf,
+							      SPI_CALIB_LEN);
 				calib_res[hcycle * 17 + delay_ns] = pass;
 				LOG_DBG("HCLK/%d, %d HCLK cycle, %d delay_ns : %s",
-					i + 2, hcycle, delay_ns,
+					hdiv, hcycle, delay_ns,
 					pass ? "PASS" : "FAIL");
 			}
 		}
 
-		calib_point = aspeed_get_mid_point_of_longest_one(calib_res,
-								  CALIBRATION_RESULT_BUF_LEN);
+		calib_point = aspeed_optimized_timing(calib_res,
+						      CALIBRATION_RESULT_BUF_LEN);
 		if (calib_point < 0) {
 			LOG_INF("cannot get good calibration point.");
 			continue;
@@ -737,36 +715,37 @@ void aspeed_spi_timing_calibration(const struct device *dev)
 
 		hcycle = calib_point / 17;
 		delay_ns = calib_point % 17;
-		LOG_DBG("final hcycle: %d, delay_ns: %d", hcycle, delay_ns);
 
-		final_delay = (BIT(3) | hcycle | (delay_ns << 4)) << (i * 8);
-		sys_write32(final_delay, ctrl_reg + SPI94_CE0_TIMING_CTRL + cs * 4);
+		timing_val = (BIT(3) | hcycle | (delay_ns << 4)) << ((hdiv - 2) << 3);
+		sys_write32(timing_val, timing_reg);
+		LOG_DBG("final hcycle: %d, delay_ns: %d (%08x)",
+			hcycle, delay_ns, sys_read32(timing_reg));
 		break;
 	}
 
 no_calib:
 
-	hclk_div = aspeed_get_spi_freq_div(data->hclk, max_freq);
+	if (hdiv == 6)
+		max_freq = ctx->config->frequency;
+
+	hdiv_reg = aspeed_get_spi_freq_div(data->hclk, max_freq);
 
 	/* configure SPI clock frequency */
 	reg_val = sys_read32(ctrl_reg + SPI10_CE0_CTRL + cs * 4);
-	reg_val = (reg_val & (~SPI_CTRL_FREQ_MASK)) | hclk_div;
+	reg_val = (reg_val & (~SPI_CTRL_FREQ_MASK)) | hdiv_reg;
 	sys_write32(reg_val, ctrl_reg + SPI10_CE0_CTRL + cs * 4);
 
 	data->cmd_mode[cs].normal_read =
-		(data->cmd_mode[cs].normal_read & (~SPI_CTRL_FREQ_MASK)) | hclk_div;
+		(data->cmd_mode[cs].normal_read & (~SPI_CTRL_FREQ_MASK)) | hdiv_reg;
 
 	data->cmd_mode[cs].normal_write =
-		(data->cmd_mode[cs].normal_write & (~SPI_CTRL_FREQ_MASK)) | hclk_div;
+		(data->cmd_mode[cs].normal_write & (~SPI_CTRL_FREQ_MASK)) | hdiv_reg;
 
 	data->cmd_mode[cs].user =
-		(data->cmd_mode[cs].user & (~SPI_CTRL_FREQ_MASK)) | hclk_div;
+		(data->cmd_mode[cs].user & (~SPI_CTRL_FREQ_MASK)) | hdiv_reg;
 
 	/* add clock setting info for CE ctrl setting */
 	LOG_DBG("freq: %dMHz", max_freq / 1000000);
-
-	if (calib_res)
-		k_free(calib_res);
 }
 
 #ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
@@ -1078,6 +1057,41 @@ void aspeed_decode_range_pre_init(const struct aspeed_spi_config *config,
 	}
 }
 
+#define SCU1_REG			0x14c02000
+#define ASPEED_IO_FWSPI_DRIVING         (SCU1_REG + 0x4E0)
+#define ASPEED_IO_SPI0_DRIVING          (SCU1_REG + 0x4CC)
+#define ASPEED_IO_SPI1_DRIVING          (SCU1_REG + 0x4CC)
+#define ASPEED_IO_SPI2_DRIVING          (SCU1_REG + 0x4D0)
+
+static void aspeed_spi_adjust_driving_strength(void)
+{
+	uint32_t reg;
+
+	/* FMC driving strength: SCUIO_4E0[15:0] */
+	reg = sys_read32(ASPEED_IO_FWSPI_DRIVING);
+	reg &= ~(0x0000ffff);
+	reg |= 0x0000aaaa;
+	sys_write32(reg, ASPEED_IO_FWSPI_DRIVING);
+
+	/* SPI0 driving strength: SCUIO_4CC[11:0] */
+	reg = sys_read32(ASPEED_IO_SPI0_DRIVING);
+	reg &= ~(0x00000fff);
+	reg |= 0x00000aaa;
+	sys_write32(reg, ASPEED_IO_SPI0_DRIVING);
+
+	/* SPI1 driving strength: SCUIO_4CC[27:16] */
+	reg = sys_read32(ASPEED_IO_SPI1_DRIVING);
+	reg &= ~(0x0fff0000);
+	reg |= 0x0aaa0000;
+	sys_write32(reg, ASPEED_IO_SPI1_DRIVING);
+
+	/* SPI2 driving strength: SCUIO_4D0[15:0] */
+	reg = sys_read32(ASPEED_IO_SPI2_DRIVING);
+	reg &= ~(0x0000ffff);
+	reg |= 0x00002aaa;
+	sys_write32(reg, ASPEED_IO_SPI2_DRIVING);
+}
+
 static int aspeed_spi_init(const struct device *dev)
 {
 	const struct aspeed_spi_config *config = dev->config;
@@ -1100,6 +1114,7 @@ static int aspeed_spi_init(const struct device *dev)
 		return ret;
 
 	aspeed_spi_pinctrl_early_init(dev);
+	aspeed_spi_adjust_driving_strength();
 
 	aspeed_segment_function_init(config, data);
 	aspeed_decode_range_pre_init(config, data);
