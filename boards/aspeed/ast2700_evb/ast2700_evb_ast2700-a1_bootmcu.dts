@@ -1,0 +1,214 @@
+/*
+ * Copyright (c) 2024 Aspeed Technology Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+
+#include <aspeed/ast27xx.dtsi>
+#include <zephyr/dt-bindings/memory-controller/ast27xx-mpu.h>
+
+/ {
+	model = "AST2700-EVB AST2700-BOOTMCU";
+	compatible = "aspeed,ast2700-evb-ast2700-bootmcu";
+
+	chosen {
+		zephyr,sram = &sram;
+		zephyr,entropy = &rng;
+	};
+
+	aliases {
+		systick = &systick;
+		emmc = &emmc;
+	};
+
+	ca35_s: ca35-s {
+		compatible = "aspeed,ast27xx-mpu";
+		#mpu-cells = <0>;
+		protect-name = "ca35-s";
+		protect-start = <0x30000000>;
+		protect-end = <0x31080000>;
+		allow = <MPU_ID_CA35 S_READWRITE>, < MPU_ID_SLIM S_READWRITE>;
+		status = "okay";
+	};
+
+	ssp: ssp {
+		compatible = "aspeed,ast27xx-mpu";
+		#mpu-cells = <0>;
+		protect-name = "ssp";
+		protect-start = <0x2c000000>;
+		protect-end = <0x2d000000>;
+		allow = <MPU_ID_SSP_INST S_READONLY>,
+			<MPU_ID_SSP_DATA S_READWRITE>,
+			<MPU_ID_SLIM S_READWRITE>;
+		status = "okay";
+	};
+
+	tsp: tsp {
+		compatible = "aspeed,ast27xx-mpu";
+		#mpu-cells = <0>;
+		protect-name = "tsp";
+		protect-start = <0x2e000000>;
+		protect-end = <0x30000000>;
+		allow = <MPU_ID_TSP_INST S_READONLY>,
+			<MPU_ID_TSP_DATA S_READWRITE>,
+			<MPU_ID_SLIM S_READWRITE>;
+		status = "okay";
+	};
+
+	/* ipc: ssp <=> optee (ca35_s) */
+	share_1: share-1 {
+		compatible = "aspeed,ast27xx-mpu";
+		#mpu-cells = <0>;
+		protect-name = "share-1";
+		protect-start = <0x31080000>;
+		protect-end = <0x31480000>;
+		allow = <MPU_ID_SSP_DATA S_READONLY>,
+			<MPU_ID_CA35 S_READWRITE>;
+		status = "okay";
+	};
+
+	/* ipc: ssp <=> linux (ca35_ns) */
+	share_2: share-2 {
+		compatible = "aspeed,ast27xx-mpu";
+		#mpu-cells = <0>;
+		protect-name = "share-2";
+		protect-start = <0x31480000>;
+		protect-end = <0x31880000>;
+		allow = <MPU_ID_SSP_DATA S_READONLY>,
+			<MPU_ID_CA35 NS_READWRITE>;
+		status = "okay";
+	};
+
+	/* ipc: bootmcu <=> linux (ca35_ns) */
+	share_3: share-3 {
+		compatible = "aspeed,ast27xx-mpu";
+		#mpu-cells = <0>;
+		protect-name = "share-3";
+		protect-start = <0x31880000>;
+		protect-end = <0x31b30000>;
+		allow = <MPU_ID_SLIM S_READWRITE>,
+			<MPU_ID_CA35 NS_READWRITE>;
+		status = "okay";
+	};
+
+	vb: v-bios {
+		compatible = "aspeed,ast27xx-mpu";
+		#mpu-cells = <0>;
+		protect-name = "v-bios";
+		protect-start = <0x31bb0000>;
+		protect-end = <0x31bd0000>;
+		allow = <MPU_ID_E2M S_READONLY>,
+			<MPU_ID_E2M1 S_READONLY>,
+			<MPU_ID_SLIM S_READWRITE>;
+		status = "okay";
+	};
+};
+
+&sdrammc {
+	status = "okay";
+
+	/*
+	 * Example of dram ECC enable
+	 * The max ECC size = ((Capacity - VGA size) * 8) / 9;
+	 * ecc-size for customization, if not set, it will be dynamic detected.
+	 * For example, to reserve 853MB ecc-size for dual node.
+	 */
+	//ecc-enable;
+	//ecc-size = <0x35500000>; /* 853MB */
+
+	mpus = <&ca35_s>, <&ssp>, <&tsp>, <&share_1>, <&share_2>, <&share_3>, <&vb>;
+};
+
+&ufs {
+	status = "okay";
+};
+
+&uart12 {
+	status = "okay";
+	clock-frequency = <1846153>;
+	current-speed = <115200>;
+};
+
+#if 0
+&ipc1_s_ca35 {
+	status = "okay";
+};
+#endif
+
+&ipc1_ns_ca35 {
+	status = "okay";
+};
+
+&ipc1_ssp {
+	status = "okay";
+};
+
+#if 0
+&ipc1_tsp {
+	status = "okay";
+};
+#endif
+
+&cptra_ecdsa {
+	status = "okay";
+};
+
+&cptra_sha {
+	status = "okay";
+};
+
+&cptra_lms {
+	status = "okay";
+};
+
+&cptra_update {
+	status = "okay";
+};
+
+&cptra_dice {
+	status = "okay";
+};
+
+&cptra_misc {
+	status = "okay";
+};
+
+&otp {
+	status = "okay";
+};
+
+&edaf_bridge0 {
+	status = "okay";
+	espi-base = <0x14c05000>;
+#if 0 //DDR mode using edaf0 reserved memory
+	edaf-ddr-mode;
+	edaf-erase-with-1;
+	mem-base = <0x4 0x28000000>; //edaf0 reserved memory
+#else //Flash mode using SPI0
+	mem-base = <0x1 0x80000000>; //SPI0
+	ctl-base = <0x14010000>;
+	cmd-read = <0x130401>;
+	cmd-write-enable = <0x6041e>;
+	cmd-write = <0x120403>;
+	cmd-read-status = <0x50415>;
+	cmd-erase-4k = <0x21040e>;
+	cmd-erase-32k = <0x5c040e>;
+	cmd-erase-64k = <0xdc040e>;
+#endif
+};
+
+&edaf_bridge1 {
+	status = "okay";
+	espi-base = <0x14c06000>;
+	mem-base = <0x2 0x00000000>; //SPI1
+	ctl-base = <0x14020000>;
+	cmd-read = <0x130401>;
+	cmd-write-enable = <0x6041e>;
+	cmd-write = <0x120402>;
+	cmd-read-status = <0x50415>;
+	cmd-erase-4k = <0x21040e>;
+	cmd-erase-32k = <0x5c040e>;
+	cmd-erase-64k = <0xdc040e>;
+};
