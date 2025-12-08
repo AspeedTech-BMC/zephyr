@@ -90,7 +90,8 @@ int main(void)
 #elif defined(CONFIG_IPM_AST2700)
 	char ipc_name[16];
 	int device_id, enable;
-#if defined(CONFIG_BOARD_AST2700_EVB_AST2700_SSP) || defined(CONFIG_BOARD_AST2700_EVB_AST2700_A0_SSP)
+#if defined(CONFIG_BOARD_AST2700_EVB_AST2700_SSP) ||                                               \
+	defined(CONFIG_BOARD_AST2700_EVB_AST2700_A1_SSP)
 	printk("SSP alive.\n");
 	strcpy(ipc_name, "ipc0@0");
 	ipmdev = device_get_binding(&ipc_name[0]);
@@ -126,7 +127,8 @@ int main(void)
 		goto fail;
 	}
 #endif /* defined(CONFIG_BOARD_AST2700_EVB_AST2700_SSP) */
-#if defined(CONFIG_BOARD_AST2700_EVB_AST2700_TSP) || defined(CONFIG_BOARD_AST2700_EVB_AST2700_A0_TSP)
+#if defined(CONFIG_BOARD_AST2700_EVB_AST2700_TSP) ||                                               \
+	defined(CONFIG_BOARD_AST2700_EVB_AST2700_A1_TSP)
 	printk("TSP alive.\n");
 	strcpy(ipc_name, "ipc0@400");
 	ipmdev = device_get_binding(&ipc_name[0]);

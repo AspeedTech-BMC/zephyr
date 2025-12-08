@@ -13,13 +13,13 @@ config SOC_AST2700
 	bool
 	select SOC_SERIES_AST27XX
 
-config SOC_AST2700_A0
+config SOC_AST2700_A1
 	bool
 	select SOC_SERIES_AST27XX
 
 config SOC
 	default "ast2700" if SOC_AST2700
-	default "ast2700-a0" if SOC_AST2700_A0
+	default "ast2700-a1" if SOC_AST2700_A1
 
 config SOC_AST2700_SSP
 	bool
@@ -39,20 +39,20 @@ config SOC_AST2700_BOOTMCU
 	help
 	  Enable support for AST2700 Boot MCU
 
-config SOC_AST2700_A0_SSP
+config SOC_AST2700_A1_SSP
 	bool
-	select SOC_AST2700_A0
+	select SOC_AST2700_A1
 	help
-	  Enable support for AST2700-A0 SSP
+	  Enable support for ast2700-a1 SSP
 
-config SOC_AST2700_A0_TSP
+config SOC_AST2700_A1_TSP
 	bool
-	select SOC_AST2700_A0
+	select SOC_AST2700_A1
 	help
-	  Enable support for AST2700-A0 TSP
+	  Enable support for ast2700-a1 TSP
 
-config SOC_AST2700_A0_BOOTMCU
+config SOC_AST2700_A1_BOOTMCU
 	bool
-	select SOC_AST2700_A0
+	select SOC_AST2700_A1
 	help
-	  Enable support for AST2700-A0 Boot MCU
+	  Enable support for ast2700-a1 Boot MCU

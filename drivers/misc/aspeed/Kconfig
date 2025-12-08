@@ -115,7 +115,7 @@ config LTPI_IPC
 
 config CPTRA_IPC_SSP
 	bool "ASPEED CPTRA IPC driver in SSP"
-	depends on SOC_AST2700_SSP
+	depends on SOC_AST2700_SSP || SOC_AST2700_A1_SSP
 	help
 	  This option enables the Caliptra ipc driver in SSP for ASPEED SoCs.
 

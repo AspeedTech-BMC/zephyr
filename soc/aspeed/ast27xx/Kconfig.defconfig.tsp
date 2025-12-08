@@ -1,8 +1,7 @@
-if SOC_AST2700_TSP || SOC_AST2700_A0_TSP
+if SOC_AST2700_TSP || SOC_AST2700_A1_TSP
 
 config SYS_CLOCK_HW_CYCLES_PER_SEC
-	default 400000000 if SOC_AST2700_A0_TSP
-	default 333333333 if SOC_AST2700_TSP
+	default 333333333
 
 config ICACHE_LINE_SIZE
 	default 32
@@ -38,42 +37,60 @@ config MAX_IRQ_PER_AGGREGATOR
 config 2ND_LEVEL_INTERRUPTS
 	default y
 
-if SOC_AST2700_A0_TSP
+if SOC_AST2700_A1_TSP
 
 config 2ND_LVL_ISR_TBL_OFFSET
-	default 160
+	default 192
 
 config NUM_2ND_LEVEL_AGGREGATORS
-	default 8
+	default 1
 
 config 2ND_LVL_INTR_00_OFFSET
-	default 128
+	default 160
 
-config 2ND_LVL_INTR_01_OFFSET
-	default 129
+config 3RD_LEVEL_INTERRUPTS
+	default y
 
-config 2ND_LVL_INTR_02_OFFSET
-	default 130
+config 3RD_LVL_ISR_TBL_OFFSET
+	default 224
 
-config 2ND_LVL_INTR_03_OFFSET
-	default 131
+config NUM_3RD_LEVEL_AGGREGATORS
+	default 8
 
-config 2ND_LVL_INTR_04_OFFSET
-	default 132
+config 3RD_LVL_INTR_00_OFFSET
+	default 0
 
-config 2ND_LVL_INTR_05_OFFSET
-	default 133
+config 3RD_LVL_INTR_01_OFFSET
+	default 1
 
-config 2ND_LVL_INTR_06_OFFSET
-	default 134
+config 3RD_LVL_INTR_02_OFFSET
+	default 2
 
-config 2ND_LVL_INTR_07_OFFSET
-	default 135
+config 3RD_LVL_INTR_03_OFFSET
+	default 3
+
+config 3RD_LVL_INTR_04_OFFSET
+	default 4
+
+config 3RD_LVL_INTR_05_OFFSET
+	default 5
+
+config 3RD_LVL_INTR_06_OFFSET
+	default 6
+
+config 3RD_LVL_INTR_07_OFFSET
+	default 7
 
 config NUM_IRQS
-	default 448
+	default 480
 
-endif # SOC_AST2700_A0_TSP
+config PINCTRL
+	default y
+
+config SRAM_VECTOR_TABLE
+	default y
+
+endif # SOC_AST2700_A1_TSP
 
 if SOC_AST2700_TSP
 
@@ -130,4 +147,4 @@ config SRAM_VECTOR_TABLE
 
 endif # SOC_AST2700_TSP
 
-endif # SOC_AST2700_TSP || SOC_AST2700_A0_TSP
+endif # SOC_AST2700_TSP || SOC_AST2700_A1_TSP

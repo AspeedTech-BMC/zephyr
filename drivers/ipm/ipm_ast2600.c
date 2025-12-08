@@ -21,13 +21,13 @@ LOG_MODULE_REGISTER(ipm_ast2600);
 #define IPCR_TRIG		0x18
 #define IPCR_STATUS		0x28
 #define IPCR_CLEAR		0x2c
-#elif defined(CONFIG_SOC_AST2700_SSP) || defined(CONFIG_SOC_AST2700_A0_SSP)
+#elif defined(CONFIG_SOC_AST2700_SSP) || defined(CONFIG_SOC_AST2700_A1_SSP)
 /* Secondary service processor ARM Cortex-M4. */
 #define IPCR_EN			0x20
 #define IPCR_TRIG		0x28
 #define IPCR_STATUS		0x24
 #define IPCR_CLEAR		0x24
-#elif defined(CONFIG_SOC_AST2700_TSP) || defined(CONFIG_SOC_AST2700_A0_TSP)
+#elif defined(CONFIG_SOC_AST2700_TSP) || defined(CONFIG_SOC_AST2700_A1_TSP)
 /* Tertiary service processor ARM Cortex-M4. */
 #define IPCR_EN			0x30
 #define IPCR_TRIG		0x38
@@ -177,8 +177,8 @@ static int ipm_ast2600_init(const struct device *dev)
 	memset(shm_tx, 0, CONFIG_IPC_SHM_TX_SIZE);
 #endif
 
-#if defined(CONFIG_SOC_AST2700_SSP) || defined(CONFIG_SOC_AST2700_A0_SSP) || \
-	defined(CONFIG_SOC_AST2700_TSP) || defined(CONFIG_SOC_AST2700_A0_TSP)
+#if defined(CONFIG_SOC_AST2700_SSP) || defined(CONFIG_SOC_AST2700_A1_SSP) || \
+	defined(CONFIG_SOC_AST2700_TSP) || defined(CONFIG_SOC_AST2700_A1_TSP)
 	sys_write32(0xff, config->base + IPCR_EN);
 #endif
 
@@ -203,7 +203,7 @@ static const struct ipm_driver_api ipm_ast2600_driver_api = {
 
 #if defined(CONFIG_SOC_AST2600)
 #define IPM_BASE_ADDR(inst) DT_INST_REG_ADDR(inst)
-#elif defined(CONFIG_SOC_AST2700) || defined(CONFIG_SOC_AST2700_A0)
+#elif defined(CONFIG_SOC_AST2700) || defined(CONFIG_SOC_AST2700_A1)
 #define IPM_BASE_ADDR(inst) DT_REG_ADDR(DT_INST_PARENT(inst)) + DT_INST_REG_ADDR(inst)
 #endif
 

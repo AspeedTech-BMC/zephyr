@@ -61,7 +61,7 @@ uintptr_t ast27xx_soc_phy_addr_to_virt_addr(uint64_t addr)
 }
 #endif
 
-#if defined(CONFIG_SOC_AST2700_TSP) || defined(CONFIG_SOC_AST2700_A0_TSP)
+#if defined(CONFIG_SOC_AST2700_TSP) || defined(CONFIG_SOC_AST2700_A1_TSP)
 uint64_t ast27xx_soc_virt_addr_to_phy_addr(uintptr_t addr)
 {
 	return ((uint64_t)sys_read32(SCU0_REG + 0x168) << 4) + addr;
@@ -73,7 +73,7 @@ uintptr_t ast27xx_soc_phy_addr_to_virt_addr(uint64_t addr)
 }
 #endif
 
-#if defined(CONFIG_SOC_AST2700_SSP) || defined(CONFIG_SOC_AST2700_A0_SSP)
+#if defined(CONFIG_SOC_AST2700_SSP) || defined(CONFIG_SOC_AST2700_A1_SSP)
 uint64_t ast27xx_soc_virt_addr_to_phy_addr(uintptr_t addr)
 {
 	uintptr_t base = sys_read32(SCU0_REG + 0x150);
