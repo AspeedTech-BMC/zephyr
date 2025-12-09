@@ -12,7 +12,7 @@ board:
       cpucluster: tsp
     - name: sram
       cpucluster: bootmcu
-  - name: ast2700-a0
+  - name: ast2700_a1
     variants:
     - name: ddr
       cpucluster: ssp
