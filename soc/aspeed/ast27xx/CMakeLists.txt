@@ -6,7 +6,7 @@ zephyr_include_directories(.)
 zephyr_sources(soc.c)
 
 if(CONFIG_ARM)
-  if(CONFIG_SOC_AST2700)
+  if(CONFIG_SOC_AST2700 OR CONFIG_SOC_AST2700_A1)
     zephyr_library_sources_ifdef(CONFIG_ARM_CUSTOM_INTERRUPT_CONTROLLER irq_init.c irq_manage.c)
   else()
     zephyr_library_sources_ifdef(CONFIG_ARM_CUSTOM_INTERRUPT_CONTROLLER irq_init.c irq_manage_legacy.c)

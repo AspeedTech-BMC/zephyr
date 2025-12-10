@@ -1920,7 +1920,7 @@ static int i2c_aspeed_init(const struct device *dev)
 	LOG_INF("clk src %d, multi-master %d, xfer mode %d",
 		config->clk_src, config->multi_master, config->mode);
 
-#if defined(CONFIG_SOC_AST2700_SSP)
+#if defined(CONFIG_SOC_AST2700_SSP) || defined(CONFIG_SOC_AST2700_A1_SSP)
 	data->version = AST2700;
 
 	/* AST2700 just support DMA mode */
