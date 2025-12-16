@@ -18,6 +18,7 @@
 
 LOG_MODULE_REGISTER(prictrl_aspeed);
 
+#define PRICTRL_CFG_READABLE
 /**********************************************************************
  * Get privilege control configuration register
  **********************************************************************/
@@ -231,11 +232,16 @@ static int prictrl_set_client_group(const struct prictrl_aspeed_config *cfg,
 	if (ret)
 		return -EINVAL;
 
-	ret = prictrl_set_perm(cfg, PRICTRL_CPU_DIE, PRICTRL_READ, dev_cfg);
+	ret = prictrl_set_perm(cfg, PRICTRL_IO_DIE, PRICTRL_WRITE, dev_cfg);
 	if (ret)
 		return -EINVAL;
 
-	ret = prictrl_set_perm(cfg, PRICTRL_IO_DIE, PRICTRL_WRITE, dev_cfg);
+#ifdef PRICTRL_CFG_READABLE
+	if (dev_cfg->device == IO_S_I_PRICTRL || dev_cfg->device == C_S_C_PRICTRL)
+		return ret;
+#endif
+
+	ret = prictrl_set_perm(cfg, PRICTRL_CPU_DIE, PRICTRL_READ, dev_cfg);
 	if (ret)
 		return -EINVAL;
 
@@ -484,8 +490,6 @@ static int prictrl_aspeed_init(const struct device *dev)
 		LOG_ERR("Client group setting fail(%d).", ret);
 
 	prictrl_hw_deinit();
-
-	LOG_INF("privilege control init done.");
 
 	return 0;
 }
