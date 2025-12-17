@@ -416,58 +416,35 @@ static int prictrl_client_setting(const struct device *dev)
 	return ret;
 }
 
-static int prictrl_hw_init(void)
+static int prictrl_hw_init(const struct device *dev)
 {
-	/* The polling instruction of CPU core 0 ~ 3 */
-	sys_write32(0x14000000, PRICTRL_CPU_SMP_SCRATCH_0);
+	int i = 0;
+	const uint32_t magic = 0x7F7F7F7E;
+	const uint32_t init_val = 0x7F7F7F7F;
+	struct prictrl_aspeed_config *cfg = NULL;
 
-	/* core 0 ~ 3 jump to polling instruction */
-	sys_write32(PRICTRL_CPU_SMP_SCRATCH_0, PRICTRL_CPU_SMP_EP0);
-	sys_write32(PRICTRL_CPU_SMP_SCRATCH_0, PRICTRL_CPU_SMP_EP1);
-	sys_write32(PRICTRL_CPU_SMP_SCRATCH_0, PRICTRL_CPU_SMP_EP2);
-	sys_write32(PRICTRL_CPU_SMP_SCRATCH_0, PRICTRL_CPU_SMP_EP3);
+	if (!dev || !(dev->config))
+		return -EINVAL;
 
-	/* Init core 0 ~ 3 and privilege control */
-	sys_write32(0x1, PRICTRL_CPU_CA35_REL);
+	cfg = dev->config;
 
-	return 0;
-}
+	/* Initialize privilege control cpu die configruation register */
+	for (i = 0; i < 8; i++)
+		sys_write32(init_val, (cfg->cpu_base + i * 4));
 
-static int prictrl_hw_deinit(void)
-{
-	uint32_t polling_count = 10000;
-	uint32_t wdt_mask[5] = {0};
+	for (i = 0; i < 8; i++)
+		sys_write32(init_val, (cfg->cpu_base + 0x100 + i * 4));
 
-	/* Backup wdt mask setting */
-	wdt_mask[0] = sys_read32(PRICTRL_WDT_RESET_MASK_1);
-	wdt_mask[1] = sys_read32(PRICTRL_WDT_RESET_MASK_2);
-	wdt_mask[2] = sys_read32(PRICTRL_WDT_RESET_MASK_3);
-	wdt_mask[3] = sys_read32(PRICTRL_WDT_RESET_MASK_4);
-	wdt_mask[4] = sys_read32(PRICTRL_WDT_RESET_MASK_5);
+	for (i = 0; i < 64; i++)
+		sys_write32(init_val, (cfg->cpu_base + 0x200 + i * 4));
 
-	/* Config only reset ca35 core 0 ~ 3 */
-	sys_write32(0x1, PRICTRL_WDT_RESET_MASK_1);
-	sys_write32(0x0, PRICTRL_WDT_RESET_MASK_2);
-	sys_write32(0x0, PRICTRL_WDT_RESET_MASK_3);
-	sys_write32(0x0, PRICTRL_WDT_RESET_MASK_4);
-	sys_write32(0x0, PRICTRL_WDT_RESET_MASK_5);
+	for (i = 0; i < 64; i++)
+		sys_write32(init_val, (cfg->cpu_base + 0x300 + i * 4));
 
-	/* Re-Init ca35 core 0 ~ 3 */
-	sys_write32(0x500, PRICTRL_WDT_RELOAD_VALUE);
-	sys_write32(0x4755, PRICTRL_WDT_RESTART);
-	sys_write32(0x13, PRICTRL_WDT_CONTROL);
-
-	/* Polling timeout status and clear wdt timeout status */
-	while (polling_count-- && sys_test_bit(PRICTRL_WDT_TIMEOUT_STAT, 0) == 0)
-		;
-	sys_set_bit(PRICTRL_WDT_CLR_TIMEOUT_STAT, 0);
-
-	/* Restore wdt mask setting */
-	sys_write32(wdt_mask[0], PRICTRL_WDT_RESET_MASK_1);
-	sys_write32(wdt_mask[1], PRICTRL_WDT_RESET_MASK_2);
-	sys_write32(wdt_mask[2], PRICTRL_WDT_RESET_MASK_3);
-	sys_write32(wdt_mask[3], PRICTRL_WDT_RESET_MASK_4);
-	sys_write32(wdt_mask[4], PRICTRL_WDT_RESET_MASK_5);
+	/* Check whether privilege control is ready */
+	sys_write32(magic, (void *)cfg->cpu_base);
+	if (sys_read32((void *)cfg->cpu_base) != magic)
+		return -EAGAIN;
 
 	return 0;
 }
@@ -479,7 +456,9 @@ static int prictrl_aspeed_init(const struct device *dev)
 	if (!dev)
 		return -EINVAL;
 
-	prictrl_hw_init();
+	ret = prictrl_hw_init(dev);
+	if (ret)
+		return ret;
 
 	ret = prictrl_master_mapping(dev);
 	if (ret)
@@ -488,8 +467,6 @@ static int prictrl_aspeed_init(const struct device *dev)
 	ret = prictrl_client_setting(dev);
 	if (ret)
 		LOG_ERR("Client group setting fail(%d).", ret);
-
-	prictrl_hw_deinit();
 
 	return 0;
 }
@@ -505,12 +482,12 @@ static struct prictrl_list_cfg master_list[] = {
 };
 
 static struct prictrl_list_cfg client_list[] = {
-	[0] = DEFINE_CLIENT_DEV(PRICTRL_CPU_IO_DIE, BOOT_MCU_GROUP, client_list_1),
-	[1] = DEFINE_CLIENT_DEV(PRICTRL_CPU_IO_DIE, SSP_GROUP, client_list_2),
-	[2] = DEFINE_CLIENT_DEV(PRICTRL_CPU_IO_DIE, TSP_GROUP, client_list_3),
-	[3] = DEFINE_CLIENT_DEV(PRICTRL_CPU_IO_DIE, S_CA35_GROUP, client_list_4),
-	[4] = DEFINE_CLIENT_DEV(PRICTRL_CPU_IO_DIE, NS_CA35_GROUP, client_list_5),
-	[5] = DEFINE_CLIENT_DEV(PRICTRL_CPU_IO_DIE, DP_MCU_GROUP, client_list_6),
+	[0] = DEFINE_CLIENT_DEV(PRICTRL_CPU_IO_DIE, BOOT_MCU_GROUP, client_list_0),
+	[1] = DEFINE_CLIENT_DEV(PRICTRL_CPU_IO_DIE, SSP_GROUP, client_list_1),
+	[2] = DEFINE_CLIENT_DEV(PRICTRL_CPU_IO_DIE, TSP_GROUP, client_list_2),
+	[3] = DEFINE_CLIENT_DEV(PRICTRL_CPU_IO_DIE, S_CA35_GROUP, client_list_3),
+	[4] = DEFINE_CLIENT_DEV(PRICTRL_CPU_IO_DIE, NS_CA35_GROUP, client_list_4),
+	[5] = DEFINE_CLIENT_DEV(PRICTRL_CPU_IO_DIE, DP_MCU_GROUP, client_list_5),
 };
 
 static struct prictrl_aspeed_config prictrl_aspeed_config = {

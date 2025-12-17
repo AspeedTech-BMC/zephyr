@@ -26,24 +26,6 @@
 /* Privilege control register definition */
 #define PRICTRL_READ_OFFSET          (0x100)
 #define PRICTRL_CLIENT_OFFSET        (0x200)
-#define PRICTRL_CPU_SMP_SCRATCH_0    (0x12C02780)
-#define PRICTRL_CPU_SMP_EP0          (0x12c02110)
-#define PRICTRL_CPU_SMP_EP1          (0x12c02114)
-#define PRICTRL_CPU_SMP_EP2          (0x12c02118)
-#define PRICTRL_CPU_SMP_EP3          (0x12c0211C)
-#define PRICTRL_CPU_CA35_REL         (0x12c0210c)
-#define PRICTRL_WDT_BASE             (0x14C37380)
-#define PRICTRL_WDT_COUNTER          (PRICTRL_WDT_BASE)
-#define PRICTRL_WDT_RELOAD_VALUE     (PRICTRL_WDT_BASE + 0x04)
-#define PRICTRL_WDT_RESTART          (PRICTRL_WDT_BASE + 0x08)
-#define PRICTRL_WDT_CONTROL          (PRICTRL_WDT_BASE + 0x0C)
-#define PRICTRL_WDT_TIMEOUT_STAT     (PRICTRL_WDT_BASE + 0x10)
-#define PRICTRL_WDT_CLR_TIMEOUT_STAT (PRICTRL_WDT_BASE + 0x14)
-#define PRICTRL_WDT_RESET_MASK_1     (PRICTRL_WDT_BASE + 0x1C)
-#define PRICTRL_WDT_RESET_MASK_2     (PRICTRL_WDT_BASE + 0x20)
-#define PRICTRL_WDT_RESET_MASK_3     (PRICTRL_WDT_BASE + 0x24)
-#define PRICTRL_WDT_RESET_MASK_4     (PRICTRL_WDT_BASE + 0x28)
-#define PRICTRL_WDT_RESET_MASK_5     (PRICTRL_WDT_BASE + 0x2C)
 
 /* Privilege control register attribute definition */
 #define PRICTRL_FIELD_SIZE_IN_BITS    (8)
@@ -61,6 +43,9 @@
 #define INVALID_GROUP         (0xFF)
 #define PRICTRL_GROUP_MASK    GENMASK(5, 0)
 #define PRICTRL_GROUP_DEFAULT GENMASK(5, 0)
+
+/* Privilege control reset definition */
+#define PRICTRL_RST BIT(6)
 
 /* Privilege control lock definition */
 #define PRICTRL_NO_LOCK (0)
