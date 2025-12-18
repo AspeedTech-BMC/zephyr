@@ -421,7 +421,7 @@ static int prictrl_hw_init(const struct device *dev)
 	int i = 0;
 	const uint32_t magic = 0x7F7F7F7E;
 	const uint32_t init_val = 0x7F7F7F7F;
-	struct prictrl_aspeed_config *cfg = NULL;
+	const struct prictrl_aspeed_config *cfg = NULL;
 
 	if (!dev || !(dev->config))
 		return -EINVAL;
@@ -442,8 +442,8 @@ static int prictrl_hw_init(const struct device *dev)
 		sys_write32(init_val, (cfg->cpu_base + 0x300 + i * 4));
 
 	/* Check whether privilege control is ready */
-	sys_write32(magic, (void *)cfg->cpu_base);
-	if (sys_read32((void *)cfg->cpu_base) != magic)
+	sys_write32(magic, cfg->cpu_base);
+	if (sys_read32(cfg->cpu_base) != magic)
 		return -EAGAIN;
 
 	return 0;
