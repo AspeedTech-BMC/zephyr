@@ -121,6 +121,16 @@
 	mpus = <&ca35_s>, <&ssp>, <&tsp>, <&share_1>, <&share_2>, <&share_3>, <&vb>;
 };
 
+&sysclk0 {
+	psp = <>;
+	sec-psp = <>;
+	ssp = <>;
+	tsp = <>;
+	psp-ssp = <>;
+	ssp-tsp = <>;
+	bmcu = <>;
+};
+
 &ufs {
 	status = "okay";
 };
