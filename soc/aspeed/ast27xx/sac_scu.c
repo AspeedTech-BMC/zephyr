@@ -358,6 +358,20 @@ static struct sac_ctrl scu1_rst_ctrl = {
 };
 
 /******************************************************************************
+ *                       Aspeed SCU1 Clock Selection                          *
+ ******************************************************************************/
+static struct sac_reg_map scu1_clk_sel_lock_reg_map[] = {
+	{0x2A0, SCU_POLICY_CLK1_SEL1_LOCK}, /* clk sel1 lock register */
+	{0x2B0, SCU_POLICY_CLK1_SEL2_LOCK}, /* clk sel2 lock register */
+};
+
+static struct sac_ctrl scu1_clk_sel_ctrl = {
+	.base = DT_REG_ADDR(DT_PARENT(SCU1_CLK_NODE)),
+	.lock_reg_num = ARRAY_SIZE(scu1_clk_sel_lock_reg_map),
+	.reg_lock_map = scu1_clk_sel_lock_reg_map,
+};
+
+/******************************************************************************
  *                          Aspeed SCU Initialization                        *
  ******************************************************************************/
 static int sac_scu0_init(void)
@@ -390,6 +404,10 @@ static int sac_scu1_init(void)
 	ret = sac_aspeed_enable(&scu1_rst_ctrl);
 	if (ret)
 		LOG_ERR("SCU1 reset policy enable fail(%d).", ret);
+
+	ret = sac_aspeed_enable(&scu1_clk_sel_ctrl);
+	if (ret)
+		LOG_ERR("SCU1 clock selection policy enable fail(%d).", ret);
 
 	return ret;
 }
