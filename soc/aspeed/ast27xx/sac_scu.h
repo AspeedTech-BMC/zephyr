@@ -19,9 +19,14 @@
 
 /* SCU0 device node definition */
 #define SCU0_CLK_NODE DT_NODELABEL(sysclk0)
+#define SCU0_RST_NODE DT_NODELABEL(sysrst0)
 
 /* SCU0 poliicy operation definition */
-#define SYS_POLICY_CLK0_LOCK (GENMASK(23, 21))
+#define SCU_POLICY_CLK0_LOCK (GENMASK(23, 21))
+#define SCU_POLICY_RESET_LOCK (GENMASK(15, 13) | GENMASK(7, 5))
+#define SCU_POLICY_CLK0_SEL1_LOCK GENMASK(15, 0)
+#define SCU_POLICY_CLK0_SEL2_LOCK GENMASK(12, 0)
+#define SCU_POLICY_CLK0_SEL3_LOCK GENMASK(1, 0)
 
 enum {
 	SCU_SEC_PSP_GROUP = 0,
