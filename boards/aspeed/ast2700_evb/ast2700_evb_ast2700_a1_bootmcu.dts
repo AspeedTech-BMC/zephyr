@@ -121,16 +121,6 @@
 	mpus = <&ca35_s>, <&ssp>, <&tsp>, <&share_1>, <&share_2>, <&share_3>, <&vb>;
 };
 
-&sysclk0 {
-	psp = <>;
-	sec-psp = <>;
-	ssp = <>;
-	tsp = <>;
-	psp-ssp = <>;
-	ssp-tsp = <>;
-	bmcu = <>;
-};
-
 &prictrl {
 	status = "okay";
 	client-list-0 = <IO_S_I_PRICTRL C_S_C_PRICTRL>;
@@ -139,6 +129,16 @@
 	client-list-3 = <>;
 	client-list-4 = <>;
 	client-list-5 = <>;
+};
+
+&sysclk0 {
+	psp = <>;
+	sec-psp = <>;
+	ssp = <>;
+	tsp = <>;
+	psp-ssp = <>;
+	ssp-tsp = <>;
+	bmcu = <>;
 };
 
 &sysrst0 {
