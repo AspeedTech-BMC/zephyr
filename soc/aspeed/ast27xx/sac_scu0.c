@@ -72,6 +72,11 @@ static int sac_scu1_clk_load(struct sac_ctrl *ctrl, struct sac_cfg_list *cfg)
 	return sac_scu_load(ctrl, cfg, SCU1_CLK_GATE_LTPI1TXCLK);
 }
 
+static int sac_scu1_rst_load(struct sac_ctrl *ctrl, struct sac_cfg_list *cfg)
+{
+	return sac_scu_load(ctrl, cfg, SCU1_RESET_PCIE2RST);
+}
+
 /******************************************************************************
  *                            Aspeed SCU0 Clock                               *
  ******************************************************************************/
@@ -286,6 +291,73 @@ static struct sac_ctrl scu1_clk_ctrl = {
 };
 
 /******************************************************************************
+ *                            Aspeed SCU1 Reset                               *
+ ******************************************************************************/
+static struct sac_cfg_list scu1_rst_cfg[] = {
+	{
+		SCU_PSP_GROUP,
+		DT_PROP_LEN(SCU1_RST_NODE, psp),
+		(uint16_t[])DT_PROP(SCU1_RST_NODE, psp)
+	},
+	{
+		SCU_SEC_PSP_GROUP,
+		DT_PROP_LEN(SCU1_RST_NODE, sec_psp),
+		(uint16_t[])DT_PROP(SCU1_RST_NODE, sec_psp)
+	},
+	{
+		SCU_SSP_GROUP,
+		DT_PROP_LEN(SCU1_RST_NODE, ssp),
+		(uint16_t[])DT_PROP(SCU1_RST_NODE, ssp)
+	},
+	{
+		SCU_TSP_GROUP,
+		DT_PROP_LEN(SCU1_RST_NODE, tsp),
+		(uint16_t[])DT_PROP(SCU1_RST_NODE, tsp)
+	},
+	{
+		SCU_PSP_SSP_GROUP,
+		DT_PROP_LEN(SCU1_RST_NODE, psp_ssp),
+		(uint16_t[])DT_PROP(SCU1_RST_NODE, psp_ssp)
+	},
+	{
+		SCU_SSP_TSP_GROUP,
+		DT_PROP_LEN(SCU1_RST_NODE, ssp_tsp),
+		(uint16_t[])DT_PROP(SCU1_RST_NODE, ssp_tsp)
+	},
+	{
+		SCU_BOOTMCU_GROUP,
+		DT_PROP_LEN(SCU1_RST_NODE, bmcu),
+		(uint16_t[])DT_PROP(SCU1_RST_NODE, bmcu)
+	},
+};
+
+static struct sac_reg_map scu1_rst_reg_map[] = {
+	{0x214, 0x0}, /* rst0 sec0 register */
+	{0x218, 0x0}, /* rst0 sec1 register */
+	{0x21C, 0x0}, /* rst0 sec2 register */
+	{0x234, 0x0}, /* rst1 sec0 register */
+	{0x238, 0x0}, /* rst1 sec1 register */
+	{0x23C, 0x0}, /* rst1 sec2 register */
+};
+
+static struct sac_reg_map scu1_rst_lock_reg_map[] = {
+	{0xE10, SCU_POLICY_RESET_LOCK}, /* rst0/1 sec0/1/2 lock register */
+};
+
+static struct sac_ctrl scu1_rst_ctrl = {
+	.base = DT_REG_ADDR(DT_PARENT(SCU1_RST_NODE)),
+	.cfg_num = ARRAY_SIZE(scu1_rst_cfg),
+	.cfg = scu1_rst_cfg,
+	.reg_num = ARRAY_SIZE(scu1_rst_reg_map),
+	.reg_map = scu1_rst_reg_map,
+	.lock_reg_num = ARRAY_SIZE(scu1_rst_lock_reg_map),
+	.reg_lock_map = scu1_rst_lock_reg_map,
+	.init_sac = NULL,
+	.load_sac = sac_scu1_rst_load,
+	.apply_sac = NULL,
+};
+
+/******************************************************************************
  *                          Aspeed SCU Initialization                        *
  ******************************************************************************/
 static int sac_scu0_init(void)
@@ -314,6 +386,10 @@ static int sac_scu1_init(void)
 	ret = sac_aspeed_enable(&scu1_clk_ctrl);
 	if (ret)
 		LOG_ERR("SCU1 clock policy enable fail(%d).", ret);
+
+	ret = sac_aspeed_enable(&scu1_rst_ctrl);
+	if (ret)
+		LOG_ERR("SCU1 reset policy enable fail(%d).", ret);
 
 	return ret;
 }

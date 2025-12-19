@@ -151,6 +151,16 @@
 	bmcu = <>;
 };
 
+&sysrst1 {
+	psp = <>;
+	sec-psp = <>;
+	ssp = <>;
+	tsp = <>;
+	psp-ssp = <>;
+	ssp-tsp = <>;
+	bmcu = <>;
+};
+
 &ufs {
 	status = "okay";
 };
