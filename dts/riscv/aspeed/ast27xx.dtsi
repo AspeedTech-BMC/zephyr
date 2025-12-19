@@ -91,12 +91,6 @@
 			compatible = "aspeed,prictrl";
 			reg = <0x12140000 0x400>, <0x14100000 0x400>;
 			reg-names = "cpu", "io";
-			client-list-0 = <IO_S_I_PRICTRL C_S_C_PRICTRL IO_S_WDT_7>;
-			client-list-1 = <>;
-			client-list-2 = <>;
-			client-list-3 = <>;
-			client-list-4 = <>;
-			client-list-5 = <>;
 			status = "disabled";
 		};
 	};
