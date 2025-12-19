@@ -10,6 +10,41 @@ include: [clock-controller.yaml, base.yaml]
 properties:
   "#clock-cells":
     const: 1
+  psp:
+    type: array
+    required: false
+    description: |
+      Program clock access permission for PSP
+  sec-psp:
+    type: array
+    required: false
+    description: |
+      Program clock access permission for secure PSP
+  ssp:
+    type: array
+    required: false
+    description: |
+      Program clock access permission for SSP
+  tsp:
+    type: array
+    required: false
+    description: |
+      Program clock access permission for TSP
+  psp-ssp:
+    type: array
+    required: false
+    description: |
+      Program clock access permission for PSP and SSP
+  ssp-tsp:
+    type: array
+    required: false
+    description: |
+      Program clock access permission for PSP and TSP
+  bmcu:
+    type: array
+    required: false
+    description: |
+      Program clock access permission for bootmcu
 
 clock-cells:
   - clk_id

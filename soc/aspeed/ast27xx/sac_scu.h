@@ -20,9 +20,12 @@
 /* SCU0 device node definition */
 #define SCU0_CLK_NODE DT_NODELABEL(sysclk0)
 #define SCU0_RST_NODE DT_NODELABEL(sysrst0)
+#define SCU1_CLK_NODE DT_NODELABEL(sysclk1)
+#define SCU1_RST_NODE DT_NODELABEL(sysrst1)
 
 /* SCU0 poliicy operation definition */
 #define SCU_POLICY_CLK0_LOCK (GENMASK(23, 21))
+#define SCU_POLICY_CLK1_LOCK (GENMASK(23, 21) | GENMASK(31, 29))
 #define SCU_POLICY_RESET_LOCK (GENMASK(15, 13) | GENMASK(7, 5))
 #define SCU_POLICY_CLK0_SEL1_LOCK GENMASK(15, 0)
 #define SCU_POLICY_CLK0_SEL2_LOCK GENMASK(12, 0)
