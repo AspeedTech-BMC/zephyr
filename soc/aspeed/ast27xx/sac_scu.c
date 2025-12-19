@@ -374,7 +374,7 @@ static int sac_scu0_init(void)
 
 	ret = sac_aspeed_enable(&scu0_clk_sel_ctrl);
 	if (ret)
-		LOG_ERR("SCU0 reset policy enable fail(%d).", ret);
+		LOG_ERR("SCU0 clock selection policy enable fail(%d).", ret);
 
 	return ret;
 }
