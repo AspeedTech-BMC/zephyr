@@ -873,7 +873,7 @@ void aspeed_spi_timing_calibration(const struct device *dev)
 	       SPI_CALIB_LEN);
 
 	if (!aspeed_spi_calibriation_enable(check_buf, SPI_CALIB_LEN)) {
-		LOG_DBG("Flash data is monotonous, skip calibration.");
+		LOG_WRN("Flash data is monotonous, skip calibration.");
 		goto no_calib;
 	}
 
