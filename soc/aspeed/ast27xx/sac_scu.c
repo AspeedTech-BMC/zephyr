@@ -212,9 +212,9 @@ static struct sac_ctrl scu0_rst_ctrl = {
  *                       Aspeed SCU0 Clock Selection                          *
  ******************************************************************************/
 static struct sac_reg_map scu0_clk_sel_lock_reg_map[] = {
-	{0x290, SCU_POLICY_CLK0_SEL1_LOCK}, /* clk sel1 lock register */
-	{0x294, SCU_POLICY_CLK0_SEL2_LOCK}, /* clk sel2 lock register */
-	{0x298, SCU_POLICY_CLK0_SEL3_LOCK}, /* clk sel3 lock register */
+	{0x290, 0}, /* clk sel1 lock register */
+	{0x294, 0}, /* clk sel2 lock register */
+	{0x298, 0}, /* clk sel3 lock register */
 };
 
 static struct sac_ctrl scu0_clk_sel_ctrl = {
@@ -361,8 +361,8 @@ static struct sac_ctrl scu1_rst_ctrl = {
  *                       Aspeed SCU1 Clock Selection                          *
  ******************************************************************************/
 static struct sac_reg_map scu1_clk_sel_lock_reg_map[] = {
-	{0x2A0, SCU_POLICY_CLK1_SEL1_LOCK}, /* clk sel1 lock register */
-	{0x2B0, SCU_POLICY_CLK1_SEL2_LOCK}, /* clk sel2 lock register */
+	{0x2A0, 0}, /* clk sel1 lock register */
+	{0x2B0, 0}, /* clk sel2 lock register */
 };
 
 static struct sac_ctrl scu1_clk_sel_ctrl = {
