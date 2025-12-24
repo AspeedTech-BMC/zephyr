@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Aspeed AST2700 Evaluation board configuration
+#
+# Copyright (c) 2023 Aspeed Technology Inc.
+
+if BOARD_AST2700_EVB_AST2700_SSP
+config BOARD
+	default "ast2700_evb_ast2700_ssp"
+endif # BOARD_AST2700_EVB_AST2700_SSP
+
+if BOARD_AST2700_EVB_AST2700_TSP
+config BOARD
+	default "ast2700_evb_ast2700_tsp"
+endif # BOARD_AST2700_EVB_AST2700_TSP
+
+if BOARD_AST2755_EVB_AST2755_BOOTMCU
+config BOARD
+	default "ast2755_evb_ast2755_bootmcu"
+endif # BOARD_AST2755_EVB_AST2755_BOOTMCU

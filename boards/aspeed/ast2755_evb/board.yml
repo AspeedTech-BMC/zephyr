@@ -1,0 +1,14 @@
+board:
+  name: ast2755_evb
+  vendor: aspeed
+  socs:
+  - name: ast2700
+    variants:
+    - name: ddr
+      cpucluster: ssp
+    - name: ddr
+      cpucluster: ssp_tsp
+    - name: ddr
+      cpucluster: tsp
+    - name: sram
+      cpucluster: bootmcu
