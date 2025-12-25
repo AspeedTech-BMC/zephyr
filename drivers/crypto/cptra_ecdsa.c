@@ -158,7 +158,7 @@ int cptra_ecdsa_init(const struct device *dev)
 	state->in_use = false;
 
 	if (!(sys_read32(cfg->scu_base + SCU1_CPTRA) & SCU1_CPTRA_RDY_FOR_RT)) {
-		LOG_ERR("Caliptra is unavailable\n");
+		LOG_WRN("Caliptra is unavailable");
 		return -ENODEV;
 	}
 

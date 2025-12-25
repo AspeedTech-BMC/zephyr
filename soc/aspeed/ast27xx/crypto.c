@@ -32,11 +32,16 @@
 #include <zephyr/crypto/lms_structs.h>
 #include <zephyr/crypto/crypto.h>
 #include <zephyr/crypto/hash.h>
+#include <zephyr/drivers/cptra.h>
 #include <crypto.h>
 #include <zephyr/sys/byteorder.h>
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(crypto, CONFIG_CRYPTO_LOG_LEVEL);
+
+#define SCU1_REG			DT_REG_ADDR(DT_NODELABEL(syscon1))
+#define SCU1_HWSTRAP1			0x10
+#define	 SCU1_HWSTRAP1_DIS_CPTRA	BIT(30)
 
 #if defined(MBEDTLS_ECDSA_C)
 static void dump_pubkey(const char *title, mbedtls_ecdsa_context *key)
@@ -318,6 +323,15 @@ int crypto_selftest(void)
 	int ret;
 
 	LOG_DBG("");
+
+	if (!!(sys_read32(SCU1_REG + SCU1_HWSTRAP1) &
+	       SCU1_HWSTRAP1_DIS_CPTRA))
+		return 0;
+
+	if (!(sys_read32(SCU1_REG + SCU1_CPTRA) & SCU1_CPTRA_RDY_FOR_RT)) {
+		LOG_WRN("Caliptra is unavailable");
+		return -1;
+	}
 
 	/* ECDSA self-test */
 	ret = ecdsa_selftest();
