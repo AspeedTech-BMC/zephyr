@@ -510,11 +510,23 @@ struct cptra_manifest_preamble {
 	uint32_t metadata_owner_LMS_sig[405];
 };
 
+#ifndef CONFIG_CPTRA_2X_LAYOUT
 struct cptra_manifest_ime {
 	uint32_t fw_id;
 	uint32_t flags;
 	uint8_t digest[48]; /* SHA384 */
 };
+#else
+struct cptra_manifest_ime {
+	uint32_t fw_id;
+	uint32_t component_id;
+	uint32_t classification;
+	uint32_t flags;
+	uint64_t image_load_address;
+	uint64_t image_staging_address;
+	uint8_t digest[48]; /* SHA384 */
+};
+#endif
 
 struct cptra_set_auth_manifest_ia {
 	uint32_t manifest_size;
