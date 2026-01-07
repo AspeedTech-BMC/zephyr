@@ -1,0 +1,39 @@
+description: Binding for ASPEED AST27xx PCIE
+
+compatible: "aspeed,ast27xx-pcie"
+
+include: [base.yaml]
+
+properties:
+  vga:
+    type: string
+    enum:
+      - "MSI"
+      - "INTx"
+    description: |
+      Specifies which interrupt mode this device supports.
+      If absent, then VGA will be disabled.
+  bmc-device:
+    type: string
+    enum:
+      - "MSI"
+      - "INTx"
+    description: |
+      Specifies which interrupt mode this device supports.
+      If absent, then BMC Device will be disabled.
+  ehci:
+    type: string
+    enum:
+      - "MSI"
+      - "INTx"
+    description: |
+      Specifies which interrupt mode this device supports.
+      If absent, then EHCI will be disabled.
+  xhci:
+    type: string
+    enum:
+      - "MSI"
+      - "INTx"
+    description: |
+      Specifies which interrupt mode this device supports.
+      If absent, then XHCI will be disabled.
