@@ -93,6 +93,22 @@
 			reg-names = "cpu", "io";
 			status = "disabled";
 		};
+
+		pcie0: pcie0 {
+			compatible = "aspeed,ast27xx-pcie";
+			vga = "MSI";
+			bmc-device = "MSI";
+			ehci = "INTx";
+			xhci = "INTx";
+		};
+
+		pcie1: pcie1 {
+			compatible = "aspeed,ast27xx-pcie";
+			vga = "MSI";
+			bmc-device = "MSI";
+			ehci = "INTx";
+			xhci = "INTx";
+		};
 	};
 
 	soc1 {
