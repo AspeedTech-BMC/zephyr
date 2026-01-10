@@ -1,5 +1,5 @@
 .. raw:: html
-
+ 
    <a href="https://www.zephyrproject.org">
      <p align="center">
        <picture>
