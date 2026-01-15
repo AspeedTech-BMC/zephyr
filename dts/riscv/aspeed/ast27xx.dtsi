@@ -98,6 +98,20 @@
 			status = "disabled";
 		};
 
+		usb0: usb@12010000 {
+			compatible = "aspeed,ast27xx-usb";
+			reg = <0x12010000 0xC0>, <0x12011000 0x820>, <0x12061800 0x90>;
+			reg-names = "phy3", "phy2", "ehci";
+			usb-function = "EHCI_VHUB_AND_XHCI_PHY";
+		};
+
+		usb1: usb@12020000 {
+			compatible = "aspeed,ast27xx-usb";
+			reg = <0x12020000 0xC0>, <0x12021000 0x820>, <0x12063800 0x90>;
+			reg-names = "phy3", "phy2", "ehci";
+			usb-function = "EHCI_VHUB_AND_XHCI_PHY";
+		};
+
 		pcie0: pcie0 {
 			compatible = "aspeed,ast27xx-pcie";
 			vga = "MSI";
