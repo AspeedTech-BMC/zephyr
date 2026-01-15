@@ -1,0 +1,34 @@
+description: Binding for ASPEED AST27xx USB
+
+compatible: "aspeed,ast27xx-usb"
+
+include: [base.yaml]
+
+properties:
+  usb-function:
+    type: string
+    enum:
+      - "NOT_USED"
+      - "EHCI_VHUB_AND_XHCI_PHY"
+      - "XHCI_PHY"
+      - "XHCI_VHUB"
+      - "EHCI_VHUB"
+      - "VHUB_PHY"
+      - "EHCI_PHY"
+    description: |
+      Configure SoC0 USB function mode:
+
+      - NOT_USED: USB port is not used.
+      - EHCI_VHUB_AND_XHCI_PHY: PCIe-EHCI-vHUB + (PCIe or BMC)-XHCI-PHY.
+      - XHCI_PHY: (PCIe or BMC)-XHCI-PHY.
+      - XHCI_VHUB: (PCIe or BMC)-XHCI-vHUB.
+      - EHCI_VHUB: PCIe-EHCI-vHUB.
+      - VHUB_PHY: vHUB-PHY.
+      - EHCI_PHY: (PCIe or BMC)-EHCI-PHY.
+
+      For PCIe-EHCI-* or PCIe-XHCI-* enablement, refer to aspeed,ast27xx-pcie.yaml.
+
+  enable-large-burst:
+    type: boolean
+    description:
+      Enable larger bus burst size for PCIe-XHCI when the PCIe max payload size is 256/512 bytes.
