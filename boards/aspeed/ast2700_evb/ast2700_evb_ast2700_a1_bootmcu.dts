@@ -262,3 +262,15 @@
 	cmd-erase-32k = <0x5c040e>;
 	cmd-erase-64k = <0xdc040e>;
 };
+
+&pcie0 {
+	/delete-property/ bmc-device;
+	/delete-property/ ehci;
+	/delete-property/ xhci;
+};
+
+&pcie1 {
+	/delete-property/ bmc-device;
+	/delete-property/ ehci;
+	/delete-property/ xhci;
+};
