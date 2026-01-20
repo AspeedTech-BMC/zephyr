@@ -465,7 +465,7 @@ static void aspeed_spi_read_dma(const struct device *dev,
 	sys_write32(0x0, config->ctrl_base + SPI80_DMA_CTRL);
 
 	sys_write32(0x0, config->ctrl_base + SPI7C_DMA_HI_ADDR_REG);
-	if (ast27xx_soc_virt_addr_to_phy_addr((uintptr_t)op_info.buf) > ASPEED_DRAM_PHY_BASE)
+	if (ast27xx_soc_virt_addr_to_phy_addr((uintptr_t)op_info.buf) >= ASPEED_DRAM_PHY_BASE)
 		sys_write32(0x4, config->ctrl_base + SPI7C_DMA_HI_ADDR_REG);
 
 	flash_dma_addr = (data->decode_addr[cs].start + op_info.addr -
