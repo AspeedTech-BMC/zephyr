@@ -16,92 +16,47 @@
 
 #include "prictrl_aspeed.h"
 
-LOG_MODULE_REGISTER(prictrl_aspeed);
+LOG_MODULE_REGISTER(prictrl_aspeed, LOG_LEVEL_INF);
 
-#define PRICTRL_CFG_READABLE
 /**********************************************************************
  * Get privilege control configuration register
  **********************************************************************/
-static uintptr_t prictrl_get_master_reg_base(const struct prictrl_aspeed_config *cfg,
-					     enum prictrl_cpu_io cpu_io, enum prictrl_rw rw)
-{
-	if (!cfg)
-		return -EINVAL;
-
-	if (cpu_io != PRICTRL_CPU_DIE && cpu_io != PRICTRL_IO_DIE)
-		return -EINVAL;
-
-	if (rw != PRICTRL_WRITE && rw != PRICTRL_READ)
-		return -EINVAL;
-
-	/* Return CPU die base address + read/write offset */
-	return ((cpu_io == PRICTRL_CPU_DIE ? cfg->cpu_base : cfg->io_base) +
-		(rw == PRICTRL_WRITE ? 0 : PRICTRL_READ_OFFSET));
-}
-
-static uintptr_t prictrl_get_client_reg_base(const struct prictrl_aspeed_config *cfg,
-					     enum prictrl_cpu_io cpu_io, enum prictrl_rw rw)
-{
-	if (!cfg)
-		return -EINVAL;
-
-	if (cpu_io != PRICTRL_CPU_DIE && cpu_io != PRICTRL_IO_DIE)
-		return -EINVAL;
-
-	if (rw != PRICTRL_WRITE && rw != PRICTRL_READ)
-		return -EINVAL;
-
-	/* Return CPU die base address + read/write offset + client offset */
-	return ((cpu_io == PRICTRL_CPU_DIE ? cfg->cpu_base : cfg->io_base) +
-		(rw == PRICTRL_WRITE ? 0 : PRICTRL_READ_OFFSET) + PRICTRL_CLIENT_OFFSET);
-}
-
-static uintptr_t prictrl_get_reg_base(const struct prictrl_aspeed_config *cfg,
-				      enum prictrl_cpu_io cpu_io, enum prictrl_ms ms,
+static uintptr_t prictrl_get_reg_base(const struct prictrl_aspeed_config *cfg, enum prictrl_ms ms,
 				      enum prictrl_rw rw)
 {
+	uintptr_t reg_offset = 0;
+
 	if (!cfg)
 		return -EINVAL;
 
-	if (cpu_io != PRICTRL_CPU_DIE && cpu_io != PRICTRL_IO_DIE)
+	if (ms != PRICTRL_MASTER && ms != PRICTRL_CLIENT)
+		return -EINVAL;
+
+	if (rw != PRICTRL_WRITE && rw != PRICTRL_READ)
+		return -EINVAL;
+
+	reg_offset += (ms == PRICTRL_MASTER ? 0 : PRICTRL_CLIENT_OFFSET);
+	reg_offset += (rw == PRICTRL_WRITE ? 0 : PRICTRL_READ_OFFSET);
+
+	return cfg->reg + reg_offset;
+}
+
+static uintptr_t prictrl_get_reg_offset(const struct prictrl_aspeed_config *cfg, enum prictrl_ms ms,
+					int device)
+{
+	if (!cfg)
 		return -EINVAL;
 
 	if (ms != PRICTRL_MASTER && ms != PRICTRL_CLIENT)
 		return -EINVAL;
 
-	return (ms == PRICTRL_MASTER ? prictrl_get_master_reg_base(cfg, cpu_io, rw)
-				     : prictrl_get_client_reg_base(cfg, cpu_io, rw));
-}
-
-static uintptr_t prictrl_get_master_reg_offset(enum prictrl_cpu_io cpu_io, int device)
-{
-	if (cpu_io == PRICTRL_CPU_DIE && (device < C_M_CPU_S_USER || device >= C_M_LIST_END))
+	if (ms == PRICTRL_MASTER && device >= cfg->master_max)
 		return -EINVAL;
 
-	if (cpu_io == PRICTRL_IO_DIE && (device < IO_M_MCU0_I || device >= IO_M_LIST_END))
+	if (ms == PRICTRL_CLIENT && device >= cfg->client_max)
 		return -EINVAL;
 
 	return ROUND_DOWN(device, PRICTRL_FILED_NUM_PER_REG);
-}
-
-static uintptr_t prictrl_get_client_reg_offset(int device)
-{
-	if (device < IO_S_I_USB_UHCI || device >= S_LIST_END)
-		return -EINVAL;
-
-	return ROUND_DOWN(device, PRICTRL_FILED_NUM_PER_REG);
-}
-
-static uintptr_t prictrl_get_reg_offset(enum prictrl_cpu_io cpu_io, enum prictrl_ms ms, int device)
-{
-	if (cpu_io != PRICTRL_CPU_DIE && cpu_io != PRICTRL_IO_DIE)
-		return -EINVAL;
-
-	if (ms != PRICTRL_MASTER && ms != PRICTRL_CLIENT)
-		return -EINVAL;
-
-	return (ms == PRICTRL_MASTER ? prictrl_get_master_reg_offset(cpu_io, device)
-				     : prictrl_get_client_reg_offset(device));
 }
 
 static uint8_t prictrl_get_reg_field(uint16_t device)
@@ -109,18 +64,17 @@ static uint8_t prictrl_get_reg_field(uint16_t device)
 	return (device % PRICTRL_FILED_NUM_PER_REG);
 }
 
-static uintptr_t prictrl_get_reg_addr(const struct prictrl_aspeed_config *cfg,
-				      enum prictrl_cpu_io cpu_io, enum prictrl_rw rw,
+static uintptr_t prictrl_get_reg_addr(const struct prictrl_aspeed_config *cfg, enum prictrl_rw rw,
 				      struct prictrl_dev_cfg *dev_cfg)
 {
 	uintptr_t prictrl_base = 0;
 	uintptr_t prictrl_offset = 0;
 
-	prictrl_base = prictrl_get_reg_base(cfg, cpu_io, dev_cfg->ms, rw);
+	prictrl_base = prictrl_get_reg_base(cfg, dev_cfg->ms, rw);
 	if (prictrl_base == -EINVAL)
 		return -EINVAL;
 
-	prictrl_offset = prictrl_get_reg_offset(cpu_io, dev_cfg->ms, dev_cfg->device);
+	prictrl_offset = prictrl_get_reg_offset(cfg, dev_cfg->ms, dev_cfg->device);
 	if (prictrl_offset == -EINVAL)
 		return -EINVAL;
 
@@ -130,14 +84,17 @@ static uintptr_t prictrl_get_reg_addr(const struct prictrl_aspeed_config *cfg,
 /**********************************************************************
  * Operate privilege control configuration register
  **********************************************************************/
-static int prictrl_get_perm(const struct prictrl_aspeed_config *cfg, enum prictrl_cpu_io cpu_io,
-			    enum prictrl_rw rw, struct prictrl_dev_cfg *dev_cfg)
+static int prictrl_get_perm(const struct prictrl_aspeed_config *cfg, enum prictrl_rw rw,
+			    struct prictrl_dev_cfg *dev_cfg)
 {
 	uint8_t field = 0;
 	uintptr_t addr = 0;
 
+	if (!dev_cfg)
+		return -EINVAL;
+
 	/* Get the config register address */
-	addr = prictrl_get_reg_addr(cfg, cpu_io, rw, dev_cfg);
+	addr = prictrl_get_reg_addr(cfg, rw, dev_cfg);
 	if (addr == -EINVAL)
 		return -EINVAL;
 
@@ -151,15 +108,18 @@ static int prictrl_get_perm(const struct prictrl_aspeed_config *cfg, enum prictr
 	return 0;
 }
 
-static int prictrl_set_perm(const struct prictrl_aspeed_config *cfg, enum prictrl_cpu_io cpu_io,
-			    enum prictrl_rw rw, struct prictrl_dev_cfg *dev_cfg)
+static int prictrl_set_perm(const struct prictrl_aspeed_config *cfg, enum prictrl_rw rw,
+			    struct prictrl_dev_cfg *dev_cfg)
 {
 	uint8_t field = 0;
 	uint8_t val = 0;
 	uintptr_t addr = 0;
 
+	if (!dev_cfg)
+		return -EINVAL;
+
 	/* Get the config register address */
-	addr = prictrl_get_reg_addr(cfg, cpu_io, rw, dev_cfg);
+	addr = prictrl_get_reg_addr(cfg, rw, dev_cfg);
 	if (addr == -EINVAL)
 		return -EINVAL;
 
@@ -170,18 +130,41 @@ static int prictrl_set_perm(const struct prictrl_aspeed_config *cfg, enum prictr
 	val = PRICTRL_GROUP_MASK & dev_cfg->group;
 
 	/* If it is the first time programming, clear the default config */
-	prictrl_get_perm(cfg, cpu_io, rw, dev_cfg);
+	prictrl_get_perm(cfg, rw, dev_cfg);
 	if (dev_cfg->last_group == PRICTRL_GROUP_DEFAULT)
 		sys_clear_bits(addr, PRICTRL_SHIFT_FIELD(PRICTRL_GROUP_MASK & ~val, field));
 
 	/* Set group configuration */
 	sys_set_bits(addr, PRICTRL_SHIFT_FIELD(val, field));
 
-	/* Set group lock */
-	sys_set_bits(addr, PRICTRL_SHIFT_FIELD(dev_cfg->lock, field));
+	LOG_DBG("(addr:field:value) = (0x%08lx:0x%02x:0x%02x), readback: 0x%08x", addr, field, val,
+		sys_read32(addr));
 
-	LOG_DBG("(addr:field:value:lock) = (0x%08lx:0x%02x:0x%02x:0x%02x), readback: 0x%08x", addr,
-		field, val, dev_cfg->lock, sys_read32(addr));
+	return 0;
+}
+
+static int prictrl_lock_perm(const struct prictrl_aspeed_config *cfg, enum prictrl_rw rw,
+			     struct prictrl_dev_cfg *dev_cfg)
+{
+	uint8_t field = 0;
+	uintptr_t addr = 0;
+
+	if (!dev_cfg)
+		return -EINVAL;
+
+	/* Get the config register address */
+	addr = prictrl_get_reg_addr(cfg, rw, dev_cfg);
+	if (addr == -EINVAL)
+		return -EINVAL;
+
+	/* Get the config register field */
+	field = prictrl_get_reg_field(dev_cfg->device);
+
+	/* Set group lock */
+	sys_set_bits(addr, PRICTRL_SHIFT_FIELD(PRICTRL_LOCK, field));
+
+	LOG_DBG("(addr:field:lock) = (0x%08lx:0x%02x:0x01), readback: 0x%08x", addr, field,
+		sys_read32(addr));
 
 	return 0;
 }
@@ -189,262 +172,112 @@ static int prictrl_set_perm(const struct prictrl_aspeed_config *cfg, enum prictr
 /**********************************************************************
  * Privilege control application programming interface
  **********************************************************************/
-static int prictrl_set_master_group(const struct prictrl_aspeed_config *cfg,
-				    struct prictrl_dev_cfg *dev_cfg)
+static int prictrl_config_group(const struct prictrl_aspeed_config *cfg,
+				struct prictrl_dev_cfg *dev_cfg, bool lock)
 {
 	int ret = 0;
 
 	if (!cfg || !dev_cfg)
 		return -EINVAL;
 
-	if (dev_cfg->cpu_io == PRICTRL_CPU_DIE &&
-	    (dev_cfg->device < C_M_CPU_S_USER || dev_cfg->device >= C_M_LIST_END))
+	if (dev_cfg->ms != PRICTRL_MASTER && dev_cfg->ms != PRICTRL_CLIENT)
 		return -EINVAL;
 
-	if (dev_cfg->cpu_io == PRICTRL_IO_DIE &&
-	    (dev_cfg->device < IO_M_MCU0_I || dev_cfg->device >= IO_M_LIST_END))
+	if (dev_cfg->ms == PRICTRL_MASTER && dev_cfg->device >= cfg->master_max)
 		return -EINVAL;
 
-	ret = prictrl_set_perm(cfg, dev_cfg->cpu_io, PRICTRL_WRITE, dev_cfg);
-	if (ret)
+	if (dev_cfg->ms == PRICTRL_CLIENT && dev_cfg->device >= cfg->client_max)
 		return -EINVAL;
 
-	ret = prictrl_set_perm(cfg, dev_cfg->cpu_io, PRICTRL_READ, dev_cfg);
-	if (ret)
-		return -EINVAL;
+	LOG_DBG("%s (dev:perm:group:lock) = (0x%02x:0x%02x:0x%02x:0x%02x)",
+		dev_cfg->ms == PRICTRL_MASTER ? "Master" : "Client", dev_cfg->device, dev_cfg->perm,
+		dev_cfg->group, lock);
+
+	/* Setup write protection */
+	ret = !lock ? prictrl_set_perm(cfg, PRICTRL_WRITE, dev_cfg)
+		    : prictrl_lock_perm(cfg, PRICTRL_WRITE, dev_cfg);
+
+	/* Only set permission if write protection setting ok and dts denote read protection */
+	if (!ret && dev_cfg->perm == RW_PROT) {
+		ret = !lock ? prictrl_set_perm(cfg, PRICTRL_READ, dev_cfg)
+			    : prictrl_lock_perm(cfg, PRICTRL_READ, dev_cfg);
+	}
 
 	return ret;
 }
 
-static int prictrl_set_client_group(const struct prictrl_aspeed_config *cfg,
-				    struct prictrl_dev_cfg *dev_cfg)
+static int prictrl_list_config_group(const struct prictrl_aspeed_config *cfg,
+				     struct prictrl_dev_list *list, bool lock)
 {
 	int ret = 0;
+	struct prictrl_dev_cfg dev_cfg = PRICTRL_INIT_DEV(list->ms, list->group);
+	struct prictrl_dev_dts *dev_dts = NULL;
 
-	if (!cfg || !dev_cfg)
+	if (!list || !cfg)
 		return -EINVAL;
 
-	if (dev_cfg->cpu_io != PRICTRL_CPU_IO_DIE || dev_cfg->device < IO_S_I_USB_UHCI ||
-	    dev_cfg->device >= S_LIST_END)
-		return -EINVAL;
-
-	ret = prictrl_set_perm(cfg, PRICTRL_CPU_DIE, PRICTRL_WRITE, dev_cfg);
-	if (ret)
-		return -EINVAL;
-
-	ret = prictrl_set_perm(cfg, PRICTRL_IO_DIE, PRICTRL_WRITE, dev_cfg);
-	if (ret)
-		return -EINVAL;
-
-#ifdef PRICTRL_CFG_READABLE
-	if (dev_cfg->device == IO_S_I_PRICTRL || dev_cfg->device == C_S_C_PRICTRL)
-		return ret;
-#endif
-
-	ret = prictrl_set_perm(cfg, PRICTRL_CPU_DIE, PRICTRL_READ, dev_cfg);
-	if (ret)
-		return -EINVAL;
-
-	ret = prictrl_set_perm(cfg, PRICTRL_IO_DIE, PRICTRL_READ, dev_cfg);
-	if (ret)
-		return -EINVAL;
+	for (dev_dts = (struct prictrl_dev_dts *)list->device;
+	     dev_dts < (struct prictrl_dev_dts *)(list->device + list->device_num); dev_dts++) {
+		PRICTRL_SET_DEV(&dev_cfg, dev_dts->dev, dev_dts->perm);
+		ret = prictrl_config_group(cfg, &dev_cfg, lock);
+		if (ret) {
+			LOG_ERR("%s %d's %d in %d fail.\n", !lock ? "Set" : "Lock", list->ms,
+				dev_dts->dev, list->group);
+			return -EINVAL;
+		}
+	}
 
 	return ret;
 }
 
-static int prictrl_get_group(const struct prictrl_aspeed_config *cfg,
-			     struct prictrl_dev_cfg *dev_cfg)
+static int prictrl_setup(const struct prictrl_aspeed_config *cfg, struct prictrl_dev_list *list,
+			 int num)
 {
+	int i = 0;
 	int ret = 0;
 
-	if (!cfg || !dev_cfg)
+	if (!cfg)
 		return -EINVAL;
 
-	/* Before we assign the last_group, check it is in initial value */
-	if (dev_cfg->last_group != INVALID_GROUP)
-		return -EINVAL;
+	/* Configure the privilege control groups */
+	for (i = 0; i < num; i++)
+		ret |= prictrl_list_config_group(cfg, &list[i], false);
 
-	if (dev_cfg->ms != PRICTRL_MASTER && dev_cfg->ms != PRICTRL_CLIENT)
-		return -EINVAL;
-
-	/* Master r/w permission are in the same group, we only need to get one of them.  */
-	if (dev_cfg->ms == PRICTRL_MASTER)
-		ret = prictrl_get_perm(cfg, dev_cfg->cpu_io, PRICTRL_WRITE, dev_cfg);
-
-	/* Client r/w/cpu/io permission are in the same group, we only need to get one of them. */
-	if (dev_cfg->ms == PRICTRL_CLIENT)
-		ret = prictrl_get_perm(cfg, PRICTRL_CPU_DIE, PRICTRL_WRITE, dev_cfg);
-
-	return ret;
-}
-
-static int prictrl_set_group(const struct prictrl_aspeed_config *cfg,
-			     struct prictrl_dev_cfg *dev_cfg)
-{
-	if (!cfg || !dev_cfg)
-		return -EINVAL;
-
-	if (dev_cfg->ms != PRICTRL_MASTER && dev_cfg->ms != PRICTRL_CLIENT)
-		return -EINVAL;
-
-	return (dev_cfg->ms == PRICTRL_MASTER ? prictrl_set_master_group(cfg, dev_cfg)
-					      : prictrl_set_client_group(cfg, dev_cfg));
-}
-
-static int prictrl_lock_group(const struct prictrl_aspeed_config *cfg,
-			      struct prictrl_dev_cfg *dev_cfg)
-{
-	if (!cfg || !dev_cfg)
-		return -EINVAL;
-
-	if (dev_cfg->ms != PRICTRL_MASTER && dev_cfg->ms != PRICTRL_CLIENT)
-		return -EINVAL;
-
-	if (prictrl_get_group(cfg, dev_cfg))
-		return -EINVAL;
-
-	PRICTRL_SET_DEV(dev_cfg, dev_cfg->cpu_io, dev_cfg->ms, dev_cfg->device, dev_cfg->last_group,
-			PRICTRL_LOCK);
-	if (prictrl_set_group(cfg, dev_cfg))
-		return -EINVAL;
+	/* Lock the privilege control groups */
+	for (i = 0; i < num; i++)
+		ret |= prictrl_list_config_group(cfg, &list[i], true);
 
 	return 0;
-}
-
-static int prictrl_list_set_group(const struct prictrl_aspeed_config *cfg,
-				  struct prictrl_list_cfg *list)
-{
-	int ret = 0;
-	int i = 0;
-	struct prictrl_dev_cfg dev_cfg = {0};
-
-	if (!list || !cfg)
-		return -EINVAL;
-
-	for (i = 0; i < list->device_num; i++) {
-		PRICTRL_SET_DEV(&dev_cfg, list->cpu_io, list->ms, list->device[i], list->group,
-				PRICTRL_NO_LOCK);
-		if (prictrl_set_group(cfg, &dev_cfg)) {
-			LOG_ERR("Set %d's %d in %d fail.\n", list->ms, list->device[i],
-				list->group);
-			ret = -EINVAL;
-		}
-	}
-
-	return ret;
-}
-
-static int prictrl_list_lock_group(const struct prictrl_aspeed_config *cfg,
-				   struct prictrl_list_cfg *list)
-{
-	int ret = 0;
-	int i = 0;
-	struct prictrl_dev_cfg dev_cfg = {0};
-
-	if (!list || !cfg)
-		return -EINVAL;
-
-	for (i = 0; i < list->device_num; i++) {
-		PRICTRL_SET_DEV(&dev_cfg, list->cpu_io, list->ms, list->device[i], list->group,
-				PRICTRL_LOCK);
-		if (prictrl_lock_group(cfg, &dev_cfg)) {
-			LOG_ERR("Lock %d's %d in %d fail.\n", list->ms, list->device[i],
-				list->group);
-			ret = -EINVAL;
-		}
-	}
-
-	return ret;
-}
-
-static int prictrl_master_mapping(const struct device *dev)
-{
-	int ret = 0;
-	const struct prictrl_aspeed_config *cfg = NULL;
-
-	if (!dev || !(dev->config))
-		return -EINVAL;
-
-	cfg = dev->config;
-
-	/* CPU die master mapping */
-	ret |= prictrl_list_set_group(cfg, &cfg->master[1]);
-	ret |= prictrl_list_set_group(cfg, &cfg->master[2]);
-	ret |= prictrl_list_set_group(cfg, &cfg->master[3]);
-	ret |= prictrl_list_set_group(cfg, &cfg->master[4]);
-	ret |= prictrl_list_set_group(cfg, &cfg->master[5]);
-
-	/* IO die master mapping */
-	ret |= prictrl_list_set_group(cfg, &cfg->master[0]);
-
-	/* Lock all setting */
-	ret |= prictrl_list_lock_group(cfg, &cfg->master[0]);
-	ret |= prictrl_list_lock_group(cfg, &cfg->master[1]);
-	ret |= prictrl_list_lock_group(cfg, &cfg->master[2]);
-	ret |= prictrl_list_lock_group(cfg, &cfg->master[3]);
-	ret |= prictrl_list_lock_group(cfg, &cfg->master[4]);
-	ret |= prictrl_list_lock_group(cfg, &cfg->master[5]);
-
-	return ret;
-}
-
-static int prictrl_client_setting(const struct device *dev)
-{
-	int ret = 0;
-	const struct prictrl_aspeed_config *cfg = NULL;
-
-	if (!dev || !(dev->config))
-		return -EINVAL;
-
-	cfg = dev->config;
-
-	ret |= prictrl_list_set_group(cfg, &cfg->client[0]);
-	ret |= prictrl_list_set_group(cfg, &cfg->client[1]);
-	ret |= prictrl_list_set_group(cfg, &cfg->client[2]);
-	ret |= prictrl_list_set_group(cfg, &cfg->client[3]);
-	ret |= prictrl_list_set_group(cfg, &cfg->client[4]);
-	ret |= prictrl_list_set_group(cfg, &cfg->client[5]);
-
-	/* Lock all setting */
-	ret |= prictrl_list_lock_group(cfg, &cfg->client[0]);
-	ret |= prictrl_list_lock_group(cfg, &cfg->client[1]);
-	ret |= prictrl_list_lock_group(cfg, &cfg->client[2]);
-	ret |= prictrl_list_lock_group(cfg, &cfg->client[3]);
-	ret |= prictrl_list_lock_group(cfg, &cfg->client[4]);
-	ret |= prictrl_list_lock_group(cfg, &cfg->client[5]);
-
-	return ret;
 }
 
 static int prictrl_hw_init(const struct device *dev)
 {
 	int i = 0;
-	const uint32_t magic = 0x7F7F7F7E;
 	const uint32_t init_val = 0x7F7F7F7F;
-	const struct prictrl_aspeed_config *cfg = NULL;
+	const uint32_t magic = 0x7F7F7F7E;
+	const struct prictrl_aspeed_config *cfg = dev ? dev->config : NULL;
 
-	if (!dev || !(dev->config))
+	if (!dev || !cfg)
 		return -EINVAL;
 
-	cfg = dev->config;
-
-	/* Initialize privilege control cpu die configruation register */
+	/* Initialize privilege control configuration register */
 	for (i = 0; i < 8; i++)
-		sys_write32(init_val, (cfg->cpu_base + i * 4));
+		sys_write32(init_val, (cfg->reg + i * 4));
 
 	for (i = 0; i < 8; i++)
-		sys_write32(init_val, (cfg->cpu_base + 0x100 + i * 4));
+		sys_write32(init_val, (cfg->reg + 0x100 + i * 4));
 
 	for (i = 0; i < 64; i++)
-		sys_write32(init_val, (cfg->cpu_base + 0x200 + i * 4));
+		sys_write32(init_val, (cfg->reg + 0x200 + i * 4));
 
 	for (i = 0; i < 64; i++)
-		sys_write32(init_val, (cfg->cpu_base + 0x300 + i * 4));
+		sys_write32(init_val, (cfg->reg + 0x300 + i * 4));
 
 	/* Check whether privilege control is ready */
-	sys_write32(magic, cfg->cpu_base);
-	if (sys_read32(cfg->cpu_base) != magic)
+	sys_write32(magic, cfg->reg);
+	if (sys_read32(cfg->reg) != magic)
 		return -EAGAIN;
+	sys_write32(init_val, cfg->reg);
 
 	return 0;
 }
@@ -452,50 +285,60 @@ static int prictrl_hw_init(const struct device *dev)
 static int prictrl_aspeed_init(const struct device *dev)
 {
 	int ret = 0;
+	const struct prictrl_aspeed_config *cfg = dev ? dev->config : NULL;
 
-	if (!dev)
+	if (!dev || !cfg)
 		return -EINVAL;
 
 	ret = prictrl_hw_init(dev);
 	if (ret)
 		return ret;
 
-	ret = prictrl_master_mapping(dev);
+	/* Privilege control master group mapping */
+	ret = prictrl_setup(cfg, cfg->master, cfg->master_num);
 	if (ret)
 		LOG_ERR("Master mapping fail(%d).", ret);
 
-	ret = prictrl_client_setting(dev);
+	/* Privilege control client group setting */
+	ret = prictrl_setup(cfg, cfg->client, cfg->client_num);
 	if (ret)
 		LOG_ERR("Client group setting fail(%d).", ret);
 
 	return 0;
 }
 
-static struct prictrl_list_cfg master_list[] = {
-	[0] = DEFINE_MASTER_DEV(PRICTRL_IO_DIE, BOOT_MCU_GROUP, IO_M_MCU0_I, IO_M_MCU0_D),
-	[1] = DEFINE_MASTER_DEV(PRICTRL_CPU_DIE, SSP_GROUP, C_M_SSP_I_USER, C_M_SSP_I_PRI,
-				C_M_SSP_D_USER, C_M_SSP_D_PRI, C_M_SSP_S_USER, C_M_SSP_S_PRI),
-	[2] = DEFINE_MASTER_DEV(PRICTRL_CPU_DIE, TSP_GROUP, C_M_TSP_S_USER, C_M_TSP_S_PRI),
-	[3] = DEFINE_MASTER_DEV(PRICTRL_CPU_DIE, S_CA35_GROUP, C_M_CPU_S_PRI, C_M_CPU_S_USER),
-	[4] = DEFINE_MASTER_DEV(PRICTRL_CPU_DIE, NS_CA35_GROUP, C_M_CPU_NS_PRI, C_M_CPU_NS_USER),
-	[5] = DEFINE_MASTER_DEV(PRICTRL_CPU_DIE, DP_MCU_GROUP, C_M_DP_MCU),
+static struct prictrl_dev_list prictrl_master_0[] = {
+	PRICTRL_DTS_MASTER(SSP_GROUP, PRICTRL_DTS(0), mlist1),
+	PRICTRL_DTS_MASTER(TSP_GROUP, PRICTRL_DTS(0), mlist2),
+	PRICTRL_DTS_MASTER(S_CA35_GROUP, PRICTRL_DTS(0), mlist3),
+	PRICTRL_DTS_MASTER(NS_CA35_GROUP, PRICTRL_DTS(0), mlist4),
+	PRICTRL_DTS_MASTER(DP_MCU_GROUP, PRICTRL_DTS(0), mlist5),
 };
 
-static struct prictrl_list_cfg client_list[] = {
-	[0] = DEFINE_CLIENT_DEV(PRICTRL_CPU_IO_DIE, BOOT_MCU_GROUP, client_list_0),
-	[1] = DEFINE_CLIENT_DEV(PRICTRL_CPU_IO_DIE, SSP_GROUP, client_list_1),
-	[2] = DEFINE_CLIENT_DEV(PRICTRL_CPU_IO_DIE, TSP_GROUP, client_list_2),
-	[3] = DEFINE_CLIENT_DEV(PRICTRL_CPU_IO_DIE, S_CA35_GROUP, client_list_3),
-	[4] = DEFINE_CLIENT_DEV(PRICTRL_CPU_IO_DIE, NS_CA35_GROUP, client_list_4),
-	[5] = DEFINE_CLIENT_DEV(PRICTRL_CPU_IO_DIE, DP_MCU_GROUP, client_list_5),
+static struct prictrl_dev_list prictrl_master_1[] = {
+	PRICTRL_DTS_MASTER(BOOT_MCU_GROUP, PRICTRL_DTS(1), mlist0),
 };
 
-static struct prictrl_aspeed_config prictrl_aspeed_config = {
-	.cpu_base = DT_INST_REG_ADDR_BY_NAME(0, cpu),
-	.io_base = DT_INST_REG_ADDR_BY_NAME(0, io),
-	.master = master_list,
-	.client = client_list,
+static struct prictrl_dev_list prictrl_client[] = {
+	PRICTRL_DTS_CLIENT(BOOT_MCU_GROUP, PRICTRL_DTS_PH(0, clist0), protect_dev),
+	PRICTRL_DTS_CLIENT(SSP_GROUP, PRICTRL_DTS_PH(0, clist1), protect_dev),
+	PRICTRL_DTS_CLIENT(TSP_GROUP, PRICTRL_DTS_PH(0, clist2), protect_dev),
+	PRICTRL_DTS_CLIENT(S_CA35_GROUP, PRICTRL_DTS_PH(0, clist3), protect_dev),
+	PRICTRL_DTS_CLIENT(NS_CA35_GROUP, PRICTRL_DTS_PH(0, clist4), protect_dev),
+	PRICTRL_DTS_CLIENT(DP_MCU_GROUP, PRICTRL_DTS_PH(0, clist5), protect_dev),
 };
 
-DEVICE_DT_INST_DEFINE(0, prictrl_aspeed_init, NULL, NULL, &prictrl_aspeed_config, POST_KERNEL,
-		      CONFIG_KERNEL_INIT_PRIORITY_DEFAULT, NULL);
+#define PRICTRL_ASPEED_INIT(_n)                                                                    \
+	static struct prictrl_aspeed_config prictrl_aspeed_config_##_n = {                         \
+		.reg = DT_INST_REG_ADDR(_n),                                                       \
+		.master_num = ARRAY_SIZE(prictrl_master_##_n),                                     \
+		.master_max = _n ? IO_M_LIST_END : C_M_LIST_END,                                   \
+		.client_num = ARRAY_SIZE(prictrl_client),                                          \
+		.client_max = S_LIST_END,                                                          \
+		.master = prictrl_master_##_n,                                                     \
+		.client = prictrl_client,                                                          \
+	};                                                                                         \
+	DEVICE_DT_INST_DEFINE(_n, prictrl_aspeed_init, NULL, NULL, &prictrl_aspeed_config_##_n,    \
+			      POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEFAULT, NULL);
+
+DT_INST_FOREACH_STATUS_OKAY(PRICTRL_ASPEED_INIT)

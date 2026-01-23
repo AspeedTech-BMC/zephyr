@@ -1,0 +1,15 @@
+# Copyright (c) 2026, ASPEED
+# SPDX-License-Identifier: Apache-2.0
+
+description: ASPEED Privilege Control Driver Protection Device Tree
+
+compatible: "aspeed,prictrl-prot"
+
+include: base.yaml
+
+properties:
+  protect-dev:
+    type: array
+    required: true
+    description: |
+      Protection device list for privilege control.

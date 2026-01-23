@@ -87,10 +87,14 @@
 			status = "disabled";
 		};
 
-		prictrl: prictrl@12140000{
+		prictrl0: prictrl@12140000 {
 			compatible = "aspeed,prictrl";
-			reg = <0x12140000 0x400>, <0x14100000 0x400>;
-			reg-names = "cpu", "io";
+			reg = <0x12140000 0x400>;
+			mlist1 = <C_M_SSP_D_USER RW_PROT>, <C_M_SSP_D_PRI RW_PROT>;
+			mlist2 = <C_M_TSP_S_USER RW_PROT>, <C_M_TSP_S_PRI RW_PROT>;
+			mlist3 = <C_M_CPU_S_PRI RW_PROT>, <C_M_CPU_S_USER RW_PROT>;
+			mlist4 = <C_M_CPU_NS_PRI RW_PROT>, <C_M_CPU_NS_USER RW_PROT>;
+			mlist5 = <C_M_DP_MCU RW_PROT>;
 			status = "disabled";
 		};
 
@@ -337,6 +341,13 @@
 			compatible = "aspeed,ast-watchdog-g7";
 			reg = <0x14c37000 0x80>;
 			reset-mask= <0x0203e779 0x000003f6 0x000093ec 0x00303803 0x00020000>;
+		};
+
+		prictrl1: prictrl@14100000 {
+			compatible = "aspeed,prictrl";
+			reg = <0x14100000 0x400>;
+			mlist0 = <IO_M_MCU0_D RW_PROT>;
+			status = "disabled";
 		};
 	};
 };
