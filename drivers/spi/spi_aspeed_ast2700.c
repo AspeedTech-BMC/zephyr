@@ -19,9 +19,15 @@ LOG_MODULE_REGISTER(spi_aspeed, CONFIG_SPI_LOG_LEVEL);
 #include <zephyr/sys/sys_io.h>
 #include <zephyr/sys/__assert.h>
 
+#if defined(CONFIG_SOC_AST2700_BOOTMCU)
 #define FMC_CTRL_BASE               (0x14000000)
 #define SPI0_CTRL_BASE              (0x14010000)
 #define SPI1_CTRL_BASE              (0x14020000)
+#else
+#define FMC_CTRL_BASE               (0x74000000)
+#define SPI0_CTRL_BASE              (0x74010000)
+#define SPI1_CTRL_BASE              (0x74020000)
+#endif
 
 #define SPI00_CE_TYPE_SETTING       (0x0000)
 #define SPI04_CE_CTRL               (0x0004)
@@ -599,23 +605,13 @@ static int aspeed_optimized_timing(uint8_t *buf, uint32_t len)
 
 static __aligned(4) uint8_t check_buf[SPI_CALIB_LEN * 2];
 
-static void aspeed_spi_calibriation_read(uint32_t ahb_addr, uint8_t *buf,
-					 uint32_t len)
+static bool aspeed_spi_check_reads(const struct device *dev,
+				   struct spi_nor_op_info op_info,
+				   uint8_t *buf, uint32_t len)
 {
-	uint32_t i;
-	uint32_t *ptr = (uint32_t *)buf;
-
-	for (i = 0; i < len; i += 4, ptr++)
-		*ptr = sys_read32(ahb_addr + i);
-}
-
-static bool aspeed_spi_check_reads(uint32_t ahb_addr, uint8_t *buf, uint32_t len)
-{
-	uint32_t i;
-	uint32_t *ptr = (uint32_t *)(buf + SPI_CALIB_LEN);
-
-	for (i = 0; i < len; i += 4, ptr++)
-		*ptr = sys_read32(ahb_addr + i);
+	op_info.buf = (void *)(buf + SPI_CALIB_LEN);
+	op_info.data_len = len;
+	aspeed_spi_nor_transceive_user(dev, NULL, op_info);
 
 	if (memcmp((void *)buf, (void *)(buf + SPI_CALIB_LEN),
 		   SPI_CALIB_LEN) != 0)
@@ -624,7 +620,8 @@ static bool aspeed_spi_check_reads(uint32_t ahb_addr, uint8_t *buf, uint32_t len
 	return true;
 }
 
-void aspeed_spi_timing_calibration(const struct device *dev)
+void aspeed_spi_timing_calibration(const struct device *dev,
+				   struct spi_nor_op_info op_info)
 {
 	struct aspeed_spi_data *data = dev->data;
 	const struct aspeed_spi_config *config = dev->config;
@@ -640,8 +637,6 @@ void aspeed_spi_timing_calibration(const struct device *dev)
 	uint32_t hdiv_reg;
 	bool pass;
 	int calib_point;
-	uint32_t calib_offset = data->decode_addr[cs].start +
-				config->timing_calibration_start_off;
 
 	LOG_DBG("device name: %s (%d)", dev->name, cs);
 
@@ -659,12 +654,15 @@ void aspeed_spi_timing_calibration(const struct device *dev)
 	 * use the related low frequency to get check calibration data
 	 * and get golden data.
 	 */
-	reg_val = sys_read32(ctrl_reg + SPI10_CE0_CTRL + cs * 4);
-	reg_val &= (~SPI_CTRL_FREQ_MASK);
-	sys_write32(reg_val, ctrl_reg + SPI10_CE0_CTRL + cs * 4);
+	data->cmd_mode[cs].user &= ~SPI_CTRL_FREQ_MASK;
 
 	memset(check_buf, 0x0, SPI_CALIB_LEN * 2);
-	aspeed_spi_calibriation_read(calib_offset, check_buf, SPI_CALIB_LEN);
+
+	op_info.data_direct = SPI_NOR_DATA_DIRECT_IN;
+	op_info.addr = config->timing_calibration_start_off;
+	op_info.buf = check_buf;
+	op_info.data_len = SPI_CALIB_LEN;
+	aspeed_spi_nor_transceive_user(dev, NULL, op_info);
 
 	if (!aspeed_spi_calibriation_enable(check_buf, SPI_CALIB_LEN)) {
 		LOG_INF("Flash data is monotonous, skip calibration.");
@@ -679,13 +677,11 @@ void aspeed_spi_timing_calibration(const struct device *dev)
 		}
 		max_freq = data->hclk / hdiv;
 
-		reg_val = sys_read32(ctrl_reg + SPI10_CE0_CTRL + cs * 4);
-		reg_val &= (~SPI_CTRL_FREQ_MASK);
-		reg_val |= aspeed_get_spi_freq_div(data->hclk, max_freq);
-		sys_write32(reg_val, ctrl_reg + SPI10_CE0_CTRL + cs * 4);
+		data->cmd_mode[cs].user &= ~SPI_CTRL_FREQ_MASK;
+		data->cmd_mode[cs].user |= aspeed_get_spi_freq_div(data->hclk, max_freq);
 
 		sys_write32(0x0, timing_reg);
-		pass = aspeed_spi_check_reads(calib_offset, check_buf, SPI_CALIB_LEN);
+		pass = aspeed_spi_check_reads(dev, op_info, check_buf, SPI_CALIB_LEN);
 		LOG_DBG("HCLK/%d, no timing compensation: %s", hdiv,
 			pass ? "PASS" : "FAIL");
 
@@ -697,8 +693,8 @@ void aspeed_spi_timing_calibration(const struct device *dev)
 				timing_val <<= (hdiv - 2) << 3;
 				sys_write32(timing_val, timing_reg);
 
-				pass = aspeed_spi_check_reads(calib_offset, check_buf,
-							      SPI_CALIB_LEN);
+				pass = aspeed_spi_check_reads(dev, op_info,
+							      check_buf, SPI_CALIB_LEN);
 				calib_res[hcycle * 17 + delay_ns] = pass;
 				LOG_DBG("HCLK/%d, %d HCLK cycle, %d delay_ns : %s",
 					hdiv, hcycle, delay_ns,
@@ -799,9 +795,15 @@ static int aspeed_spi_nor_transceive(const struct device *dev,
 	return ret;
 }
 
+#if defined(CONFIG_SOC_AST2700_BOOTMCU)
 #define FMC_PINCTRL_SCU_REG	0x14c02450
 #define SPI0_PINCTRL_SCU_REG	0x14c02434
 #define SPI1_PINCTRL_SCU_REG	0x14c02438
+#else
+#define FMC_PINCTRL_SCU_REG	0x74c02450
+#define SPI0_PINCTRL_SCU_REG	0x74c02434
+#define SPI1_PINCTRL_SCU_REG	0x74c02438
+#endif
 
 static void aspeed_spi_pinctrl_early_init(const struct device *dev)
 {
@@ -972,7 +974,7 @@ static int aspeed_spi_nor_read_init(const struct device *dev,
 	}
 
 	aspeed_spi_pinctrl_post_init(dev, JESD216_GET_DATA_BUSWIDTH(op_info.mode));
-	aspeed_spi_timing_calibration(dev);
+	aspeed_spi_timing_calibration(dev, op_info);
 
 end:
 	spi_context_release(ctx, ret);
