@@ -76,14 +76,22 @@ uintptr_t ast27xx_soc_phy_addr_to_virt_addr(uint64_t addr)
 #if defined(CONFIG_SOC_AST2700_SSP) || defined(CONFIG_SOC_AST2700_A1_SSP)
 uint64_t ast27xx_soc_virt_addr_to_phy_addr(uintptr_t addr)
 {
-	uintptr_t base = sys_read32(SCU0_REG + 0x150);
-	uintptr_t limit = base + sys_read32(SCU0_REG + 0x154);
+	uintptr_t base;
+	uintptr_t limit;
 	uint64_t phy_dram_base;
 
 	if (addr >= 0x70000000 && addr < 0x70020000)
 		return addr;
 
+	/* ssp tcm remap region */
+	base = sys_read32(SCU0_REG + 0x140);
+	limit = base + sys_read32(SCU0_REG + 0x144);
+	if (addr >= base && addr < limit)
+		return 0x10800000 + addr - base;
+
 	/* addr is in MBUS remap region */
+	base = sys_read32(SCU0_REG + 0x150);
+	limit = base + sys_read32(SCU0_REG + 0x154);
 	if (addr >= base && addr < limit) {
 		phy_dram_base = (uint64_t)sys_read32(SCU0_REG + 0x128) << 4;
 		goto out;
