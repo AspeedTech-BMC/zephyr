@@ -749,18 +749,14 @@ no_calib:
 }
 
 #ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
-static bool aspeed_spi_ram_region(uintptr_t virt_addr)
+static bool aspeed_spi_dram_region(uintptr_t virt_addr)
 {
-#if defined(CONFIG_SOC_AST2700_BOOTMCU)
 	uint64_t phy_addr = ast27xx_soc_virt_addr_to_phy_addr(virt_addr);
 
 	if (phy_addr >= ASPEED_DRAM_PHY_BASE)
 		return true;
 
 	return false;
-#else
-	return true;
-#endif
 }
 #endif
 
@@ -780,7 +776,7 @@ static int aspeed_spi_nor_transceive(const struct device *dev,
 #ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
 	uintptr_t buf_addr = (uintptr_t)(&((uint8_t *)op_info.buf)[0]);
 	if (op_info.data_direct == SPI_NOR_DATA_DIRECT_IN) {
-		if (aspeed_spi_ram_region(buf_addr) &&
+		if (aspeed_spi_dram_region(buf_addr) &&
 		    !config->pure_spi_mode_only &&
 		    op_info.data_len > SPI_DMA_TRIGGER_LEN &&
 		    (op_info.addr % 4) == 0 &&
