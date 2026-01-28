@@ -104,6 +104,42 @@
 			<MPU_ID_SLIM S_READWRITE>;
 		status = "okay";
 	};
+
+	prictrl_bootmcu: prictrl-bootmcu {
+		compatible = "aspeed,prictrl-prot";
+		protect-dev = <IO_S_I_PRICTRL WRITE_PROT>, <C_S_C_PRICTRL WRITE_PROT>;
+		status = "okay";
+	};
+
+	prictrl_ssp: prictrl-ssp {
+		compatible = "aspeed,prictrl-prot";
+		protect-dev = <>;
+		status = "okay";
+	};
+
+	prictrl_tsp: prictrl-tsp {
+		compatible = "aspeed,prictrl-prot";
+		protect-dev = <>;
+		status = "okay";
+	};
+
+	prictrl_s_ca35: prictrl-secure-ca35 {
+		compatible = "aspeed,prictrl-prot";
+		protect-dev = <>;
+		status = "okay";
+	};
+
+	prictrl_ns_ca35: prictrl-non-secure-ca35 {
+		compatible = "aspeed,prictrl-prot";
+		protect-dev = <>;
+		status = "okay";
+	};
+
+	prictrl_dp: prictrl-dp {
+		compatible = "aspeed,prictrl-prot";
+		protect-dev = <>;
+		status = "okay";
+	};
 };
 
 &sdrammc {
@@ -119,6 +155,26 @@
 	//ecc-size = <0x35500000>; /* 853MB */
 
 	mpus = <&ca35_s>, <&ssp>, <&tsp>, <&share_1>, <&share_2>, <&share_3>, <&vb>;
+};
+
+&prictrl0 {
+	clist0 = <&prictrl_bootmcu>;
+	clist1 = <&prictrl_ssp>;
+	clist2 = <&prictrl_tsp>;
+	clist3 = <&prictrl_s_ca35>;
+	clist4 = <&prictrl_ns_ca35>;
+	clist5 = <&prictrl_dp>;
+	status = "okay";
+};
+
+&prictrl1 {
+	clist0 = <&prictrl_bootmcu>;
+	clist1 = <&prictrl_ssp>;
+	clist2 = <&prictrl_tsp>;
+	clist3 = <&prictrl_s_ca35>;
+	clist4 = <&prictrl_ns_ca35>;
+	clist5 = <&prictrl_dp>;
+	status = "okay";
 };
 
 &ufs {
