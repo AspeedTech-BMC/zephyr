@@ -135,7 +135,7 @@ static int wait_complete(const struct device *dev)
 
 	do {
 		val = sys_read32(cfg->base + OTP_STATUS);
-		k_usleep(10);
+		k_busy_wait(10);
 	} while (val != 0x0);
 
 	return 0;
