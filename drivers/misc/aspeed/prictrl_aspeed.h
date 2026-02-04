@@ -11,7 +11,7 @@
 
 /* Privilege control dts parser */
 #define PRICTRL_DTS(_n)              DT_DRV_INST(_n)
-#define PRICTRL_DTS_PH(_n, _phandle) DT_PHANDLE(DT_DRV_INST(_n), _phandle)
+#define PRICTRL_PROT_DTS(_node)      DT_NODELABEL(_node)
 #define PRICTRL_DTS_ARRAY(_type, _grp, _node, _prop)                                               \
 	{                                                                                          \
 		_type, _grp, DT_PROP_LEN(_node, _prop), (uint16_t[])DT_PROP(_node, _prop)          \

@@ -320,12 +320,12 @@ static struct prictrl_dev_list prictrl_master_1[] = {
 };
 
 static struct prictrl_dev_list prictrl_client[] = {
-	PRICTRL_DTS_CLIENT(BOOT_MCU_GROUP, PRICTRL_DTS_PH(0, clist0), protect_dev),
-	PRICTRL_DTS_CLIENT(SSP_GROUP, PRICTRL_DTS_PH(0, clist1), protect_dev),
-	PRICTRL_DTS_CLIENT(TSP_GROUP, PRICTRL_DTS_PH(0, clist2), protect_dev),
-	PRICTRL_DTS_CLIENT(S_CA35_GROUP, PRICTRL_DTS_PH(0, clist3), protect_dev),
-	PRICTRL_DTS_CLIENT(NS_CA35_GROUP, PRICTRL_DTS_PH(0, clist4), protect_dev),
-	PRICTRL_DTS_CLIENT(DP_MCU_GROUP, PRICTRL_DTS_PH(0, clist5), protect_dev),
+	PRICTRL_DTS_CLIENT(BOOT_MCU_GROUP, PRICTRL_PROT_DTS(prictrl_bootmcu), protect_dev),
+	PRICTRL_DTS_CLIENT(SSP_GROUP, PRICTRL_PROT_DTS(prictrl_ssp), protect_dev),
+	PRICTRL_DTS_CLIENT(TSP_GROUP, PRICTRL_PROT_DTS(prictrl_tsp), protect_dev),
+	PRICTRL_DTS_CLIENT(S_CA35_GROUP, PRICTRL_PROT_DTS(prictrl_s_ca35), protect_dev),
+	PRICTRL_DTS_CLIENT(NS_CA35_GROUP, PRICTRL_PROT_DTS(prictrl_ns_ca35), protect_dev),
+	PRICTRL_DTS_CLIENT(DP_MCU_GROUP, PRICTRL_PROT_DTS(prictrl_dp), protect_dev),
 };
 
 #define PRICTRL_ASPEED_INIT(_n)                                                                    \

@@ -158,22 +158,10 @@
 };
 
 &prictrl0 {
-	clist0 = <&prictrl_bootmcu>;
-	clist1 = <&prictrl_ssp>;
-	clist2 = <&prictrl_tsp>;
-	clist3 = <&prictrl_s_ca35>;
-	clist4 = <&prictrl_ns_ca35>;
-	clist5 = <&prictrl_dp>;
 	status = "okay";
 };
 
 &prictrl1 {
-	clist0 = <&prictrl_bootmcu>;
-	clist1 = <&prictrl_ssp>;
-	clist2 = <&prictrl_tsp>;
-	clist3 = <&prictrl_s_ca35>;
-	clist4 = <&prictrl_ns_ca35>;
-	clist5 = <&prictrl_dp>;
 	status = "okay";
 };
 
