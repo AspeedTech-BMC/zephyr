@@ -90,7 +90,7 @@
 		prictrl0: prictrl@12140000 {
 			compatible = "aspeed,prictrl";
 			reg = <0x12140000 0x400>;
-			mlist1 = <C_M_SSP_D_USER RW_PROT>, <C_M_SSP_D_PRI RW_PROT>;
+			mlist1 = <C_M_SSP_S_USER RW_PROT>, <C_M_SSP_S_PRI RW_PROT>;
 			mlist2 = <C_M_TSP_S_USER RW_PROT>, <C_M_TSP_S_PRI RW_PROT>;
 			mlist3 = <C_M_CPU_S_PRI RW_PROT>, <C_M_CPU_S_USER RW_PROT>;
 			mlist4 = <C_M_CPU_NS_PRI RW_PROT>, <C_M_CPU_NS_USER RW_PROT>;
