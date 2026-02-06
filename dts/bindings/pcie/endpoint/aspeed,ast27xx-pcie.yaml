@@ -37,3 +37,10 @@ properties:
     description: |
       Specifies which interrupt mode this device supports.
       If absent, then XHCI will be disabled.
+
+  alt-pcie-node:
+    type: boolean
+    description: |
+      Indicates that the EHCI/XHCI nodes should be relocated to the alternative PCIe controller.
+      In this configuration, the VGA and BMC Device functions on PCIe1 are disabled.
+      This property is valid only for the PCIe1 controller.
