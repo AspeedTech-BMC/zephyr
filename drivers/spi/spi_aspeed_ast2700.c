@@ -95,6 +95,7 @@ LOG_MODULE_REGISTER(spi_aspeed, CONFIG_SPI_LOG_LEVEL);
 #define ASPEED_SPI_USER_INACTIVE    BIT(2)
 
 #define ASPEED_SPI_SZ_16M           0x1000000
+#define ASPEED_SPI_SZ_64M           0x4000000
 #define ASPEED_SPI_SZ_768M          0x30000000
 
 #define ASPEED_DRAM_PHY_BASE        0x400000000
@@ -1025,7 +1026,7 @@ void aspeed_decode_range_pre_init(const struct aspeed_spi_config *config,
 				  struct aspeed_spi_data *data)
 {
 	uint32_t cs;
-	uint32_t unit_sz = ASPEED_SPI_SZ_16M; /* init 256M for each cs */
+	uint32_t unit_sz = ASPEED_SPI_SZ_64M;
 	uint32_t start_addr, end_addr, pre_end_addr = 0;
 	uint32_t max_cs = config->max_cs;
 
