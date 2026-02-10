@@ -32,4 +32,104 @@
 		ball = <AE17>;
 		sig_descs = <SIG_DESC(0x41c, 4, 1)>;
 	};
+	/omit-if-no-ref/ pin_fwspidq2: pin_fwspidq2 {
+		ball = <M16>;
+		sig_descs = <SIG_DESC(0x450, 24, 1)>;
+	};
+	/omit-if-no-ref/ pin_fwspidq3: pin_fwspidq3 {
+		ball = <A15>;
+		sig_descs = <SIG_DESC(0x450, 28, 1)>;
+	};
+	/omit-if-no-ref/ pin_spi0ck: pin_spi0ck {
+		ball = <D24>;
+		sig_descs = <SIG_DESC(0x434, 0, 1)>;
+	};
+	/omit-if-no-ref/ pin_spi0mosi: pin_spi0mosi {
+		ball = <B23>;
+		sig_descs = <SIG_DESC(0x434, 4, 1)>;
+	};
+	/omit-if-no-ref/ pin_spi0miso: pin_spi0miso {
+		ball = <B22>;
+		sig_descs = <SIG_DESC(0x434, 8, 1)>;
+	};
+	/omit-if-no-ref/ pin_spi0dq2: pin_spi0dq2 {
+		ball = <C23>;
+		sig_descs = <SIG_DESC(0x434, 12, 1)>;
+	};
+	/omit-if-no-ref/ pin_spi0dq3: pin_spi0dq3 {
+		ball = <B18>;
+		sig_descs = <SIG_DESC(0x434, 16, 1)>;
+	};
+	/omit-if-no-ref/ pin_spi0cs1: pin_spi0cs1 {
+		ball = <B21>;
+		sig_descs = <SIG_DESC(0x434, 20, 1)>;
+	};
+	/omit-if-no-ref/ pin_spi0abr: pin_spi0abr {
+		ball = <M15>;
+		sig_descs = <SIG_DESC(0x434, 24, 1)>;
+	};
+	/omit-if-no-ref/ pin_spi0wpn: pin_spi0wpn {
+		ball = <B19>;
+		sig_descs = <SIG_DESC(0x434, 28, 1)>;
+	};
+	/omit-if-no-ref/ pin_spi1ck: pin_spi1ck {
+		ball = <B26>;
+		sig_descs = <SIG_DESC(0x438, 0, 1)>;
+	};
+	/omit-if-no-ref/ pin_spi1mosi: pin_spi1mosi {
+		ball = <A25>;
+		sig_descs = <SIG_DESC(0x438, 4, 1)>;
+	};
+	/omit-if-no-ref/ pin_spi1miso: pin_spi1miso {
+		ball = <A24>;
+		sig_descs = <SIG_DESC(0x438, 8, 1)>;
+	};
+	/omit-if-no-ref/ pin_spi1dq2: pin_spi1dq2 {
+		ball = <B24>;
+		sig_descs = <SIG_DESC(0x438, 12, 1)>;
+	};
+	/omit-if-no-ref/ pin_spi1dq3: pin_spi1dq3 {
+		ball = <E26>;
+		sig_descs = <SIG_DESC(0x438, 16, 1)>;
+	};
+	/omit-if-no-ref/ pin_spi1cs1: pin_spi1cs1 {
+		ball = <A21>;
+		sig_descs = <SIG_DESC(0x438, 20, 1)>;
+	};
+	/omit-if-no-ref/ pin_spi1abr: pin_spi1abr {
+		ball = <A19>;
+		sig_descs = <SIG_DESC(0x438, 24, 1)>;
+	};
+	/omit-if-no-ref/ pin_spi1wpn: pin_spi1wpn {
+		ball = <A18>;
+		sig_descs = <SIG_DESC(0x438, 28, 1)>;
+	};
+	/omit-if-no-ref/ pin_spi2cs1: pin_spi2cs0 {
+		ball = <D26>;
+		sig_descs = <SIG_DESC(0x43c, 0, 1)>;
+	};
+	/omit-if-no-ref/ pin_spi2ck: pin_spi2ck {
+		ball = <C26>;
+		sig_descs = <SIG_DESC(0x43c, 4, 1)>;
+	};
+	/omit-if-no-ref/ pin_spi2mosi: pin_spi2mosi {
+		ball = <A23>;
+		sig_descs = <SIG_DESC(0x43c, 8, 1)>;
+	};
+	/omit-if-no-ref/ pin_spi2miso: pin_spi2miso {
+		ball = <A22>;
+		sig_descs = <SIG_DESC(0x43c, 12, 1)>;
+	};
+	/omit-if-no-ref/ pin_spi2dq2: pin_spi2dq2 {
+		ball = <B25>;
+		sig_descs = <SIG_DESC(0x43c, 16, 1)>;
+	};
+	/omit-if-no-ref/ pin_spi2dq3: pin_spi2dq3 {
+		ball = <F26>;
+		sig_descs = <SIG_DESC(0x43c, 20, 1)>;
+	};
+	/omit-if-no-ref/ pin_spi2cs1: pin_spi2cs1 {
+		ball = <A26>;
+		sig_descs = <SIG_DESC(0x43c, 24, 1)>;
+	};
 };
