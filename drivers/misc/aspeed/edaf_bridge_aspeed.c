@@ -25,6 +25,9 @@ LOG_MODULE_REGISTER(edaf_aspeed);
 #define ESPI_CHN3_CTL      0x400
 #define ESPI_CHN3_SW_READY BIT(5)
 
+#define ESPI_CHN3_FILTER_CTL 0x500
+#define ESPI_CHN3_FILTER_SAFS_SIZE GENMASK(24, 16)
+
 #define EDAF_BDGE_CFG           0x0
 #define EDAF_BDGE_CFG_CMD_EN    BIT(0)
 #define EDAF_BDGE_CBASE         0x20
@@ -197,8 +200,12 @@ static int aspeed_edaf_bridge_init(const struct device *dev)
 	/* Mark eSPI channel 3 as ready if espi-base provided */
 	if (cfg->espi_base_valid) {
 		mm_reg_t espi_regs = (mm_reg_t)ast27xx_soc_phy_addr_to_virt_addr(cfg->espi_base);
-		uint32_t espi = sys_read32(espi_regs + ESPI_CHN3_CTL);
+		uint32_t espi = sys_read32(espi_regs + ESPI_CHN3_FILTER_CTL);
 
+		espi &= ~ESPI_CHN3_FILTER_SAFS_SIZE;
+		sys_write32(espi, espi_regs + ESPI_CHN3_FILTER_CTL);
+
+		espi = sys_read32(espi_regs + ESPI_CHN3_CTL);
 		espi |= ESPI_CHN3_SW_READY;
 		sys_write32(espi, espi_regs + ESPI_CHN3_CTL);
 	}
