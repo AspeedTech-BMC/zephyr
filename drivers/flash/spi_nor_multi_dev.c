@@ -404,10 +404,14 @@ static int spi_nor_wait_until_ready(const struct device *dev)
 	struct spi_nor_op_info op_info =
 		SPI_NOR_OP_INFO(JESD216_MODE_111, SPI_NOR_CMD_RDSR,
 			0, 0, 0, &reg, sizeof(reg), SPI_NOR_DATA_DIRECT_IN);
-	do {
+
+	while (1) {
 		ret = spi_nor_op_exec(dev, op_info);
+		if (ret || !(reg & SPI_NOR_WIP_BIT))
+			break;
+
 		k_usleep(1);
-	} while (!ret && (reg & SPI_NOR_WIP_BIT));
+	}
 
 	return ret;
 }
