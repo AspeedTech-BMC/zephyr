@@ -14,6 +14,7 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/irq.h>
 #include <zephyr/sw_isr_table.h>
+#include <zephyr/devicetree/interrupt_controller.h>
 
 #define LOG_LEVEL CONFIG_INTC_LOG_LEVEL
 LOG_MODULE_REGISTER(intc_ast2700_ic, LOG_LEVEL_ERR);
@@ -183,6 +184,30 @@ static const struct intc_driver_api intc_ast2700_driver_api = {
 	.irq_enabled = intc_ast2700_irq_is_enabled,
 };
 
+/**
+ * @brief Calculate the base offset in _sw_isr_table for a given INTC instance.
+ *
+ * In Zephyr's multi-level interrupt architecture:
+ * - A 1st level aggregator (DT_INST_IRQ_LEVEL == 1) handles 2nd level IRQs.
+ *   Its base offset starts at CONFIG_2ND_LVL_ISR_TBL_OFFSET.
+ * - A 2nd level aggregator (DT_INST_IRQ_LEVEL == 2) handles 3rd level IRQs.
+ *   Its base offset starts at CONFIG_3RD_LVL_ISR_TBL_OFFSET.
+ *
+ * Example: intc1_3 (a Level 2 aggregator node in DTS)
+ * - parent: intc0_11 (Level 1 aggregator)
+ * - interrupts = <3 ...>; (connected to bit 3 of its parent)
+ * - DT_INST_IRQ_LEVEL(n) = 2 (indicates it is a 2nd level aggregator)
+ * - INTC_BASE_ISR_TBL_OFFSET = 224 (CONFIG_3RD_LVL_ISR_TBL_OFFSET, UTIL_INC(2) = 3)
+ * - Calculation: 224 + (3 * 32) = 320
+ *
+ * Result: All IRQs managed by intc1_3 will have their ISRs stored starting
+ *         from _sw_isr_table[320].
+ */
+#define ASPEED_INTC_OFFSET(n)                                                                      \
+	(INTC_BASE_ISR_TBL_OFFSET(DT_DRV_INST(n)) +                                                \
+	 (DT_INST_IRQ_LEVEL(n) == 1 ? 0 : DT_INST_IRQ_BY_IDX(n, 0, irq)) *                         \
+	 CONFIG_MAX_IRQ_PER_AGGREGATOR)
+
 #define INTC_AST2700_IRQ_CONNECT(index, inst)                                                      \
 	do {                                                                                       \
 		IRQ_CONNECT(DT_INST_IRQN_BY_IDX(inst, index),                                      \
@@ -202,6 +227,8 @@ static const struct intc_driver_api intc_ast2700_driver_api = {
 	DEVICE_DT_INST_DEFINE(n, &intc_ast2700_config_func_##n, NULL, NULL,                        \
 			      &intc_ast2700_config_##n, PRE_KERNEL_1, CONFIG_INTC_INIT_PRIORITY,   \
 			      &intc_ast2700_driver_api);                                           \
+	IRQ_PARENT_ENTRY_DEFINE(ast2700_intc_##n, DEVICE_DT_INST_GET(n), DT_INST_IRQN(n),          \
+				ASPEED_INTC_OFFSET(n), DT_INST_INTC_GET_AGGREGATOR_LEVEL(n));      \
 	static int intc_ast2700_config_func_##n(const struct device *dev)                          \
 	{                                                                                          \
 		intc_ast2700_init(dev);                                                            \
