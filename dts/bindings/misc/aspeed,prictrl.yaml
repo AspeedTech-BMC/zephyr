@@ -44,38 +44,3 @@ properties:
     description: |
       Program group 5 master list, the default master is dp mcu.
 
-  clist0:
-    type: phandle
-    required: false
-    description: |
-      Program boot mcu accesses client list.
-
-  clist1:
-    type: phandle
-    required: false
-    description: |
-      Program ssp accesses client list.
-
-  clist2:
-    type: phandle
-    required: false
-    description: |
-      Program tsp accesses client list.
-
-  clist3:
-    type: phandle
-    required: false
-    description: |
-      Program secure ca35 accesses client list.
-
-  clist4:
-    type: phandle
-    required: false
-    description: |
-      Program non-secure ca35 accesses client list.
-
-  clist5:
-    type: phandle
-    required: false
-    description: |
-      Program dp mcu accesses client list.
