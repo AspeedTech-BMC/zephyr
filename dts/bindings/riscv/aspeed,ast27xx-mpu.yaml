@@ -33,3 +33,11 @@ properties:
     type: array
     required: true
     description: Flattened list of <MPU_ID, permission> pairs
+
+child-binding:
+  description: Protection level definition
+  properties:
+    allow:
+      type: array
+      required: false
+      description: List of allowed MPU IDs for this protection level

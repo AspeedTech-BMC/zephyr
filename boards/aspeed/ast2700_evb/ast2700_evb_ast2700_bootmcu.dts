@@ -42,6 +42,11 @@
 		allow = <MPU_ID_SSP_INST S_READONLY>,
 			<MPU_ID_SSP_DATA S_READWRITE>,
 			<MPU_ID_SLIM S_READWRITE>;
+
+		sli_port {
+			allow = <MPU_ID_BOOTMCU S_READWRITE>;
+		};
+
 		status = "okay";
 	};
 
