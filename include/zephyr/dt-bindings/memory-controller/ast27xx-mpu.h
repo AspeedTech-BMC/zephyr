@@ -83,11 +83,8 @@
 #define MPU_ID_USB2UARTB	(0x201B)
 
 /* port sli */
-#define MPU_ID_I2C		(0x4000)
-#define MPU_ID_I2C_FILTER	(0x4001)
 #define MPU_ID_SDIO		(0x4002)
 #define MPU_ID_SPI_FILTER	(0x4003)
-#define MPU_ID_ACE		(0x4004)
 #define MPU_ID_UHCI_IO		(0x4005)
 #define MPU_ID_E2M_IO		(0x4006)
 #define MPU_ID_H2M1		(0x4007)

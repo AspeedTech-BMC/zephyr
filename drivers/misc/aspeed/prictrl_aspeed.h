@@ -18,10 +18,30 @@
 	}
 #define PRICTRL_DTS_MASTER(_grp, _node, _prop) PRICTRL_DTS_ARRAY(PRICTRL_MASTER, _grp, _node, _prop)
 #define PRICTRL_DTS_CLIENT(_grp, _node, _prop) PRICTRL_DTS_ARRAY(PRICTRL_CLIENT, _grp, _node, _prop)
+#define PRICTRL_DTS_MPU_ALLOW(_node_id)                                                            \
+	COND_CODE_1(DT_NODE_HAS_PROP(_node_id, allow), ((uint16_t[])DT_PROP(_node_id, allow)),     \
+		    (NULL))
+#define PRICTRL_DTS_MPU(_node_id, _prop, _idx)                                                     \
+	{                                                                                          \
+		DT_PROP_BY_PHANDLE_IDX(_node_id, _prop, _idx, protect_start),                      \
+		DT_PROP_BY_PHANDLE_IDX(_node_id, _prop, _idx, protect_end),                        \
+		DT_PROP_LEN_OR(DT_PHANDLE_BY_IDX(_node_id, _prop, _idx), allow, 0),                \
+		PRICTRL_DTS_MPU_ALLOW(DT_PHANDLE_BY_IDX(_node_id, _prop, _idx)),                   \
+		DT_PROP_LEN_OR(DT_CHILD(DT_PHANDLE_BY_IDX(_node_id, _prop, _idx), _PRICTRL_LEVEL), \
+			       allow, 0),                                                          \
+		PRICTRL_DTS_MPU_ALLOW(                                                             \
+			DT_CHILD(DT_PHANDLE_BY_IDX(_node_id, _prop, _idx), _PRICTRL_LEVEL)),       \
+	},
 
 /* Privilege control register definition */
 #define PRICTRL_READ_OFFSET          (0x100)
 #define PRICTRL_CLIENT_OFFSET        (0x200)
+#define PRICTRL_MPU_H2M_OFFSET       (0x400)
+#define PRICTRL_MPU_SLI_OFFSET       (0x500)
+#define PRICTRL_MPU_S_GRP_OFFSET     (0x000)
+#define PRICTRL_MPU_E_GRP_OFFSET     (0x004)
+#define PRICTRL_MPU_WPERM_OFFSET     (0x008)
+#define PRICTRL_MPU_RPERM_OFFSET     (0x00C)
 
 /* Privilege control register attribute definition */
 #define PRICTRL_FIELD_SIZE_IN_BITS    (8)
@@ -66,6 +86,23 @@
 
 #define PRICTRL_SHIFT_FIELD(_value, _field) ((_value) << ((_field) * PRICTRL_FIELD_SIZE_IN_BITS))
 
+/* Privilege control mpu hardware definition */
+#define PRICTRL_MPU_ADDR_ALIGN     (12)
+#define PRICTRL_MPU_BANK            (4)
+#define PRICTRL_MPU_MAX_NUM         (4)
+#define PRICTRL_MPU_SLI_NUM         (1)
+#define PRICTRL_MPU_ADDR_ALIGN_MASK (BIT(PRICTRL_MPU_ADDR_ALIGN) - 1)
+#define PRICTRL_MPU_DEFAULT_GRP     GENMASK(7, 2)
+#define PRICTRL_MPU_ADDR(_addr)     (((_addr) >> PRICTRL_MPU_ADDR_ALIGN) << 8)
+#define PRICTRL_MPU_RESET           BIT(1)
+#define PRICTRL_MPU_ENABLE          BIT(0)
+#define PRICTRL_MPU_LOCK            BIT(0)
+
+/* Privilege control mpu software definition */
+#define PRICTRL_MPU_H2M0_MASK BIT(12)
+#define PRICTRL_MPU_H2M1_MASK BIT(13)
+#define PRICTRL_MPU_SLI_MASK  BIT(14)
+
 /* Privilege control structure */
 enum prictrl_rw {
 	PRICTRL_WRITE = 0,
@@ -97,6 +134,20 @@ struct prictrl_dev_list {
 	uint8_t group;
 	uint8_t device_num;
 	uint16_t *device;
+};
+
+struct prictrl_mpu_cfg {
+	/* Region start and end address */
+	uintptr_t start;
+	uintptr_t end;
+
+	/* Level1 mpu config, dramc protection is level1 mpu. */
+	uint8_t l1_num;
+	uint16_t *l1_dev;
+
+	/* Level2 mpu config, sli/h2m protection is level2 mpu. */
+	uint8_t l2_num;
+	uint16_t *l2_dev;
 };
 
 struct prictrl_aspeed_config {
