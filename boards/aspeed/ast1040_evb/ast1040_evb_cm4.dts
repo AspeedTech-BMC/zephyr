@@ -8,8 +8,8 @@
 #include <arm/aspeed/ast1040.dtsi>
 
 / {
-	model = "Aspeed AST1040 FPGA board";
-	compatible = "aspeed,ast1040-fpga";
+	model = "Aspeed AST1040 Evaluation board";
+	compatible = "aspeed,ast1040-evb";
 
 	chosen {
 		zephyr,console = &uart12;
