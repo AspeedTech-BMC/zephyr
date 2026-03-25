@@ -1,0 +1,87 @@
+/*
+ * Copyright (c) 2024 Aspeed Technology Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+
+#include <aspeed/ast1040.dtsi>
+
+/ {
+	model = "AST1040 AST1040-BOOTMCU";
+	compatible = "aspeed,ast1040-haps-1040-bootmcu";
+	#address-cells = <1>;
+	#size-cells = <1>;
+
+	chosen {
+		zephyr,sram = &sram;
+		zephyr,entropy = &rng;
+	};
+
+	aliases {
+		systick = &systick;
+	};
+
+	sram: memory@f0000000 {
+		reg = <0x14b80000 0x2ee00>;
+	};
+};
+
+&uart12 {
+	status = "okay";
+	clock-frequency = <1846153>;
+	current-speed = <115200>;
+};
+
+&dram_ro_region {
+	reg = <0x0 DT_SIZE_K(128)>;
+};
+
+#if 0
+&ipc1_s_ca35 {
+	status = "okay";
+};
+
+&ipc1_ns_ca35 {
+	status = "okay";
+};
+
+&ipc1_ssp {
+	status = "okay";
+};
+
+&ipc1_tsp {
+	status = "okay";
+};
+#endif
+
+#if 1
+&cptra_ecdsa {
+	status = "okay";
+};
+
+&cptra_sha {
+	status = "okay";
+};
+
+&cptra_lms {
+	status = "okay";
+};
+
+&cptra_update {
+	status = "okay";
+};
+
+&cptra_dice {
+	status = "okay";
+};
+
+&cptra_misc {
+	status = "okay";
+};
+
+&fmc {
+	timing-calibration-disabled;
+};
+#endif

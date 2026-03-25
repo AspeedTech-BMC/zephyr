@@ -1,0 +1,12 @@
+# Copyright (c) 2025 Aspeed Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+identifier: ast1040_haps/ast1040/bootmcu
+name: Aspeed AST1040 BootMCU on HAPS FPGA
+type: mcu
+arch: riscv32
+toolchain:
+  - zephyr
+ram: 2048
+supported:
+  - serial

@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Aspeed AST1040 evaluation board configuration
+#
+# Copyright (c) 2023 Aspeed Technology Inc.
+
+config BOARD_AST1040_HAPS
+	select SOC_AST1040_CM4 if BOARD_AST1040_HAPS_AST1040_CM4
+	select SOC_AST1040_BOOTMCU if BOARD_AST1040_HAPS_AST1040_BOOTMCU
+
+config ASPEED_FPGA
+	bool "ASPEED FPGA support"
+	default n
+	help
+	  Enable support for ASPEED FPGA devices.
+
+config ASPEED_HAPS
+	bool "ASPEED HAPS support"
+	default n
+	help
+	  Enable support for ASPEED HAPS devices.

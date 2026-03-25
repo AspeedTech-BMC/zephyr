@@ -1,0 +1,51 @@
+/*
+ * Copyright (c) 2024 Aspeed Technology Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+#include <arm/aspeed/ast1040.dtsi>
+
+/ {
+	model = "Aspeed AST1040 FPGA board";
+	compatible = "aspeed,ast1040-fpga";
+
+	chosen {
+		zephyr,console = &uart12;
+		zephyr,shell-uart = &uart12;
+		zephyr,flash = &dram_ro_region;
+		zephyr,sram = &sram;
+	};
+
+	dram_rw_region: memory@20000 {
+		device_type = "memory";
+		reg = <0x20000 DT_SIZE_K(128)>;
+	};
+
+	sram1: memory@60000 {
+		compatible = "zephyr,memory-region", "mmio-sram";
+		device_type = "memory";
+		reg = <0x60000 DT_SIZE_K(128)>;
+		zephyr,memory-region = "RAM_NC";
+	};
+
+	sram: memory@40000 {
+		device_type = "memory";
+		reg = <0x40000 DT_SIZE_K(128)>;
+	};
+};
+
+&uart12 {
+	clock-frequency = <1846153>;
+	current-speed = <115200>;
+	status = "okay";
+};
+
+&dram_ro_region {
+	reg = <0x0 DT_SIZE_K(128)>;
+};
+
+&nvic {
+	arm,num-irq-priority-bits = <3>;
+};
