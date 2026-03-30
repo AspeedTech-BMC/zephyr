@@ -9,6 +9,10 @@
 
 #include <stdint.h>
 
+#define OTP_AST2700_A0			0
+#define OTP_AST2700_A1			1
+#define OTP_AST2700_A2			2
+
 int otp_read_rom(uint32_t offset, uint16_t *data);
 int otp_read_rbp(uint32_t offset, uint16_t *data);
 int otp_read_conf(uint32_t offset, uint16_t *data);

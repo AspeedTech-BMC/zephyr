@@ -991,20 +991,6 @@ static int aspeed_otp_set_soak(const struct device *dev, int soak)
 	return 0;
 }
 
-static int aspeed_otp_get_chip_rid(const struct device *dev,
-				   uint32_t *revid)
-{
-	ARG_UNUSED(dev);
-
-	if (!revid)
-		return OTP_INVALID_PARAM;
-
-	revid[0] = sys_read32(ASPEED_REVISION_ID0);
-	revid[1] = sys_read32(ASPEED_REVISION_ID1);
-
-	return 0;
-}
-
 static int aspeed_otp_get_key_num(const struct device *dev,
 				  uint32_t *key_num)
 {
@@ -1499,7 +1485,6 @@ static struct otp_driver_api otp_funcs = {
 	.get_tool_ver = aspeed_otp_get_tool_ver,
 	.get_sw_rid = aspeed_otp_get_sw_rid,
 	.get_key_num = aspeed_otp_get_key_num,
-	.get_chip_rid = aspeed_otp_get_chip_rid,
 
 	.set_soak = aspeed_otp_set_soak,
 

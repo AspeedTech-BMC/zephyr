@@ -34,7 +34,7 @@ __subsystem struct otp_driver_api {
 	int (*get_key_num)(const struct device *dev, uint32_t *key_num);
 
 	/* Get SoC chip revision ID */
-	int (*get_chip_rid)(const struct device *dev, uint32_t *revid);
+	int (*get_chip_version)(const struct device *dev, uint32_t *chip_version);
 
 	/* Set OTP soak */
 	int (*set_soak)(const struct device *dev, int soak);
@@ -144,20 +144,20 @@ static inline int otp_get_key_num(const struct device *dev, uint32_t *key_num)
 }
 
 /**
- * @brief Perform chip revision id get
+ * @brief Perform chip version get
  *
  * @param  dev           Pointer to the device structure for the driver instance.
- * @param  revid         Pointer to SoC chip revision id.
+ * @param  chip_version  SoC chip version.
  *
  * @return 0 on success, negative errno code on fail.
  */
-static inline int otp_get_chip_rid(const struct device *dev, uint32_t *revid)
+static inline int otp_get_chip_version(const struct device *dev, uint32_t *chip_version)
 {
 	struct otp_driver_api *api;
 
 	api = (struct otp_driver_api *)dev->api;
 
-	return api->get_chip_rid(dev, revid);
+	return api->get_chip_version(dev, chip_version);
 }
 
 /**

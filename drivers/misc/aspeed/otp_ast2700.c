@@ -4,6 +4,7 @@
  * Copyright (c) 2025 ASPEED Technology Inc.
  */
 
+#include <stdint.h>
 #define DT_DRV_COMPAT		aspeed_ast27xx_otp
 
 #include <soc.h>
@@ -91,6 +92,22 @@ LOG_MODULE_REGISTER(otp_ast2700, CONFIG_LOG_DEFAULT_LEVEL);
 
 #define SCU1_ROM_PATCH_OFFSET		0x180
 
+#define ID0_AST2700A0			0x06000003
+#define ID1_AST2700A0			0x06000003
+#define ID0_AST2750A1			0x06010003
+#define ID1_AST2750A1			0x06010003
+#define ID0_AST2700A1			0x06010103
+#define ID1_AST2700A1			0x06010103
+#define ID0_AST2750A2			0x06020003
+#define ID1_AST2750A2			0x06020003
+#define ID0_AST2700A2			0x06020103
+#define ID1_AST2700A2			0x06020103
+#define ID0_AST2720A2			0x06020203
+#define ID1_AST2720A2			0x06020203
+
+#define SCU0_REVISION_ID		0x12C02000
+#define SCU1_REVISION_ID		0x14C02000
+
 enum otp_error_code {
 	OTP_SUCCESS,
 	OTP_READ_FAIL,
@@ -108,11 +125,16 @@ enum aspeed_otp_master_id {
 	OTP_MID_MAX,
 };
 
-enum rom_patch_version {
-	OTP_ROM_PATCH_NONE =	0x0,
-	OTP_ROM_PATCH_V1 =	0x3,
-	OTP_ROM_PATCH_V2 =	0x3276,
-	OTP_ROM_PATCH_V3 =	0x3376,
+enum rom_patch_version_a1 {
+	A1_OTP_ROM_PATCH_NONE =	0x0,
+	A1_OTP_ROM_PATCH_V1 =	0x3,
+	A1_OTP_ROM_PATCH_V2 =	0x3276,
+	A1_OTP_ROM_PATCH_V3 =	0x3376,
+};
+
+enum rom_patch_version_a2 {
+	A2_OTP_ROM_PATCH_NONE =	0x0,
+	A2_OTP_ROM_PATCH_V1 =	0x3176,
 };
 
 struct otp_ast27xx_config {
@@ -248,7 +270,33 @@ static int aspeed_otp_ecc_init(const struct device *dev)
 	return 0;
 }
 
-static void aspeed_otp_rom_info(const struct device *dev)
+static int aspeed_chip_version(const struct device *dev, uint32_t *chip_version)
+{
+	uint32_t revid0, revid1;
+
+	revid0 = sys_read32(SCU0_REVISION_ID);
+	revid1 = sys_read32(SCU1_REVISION_ID);
+
+	if (revid0 == ID0_AST2700A0 && revid1 == ID1_AST2700A0) {
+		/* AST2700-A0 */
+		*chip_version = OTP_AST2700_A0;
+	} else if ((revid0 == ID0_AST2700A1 && revid1 == ID1_AST2700A1) ||
+		   (revid0 == ID0_AST2750A1 && revid1 == ID1_AST2750A1)) {
+		/* AST2700-A1 */
+		*chip_version = OTP_AST2700_A1;
+	}  else if ((revid0 == ID0_AST2700A2 && revid1 == ID1_AST2700A2) ||
+		   (revid0 == ID0_AST2750A2 && revid1 == ID1_AST2750A2) ||
+		   (revid0 == ID0_AST2720A2 && revid1 == ID1_AST2720A2)) {
+		/* AST2700-A2 */
+		*chip_version = OTP_AST2700_A2;
+	} else {
+		*chip_version = -1;
+	}
+
+	return 0;
+}
+
+static void aspeed_otp_rom_info_a2(const struct device *dev)
 {
 	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
 	int rom_patch_ver;
@@ -257,16 +305,39 @@ static void aspeed_otp_rom_info(const struct device *dev)
 	/* Check ROM patch version */
 	rom_patch_ver = sys_read32(cfg->scu_base + SCU1_ROM_PATCH_OFFSET);
 	switch (rom_patch_ver) {
-	case OTP_ROM_PATCH_NONE:
+	case A2_OTP_ROM_PATCH_NONE:
 		rom_ver_str = "None";
 		break;
-	case OTP_ROM_PATCH_V1:
+	case A2_OTP_ROM_PATCH_V1:
 		rom_ver_str = "v1";
 		break;
-	case OTP_ROM_PATCH_V2:
+	default:
+		rom_ver_str = "Unknown";
+		break;
+	}
+
+	LOG_INF("\tROM patch: %s", rom_ver_str);
+}
+
+static void aspeed_otp_rom_info_a1(const struct device *dev)
+{
+	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
+	int rom_patch_ver;
+	char *rom_ver_str;
+
+	/* Check ROM patch version */
+	rom_patch_ver = sys_read32(cfg->scu_base + SCU1_ROM_PATCH_OFFSET);
+	switch (rom_patch_ver) {
+	case A1_OTP_ROM_PATCH_NONE:
+		rom_ver_str = "None";
+		break;
+	case A1_OTP_ROM_PATCH_V1:
+		rom_ver_str = "v1";
+		break;
+	case A1_OTP_ROM_PATCH_V2:
 		rom_ver_str = "v2";
 		break;
-	case OTP_ROM_PATCH_V3:
+	case A1_OTP_ROM_PATCH_V3:
 		rom_ver_str = "v3";
 		break;
 	default:
@@ -275,6 +346,19 @@ static void aspeed_otp_rom_info(const struct device *dev)
 	}
 
 	LOG_INF("\tROM patch: %s", rom_ver_str);
+}
+
+static void aspeed_otp_rom_info(const struct device *dev)
+{
+	uint32_t ver;
+
+	aspeed_chip_version(dev, &ver);
+
+	if (ver == OTP_AST2700_A2) {
+		aspeed_otp_rom_info_a2(dev);
+	} else {
+		aspeed_otp_rom_info_a1(dev);
+	}
 }
 
 static int otp_ast27xx_init(const struct device *dev)
@@ -301,6 +385,7 @@ static int otp_ast27xx_init(const struct device *dev)
 static struct otp_driver_api otp_funcs = {
 	.otp_read_multi = aspeed_otp_read,
 	.otp_program_multi = aspeed_otp_write,
+	.get_chip_version = aspeed_chip_version,
 };
 
 struct otp_ast27xx_drv_state {

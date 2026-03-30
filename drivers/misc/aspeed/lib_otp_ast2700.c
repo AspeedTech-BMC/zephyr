@@ -44,16 +44,6 @@ enum otp_status {
 
 #define OTP_VER				"1.1.0"
 
-#define OTP_AST2700_A0			0
-#define OTP_AST2700_A1			1
-
-#define ID0_AST2700A0			0x06000003
-#define ID1_AST2700A0			0x06000003
-#define ID0_AST2750A1			0x06010003
-#define ID1_AST2750A1			0x06010003
-#define ID0_AST2700A1			0x06010103
-#define ID1_AST2700A1			0x06010103
-
 #define SOC_AST2700A0			8
 #define SOC_AST2700A1			9
 
@@ -130,9 +120,6 @@ enum otp_status {
 #define CAL_RT_HW_SVN_ADDR		OTPRBP10_ADDR
 #define CAL_MANU_ECC_KEY_MASK		OTPRBP18_ADDR
 
-#define ASPEED_CPU_REVISION_ID		0x12C02000
-#define ASPEED_IO_REVISION_ID		0x14C02000
-
 #define OTP_MAGIC			"SOCOTP"
 #define CHECKSUM_LEN			48
 #define OTP_INC_ROM			BIT(31)
@@ -202,25 +189,6 @@ enum command_ret_t {
 };
 
 static int otp_ast27xx_init(void);
-
-static uint32_t chip_version(void)
-{
-	uint32_t revid0, revid1;
-
-	revid0 = sys_read32(ASPEED_CPU_REVISION_ID);
-	revid1 = sys_read32(ASPEED_IO_REVISION_ID);
-
-	if (revid0 == ID0_AST2700A0 && revid1 == ID1_AST2700A0) {
-		/* AST2700-A0 */
-		return OTP_AST2700_A0;
-	} else if ((revid0 == ID0_AST2700A1 && revid1 == ID1_AST2700A1) ||
-		   (revid0 == ID0_AST2750A1 && revid1 == ID1_AST2750A1)) {
-		/* AST2700-A1 */
-		return OTP_AST2700_A1;
-	}
-
-	return OTP_FAILURE;
-}
 
 static void buf_print(uint8_t *buf, int len)
 {
@@ -1020,7 +988,7 @@ static int otp_ast27xx_init(void)
 	if (ret)
 		return ret;
 
-	ver = chip_version();
+	ver = otp_get_chip_version(otp_dev, &ver);
 	switch (ver) {
 	case OTP_AST2700_A1:
 		OTP_INF("Chip: AST2700-A1\n");
