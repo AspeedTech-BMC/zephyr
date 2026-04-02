@@ -93,11 +93,6 @@ void spim_scu_ctrl_set(const struct device *dev, uint32_t mask, uint32_t val);
 void spim_scu_ctrl_clear(const struct device *dev, uint32_t clear_bits);
 void spim_ext_mux_config(const struct device *dev,
 	enum spim_ext_mux_sel mux_sel);
-void spim_passthrough_config(const struct device *dev,
-	enum spim_passthrough_mode mode, bool passthrough_en);
-void spim_spi_ctrl_detour_enable(const struct device *dev,
-	enum spim_spi_master spi, bool enable);
-void spim_block_mode_config(const struct device *dev, enum spim_block_mode mode);
 
 /* allow command table control */
 #define FLAG_CMD_TABLE_VALID         0x00000000
@@ -121,7 +116,7 @@ int spim_get_allow_cmd_slot(const struct device *dev,
 int spim_add_allow_command(const struct device *dev, uint8_t cmd, uint32_t flag);
 int spim_remove_allow_command(const struct device *dev, uint8_t cmd);
 int spim_lock_allow_command_table(const struct device *dev, uint8_t cmd, uint32_t flag);
-void spim_dump_rw_addr_privilege_table(const struct device *dev);
+void spim_dump_addr_priv_table(const struct device *dev);
 int spim_address_privilege_config(const struct device *dev,
 	enum addr_priv_rw_select rw_select, enum addr_priv_op priv_op,
 	mm_reg_t addr, uint32_t len);
@@ -132,7 +127,7 @@ void spim_lock_common(const struct device *dev);
 
 void spim_monitor_enable(const struct device *dev, bool enable);
 
-void aspeed_spi_monitor_sw_rst(const struct device *dev);
+void ast1060_spim_sw_rst(const struct device *dev);
 
 struct spim_log_info {
 	mem_addr_t log_ram_addr;

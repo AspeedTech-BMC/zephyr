@@ -52,7 +52,7 @@ void aspeed_dcscm_rst_demo(struct k_work *item)
 			return;
 		}
 
-		aspeed_spi_monitor_sw_rst(spim_dev);
+		ast1060_spim_sw_rst(spim_dev);
 		demo_rst_log_ptr(spim_dev);
 
 		/* config spim as SPI monitor */

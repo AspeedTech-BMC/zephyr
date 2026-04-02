@@ -160,14 +160,14 @@ end:
 	return ret;
 }
 
-static int dump_rw_addr_priv_table(const struct shell *shell, size_t argc, char *argv[])
+static int dump_addr_priv_table(const struct shell *shell, size_t argc, char *argv[])
 {
 	if (!spim_device) {
 		shell_error(shell, "Please set the device first.");
 		return -ENODEV;
 	}
 
-	spim_dump_rw_addr_privilege_table(spim_device);
+	spim_dump_addr_priv_table(spim_device);
 
 	return 0;
 }
@@ -238,27 +238,6 @@ end:
 	return ret;
 }
 
-static int lock_addr_priv_table(const struct shell *shell, size_t argc, char *argv[])
-{
-	int ret = 0;
-
-	if (!spim_device) {
-		shell_error(shell, "Please set the device first.");
-		return -ENODEV;
-	}
-
-	if (strncmp(argv[1], "read", 4) == 0) {
-		spim_lock_rw_privilege_table(spim_device, FLAG_ADDR_PRIV_READ_SELECT);
-	} else if (strncmp(argv[1], "write", 5) == 0) {
-		spim_lock_rw_privilege_table(spim_device, FLAG_ADDR_PRIV_WRITE_SELECT);
-	} else {
-		shell_error(shell, "Invalid command operation.");
-		ret = -ENOTSUP;
-	}
-
-	return ret;
-}
-
 static int cmd_lock(const struct shell *shell, size_t argc, char *argv[])
 {
 
@@ -298,7 +277,7 @@ static int spi_monitor_disabled(const struct shell *shell, size_t argc, char *ar
 	return 0;
 }
 
-static int external_mux_config(const struct shell *shell, size_t argc, char *argv[])
+static int ext_mux_config(const struct shell *shell, size_t argc, char *argv[])
 {
 	uint32_t flag;
 	char *endptr;
@@ -318,67 +297,6 @@ static int external_mux_config(const struct shell *shell, size_t argc, char *arg
 	return 0;
 }
 
-static int passthrough_mode_config(const struct shell *shell, size_t argc, char *argv[])
-{
-	uint32_t flag;
-	char *endptr;
-	enum spim_passthrough_mode mode = SPIM_SINGLE_PASSTHROUGH;
-
-	if (!spim_device) {
-		shell_error(shell, "Please set the device first.");
-		return -ENODEV;
-	}
-
-	if (argc < 3) {
-		shell_error(shell, "spim config passthrough <multi/single> <0/1>.");
-		return -EINVAL;
-	}
-
-	if (strncmp(argv[1], "multi", 5) == 0)
-		mode = SPIM_MULTI_PASSTHROUGH;
-
-	flag = strtoul(argv[2], &endptr, 16);
-
-	if (flag == 0)
-		spim_passthrough_config(spim_device, mode, false);
-	else
-		spim_passthrough_config(spim_device, mode, true);
-
-	return 0;
-}
-
-static int spim_spi_ctrl_detour_config(const struct shell *shell,
-				       size_t argc, char *argv[])
-{
-	uint32_t enable;
-	char *endptr;
-	enum spim_spi_master spi = SPI1;
-
-	if (!spim_device) {
-		shell_error(shell, "Please set the device first.");
-		return -ENODEV;
-	}
-
-	if (argc < 3) {
-		shell_error(shell, "spim config detour <spi master> <0/1>.");
-		return -EINVAL;
-	}
-
-	if (strncmp(argv[1], "spi1", 4) == 0)
-		spi = SPI1;
-	else if (strncmp(argv[1], "spi2", 4) == 0)
-		spi = SPI2;
-
-	enable = strtoul(argv[2], &endptr, 16);
-
-	if (enable == 0)
-		spim_spi_ctrl_detour_enable(spim_device, spi, false);
-	else
-		spim_spi_ctrl_detour_enable(spim_device, spi, true);
-
-	return 0;
-}
-
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_spim_cmds,
 	SHELL_CMD_ARG(dump, NULL, "\"dump\"", dump_allow_cmd_table, 1, 0),
 	SHELL_CMD_ARG(add, NULL, "<command>", add_allow_cmd, 2, 1),
@@ -389,12 +307,11 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_spim_cmds,
 );
 
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_spim_addr,
-	SHELL_CMD_ARG(dump, NULL, "\"dump\"", dump_rw_addr_priv_table, 1, 0),
+	SHELL_CMD_ARG(dump, NULL, "\"dump\"", dump_addr_priv_table, 1, 0),
 	SHELL_CMD_ARG(read, NULL, "<enable/disable> <addr> <len>",
 		read_addr_priv_table_config, 4, 0),
 	SHELL_CMD_ARG(write, NULL, "<enable/disable> <addr> <len>",
 		write_addr_priv_table_config, 4, 0),
-	SHELL_CMD_ARG(lock, NULL, "<read/write>", lock_addr_priv_table, 2, 0),
 
 	SHELL_SUBCMD_SET_END
 );
@@ -402,12 +319,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_spim_addr,
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_spim_config,
 	SHELL_CMD_ARG(enable, NULL, "\"enable\"", spi_monitor_enabled, 1, 0),
 	SHELL_CMD_ARG(disable, NULL, "\"disable\"", spi_monitor_disabled, 1, 0),
-	SHELL_CMD_ARG(extmux, NULL, "<0/1> for clear/set", external_mux_config, 2, 0),
-	SHELL_CMD_ARG(passthrough, NULL, "<multi/single> <0/1> for clear/set",
-		passthrough_mode_config, 3, 0),
-	SHELL_CMD_ARG(detour, NULL, "<SPI master> <0/1>",
-		spim_spi_ctrl_detour_config, 3, 0),
-
+	SHELL_CMD_ARG(extmux, NULL, "<0/1> for clear/set", ext_mux_config, 2, 0),
 	SHELL_SUBCMD_SET_END
 );
 

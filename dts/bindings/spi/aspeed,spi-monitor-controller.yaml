@@ -85,11 +85,6 @@ child-binding:
         The ram size for recording log if there is an invalid
         SPI flash access and the related interrupt occurs.
 
-    extra-clk:
-      type: boolean
-      required: false
-      description: Block a invalid access by an extra clock.
-
     ext-mux-sel:
       type: int
       required: false
@@ -109,6 +104,7 @@ child-binding:
       default: 0
       description: |
         Delay in microseconds from the external mux select assert.
+
     force-release-flash-reset:
       type: boolean
       required: false
