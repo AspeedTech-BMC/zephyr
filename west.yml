@@ -234,7 +234,7 @@ manifest:
       groups:
         - hal
     - name: hal_stm32
-      revision: f1317150eac951fdd8259337a47cbbc4c2e6d335
+      revision: 0657d9f97d973542e438f628a704f5d8ea0cdef5
       path: modules/hal/stm32
       groups:
         - hal
@@ -282,12 +282,12 @@ manifest:
       revision: 2b498e6f36d6b82ae1da12c8b7742e318624ecf5
       path: modules/lib/gui/lvgl
     - name: mbedtls
-      revision: a78176c6ff0733ba08018cba4447bd3f20de7978
+      revision: be1dd5b11d8f59af0ab0995985e348a429999013
       path: modules/crypto/mbedtls
       groups:
         - crypto
     - name: mcuboot
-      revision: ea2410697dd0262edec041a0ccb07fdbde7c1aff
+      revision: 6127fc06a54d7a364626a96a33ae652703b505e4
       path: bootloader/mcuboot
     - name: mipi-sys-t
       path: modules/debug/mipi-sys-t
@@ -310,7 +310,7 @@ manifest:
       path: modules/lib/openthread
     - name: percepio
       path: modules/debug/percepio
-      revision: b68d17993109b9bee6b45dc8c9794e7b7bce236d
+      revision: 0d44033c744978ca2505a06640b4f6964c5411e6
       groups:
         - debug
     - name: picolibc
@@ -327,7 +327,7 @@ manifest:
       groups:
         - crypto
     - name: trusted-firmware-m
-      revision: 60ebade5d3d381a210af90191e475d8870b8adbc
+      revision: 9573073f65c9ed86f268a0fc1caed7d62fff2b8e
       path: modules/tee/tf-m/trusted-firmware-m
       groups:
         - tee

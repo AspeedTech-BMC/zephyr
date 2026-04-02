@@ -140,6 +140,11 @@ static void zsock_flush_queue(struct net_context *ctx)
 	while ((p = k_fifo_get(&ctx->recv_q, K_NO_WAIT)) != NULL) {
 		if (is_listen) {
 			NET_DBG("discarding ctx %p", p);
+
+			/* Note that we must release all the packets we
+			 * might have received to the accepted socket.
+			 */
+			zsock_flush_queue(p);
 			net_context_put(p);
 		} else {
 			NET_DBG("discarding pkt %p", p);
@@ -1003,16 +1008,22 @@ static inline ssize_t z_vrfy_zsock_sendmsg(int sock,
 					   int flags)
 {
 	struct msghdr msg_copy;
+	size_t msg_iov_size;
 	size_t i;
 	int ret;
+
+	if (size_mul_overflow(msg->msg_iovlen, sizeof(struct iovec),
+			      &msg_iov_size)) {
+		errno = EFAULT;
+		return -1;
+	}
 
 	K_OOPS(k_usermode_from_copy(&msg_copy, (void *)msg, sizeof(msg_copy)));
 
 	msg_copy.msg_name = NULL;
 	msg_copy.msg_control = NULL;
 
-	msg_copy.msg_iov = k_usermode_alloc_from_copy(msg->msg_iov,
-				       msg->msg_iovlen * sizeof(struct iovec));
+	msg_copy.msg_iov = k_usermode_alloc_from_copy(msg->msg_iov, msg_iov_size);
 	if (!msg_copy.msg_iov) {
 		errno = ENOMEM;
 		goto fail;
@@ -1972,6 +1983,7 @@ ssize_t z_impl_zsock_recvmsg(int sock, struct msghdr *msg, int flags)
 ssize_t z_vrfy_zsock_recvmsg(int sock, struct msghdr *msg, int flags)
 {
 	struct msghdr msg_copy;
+	size_t msg_iov_size;
 	size_t iovlen;
 	size_t i;
 	int ret;
@@ -1986,6 +1998,12 @@ ssize_t z_vrfy_zsock_recvmsg(int sock, struct msghdr *msg, int flags)
 		return -1;
 	}
 
+	if (size_mul_overflow(msg->msg_iovlen, sizeof(struct iovec),
+			      &msg_iov_size)) {
+		errno = EFAULT;
+		return -1;
+	}
+
 	K_OOPS(k_usermode_from_copy(&msg_copy, (void *)msg, sizeof(msg_copy)));
 
 	k_usermode_from_copy(&iovlen, &msg->msg_iovlen, sizeof(iovlen));
@@ -1993,8 +2011,7 @@ ssize_t z_vrfy_zsock_recvmsg(int sock, struct msghdr *msg, int flags)
 	msg_copy.msg_name = NULL;
 	msg_copy.msg_control = NULL;
 
-	msg_copy.msg_iov = k_usermode_alloc_from_copy(msg->msg_iov,
-				       msg->msg_iovlen * sizeof(struct iovec));
+	msg_copy.msg_iov = k_usermode_alloc_from_copy(msg->msg_iov, msg_iov_size);
 	if (!msg_copy.msg_iov) {
 		errno = ENOMEM;
 		goto fail;
@@ -2004,7 +2021,7 @@ ssize_t z_vrfy_zsock_recvmsg(int sock, struct msghdr *msg, int flags)
 	 * next loop fails, we do not try to free non allocated memory
 	 * in fail branch.
 	 */
-	memset(msg_copy.msg_iov, 0, msg->msg_iovlen * sizeof(struct iovec));
+	memset(msg_copy.msg_iov, 0, msg_iov_size);
 
 	for (i = 0; i < iovlen; i++) {
 		/* TODO: In practice we do not need to copy the actual data

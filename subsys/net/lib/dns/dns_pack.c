@@ -6,6 +6,8 @@
 
 #include <string.h>
 #include <zephyr/net/buf.h>
+#include <zephyr/sys/bitarray.h>
+#include <zephyr/net/dns_resolve.h>
 
 #include "dns_pack.h"
 
@@ -134,7 +136,7 @@ int dns_unpack_answer(struct dns_msg_t *dns_msg, int dname_ptr, uint32_t *ttl,
 	 *
 	 * See RFC-1035 4.1.3. Resource record format
 	 */
-	rem_size = dns_msg->msg_size - dname_len;
+	rem_size = dns_msg->msg_size - dns_msg->answer_offset - dname_len;
 	if (rem_size < 2 + 2 + 4 + 2) {
 		return -EINVAL;
 	}
@@ -361,10 +363,11 @@ int dns_unpack_response_query(struct dns_msg_t *dns_msg)
 int dns_copy_qname(uint8_t *buf, uint16_t *len, uint16_t size,
 		   struct dns_msg_t *dns_msg, uint16_t pos)
 {
+	SYS_BITARRAY_DEFINE(visited, DNS_RESOLVER_MAX_BUF_SIZE);
 	uint16_t msg_size = dns_msg->msg_size;
 	uint8_t *msg = dns_msg->msg;
 	uint16_t lb_size;
-	int rc = -EINVAL;
+	int rc = -EINVAL, ret, prev;
 
 	*len = 0U;
 
@@ -377,7 +380,7 @@ int dns_copy_qname(uint8_t *buf, uint16_t *len, uint16_t size,
 		lb_size = msg[pos];
 
 		/* pointer */
-		if (lb_size > DNS_LABEL_MAX_SIZE) {
+		if ((lb_size & NS_CMPRSFLGS) == NS_CMPRSFLGS) {
 			uint8_t mask = DNS_LABEL_MAX_SIZE;
 
 			if (pos + 1 >= msg_size) {
@@ -388,13 +391,27 @@ int dns_copy_qname(uint8_t *buf, uint16_t *len, uint16_t size,
 			/* See: RFC 1035, 4.1.4. Message compression */
 			pos = ((msg[pos] & mask) << 8) + msg[pos + 1];
 
+			ret = sys_bitarray_test_and_set_bit(&visited, pos, &prev);
+			if (ret < 0) {
+				rc = -EINVAL;
+				break;
+			}
+
+			if (prev) {
+				rc = -ELOOP;
+				break;
+			}
+
 			continue;
+		} else if (lb_size & NS_CMPRSFLGS) {
+			rc = -EINVAL;
+			break;
 		}
 
 		/* validate that the label (i.e. size + elements),
 		 * fits the current msg buffer
 		 */
-		if (DNS_LABEL_LEN_SIZE + lb_size > size - *len) {
+		if (DNS_LABEL_LEN_SIZE + lb_size > MIN(size - *len, msg_size - pos)) {
 			rc = -ENOMEM;
 			break;
 		}
@@ -465,7 +482,6 @@ int mdns_unpack_query_header(struct dns_msg_t *msg, uint16_t *src_id)
 static int dns_unpack_name(const uint8_t *msg, int maxlen, const uint8_t *src,
 			   struct net_buf *buf, const uint8_t **eol)
 {
-	int dest_size = net_buf_tailroom(buf);
 	const uint8_t *end_of_label = NULL;
 	const uint8_t *curr_src = src;
 	int loop_check = 0, len = -1;
@@ -477,7 +493,7 @@ static int dns_unpack_name(const uint8_t *msg, int maxlen, const uint8_t *src,
 	}
 
 	while ((val = *curr_src++)) {
-		if (val & NS_CMPRSFLGS) {
+		if ((val & NS_CMPRSFLGS) == NS_CMPRSFLGS) {
 			/* Follow pointer */
 			int pos;
 
@@ -504,6 +520,8 @@ static int dns_unpack_name(const uint8_t *msg, int maxlen, const uint8_t *src,
 				return -EMSGSIZE;
 			}
 		} else {
+			size_t dest_size = net_buf_tailroom(buf);
+
 			/* Max label length is 64 bytes (because 2 bits are
 			 * used for pointer)
 			 */
@@ -512,8 +530,7 @@ static int dns_unpack_name(const uint8_t *msg, int maxlen, const uint8_t *src,
 				return -EMSGSIZE;
 			}
 
-			if (((buf->data + label_len + 1) >=
-			     (buf->data + dest_size)) ||
+			if ((label_len + 1 >= dest_size) ||
 			    ((curr_src + label_len) >= (msg + maxlen))) {
 				return -EMSGSIZE;
 			}
@@ -571,6 +588,7 @@ int dns_unpack_query(struct dns_msg_t *dns_msg, struct net_buf *buf,
 	uint8_t *dns_query;
 	int ret;
 	int query_type, query_class;
+	int remaining;
 
 	dns_query = dns_msg->msg + dns_msg->query_offset;
 
@@ -578,6 +596,11 @@ int dns_unpack_query(struct dns_msg_t *dns_msg, struct net_buf *buf,
 			      buf, &end_of_label);
 	if (ret < 0) {
 		return ret;
+	}
+
+	remaining = dns_msg->msg_size - (end_of_label - dns_msg->msg);
+	if (remaining < DNS_QTYPE_LEN + DNS_QCLASS_LEN) {
+		return -EMSGSIZE;
 	}
 
 	query_type = dns_unpack_query_qtype(end_of_label);

@@ -2,6 +2,198 @@
 
 .. _zephyr_3.7:
 
+.. _zephyr_3.7.2:
+
+Zephyr 3.7.2
+############
+
+This is an LTS maintenance release with fixes.
+
+Security Vulnerability Related
+******************************
+
+The following CVEs are addressed by this release:
+
+* `CVE-2025-27809 <https://www.cve.org/CVERecord?id=CVE-2025-27809>`_
+  `TLS clients may unwittingly skip server authentication
+  <https://mbed-tls.readthedocs.io/en/latest/security-advisories/mbedtls-security-advisory-2025-03-1/>`_
+* `CVE-2025-27810 <https://www.cve.org/CVERecord?id=CVE-2025-27810>`_
+  `Potential authentication bypass in TLS handshake
+  <https://mbed-tls.readthedocs.io/en/latest/security-advisories/mbedtls-security-advisory-2025-03-2/>`_
+* `CVE-2025-47917 <https://www.cve.org/CVERecord?id=CVE-2025-47917>`_
+  `Misleading memory management in mbedtls_x509_string_to_names()
+  <https://mbed-tls.readthedocs.io/en/latest/security-advisories/mbedtls-security-advisory-2025-06-7/>`_
+* `CVE-2025-48965 <https://www.cve.org/CVERecord?id=CVE-2025-48965>`_
+  `NULL pointer dereference after using mbedtls_asn1_store_named_data()
+  <https://mbed-tls.readthedocs.io/en/latest/security-advisories/mbedtls-security-advisory-2025-06-6/>`_
+* `CVE-2025-49087 <https://www.cve.org/CVERecord?id=CVE-2025-49087>`_
+  `Timing side-channel in block cipher decryption with PKCS#7 padding
+  <https://mbed-tls.readthedocs.io/en/latest/security-advisories/mbedtls-security-advisory-2025-06-5/>`_
+* `CVE-2025-49600 <https://www.cve.org/CVERecord?id=CVE-2025-49600>`_
+  `Unchecked return value in LMS verification allows signature bypass
+  <https://mbed-tls.readthedocs.io/en/latest/security-advisories/mbedtls-security-advisory-2025-06-3/>`_
+* `CVE-2025-49601 <https://www.cve.org/CVERecord?id=CVE-2025-49601>`_
+  `Out-of-bounds read in mbedtls_lms_import_public_key()
+  <https://mbed-tls.readthedocs.io/en/latest/security-advisories/mbedtls-security-advisory-2025-06-4/>`_
+* `CVE-2025-52496 <https://www.cve.org/CVERecord?id=CVE-2025-52496>`_
+  `Race condition in AESNI support detection
+  <https://mbed-tls.readthedocs.io/en/latest/security-advisories/mbedtls-security-advisory-2025-06-1/>`_
+* `CVE-2025-52497 <https://www.cve.org/CVERecord?id=CVE-2025-52497>`_
+  `Heap buffer under-read when parsing PEM-encrypted material
+  <https://mbed-tls.readthedocs.io/en/latest/security-advisories/mbedtls-security-advisory-2025-06-2/>`_
+* `CVE-2025-59438 <https://www.cve.org/CVERecord?id=CVE-2025-59438>`_
+  `Padding oracle through timing of cipher error reporting
+  <https://mbed-tls.readthedocs.io/en/latest/security-advisories/mbedtls-security-advisory-2025-10-invalid-padding-error/>`_
+* `CVE-2025-54764 <https://www.cve.org/CVERecord?id=CVE-2025-54764>`_
+  `Side channel in RSA key generation and operations (SSBleed, M-Step)
+  <https://mbed-tls.readthedocs.io/en/latest/security-advisories/mbedtls-security-advisory-2025-10-ssbleed-mstep/>`_
+
+More detailed information can be found in:
+https://docs.zephyrproject.org/latest/security/vulnerabilities.html
+
+Issues fixed
+************
+
+These GitHub issues were addressed since the previous 3.7.1 tagged release:
+* :github:`67637` - Telnet shell asserts if connection is closed
+* :github:`72840` - sensor_shell: strange and unexpected output when getting single axis from 3-axis data
+* :github:`75119` - Doc: Graphviz fontcolor switched between light and dark themes
+* :github:`75121` - Doc: Graphviz figures do not use the same font as the documentation
+* :github:`77088` - net: buf: Pre-initialize `user_data` on `net_buf_alloc()`
+* :github:`79042` - net: dns: Out of bounds array access in DNS dispatcher
+* :github:`79066` - STM32 Ethernet stops receiving under heavy load
+* :github:`79805` - Compile error when using networking and SystemView Tracing
+* :github:`80574` - Meta-IRQ does not preempt cooperative threads when woken from IRQ  (cortex_m)
+* :github:`81343` - shell cmd: "devmem load" only works for addresses below 0x80000000
+* :github:`81380` - test: twister: hwmap: missing serial_pty definition
+* :github:`81454` - drivers: rtc: sam: Missing function rtc_sam_validate_tm
+* :github:`81513` - I2C eeprom target does not fully support 16 bit addresses
+* :github:`81570` - ESP32 fails on assert when WiFi enabled (3.7.x LTS)
+* :github:`81777` - Flash API: `flash_erase` has incorrect userspace handler
+* :github:`81781` - posix:fpu: Enabling CONFIG_FPU and CONFIG_FPU_SHARING causes compiler error
+* :github:`82139` - Fix DNS parsing errors
+* :github:`82370` - modem: the UART exchange between the MCU and the modem is disrupted after rebooting the MCU or modem.
+* :github:`82427` - net: lwm2m: Missing mutex unlock in LwM2M Registry
+* :github:`82437` - drivers: flash: flash_mcux_flexspi: since adding support for W25Q512JV, FlexSPI with the W25Q128JV no longer works
+* :github:`82652` - sockets_service: dns: Sockets service calling closed dispatch socket callback causes fatal
+* :github:`82710` - [backport] pm: device_runtime: Fix bitfields misuse
+* :github:`82933` - VFS/ext2: Buffer overflow  in ext2_inode_read
+* :github:`83041` - samples: mgmt: mcumgr: smp_svr: Bluetooth advertising restarted on connection
+* :github:`83331` - spi_mcux_ecspi does not handle gpio chipselect correctly
+* :github:`83332` - spi_mcux_ecspi does not handle transfers with 32 bits.
+* :github:`83354` - log/mpsc_pbuf: logging in spinlock held context can cause recurring exception
+* :github:`83399` - auxdisplay: jhd1313: Out-of-bounds read
+* :github:`83447` - native_posix entropy driver produces very bad entropy for 64 bit targets
+* :github:`83599` - NXP drivers: flash: soc_flash_mcux: CMD_MARGIN_CHECK fails infrequently
+* :github:`83625` - vfs/ext2: Incorrectly calculated nbytes_to_read in ext2_inode_read potentially causing data corruption
+* :github:`83794` - lis2de12 sensor driver giving 0 values
+* :github:`84148` - 3.7: Bluetooth: TBS: TBS client may return NULL instead of the empty string in callbacks
+* :github:`84274` - Shell API unsafe to use outside of command handlers
+* :github:`84306` - drivers: can: tcan4x5x: Build fails/emits warnings when optional reset-gpios property is not supplied in device tree
+* :github:`84384` - RTIO Workqueue - Race condition leads to dead-lock in high-demand applications
+* :github:`84438` - Memory leak with socket() + close() when socket offloading is enabled
+* :github:`84538` - http_server leak RX buffers when zsock_poll fails in http_server_run
+* :github:`84614` - [v3.7-branch] Update MCUboot to include fixes
+* :github:`84737` - eth_stm32_hal: Failed to obtain RX buffer - error makes device unreachable
+* :github:`84842` - STM32WBA: zephyr/drivers/flash/flash_stm32wba_fm.c: flash_stm32_erase: unexpected erase size
+* :github:`84902` - mgmt: mcumgr: grp: img_mgmt: DFU confirmed callback does not check status
+* :github:`84952` - logging: log_cmds: backend ID is wrong for backend(s) that do not autostart
+* :github:`85211` - dts: atmel sam4s: incorrect sram addresses
+* :github:`85301` - Bluetooth: host: missing `NULL` check in `bt_le_create_conn_cancel`
+* :github:`85380` - DHCP address disappears when TCP socket is closed.
+* :github:`85521` - Issue with User-Defined Payload Transmission Over SMP: Payload Length Calculation and Memory Address Handling
+* :github:`85674` - net: ipv6: Neigbor reachablity detection is not compliant with RFC 4861
+* :github:`85759` - RTIO Workqueue does not work during Device Initialization (POST_KERNEL)
+* :github:`85816` - tests: tests/net/conn_mgr_monitor/net.conn_mgr.dad failed with W5500
+* :github:`86116` - soc: NXP: RW61x: SystemCoreClock frequency incorrect
+* :github:`86499` - net: Critical Mutex Deadlock
+* :github:`86954` - sample.smf.hsm_psicc2 is flaky on SMP platforms
+* :github:`87323` - Network buffer leak if sending IPv4 TTL 0 or IPv6 hop limit 0 packets
+* :github:`87947` - Check possible recursion when parsing DNS response
+* :github:`88047` - __nocache section conflicts with __ramfunc on stm32h750
+* :github:`88229` - mbedtls: update to 3.6.3 in 3.7 branch
+* :github:`88233` - net: coap_client library asserts on boot
+* :github:`88328` - Using I/O pads sourced from VHIF without enabling the eSPI or SHI drivers may lead to issues
+* :github:`88506` - stm32: STM32 I2C LL Driver: Stuck in an infinite loop when SDA/SCL is short-circuited
+* :github:`88558` - disco_l475_iot1/arduino_r3_connector.dtsi arduino_i2c should be i2c1
+* :github:`88694` - mgmt: ec_host_cmd: npcx: add workaround for backend SHI
+* :github:`88946` - driver: timer: npcx: fix timer accuracy issue
+* :github:`89331` - Many threads locking two mutexes can cause a crash
+* :github:`89349` - Flash Map: Bounds checking not immune to integer overflow
+* :github:`89413` - Zephyr SPDX does not pass validation
+* :github:`89641` - net: dhcp: current DHCP client implementation does not follow RFC2131 and RFC2132
+* :github:`89984` - drivers: watchdog: npcx: fix T0 timer reload procedure
+* :github:`89990` - STM32: USB: USB CDC IN Endpoint stuck forever after receiving Clear feature - endpoint halt request
+* :github:`90103` - http_server: Wildcard resource matching reports incorrect path length
+* :github:`90655` - LE-Audio: BAP scan delegator does not send further notifications after add source or modify source are rejected by application layer
+* :github:`90688` - coap_resource_parse_observe returns 0 (register) instead of 1 (deregister) upon a deregister of an unknown observer
+* :github:`90777` - arch.shared_interrupt.lto.speed compile fail on apollo5 platform
+* :github:`90784` - drivers: flash: npcx: add k_usleep when polling busy status
+* :github:`90989` - gpio: gpio_adp5585_gpio incorrect gpio gaps handling
+* :github:`91360` - [v3.7-branch] Update MCUboot with fixes from 2.2.0 release
+* :github:`91799` - Docs version switcher always displays "v: latest"
+* :github:`92243` - tls_credentials.h is not found when building ES-Wifi with CONFIG_TLS_CREDENTIALS (v3.7 branch)
+* :github:`92413` - Issue with thread suspension in zephyr 3.7.1
+* :github:`92557` - ARC: nsim/nsim_vpx5 applications fail to execute on nsimdrv
+* :github:`92764` - [ARC][Userspace][v3.7.1] Regression: User threads fail to run with user space enabled (MW toolchain)
+* :github:`93790` - drivers: console: posix_arch_console: build warning with `CONFIG_PRINTK=n`
+* :github:`94000` - EXT2 fs_stat on mount point fails with a NULL pointer dereference.
+* :github:`94925` - mbedtls: update to 3.6.4 in 3.7 branch
+* :github:`95297` - Links to the pyOCD repository are outdated
+* :github:`95787` - Backport fixes to MCUboot for zephyr v3.7
+* :github:`95850` - Applications do not watch MCUboot key file for changes
+* :github:`96172` - Backport #95101 (arch: arm: switch to privilege stack in SVC handler)
+* :github:`97304` - Backport #96850 (arch: arm: start threads on privileged stack)
+* :github:`84934` - USB devices broken on STM32F723XX MCUs after clock enable changes in Zephyr v3.7.0
+* :github:`86444` - BLE can't be used after erasing board and flash BT SHELL app
+* :github:`88506` - stm32: STM32 I2C LL Driver: Stuck in an infinite loop when SDA/SCL is short-circuited
+* :github:`92397` - Missing fallback to a base board.dts when using a board variant without specific dts file
+* :github:`95113` - gpio_pin_get_config for STM32 returns wrong flags value for input pins
+* :github:`95768` - Possible TCP connection leak when creating a socket
+* :github:`97473` - Branch 3.7: arch.arm.user.stack fails on frdm_k64f and npcx9m6f_evb (Timeout)
+* :github:`98231` - Build System: defconfig: Base defconfig not used on fully qualified oot board
+* :github:`98768` - STM32F303 bxCAN: Last 2 bytes corrupted on TX pin, but registers are correct
+* :github:`98936` - net: ICMPv4 packets can be reported to ICMPv6 handlers (and vice versa)
+* :github:`99678` - Build warnings on subsys/net/lib/websocket/websocket.c
+* :github:`99682` - net: lib: dns: Unpacking query name can overflow the destination buffer
+* :github:`99797` - MCUmgr: OS: DateTime: Millisecond parsing erroneous
+* :github:`99895` - [v3.7-branch] npcx9m6f_evb and frdm_k64f: kernel.common.stack_protection_arm_fpu_sharing fails
+* :github:`100212` - No event code filterint for LVGL pointer process
+* :github:`100227` - mbedtls: update to 3.6.5 in 3.7 branch
+* :github:`102635` - gpio: mcux: Potential infinite interrupt hang when configuring
+* :github:`104208` - IPv4/6 fragmentation memory leak
+* :github:`104233` - [backport] Bluetooth: Host: Add l2cap credit param checks
+* :github:`104248` - DNS query packet length check
+* :github:`104253` - driver: clock_control: RCC_BDCR_LSEDRV_Pos undefined using STM32L0
+* :github:`104652` - net: socketcan: length not always verified
+* :github:`104748` - [mcumgr] error codes of group "stat" incorrect
+* :github:`104948` - net: lib: socket: tls: Potential out-of-bounds write in socket_op_vtable::connect
+* :github:`61464` - USB device stack (new and old) assertion on STM32
+* :github:`105106` - arc: mpu: MPUv6 buffer validation race condition causes spurious access denials
+* :github:`105374` - drivers: gpio: sam: callback called when interrupt disabled
+* :github:`105754` - net: sockets: msg->msg_iovlen is not validated in zsock_recvmsg() sys call
+* :github:`105977` - [backport] v3.7 twister broken on current python set of packages
+
+Mbed TLS
+********
+
+Mbed TLS was updated to version 3.6.5 (from 3.6.2). The release notes can be found at:
+https://github.com/Mbed-TLS/mbedtls/releases/tag/mbedtls-3.6.5
+https://github.com/Mbed-TLS/mbedtls/releases/tag/mbedtls-3.6.4
+https://github.com/Mbed-TLS/mbedtls/releases/tag/mbedtls-3.6.3
+
+Mbed TLS 3.6 is an LTS release that will be supported
+with security and bug fixes until at least March 2027.
+
+Trusted Firmware-M (TF-M)
+*************************
+
+TF-M was updated to version 2.1.2 (from 2.1.1). The release notes can be found at:
+https://trustedfirmware-m.readthedocs.io/en/tf-mv2.1.2/releases/2.1.2.html
+
+TF-M 2.1 is an LTS release that will be supported
+with security and bug fixes until at least May 2027.
+
 .. _zephyr_3.7.1:
 
 Zephyr 3.7.1
