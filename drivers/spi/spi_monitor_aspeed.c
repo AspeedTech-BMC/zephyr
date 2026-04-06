@@ -209,6 +209,7 @@ struct aspeed_spim_config {
 	void (*dump_addr_priv)(const struct device *dev);
 	void (*addr_priv_lock)(const struct device *dev);
 	void (*misc_lock)(const struct device *dev);
+	void (*irq_config_func)(const struct device *dev);
 };
 
 struct aspeed_spim_common_config {
@@ -1442,9 +1443,7 @@ static int spi_monitor_init(const struct device *dev)
 		return ret;
 
 	/* irq init */
-	irq_connect_dynamic(config->irq_num, config->irq_priority,
-		spim_isr, dev, 0);
-	irq_enable(config->irq_num);
+	config->irq_config_func(dev);
 	spim_irq_enable(dev);
 
 	ret = pinctrl_apply_state(config->pcfg, PINCTRL_STATE_DEFAULT);
@@ -1492,6 +1491,18 @@ static int aspeed_spi_monitor_common_init(const struct device *dev)
 					 &aspeed_spim_config[node_id],	\
 					 POST_KERNEL, 71, NULL);
 
+#define ASPEED_SPIM_IRQ_DEFINE(node_id)					\
+	static void spim_irq_config_##node_id(const struct device *dev)	\
+	{								\
+		ARG_UNUSED(dev);					\
+		IRQ_CONNECT(DT_IRQN(node_id),				\
+			    DT_IRQ(node_id, priority),			\
+			    spim_isr,					\
+			    DEVICE_DT_GET(node_id),			\
+			    0);						\
+		irq_enable(DT_IRQN(node_id));				\
+	}
+
 #define ASPEED_PINCTRL_DT_INST_DEFINE(node_id)	PINCTRL_DT_DEFINE(node_id);
 
 #undef DT_DRV_COMPAT
@@ -1507,6 +1518,7 @@ static int aspeed_spi_monitor_common_init(const struct device *dev)
 			     0x1000 * (DT_REG_ADDR(node_id) - 1),	\
 		.irq_num = DT_IRQN(node_id),		\
 		.irq_priority = DT_IRQ(node_id, priority),	\
+		.irq_config_func = spim_irq_config_##node_id,	\
 		.ctrl_idx = DT_REG_ADDR(node_id),	\
 		.parent = DEVICE_DT_GET(DT_PARENT(node_id)),	\
 		.ext_mux_sel_default = DT_PROP_OR(node_id, ext_mux_sel, 0),	\
@@ -1554,6 +1566,7 @@ static int aspeed_spi_monitor_common_init(const struct device *dev)
 			    NULL);		\
 	/* handle child node */	\
 	DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n), SPIM_EXT_MUX_SEL_GPIOS)	\
+	DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n), ASPEED_SPIM_IRQ_DEFINE)	\
 	static const struct aspeed_spim_config aspeed_spim_config[] = {	\
 		DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n), ASPEED_AST1060_SPIM_DEV_CFG)};	\
 	static struct aspeed_spim_data aspeed_spim_data[] = {			\
