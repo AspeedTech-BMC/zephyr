@@ -17,6 +17,18 @@
 #define SCU1_REG		DT_REG_ADDR(DT_NODELABEL(syscon1))
 #define SCU1_RSTLOG0		(SCU1_REG + 0x050)
 #define   SCU1_RSTLOG0_SRST	BIT(0)
+/* SSP/TSP use a fixed virtual window for direct AHB matrix access. */
+#define AST27XX_SSP_TSP_AHB_MATRIX_VIRT_BASE  0x60000000UL
+#define AST27XX_SSP_TSP_AHB_MATRIX_VIRT_LIMIT 0xE0000000UL
+#define AST27XX_SSP_TSP_AHB_MATRIX_ADDR_LIMIT 0x40000000ULL
+#define AST27XX_IS_SSP_TSP_AHB_MATRIX_VIRT_ADDR(addr)                                              \
+	((addr) >= AST27XX_SSP_TSP_AHB_MATRIX_VIRT_BASE &&                                         \
+	 (addr) < AST27XX_SSP_TSP_AHB_MATRIX_VIRT_LIMIT)
+#define AST27XX_IS_SSP_TSP_AHB_MATRIX_ADDR(addr) ((addr) < AST27XX_SSP_TSP_AHB_MATRIX_ADDR_LIMIT)
+#define AST27XX_SSP_TSP_AHB_MATRIX_VIRT_TO_ADDR(addr)                                              \
+	((uint64_t)(addr) - AST27XX_SSP_TSP_AHB_MATRIX_VIRT_BASE)
+#define AST27XX_SSP_TSP_AHB_MATRIX_ADDR_TO_VIRT(addr)                                              \
+	((uintptr_t)(addr) + AST27XX_SSP_TSP_AHB_MATRIX_VIRT_BASE)
 
 extern char __RAM_NC_start[];
 extern char __RAM_NC_end[];
@@ -64,11 +76,17 @@ uintptr_t ast27xx_soc_phy_addr_to_virt_addr(uint64_t addr)
 #if defined(CONFIG_SOC_AST2700_TSP) || defined(CONFIG_SOC_AST2700_A1_TSP)
 uint64_t ast27xx_soc_virt_addr_to_phy_addr(uintptr_t addr)
 {
+	if (AST27XX_IS_SSP_TSP_AHB_MATRIX_VIRT_ADDR(addr))
+		return AST27XX_SSP_TSP_AHB_MATRIX_VIRT_TO_ADDR(addr);
+
 	return ((uint64_t)sys_read32(SCU0_REG + 0x168) << 4) + addr;
 }
 
 uintptr_t ast27xx_soc_phy_addr_to_virt_addr(uint64_t addr)
 {
+	if (AST27XX_IS_SSP_TSP_AHB_MATRIX_ADDR(addr))
+		return AST27XX_SSP_TSP_AHB_MATRIX_ADDR_TO_VIRT(addr);
+
 	return addr - ((uint64_t)sys_read32(SCU0_REG + 0x168) << 4);
 }
 #endif
@@ -80,8 +98,8 @@ uint64_t ast27xx_soc_virt_addr_to_phy_addr(uintptr_t addr)
 	uintptr_t limit;
 	uint64_t phy_dram_base;
 
-	if (addr >= 0x70000000 && addr < 0x70020000)
-		return addr;
+	if (AST27XX_IS_SSP_TSP_AHB_MATRIX_VIRT_ADDR(addr))
+		return AST27XX_SSP_TSP_AHB_MATRIX_VIRT_TO_ADDR(addr);
 
 	/* ssp tcm remap region */
 	base = sys_read32(SCU0_REG + 0x140);
@@ -117,6 +135,9 @@ uintptr_t ast27xx_soc_phy_addr_to_virt_addr(uint64_t addr)
 {
 	uint64_t base = (uint64_t)sys_read32(SCU0_REG + 0x128) << 4;
 	uint64_t limit = base + sys_read32(SCU0_REG + 0x154);
+
+	if (AST27XX_IS_SSP_TSP_AHB_MATRIX_ADDR(addr))
+		return AST27XX_SSP_TSP_AHB_MATRIX_ADDR_TO_VIRT(addr);
 
 	/* addr is in MBUS remap region */
 	if (addr >= base && addr < limit) {
