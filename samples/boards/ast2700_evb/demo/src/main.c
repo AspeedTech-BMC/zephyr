@@ -18,6 +18,9 @@
 #include "cptra_sample.h"
 #endif
 #include "cptra_idevid.h"
+#if defined(CONFIG_SPI_MONITOR_ASPEED)
+#include "spim_sample.h"
+#endif
 
 int aspeed_load_image(void);
 
@@ -30,6 +33,10 @@ int main(void)
 #if defined(CONFIG_LOAD_FIT_ENABLED)
 	void *func = (void *)CONFIG_AST_EXT_LOADER_ADDR;
 	((void (*)(uint32_t))func)((uint32_t)CONFIG_LOAD_FIT_ADDR);
+#endif
+
+#if defined(CONFIG_SPI_MONITOR_ASPEED)
+	sipm_demo();
 #endif
 
 #if defined(CONFIG_CPTRA_IPC) || defined(CONFIG_CPTRA_IPC_SSP)

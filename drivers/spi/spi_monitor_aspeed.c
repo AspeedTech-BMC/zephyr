@@ -17,7 +17,12 @@ LOG_MODULE_REGISTER(spim_aspeed, CONFIG_SPI_LOG_LEVEL);
 #include <zephyr/sys/sys_io.h>
 #include <zephyr/sys/__assert.h>
 #include <zephyr/sys/util.h>
+#if defined(CONFIG_SOC_AST1060)
 #include <zephyr/drivers/misc/aspeed/pfr_aspeed.h>
+#endif
+#if defined(CONFIG_SOC_AST2700)
+#include <zephyr/drivers/misc/aspeed/ast2700_spim.h>
+#endif
 #include <soc.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/pinctrl.h>
@@ -140,8 +145,14 @@ static uint8_t spim_log_arr[SPIM_LOG_RAM_TOTAL_SIZE] NON_CACHED_BSS_ALIGN16;
 
 /* lock register */
 /* SPIPF00 */
+#define SPIM_CTRL_MULTI_PASSTHROUGH	BIT(1)
+#define SPIM_ENABLE                     BIT(2)
+#define SPIM_MUX_SEL                    BIT(3)
+#define SPIM_RISING_INACTIVATE          BIT(6)
+#define SPIM_BLOCK_FIFO_CLR		BIT(8)
 #define SPIM_BLOCK_FIFO_CTRL_LOCK       BIT(22)
 #define SPIM_SW_RST_CTRL_LOCK           BIT(23)
+#define SPIM_BLOCK_FIFO_LEN		GENMASK(26, 24)
 
 /* SPIPF7C */
 #define SPIM_CTRL_REG_LOCK              BIT(0)
@@ -169,16 +180,63 @@ static uint8_t spim_log_arr[SPIM_LOG_RAM_TOTAL_SIZE] NON_CACHED_BSS_ALIGN16;
 /* PFR related control */
 #define SPIM_MODE_SCU_CTRL              (0x00f0)
 
+/* AST2700 */
+/* On AST2700, SPI monitor is concatenated after SPI controller */
+#define SPIM_SPIC_CONCAT_OFFSET         0x400
+#define SPI_CTRL_WIN                    0x30
+#define SPI_CTRL_LOCK_SOC               0x1F8
+#define   SPI_CTRL_CS0_WIN_LOCK         BIT(20)
+#define   SPI_CTRL_CS1_WIN_LOCK         BIT(21)
+#define   SPI_CTRL_CS2_WIN_LOCK         BIT(22)
+
+#define SPIM_BLOCKED_LOG_FIFO_CTRL      (0x0014)
+#define   SPIM_BLOCKED_LOG_FIFO_EN      BIT(31)
+#define SPIM_CS0_BASE                   (0x0020)
+
+/* AST2700 address filter config */
+/* #define SPIM_ADDR_PRIV_TABLE_BASE    (0x0100) */
+#define SPIM_ADDR_PRIV_REGION_NUM       64
+#define SPIM_ADDR_PRIV_VALID            BIT(0)
+#define SPIM_ADDR_PRIV_WRITE_DIS        BIT(1)
+#define SPIM_ADDR_PRIV_READ_DIS         BIT(2)
+#define SPIM_ADDR_PRIV_START_MASK       GENMASK(31, 12)
+/* SPIM_ADDR_CTRL + 0x04 */
+#define SPIM_ADDR_PRIV_LEN_MASK         GENMASK(20, 0)
+#define SPIM_ADDR_PRIV_LEN_RAW_MASK     GENMASK(31, 12)
+#define SPIM_ADDR_PRIV_LEN_SHIFT        12
+#define SPIM_ADDR_PRIV_LOCK             BIT(31)
+
+/* access permission control */
+#define SPIM_PROT_CTRL_BASE_OFF       0x400
+#define SPIM_PROT_MID0                0x10
+#define SPIM_PROT_MID1                0x14
+#define SPIM_PROT_MID_NUM             8
+  #define SPIM_BOOTMCU_I_ID           0x20
+  #define SPIM_BOOTMCU_D_ID           0x21
+  #define SPIM_SSP_I_ID               0x02
+  #define SPIM_SSP_D_ID               0x03
+  #define SPIM_SSP_S_ID               0x04
+  #define SPIM_DUMMY_M_ID             0x7F
+#define SPIM_PROT_RW_CTRL             0x80
+#define SPIM_PROT_ADDR_CTRL           0xC0
+
 struct aspeed_spim_data {
 	const struct device *dev;
 	struct k_sem sem_spim; /* protect most control registers */
 	struct k_spinlock irq_ctrl_lock; /* protect ISR content */
 	uint8_t allow_cmd_list[SPIM_CMD_TABLE_NUM];
 	uint32_t allow_cmd_num;
+
+	/* AST1060 */
 	uint32_t read_forbidden_regions[32];
 	uint32_t read_forbidden_region_num;
 	uint32_t write_forbidden_regions[32];
 	uint32_t write_forbidden_region_num;
+
+	/* AST2700 */
+	uint32_t addr_priv_config[48];
+	uint32_t addr_priv_config_num;
+
 	struct k_work log_work;
 	struct spim_log_info log_info;
 	spim_isr_callback_t isr_callback;
@@ -258,6 +316,7 @@ static void release_spim_device(const struct device *dev)
 	}
 }
 
+#if defined(CONFIG_SOC_AST1060)
 static void acquire_log_op(const struct device *dev)
 {
 	if (IS_ENABLED(CONFIG_MULTITHREADING)) {
@@ -932,6 +991,520 @@ void ast1060_monitor_enable(const struct device *dev, bool enable)
 	ast1060_miso_multi_func_adjust(dev, enable);
 	ast1060_passthrough_config(dev, SPIM_SINGLE_PASSTHROUGH, pt_en);
 }
+#endif
+
+#if defined(CONFIG_SOC_AST2700)
+/* Try to get the decoding window range for each CS */
+static void ast2700_spi_decoding_win_config(const struct device *dev)
+{
+	const struct aspeed_spim_config *config = dev->config;
+	uint32_t spic_base = config->ctrl_base - SPIM_SPIC_CONCAT_OFFSET;
+	uint32_t spim_base = config->ctrl_base;
+	uint32_t spic_win;
+	uint32_t spim_win;
+	uint32_t val;
+	uint32_t i;
+
+	acquire_spim_device(dev);
+
+	for (i = 0; i < 3; i++) {
+		spic_win = sys_read32(spic_base + SPI_CTRL_WIN + i * 4);
+		spim_win = (spic_win & 0xffff) |
+			   (((spic_win & 0xffff0000) - 1) &
+			    0xffff0000);
+
+		sys_write32(spim_win, spim_base + SPIM_CS0_BASE + i * 4);
+	}
+
+	/*
+	 * Write-protected address decoding range registers
+	 * to avoid hacker modifing deliberately
+	 */
+	val = sys_read32(spic_base + SPI_CTRL_LOCK_SOC);
+	val |= GENMASK(22, 20);
+	sys_write32(val, spic_base + SPI_CTRL_LOCK_SOC);
+
+	release_spim_device(dev);
+}
+
+static void ast2700_push_pull_mode_config(const struct device *dev)
+{
+	const struct aspeed_spim_config *config = dev->config;
+	uint32_t reg;
+
+	acquire_spim_device(dev);
+
+	reg = sys_read32(config->ctrl_base + SPIM_IO_IRQ_CTRL);
+	reg |= SPIM_PUSH_PULL_ENABLED;
+	sys_write32(reg, config->ctrl_base + SPIM_IO_IRQ_CTRL);
+
+	release_spim_device(dev);
+}
+
+/*
+ * When an invalid transmission is detected, CS should be
+ * inactivated immediately after clock rising edge and
+ * before the next clock falling edge.
+ */
+static void ast2700_blocked_cs_config(const struct device *dev)
+{
+	const struct aspeed_spim_config *config = dev->config;
+	uint32_t reg;
+
+	acquire_spim_device(dev);
+
+	reg = sys_read32(config->ctrl_base + SPIM_CTRL);
+	reg |= SPIM_RISING_INACTIVATE;
+	sys_write32(reg, config->ctrl_base + SPIM_CTRL);
+
+	release_spim_device(dev);
+}
+
+static void ast2700_blocked_fifo_init(const struct device *dev)
+{
+	const struct aspeed_spim_config *config = dev->config;
+	uint32_t reg;
+
+	acquire_spim_device(dev);
+
+	reg = sys_read32(config->ctrl_base + SPIM_CTRL);
+	reg |= SPIM_BLOCK_FIFO_CLR;
+	sys_write32(reg, config->ctrl_base + SPIM_CTRL);
+
+	k_busy_wait(100);
+
+	reg &= ~SPIM_BLOCK_FIFO_CLR;
+	sys_write32(reg, config->ctrl_base + SPIM_CTRL);
+
+	reg = sys_read32(config->ctrl_base + SPIM_BLOCKED_LOG_FIFO_CTRL);
+	reg |= SPIM_BLOCKED_LOG_FIFO_EN;
+	sys_write32(reg, config->ctrl_base + SPIM_BLOCKED_LOG_FIFO_CTRL);
+
+	release_spim_device(dev);
+}
+
+static void ast2700_spim_sw_rst(const struct device *dev)
+{
+	const struct aspeed_spim_config *config = dev->config;
+	uint32_t reg_val;
+
+	acquire_spim_device(dev);
+
+	reg_val = sys_read32(config->ctrl_base + SPIM_CTRL);
+	reg_val |= SPIM_SW_RST;
+	sys_write32(reg_val, config->ctrl_base + SPIM_CTRL);
+
+	k_usleep(5);
+
+	reg_val &= ~(SPIM_SW_RST);
+	sys_write32(reg_val, config->ctrl_base + SPIM_CTRL);
+
+	release_spim_device(dev);
+}
+
+/* On AST2700, only SSP and BootMCU can
+ * access SPI monitor control registers.
+ */
+static void ast2700_spim_access_prot_init(const struct device *dev)
+{
+	const struct aspeed_spim_config *config = dev->config;
+	uint32_t prot_base = config->ctrl_base + 0x400;
+	uint32_t id;
+	uint32_t reg;
+
+	/* config ID */
+	id = SPIM_BOOTMCU_I_ID | SPIM_BOOTMCU_D_ID << 8 |
+	     SPIM_SSP_I_ID << 16 | SPIM_SSP_D_ID << 24;
+	sys_write32(id, prot_base + SPIM_PROT_MID0);
+
+	id = SPIM_SSP_S_ID | SPIM_DUMMY_M_ID << 8 |
+	     SPIM_DUMMY_M_ID << 16 | SPIM_DUMMY_M_ID << 24;
+	sys_write32(id, prot_base + SPIM_PROT_MID1);
+
+	/* config read/write permission */
+	reg = 0x1f1f;
+	sys_write32(reg, prot_base + SPIM_PROT_RW_CTRL);
+
+	/* prot region */
+	reg = (0x400 / 4) | (0x800 / 4) << 16;
+	sys_write32(reg, prot_base + SPIM_PROT_ADDR_CTRL);
+}
+
+static void ast2700_elec_char_init(const struct device *dev)
+{
+	ast2700_spim_sw_rst(dev);
+	ast2700_spi_decoding_win_config(dev);
+	ast2700_push_pull_mode_config(dev);
+	ast2700_blocked_cs_config(dev);
+	ast2700_blocked_fifo_init(dev);
+	ast2700_spim_access_prot_init(dev);
+}
+
+#define ADDR_CTRL_REG0(base, idx) ((base) + (idx) * 8)
+#define ADDR_CTRL_REG1(base, idx) ((base) + (idx) * 8 + 4)
+
+static inline uint32_t ast2700_addr_priv_start(uint32_t base, int idx)
+{
+	return (sys_read32(base + idx * 8) & SPIM_ADDR_PRIV_START_MASK);
+}
+
+static inline uint32_t ast2700_addr_priv_len(uint32_t base, int idx)
+{
+	return (sys_read32(base + idx * 8 + 4) & SPIM_ADDR_PRIV_LEN_MASK) <<
+	       SPIM_ADDR_PRIV_LEN_SHIFT;
+}
+
+static inline uint32_t ast2700_addr_priv_end(uint32_t base, int idx)
+{
+	return ((sys_read32(base + idx * 8) & SPIM_ADDR_PRIV_START_MASK) +
+		((sys_read32(base + idx * 8 + 4) & SPIM_ADDR_PRIV_LEN_MASK) <<
+		 SPIM_ADDR_PRIV_LEN_SHIFT));
+}
+
+static inline bool ast2700_addr_priv_vld(uint32_t base, int idx)
+{
+	return !!(sys_read32(base + idx * 8) & SPIM_ADDR_PRIV_VALID);
+}
+
+static inline uint32_t ast2700_addr_priv_lock(uint32_t base, int idx)
+{
+	return !!(sys_read32(base + idx * 8 + 4) & SPIM_ADDR_PRIV_LOCK);
+}
+
+void ast2700_spim_blocked_log_parser(const struct device *dev)
+{
+	const struct aspeed_spim_config *config = dev->config;
+	uint32_t log;
+	uint32_t len;
+
+	len = (sys_read32(config->ctrl_base + SPIM_CTRL) &
+	       SPIM_BLOCK_FIFO_LEN) >> 24;
+	if (len > 4)
+		len = 4;
+
+	while (len > 0) {
+		log = sys_read32(config->ctrl_base + SPIM_FIFO);
+		switch ((log & 0xc0000000) >> 30) {
+		case 0x0:
+			/* block command */
+			printk("[%s][b][cmd] %02xh\n",
+			       dev->name, (log & 0xff));
+			break;
+
+		case 0x1:
+			/* block write command */
+			printk("[%s][b][w_addr] 0x%08x\n",
+			       dev->name, (log & 0xfffff) << 12);
+			break;
+
+		case 0x2:
+			/* block read command */
+			printk("[%s][b][r_addr] 0x%08x\n",
+			       dev->name, (log & 0xfffff) << 12);
+			break;
+
+		default:
+			printk("[%s]invalid ctx: 0x%08x", dev->name, log);
+		}
+
+		len--;
+	}
+}
+
+uint32_t ast2700_addr_priv_region_overlay(const struct device *dev,
+					  uint32_t idx_off,
+					  uint32_t start, uint32_t len)
+{
+	const struct aspeed_spim_config *config = dev->config;
+	uint32_t addr_priv_base = config->ctrl_base + SPIM_ADDR_PRIV_TABLE_BASE;
+	uint32_t end = start + len;
+	uint32_t reg_start, reg_end;
+
+	for (; idx_off < SPIM_ADDR_PRIV_REGION_NUM; idx_off++) {
+		reg_start = ast2700_addr_priv_start(addr_priv_base, idx_off);
+		reg_end = ast2700_addr_priv_end(addr_priv_base, idx_off);
+		if (!(end <= reg_start || reg_end <= start)) {
+			LOG_WRN("overlay with idx %02d, (0x%08x, 0x%08x), (0x%08x, 0x%08x)",
+				 idx_off, start, end, reg_start, reg_end);
+			return idx_off;
+		}
+	}
+
+	return SPIM_ADDR_PRIV_REGION_NUM;
+}
+
+uint32_t ast2700_addr_priv_region_full_overlay(const struct device *dev,
+					       uint32_t idx_off,
+					       uint32_t start,
+					       uint32_t len)
+{
+	const struct aspeed_spim_config *config = dev->config;
+	uint32_t addr_priv_base = config->ctrl_base + SPIM_ADDR_PRIV_TABLE_BASE;
+	uint32_t reg_start, reg_len;
+
+	for (; idx_off < SPIM_ADDR_PRIV_REGION_NUM; idx_off++) {
+		reg_start = ast2700_addr_priv_start(addr_priv_base, idx_off);
+		reg_len = ast2700_addr_priv_len(addr_priv_base, idx_off);
+		if (reg_start == start && reg_len == len)
+			return idx_off;
+	}
+
+	return SPIM_ADDR_PRIV_REGION_NUM;
+}
+
+int ast2700_address_privilege_config(const struct device *dev,
+				     uint32_t addr, uint32_t len,
+				     uint32_t attr)
+{
+	const struct aspeed_spim_config *config = dev->config;
+	uint32_t addr_priv_base = config->ctrl_base + SPIM_ADDR_PRIV_TABLE_BASE;
+	uint32_t idx;
+	uint32_t reg;
+	int ret = 0;
+
+	if (!!(addr % KB(4)) || !!(len % KB(4)) || len == 0) {
+		LOG_ERR("addr, %x, or len, %x, should be 4KB aligned.",
+			 addr, len);
+		return -EINVAL;
+	}
+
+	if (!(attr & (FLAG_ADDR_PRIV_READ_DIS |
+		      FLAG_ADDR_PRIV_WRITE_DIS))) {
+		LOG_ERR("Invalid operation.");
+		return -EINVAL;
+	}
+
+	acquire_spim_device(dev);
+
+	if (ast2700_addr_priv_region_overlay(dev, 0, addr, len) <
+	    SPIM_ADDR_PRIV_REGION_NUM) {
+		LOG_ERR("region overlay.");
+		ret = -EINVAL;
+		goto end;
+	}
+
+	/* find empty address ctrl slot */
+	for (idx = 0; idx < SPIM_ADDR_PRIV_REGION_NUM; idx++) {
+		if (ast2700_addr_priv_lock(addr_priv_base, idx) ||
+		    ast2700_addr_priv_vld(addr_priv_base, idx))
+			continue;
+
+		reg = (addr & SPIM_ADDR_PRIV_START_MASK) | SPIM_ADDR_PRIV_VALID;
+		if (attr & FLAG_ADDR_PRIV_READ_DIS)
+			reg |= SPIM_ADDR_PRIV_READ_DIS;
+		if (attr & FLAG_ADDR_PRIV_WRITE_DIS)
+			reg |= SPIM_ADDR_PRIV_WRITE_DIS;
+
+		sys_write32(reg, ADDR_CTRL_REG0(addr_priv_base, idx));
+
+		reg = (len & SPIM_ADDR_PRIV_LEN_RAW_MASK) >>
+		      SPIM_ADDR_PRIV_LEN_SHIFT;
+
+		if (attr & FLAG_ADDR_PRIV_TABLE_LOCK)
+			reg |= SPIM_ADDR_PRIV_LOCK;
+
+		sys_write32(reg, ADDR_CTRL_REG1(addr_priv_base, idx));
+
+		reg = sys_read32(ADDR_CTRL_REG0(addr_priv_base, idx));
+		LOG_INF("[%d] addr 0x%08x with len 0x%08x %s %s.",
+			 idx,
+			 ast2700_addr_priv_start(addr_priv_base, idx),
+			 ast2700_addr_priv_len(addr_priv_base, idx),
+			 !!(reg & SPIM_ADDR_PRIV_WRITE_DIS) ?
+			 "write_dis" : "write_en",
+			 !!(reg & SPIM_ADDR_PRIV_READ_DIS) ?
+			 "read_dis" : "read_en");
+
+		break;
+	}
+
+	if (idx >= SPIM_ADDR_PRIV_REGION_NUM) {
+		LOG_ERR("no more addr ctrl space!");
+		ret = -ENOSPC;
+		goto end;
+	}
+
+end:
+	release_spim_device(dev);
+
+	return ret;
+}
+
+int ast2700_address_privilege_remove(const struct device *dev,
+				     uint32_t addr, uint32_t len)
+
+{
+	const struct aspeed_spim_config *config = dev->config;
+	uint32_t addr_priv_base = config->ctrl_base + SPIM_ADDR_PRIV_TABLE_BASE;
+	uint32_t idx, rm_idx;
+	bool found = false;
+	bool lock = false;
+	int ret = 0;
+
+	if (!!(addr % KB(4)) || !!(len % KB(4))) {
+		LOG_ERR("start addr, %x, or len, %x, should be 4KB aligned.",
+			 addr, len);
+		return -EINVAL;
+	}
+
+	acquire_spim_device(dev);
+
+	for (idx = 0; idx < SPIM_ADDR_PRIV_REGION_NUM; idx++) {
+		rm_idx = ast2700_addr_priv_region_full_overlay(dev, idx,
+							       addr, len);
+		if (rm_idx >= SPIM_ADDR_PRIV_REGION_NUM)
+			break;
+
+		if (ast2700_addr_priv_lock(addr_priv_base, rm_idx)) {
+			LOG_ERR("addr ctrl idx %02d is locked, cannot be removed\n",
+				  rm_idx);
+			idx = rm_idx;
+			lock = true;
+			break;
+		}
+
+		sys_write32(0x0, ADDR_CTRL_REG0(addr_priv_base, rm_idx));
+		sys_write32(0x0, ADDR_CTRL_REG1(addr_priv_base, rm_idx));
+		found = true;
+	}
+
+	if (!found || lock) {
+		LOG_ERR("fail to remove addr ctrl, addr: 0x%08x, len: 0x%08x.\n",
+			 addr, len);
+		ret = -ECANCELED;
+		goto end;
+	}
+
+end:
+	release_spim_device(dev);
+
+	return ret;
+}
+
+void ast2700_addr_priv_remove_all(const struct device *dev)
+{
+	const struct aspeed_spim_config *config = dev->config;
+	uint32_t addr_priv_base = config->ctrl_base +
+				  SPIM_ADDR_PRIV_TABLE_BASE;
+	uint32_t idx;
+	uint32_t reg;
+
+	acquire_spim_device(dev);
+
+	for (idx = 0; idx < SPIM_ADDR_PRIV_REGION_NUM; idx++) {
+		reg = sys_read32(ADDR_CTRL_REG1(addr_priv_base, idx));
+		if (!!(reg & SPIM_ADDR_PRIV_LOCK)) {
+			LOG_WRN("idx: %02d, is locked, cannot be cleared.", idx);
+			continue;
+		}
+
+		sys_write32(0x0, ADDR_CTRL_REG0(addr_priv_base, idx));
+		sys_write32(0x0, ADDR_CTRL_REG1(addr_priv_base, idx));
+	}
+
+	release_spim_device(dev);
+}
+
+void ast2700_addr_priv_table_lock(const struct device *dev)
+{
+	const struct aspeed_spim_config *config = dev->config;
+	uint32_t addr_priv_base = config->ctrl_base +
+				  SPIM_ADDR_PRIV_TABLE_BASE;
+	uint32_t reg;
+	uint32_t idx;
+
+	acquire_spim_device(dev);
+
+	for (idx = 0; idx < SPIM_ADDR_PRIV_REGION_NUM; idx++) {
+		reg = sys_read32(ADDR_CTRL_REG1(addr_priv_base, idx));
+		reg |= SPIM_ADDR_PRIV_LOCK;
+		sys_write32(reg, ADDR_CTRL_REG1(addr_priv_base, idx));
+	}
+
+	release_spim_device(dev);
+}
+
+void ast2700_dump_addr_priv_table(const struct device *dev)
+{
+	const struct aspeed_spim_config *config = dev->config;
+	uint32_t addr_priv_base = config->ctrl_base +
+				  SPIM_ADDR_PRIV_TABLE_BASE;
+	uint32_t idx;
+	uint32_t reg0, reg1;
+
+	printf("spim addr ctrl dump:\n");
+	printf("======================\n");
+	for (idx = 0; idx < SPIM_ADDR_PRIV_REGION_NUM; idx++) {
+		reg0 = sys_read32(ADDR_CTRL_REG0(addr_priv_base, idx));
+		reg1 = sys_read32(ADDR_CTRL_REG1(addr_priv_base, idx));
+
+		if (!reg0 && !(reg1 & ~SPIM_ADDR_PRIV_LOCK))
+			continue;
+
+		printf("[%02d]addr: 0x%08x, len: 0x%08x, %s, %s, %s, %s.\n",
+		       idx,
+		       ast2700_addr_priv_start(addr_priv_base, idx),
+		       ast2700_addr_priv_len(addr_priv_base, idx),
+		       !!(reg0 & SPIM_ADDR_PRIV_WRITE_DIS) ? "unwritable " : "writable",
+		       !!(reg0 & SPIM_ADDR_PRIV_READ_DIS) ? "unreadable" : "readable",
+		       !!(reg0 & SPIM_ADDR_PRIV_VALID) ? "valid" : "invalid",
+		       !!(reg1 & SPIM_ADDR_PRIV_LOCK) ? "lock" : "unlock");
+	}
+
+	printf("======================\n");
+}
+
+void ast2700_addr_priv_init(const struct device *dev)
+{
+	struct aspeed_spim_data *const data = dev->data;
+	int ret = 0;
+	uint32_t addr, len, flag;
+	uint32_t i;
+
+	ast2700_addr_priv_remove_all(dev);
+
+	if (data->addr_priv_config_num % 3 != 0) {
+		LOG_ERR("Wrong read-forbidden-regions setting in .dts.");
+		return;
+	}
+
+	for (i = 0; i < data->addr_priv_config_num; i += 3) {
+		addr = data->addr_priv_config[i];
+		len = data->addr_priv_config[i + 1];
+		flag = data->addr_priv_config[i + 2];
+
+		LOG_INF("addr priv: 0x%08x, len: 0x%08x, flag: 0x%02x",
+			addr, len, flag);
+
+		ret = ast2700_address_privilege_config(dev, addr,
+						       len, flag);
+		if (ret)
+			LOG_ERR("Fail to config addr priv table!");
+	}
+}
+
+void ast2700_monitor_enable(const struct device *dev, bool enable)
+{
+	const struct aspeed_spim_config *config = dev->config;
+	uint32_t reg;
+
+	acquire_spim_device(dev);
+
+	reg = sys_read32(config->ctrl_base + SPIM_CTRL);
+
+	if (enable) {
+		reg |= SPIM_CTRL_MULTI_PASSTHROUGH |
+		       SPIM_ENABLE | SPIM_MUX_SEL;
+	} else {
+		reg &= ~(SPIM_CTRL_MULTI_PASSTHROUGH |
+			 SPIM_ENABLE | SPIM_MUX_SEL);
+	}
+
+	sys_write32(reg, config->ctrl_base + SPIM_CTRL);
+
+	release_spim_device(dev);
+}
+#endif
 
 void spim_dump_addr_priv_table(const struct device *dev)
 {
@@ -1431,6 +2004,12 @@ static int spi_monitor_init(const struct device *dev)
 	if (IS_ENABLED(CONFIG_MULTITHREADING))
 		k_sem_init(&data->sem_spim, 1, 1);
 
+	if (!config->elec_char_init || !config->allow_cmd_table_init ||
+	    !config->addr_priv_init || !config->monitor_enable) {
+		LOG_ERR("Incomplete init callback functions");
+		return -EINVAL;
+	}
+
 	config->elec_char_init(dev);
 	config->allow_cmd_table_init(dev, data->allow_cmd_list,
 				     data->allow_cmd_num, 0);
@@ -1438,19 +2017,26 @@ static int spi_monitor_init(const struct device *dev)
 	config->monitor_enable(dev, true);
 
 	/* log info init */
-	ret = config->blocked_log_init(dev);
-	if (ret != 0)
-		return ret;
+	if (config->blocked_log_init) {
+		ret = config->blocked_log_init(dev);
+		if (ret != 0)
+			return ret;
+	}
 
 	/* irq init */
-	config->irq_config_func(dev);
-	spim_irq_enable(dev);
+	if (config->irq_config_func) {
+		config->irq_config_func(dev);
+		spim_irq_enable(dev);
+	}
 
-	ret = pinctrl_apply_state(config->pcfg, PINCTRL_STATE_DEFAULT);
-	if (ret != 0) {
-		LOG_ERR("[%s] fail to configure multi function pin",
-			dev->name);
-		return ret;
+	/* multi-function init */
+	if (config->pcfg) {
+		ret = pinctrl_apply_state(config->pcfg, PINCTRL_STATE_DEFAULT);
+		if (ret != 0) {
+			LOG_ERR("[%s] fail to configure multi function pin",
+				dev->name);
+			return ret;
+		}
 	}
 
 	if (config->force_rel_flash_rst)
@@ -1473,24 +2059,7 @@ static int aspeed_spi_monitor_common_init(const struct device *dev)
 }
 
 #define SPIM_ENUM(node_id) node_id,
-#define SPIM_EXT_MUX_SEL_GPIOS(node_id)	\
-	static const struct gpio_dt_spec spim_ext_mux_sel_gpios_##node_id[] = {	\
-		COND_CODE_1(DT_NODE_HAS_PROP(node_id, ext_mux_sel_gpios),	\
-			    (DT_FOREACH_PROP_ELEM_SEP(node_id,			\
-						      ext_mux_sel_gpios,	\
-						      GPIO_DT_SPEC_GET_BY_IDX,	\
-						      (,))),			\
-			    (0))						\
-	};
-
 /* child node define */
-#define ASPEED_SPIM_DT_DEFINE(node_id)	\
-			DEVICE_DT_DEFINE(node_id, spi_monitor_init,	\
-					 NULL,	\
-					 &aspeed_spim_data[node_id],		\
-					 &aspeed_spim_config[node_id],	\
-					 POST_KERNEL, 71, NULL);
-
 #define ASPEED_SPIM_IRQ_DEFINE(node_id)					\
 	static void spim_irq_config_##node_id(const struct device *dev)	\
 	{								\
@@ -1503,8 +2072,8 @@ static int aspeed_spi_monitor_common_init(const struct device *dev)
 		irq_enable(DT_IRQN(node_id));				\
 	}
 
-#define ASPEED_PINCTRL_DT_INST_DEFINE(node_id)	PINCTRL_DT_DEFINE(node_id);
 
+#if defined(CONFIG_SOC_AST1060)
 #undef DT_DRV_COMPAT
 /*
  * AST1060:
@@ -1512,6 +2081,23 @@ static int aspeed_spi_monitor_common_init(const struct device *dev)
  * customers have adopt this naming.
  */
 #define DT_DRV_COMPAT aspeed_spi_monitor_controller
+#define SPIM_EXT_MUX_SEL_GPIOS(node_id)	\
+			static const struct gpio_dt_spec spim_ext_mux_sel_gpios_##node_id[] = { \
+				COND_CODE_1(DT_NODE_HAS_PROP(node_id, ext_mux_sel_gpios),	\
+					    (DT_FOREACH_PROP_ELEM_SEP(node_id,			\
+								      ext_mux_sel_gpios,	\
+								      GPIO_DT_SPEC_GET_BY_IDX,	\
+								      (,))),			\
+					    (0))						\
+			};
+
+#define ASPEED_PINCTRL_DT_INST_DEFINE(node_id)	PINCTRL_DT_DEFINE(node_id);
+#define ASPEED_AST1060_SPIM_DT_DEFINE(node_id)	\
+					DEVICE_DT_DEFINE(node_id, spi_monitor_init,	\
+							 NULL,	\
+							 &aspeed_spim_data[node_id],		\
+							 &aspeed_spim_config[node_id],	\
+							 POST_KERNEL, 71, NULL);
 
 #define ASPEED_AST1060_SPIM_DEV_CFG(node_id) {	\
 		.ctrl_base = DT_REG_ADDR(DT_PARENT(node_id)) +		\
@@ -1572,6 +2158,74 @@ static int aspeed_spi_monitor_common_init(const struct device *dev)
 	static struct aspeed_spim_data aspeed_spim_data[] = {			\
 		DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n), ASPEED_AST1060_SPIM_DEV_DATA)};	\
 	enum {DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n), SPIM_ENUM)};	\
-	DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n), ASPEED_SPIM_DT_DEFINE)	\
+	DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n), ASPEED_AST1060_SPIM_DT_DEFINE)	\
 
 DT_INST_FOREACH_STATUS_OKAY(ASPEED_AST1060_SPI_MONITOR_COMMON_INIT)
+#elif defined(CONFIG_SOC_AST2700)
+#undef DT_DRV_COMPAT
+/*
+ * AST1060:
+ * Don't modify the compatible for AST1060 since many
+ * customers have adopt this naming.
+ */
+#define DT_DRV_COMPAT aspeed_spi_monitor_controller
+#define ASPEED_AST2700_SPIM_DT_DEFINE(node_id)	\
+					DEVICE_DT_DEFINE(node_id, spi_monitor_init,	\
+							 NULL,	\
+							 &aspeed_spim_data[node_id],		\
+							 &aspeed_spim_config[node_id],	\
+							 POST_KERNEL, 81, NULL);
+
+#define ASPEED_AST2700_SPIM_DEV_CFG(node_id) {	\
+		.ctrl_base = DT_REG_ADDR(DT_PARENT(node_id)) +		\
+			     0x1000 * (DT_REG_ADDR(node_id) - 1),	\
+		.irq_num = DT_IRQN(node_id),		\
+		.irq_priority = DT_IRQ(node_id, priority),	\
+		.irq_config_func = spim_irq_config_##node_id,	\
+		.ctrl_idx = DT_REG_ADDR(node_id),	\
+		.parent = DEVICE_DT_GET(DT_PARENT(node_id)),	\
+		.pcfg = NULL,	\
+		.addr_priv_init = ast2700_addr_priv_init,	\
+		.elec_char_init = ast2700_elec_char_init,	\
+		.allow_cmd_table_init = spim_allow_cmd_table_init,	\
+		.monitor_enable = ast2700_monitor_enable,	\
+		.blocked_log_init = NULL,	\
+		.flash_rst_release = NULL,	\
+		.mux_config = NULL,	\
+		.dump_addr_priv = ast2700_dump_addr_priv_table,	\
+		.addr_priv_lock = ast2700_addr_priv_table_lock,	\
+		.misc_lock = NULL,	\
+},
+
+#define ASPEED_AST2700_SPIM_DEV_DATA(node_id) {	\
+		.allow_cmd_list = DT_PROP(node_id, allow_cmds),	\
+		.allow_cmd_num = DT_PROP_LEN(node_id, allow_cmds),	\
+		.addr_priv_config = DT_PROP(node_id, addr_priv_configs),	\
+		.addr_priv_config_num = DT_PROP_LEN(node_id, addr_priv_configs), \
+		.dev = DEVICE_DT_GET(node_id),	\
+},
+
+/* common node define */
+#define ASPEED_AST2700_SPI_MONITOR_COMMON_INIT(n)	\
+	static struct aspeed_spim_common_config aspeed_spim_common_config_##n = { \
+		.scu_base = DT_REG_ADDR_BY_IDX(DT_INST_PHANDLE_BY_IDX(n, aspeed_scu, 0), 0), \
+	};								\
+	static struct aspeed_spim_common_data aspeed_spim_common_data_##n;	\
+		\
+	DEVICE_DT_INST_DEFINE(n, &aspeed_spi_monitor_common_init,			\
+			    NULL,					\
+			    &aspeed_spim_common_data_##n,			\
+			    &aspeed_spim_common_config_##n, POST_KERNEL,	\
+			    80,		\
+			    NULL);		\
+	/* handle child node */	\
+	DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n), ASPEED_SPIM_IRQ_DEFINE)	\
+	static const struct aspeed_spim_config aspeed_spim_config[] = {	\
+		DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n), ASPEED_AST2700_SPIM_DEV_CFG)};	\
+	static struct aspeed_spim_data aspeed_spim_data[] = {			\
+		DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n), ASPEED_AST2700_SPIM_DEV_DATA)};	\
+	enum {DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n), SPIM_ENUM)};	\
+	DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n), ASPEED_AST2700_SPIM_DT_DEFINE)	\
+
+DT_INST_FOREACH_STATUS_OKAY(ASPEED_AST2700_SPI_MONITOR_COMMON_INIT)
+#endif

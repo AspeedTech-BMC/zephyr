@@ -9,7 +9,11 @@
 #include <zephyr/sys/util.h>
 #include <stdlib.h>
 #include <string.h>
+#if defined(CONFIG_SOC_AST1060)
 #include <zephyr/drivers/misc/aspeed/pfr_aspeed.h>
+#elif defined(CONFIG_SOC_AST2700)
+#include <zephyr/drivers/misc/aspeed/ast2700_spim.h>
+#endif
 #include <soc.h>
 #include <zephyr/kernel.h>
 
@@ -38,26 +42,6 @@ static int cmd_parse_helper(const struct shell *shell, size_t *argc,
 	}
 
 	*cmd = strtoul((*argv)[1], &endptr, 16);
-
-	return 0;
-}
-
-static int addr_parse_helper(const struct shell *shell, size_t *argc,
-		char **argv[], bool *enable, mm_reg_t *addr, uint32_t *len)
-{
-	char *endptr;
-
-	if (*argc < 4) {
-		shell_error(shell, "Missing address or length parameter.");
-		return -EINVAL;
-	}
-
-	*enable = false;
-	if (strncmp((*argv)[1], "enable", 6) == 0)
-		*enable = true;
-
-	*addr = strtoul((*argv)[2], &endptr, 16);
-	*len = strtoul((*argv)[3], &endptr, 16);
 
 	return 0;
 }
@@ -172,6 +156,27 @@ static int dump_addr_priv_table(const struct shell *shell, size_t argc, char *ar
 	return 0;
 }
 
+#if defined(CONFIG_SOC_AST1060)
+static int addr_parse_helper(const struct shell *shell, size_t *argc,
+		char **argv[], bool *enable, mm_reg_t *addr, uint32_t *len)
+{
+	char *endptr;
+
+	if (*argc < 4) {
+		shell_error(shell, "Missing address or length parameter.");
+		return -EINVAL;
+	}
+
+	*enable = false;
+	if (strncmp((*argv)[1], "enable", 6) == 0)
+		*enable = true;
+
+	*addr = strtoul((*argv)[2], &endptr, 16);
+	*len = strtoul((*argv)[3], &endptr, 16);
+
+	return 0;
+}
+
 static int read_addr_priv_table_config(const struct shell *shell, size_t argc, char *argv[])
 {
 	int ret;
@@ -237,6 +242,51 @@ static int write_addr_priv_table_config(const struct shell *shell, size_t argc, 
 end:
 	return ret;
 }
+#endif
+
+#if defined(CONFIG_SOC_AST2700)
+static int ast2700_addr_priv_config(const struct shell *shell, size_t argc, char *argv[])
+{
+	int ret;
+	mm_reg_t addr = 0;
+	uint32_t len = 0;
+	uint32_t attr = 0;
+
+	if (!spim_device) {
+		shell_error(shell, "Please set the device first.");
+		return -ENODEV;
+	}
+
+	if (argc < 4) {
+		shell_error(shell, "Missing addr, len or attr parameter.");
+		return -EINVAL;
+	}
+
+	addr = strtoul(argv[1], NULL, 16);
+	len = strtoul(argv[2], NULL, 16);
+
+	if (strncmp(argv[3], "remove", 6) == 0) {
+		ret = ast2700_address_privilege_remove(spim_device, addr, len);
+		goto end;
+	} else if (strncmp(argv[3], "r_dis", 5) == 0) {
+		attr = FLAG_ADDR_PRIV_READ_DIS;
+	} else if (strncmp(argv[3], "w_dis", 5) == 0) {
+		attr = FLAG_ADDR_PRIV_WRITE_DIS;
+	} else if (strncmp(argv[3], "rw_dis", 6) == 0) {
+		attr = FLAG_ADDR_PRIV_READ_DIS | FLAG_ADDR_PRIV_WRITE_DIS;
+	} else {
+		printk("invalid attribute\n");
+		return -1;
+	}
+
+	printk("addr: 0x%08lx, len: 0x%08x, attr: 0x%08x\n",
+		addr, len, attr);
+
+	ret = ast2700_address_privilege_config(spim_device, addr, len, attr);
+end:
+	return ret;
+}
+#endif
 
 static int cmd_lock(const struct shell *shell, size_t argc, char *argv[])
 {
@@ -277,6 +327,7 @@ static int spi_monitor_disabled(const struct shell *shell, size_t argc, char *ar
 	return 0;
 }
 
+#if defined(CONFIG_SOC_AST1060)
 static int ext_mux_config(const struct shell *shell, size_t argc, char *argv[])
 {
 	uint32_t flag;
@@ -296,6 +347,7 @@ static int ext_mux_config(const struct shell *shell, size_t argc, char *argv[])
 
 	return 0;
 }
+#endif
 
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_spim_cmds,
 	SHELL_CMD_ARG(dump, NULL, "\"dump\"", dump_allow_cmd_table, 1, 0),
@@ -308,10 +360,15 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_spim_cmds,
 
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_spim_addr,
 	SHELL_CMD_ARG(dump, NULL, "\"dump\"", dump_addr_priv_table, 1, 0),
+#if defined(CONFIG_SOC_AST1060)
 	SHELL_CMD_ARG(read, NULL, "<enable/disable> <addr> <len>",
 		read_addr_priv_table_config, 4, 0),
 	SHELL_CMD_ARG(write, NULL, "<enable/disable> <addr> <len>",
 		write_addr_priv_table_config, 4, 0),
+#elif defined(CONFIG_SOC_AST2700)
+	SHELL_CMD_ARG(config, NULL, "<addr> <len> <attr>",
+		ast2700_addr_priv_config, 4, 0),
+#endif
 
 	SHELL_SUBCMD_SET_END
 );
@@ -319,7 +376,9 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_spim_addr,
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_spim_config,
 	SHELL_CMD_ARG(enable, NULL, "\"enable\"", spi_monitor_enabled, 1, 0),
 	SHELL_CMD_ARG(disable, NULL, "\"disable\"", spi_monitor_disabled, 1, 0),
+#if defined(CONFIG_SOC_AST1060)
 	SHELL_CMD_ARG(extmux, NULL, "<0/1> for clear/set", ext_mux_config, 2, 0),
+#endif
 	SHELL_SUBCMD_SET_END
 );
 

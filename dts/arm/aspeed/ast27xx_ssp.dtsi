@@ -104,6 +104,22 @@
 			spi-ctrl-fifo-enabled;
 			status = "disabled";
 		};
+
+		spim0: spim_common@74000400 {
+			compatible = "aspeed,spi-monitor-controller";
+			reg = <0x74000400 0x1000>;
+			aspeed,scu = <&syscon1>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "disabled";
+
+			spim1: spim@1 {
+				interrupt-parent = <&intc1_4>;
+				interrupts = <23 1>;
+				reg = <1>;
+				status = "disabled";
+			};
+		};
 	};
 };
 

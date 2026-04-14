@@ -111,3 +111,15 @@ child-binding:
       description: |
         Release flash reset at the beginning
         driver probe stage.
+
+    addr-priv-configs:
+      type: array
+      required: false
+      description: |
+        Assign the start address, length and attributes of
+        protection regions. The regions cannot be overlapped.
+
+        <start_address_1 length_1 attribute_1
+        start_address_2 length_2 attribute_2
+        ...
+        start_address_N length_N attribute_N>;
