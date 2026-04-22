@@ -95,11 +95,7 @@
 			compatible = "aspeed,spi-controller";
 			reg = <0x74000000 0x300>, <0x20000000 0x10000000>;
 			reg-names = "ctrl_reg", "spi_mmap";
-			interrupt-parent = <&intc1_3>;
-			interrupts = <25 1>;
 			clocks = <&sysclk1 SCU1_CLK_AHB>;
-			pinctrl-0 = <pinctrl_fwspi_quad_default>;
-			pinctrl-names = "default";
 			num-cs = <2>;
 			ctrl-type = "bspi";
 			#address-cells = <1>;

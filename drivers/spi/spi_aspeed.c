@@ -18,22 +18,7 @@ LOG_MODULE_REGISTER(spi_aspeed, CONFIG_SPI_LOG_LEVEL);
 #include <zephyr/sys/sys_io.h>
 #include <zephyr/sys/__assert.h>
 #include <zephyr/drivers/misc/aspeed/pfr_aspeed.h>
-#ifndef CONFIG_SOC_AST2700_BOOTMCU
 #include <zephyr/drivers/pinctrl.h>
-#endif
-
-#ifdef CONFIG_SOC_AST2700
-#include <soc.h>
-#ifdef CONFIG_SOC_AST2700_BOOTMCU
-#define FMC_CTRL_BASE               (0x14000000)
-#define SPI0_CTRL_BASE              (0x14010000)
-#define SPI1_CTRL_BASE              (0x14020000)
-#else
-#define FMC_CTRL_BASE               (0x74000000)
-#define SPI0_CTRL_BASE              (0x74010000)
-#define SPI1_CTRL_BASE              (0x74020000)
-#endif
-#endif
 
 #define SPI00_CE_TYPE_SETTING       (0x0000)
 #define SPI04_CE_CTRL               (0x0004)
@@ -49,15 +34,13 @@ LOG_MODULE_REGISTER(spi_aspeed, CONFIG_SPI_LOG_LEVEL);
 #define SPI38_CE2_ADDR_DEC          (0x0038)
 
 #define SPI50_SOFT_RST_CTRL         (0x0050)
-#define SPI54_MISC_CTRL             (0x0054)
 
 #define SPI60_WDT1                  (0x0060)
 #define SPI64_WDT2                  (0x0064)
 #define SPI68_WDT2_RELOAD_VAL       (0x0068)
 #define SPI6C_WDT2_RESTART          (0x006C)
 
-#define SPI7C_DMA_HI_ADDR_REG       (0x007c)	/* AST2700 */
-#define SPI7C_DMA_BUF_LEN           (0x007C)	/* AST1030/AST1060/AST2600 */
+#define SPI7C_DMA_BUF_LEN           (0x007C)
 #define SPI80_DMA_CTRL              (0x0080)
 #define SPI84_DMA_FLASH_ADDR        (0x0084)
 #define SPI88_DMA_RAM_ADDR          (0x0088)
@@ -71,24 +54,20 @@ LOG_MODULE_REGISTER(spi_aspeed, CONFIG_SPI_LOG_LEVEL);
 #define SPIA4_ADDR_FILTER_CTRL      (0x00A4)
 #define SPIA8_REG_LOCK_SRST         (0x00A8)
 #define SPIAC_REG_LOCK_WDT          (0x00AC)
-
-#define SPI1F4_SOCRST_LOCK          (0x01F4)
-#define SPI200_DATA_FIFO_REG        (0x0200)
-
 /* used for HW SAFS setting */
 #define SPIR6C_HOST_DIRECT_ACCESS_CMD_CTRL4	(0x006c)
 #define SPIR74_HOST_DIRECT_ACCESS_CMD_CTRL2	(0x0074)
 
-#define SPI_CALIB_LEN               0x200
-#define SPI_DMA_IRQ_STS             BIT(19)
+#define SPI_CALIB_LEN               0x400
 #define SPI_DMA_STS                 BIT(11)
 #define SPI_DMA_IRQ_EN              BIT(3)
-#define SPI_DMA_REQUEST             BIT(31)
-#define SPI_DMA_GRANT               BIT(30)
+#define SPI_DAM_REQUEST             BIT(31)
+#define SPI_DAM_GRANT               BIT(30)
 #define SPI_DMA_CALIB_MODE          BIT(3)
 #define SPI_DMA_CALC_CKSUM          BIT(2)
 #define SPI_DMA_WRITE               BIT(1)
 #define SPI_DMA_ENABLE              BIT(0)
+#define SPI_DMA_STATUS              BIT(11)
 #define SPI_DMA_GET_REQ_MAGIC       0xaeed0000
 #define SPI_DMA_DISCARD_REQ_MAGIC   0xdeea0000
 #define SPI_DMA_TRIGGER_LEN         128
@@ -105,15 +84,7 @@ LOG_MODULE_REGISTER(spi_aspeed, CONFIG_SPI_LOG_LEVEL);
 #define ASPEED_SPI_USER_INACTIVE    BIT(2)
 
 #define ASPEED_SPI_SZ_2M            0x200000
-#define ASPEED_SPI_SZ_16M           0x1000000
-#define ASPEED_SPI_SZ_64M           0x4000000
 #define ASPEED_SPI_SZ_256M          0x10000000
-#define ASPEED_SPI_SZ_768M          0x30000000
-
-#define ASPEED_DRAM_PHY_BASE        0x400000000
-#define ASPEED_IO_SRAM_PHY_BASE     0x14b80000
-#define ASPEED_IO_SRAM_SIZE         0x40000
-
 
 #define ASPEED_SPI_CTRL_VAL(io_mode, opcode, dummy_cycle) \
 		((io_mode) | (((opcode) & 0xff) << 16) | (dummy_cycle))
@@ -135,6 +106,18 @@ struct aspeed_spi_decoded_addr {
 	uint32_t len;
 };
 
+struct aspeed_spi_data {
+	struct spi_context ctx;
+	uint32_t (*segment_start)(uint32_t val);
+	uint32_t (*segment_end)(uint32_t val);
+	uint32_t (*segment_value)(uint32_t start, uint32_t end);
+	struct aspeed_spi_decoded_addr decode_addr[ASPEED_MAX_CS];
+	struct aspeed_cmd_mode cmd_mode[ASPEED_MAX_CS];
+	uint32_t hclk;
+	void (*aspeed_spim_proprietary_pre_config)(void);
+	void (*aspeed_spim_proprietary_post_config)(void);
+};
+
 struct aspeed_spim_internal_mux_ctrl {
 	uint32_t master_idx;
 	uint32_t spim_output_base;
@@ -148,45 +131,14 @@ struct aspeed_spi_config {
 	enum aspeed_ctrl_type ctrl_type;
 	const struct device *clock_dev;
 	const clock_control_subsys_t clk_id;
-	void (*irq_config_func)(const struct device *dev);
+	uint32_t irq_num;
+	uint32_t irq_priority;
 	bool timing_calibration_disabled;
 	uint32_t timing_calibration_start_off;
 	struct aspeed_spim_internal_mux_ctrl mux_ctrl;
 	bool aspeed_spim_proprietary_config_enable;
 	bool pure_spi_mode_only;
-	bool spi_ctrl_fifo_enabled;
-#ifndef CONFIG_SOC_AST2700_BOOTMCU
 	const struct pinctrl_dev_config *pcfg;
-#endif
-};
-
-struct aspeed_spi_data {
-	struct spi_context ctx;
-
-	struct aspeed_spi_decoded_addr decode_addr[ASPEED_MAX_CS];
-	struct aspeed_cmd_mode cmd_mode[ASPEED_MAX_CS];
-
-	uint32_t hclk;
-	uint32_t decode_base;
-	uint32_t max_decode_sz;
-	uint32_t decode_unit_sz;
-	uint8_t calib_buf[SPI_CALIB_LEN * 2] __aligned(4);
-
-	uint32_t (*segment_start)(uint32_t val);
-	uint32_t (*segment_end)(uint32_t val);
-	uint32_t (*segment_value)(uint32_t start, uint32_t end);
-	void (*decode_range_pre_init)(const struct aspeed_spi_config *config,
-		struct aspeed_spi_data *data);
-	int (*decode_range_reinit)(const struct device *dev, uint32_t flash_sz);
-
-	void (*aspeed_spim_proprietary_pre_config)(void);
-	void (*aspeed_spim_proprietary_post_config)(void);
-#ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
-	void (*read_dma)(const struct device *dev, const struct spi_config *spi_cfg,
-		struct spi_nor_op_info op_info);
-	void (*write_dma)(const struct device *dev, const struct spi_config *spi_cfg,
-		struct spi_nor_op_info op_info);
-#endif
 };
 
 #define SPIM_GPIO_INFO(__scu_reg__, __scu_bit__, __gpio_reg__, __gpio_bit__)	\
@@ -223,112 +175,6 @@ struct spim_gpio_info g_ast1060_spim_cs_gpio[4] = {
 	SPIM_GPIO_INFO(0x7e6e2694, BIT(2), 0x7e780020, BIT(2)),
 	SPIM_GPIO_INFO(0x7e6e2694, BIT(16), 0x7e780020, BIT(16)),
 };
-
-#if defined(CONFIG_SOC_AST2700_BOOTMCU)
-#define FMC_PINCTRL_SCU_REG         0x14c02450
-#define SPI0_PINCTRL_SCU_REG        0x14c02434
-#define SPI1_PINCTRL_SCU_REG        0x14c02438
-#define SCU1_REG                    0x14c02000
-#define ASPEED_IO_FWSPI_DRIVING     (SCU1_REG + 0x4E0)
-#define ASPEED_IO_SPI0_DRIVING      (SCU1_REG + 0x4CC)
-#define ASPEED_IO_SPI1_DRIVING      (SCU1_REG + 0x4CC)
-#define ASPEED_IO_SPI2_DRIVING      (SCU1_REG + 0x4D0)
-
-static void ast2700_spi_pinctrl_early_init(const struct device *dev)
-{
-	const struct aspeed_spi_config *config = dev->config;
-	uint32_t reg_val;
-
-	switch (config->ctrl_base) {
-	case SPI0_CTRL_BASE:
-		reg_val = sys_read32(SPI0_PINCTRL_SCU_REG);
-		reg_val &= ~0x00000fff;
-		reg_val |= BIT(0) | BIT(4) | BIT(8);
-		sys_write32(reg_val, SPI0_PINCTRL_SCU_REG);
-		break;
-
-	case SPI1_CTRL_BASE:
-		reg_val = sys_read32(SPI1_PINCTRL_SCU_REG);
-		reg_val &= ~0x00f00fff;
-		reg_val |= BIT(0) | BIT(4) | BIT(8);
-		if (config->max_cs >= 2)
-			reg_val |= BIT(20);
-		sys_write32(reg_val, SPI1_PINCTRL_SCU_REG);
-		break;
-
-	default:
-		break;
-	}
-}
-
-static void ast2700_spi_pinctrl_post_init(const struct device *dev,
-					 uint32_t max_bus_width)
-{
-	const struct aspeed_spi_config *config = dev->config;
-	uint32_t reg_val;
-
-	switch (config->ctrl_base) {
-	case FMC_CTRL_BASE:
-		if (max_bus_width > 2) {
-			reg_val = sys_read32(FMC_PINCTRL_SCU_REG);
-			reg_val &= ~0xff000000;
-			reg_val |= BIT(24) | BIT(28);
-			sys_write32(reg_val, FMC_PINCTRL_SCU_REG);
-		}
-		break;
-
-	case SPI0_CTRL_BASE:
-		if (max_bus_width > 2) {
-			reg_val = sys_read32(SPI0_PINCTRL_SCU_REG);
-			reg_val &= ~0x000ff000;
-			reg_val |= BIT(12) | BIT(16);
-			sys_write32(reg_val, SPI0_PINCTRL_SCU_REG);
-		}
-		break;
-
-	case SPI1_CTRL_BASE:
-		if (max_bus_width > 2) {
-			reg_val = sys_read32(SPI1_PINCTRL_SCU_REG);
-			reg_val &= ~0x000ff000;
-			reg_val |= BIT(12) | BIT(16);
-			sys_write32(reg_val, SPI1_PINCTRL_SCU_REG);
-		}
-		break;
-
-	default:
-		break;
-	}
-}
-
-static void ast2700_spi_adjust_driving_strength(void)
-{
-	uint32_t reg;
-
-	/* FMC driving strength: SCUIO_4E0[15:0] */
-	reg = sys_read32(ASPEED_IO_FWSPI_DRIVING);
-	reg &= ~(0x0000ffff);
-	reg |= 0x0000aaaa;
-	sys_write32(reg, ASPEED_IO_FWSPI_DRIVING);
-
-	/* SPI0 driving strength: SCUIO_4CC[11:0] */
-	reg = sys_read32(ASPEED_IO_SPI0_DRIVING);
-	reg &= ~(0x00000fff);
-	reg |= 0x00000aaa;
-	sys_write32(reg, ASPEED_IO_SPI0_DRIVING);
-
-	/* SPI1 driving strength: SCUIO_4CC[27:16] */
-	reg = sys_read32(ASPEED_IO_SPI1_DRIVING);
-	reg &= ~(0x0fff0000);
-	reg |= 0x0aaa0000;
-	sys_write32(reg, ASPEED_IO_SPI1_DRIVING);
-
-	/* SPI2 driving strength: SCUIO_4D0[15:0] */
-	reg = sys_read32(ASPEED_IO_SPI2_DRIVING);
-	reg &= ~(0x0000ffff);
-	reg |= 0x00002aaa;
-	sys_write32(reg, ASPEED_IO_SPI2_DRIVING);
-}
-#endif
 
 uint32_t ast2600_segment_addr_start(uint32_t reg_val)
 {
@@ -373,35 +219,6 @@ uint32_t ast1030_spi_segment_addr_end(uint32_t reg_val)
 uint32_t ast1030_spi_segment_addr_val(uint32_t start, uint32_t end)
 {
 	return ((((((start) >> 20) << 20) >> 16) & 0xffff) | ((((end) >> 20) << 20) & 0xffff0000));
-}
-
-uint32_t ast2700_segment_addr_start(uint32_t reg_val)
-{
-	return ((reg_val & 0x0000ffff) << 16);
-}
-
-uint32_t ast2700_segment_addr_end(uint32_t reg_val)
-{
-	return (reg_val & 0xffff0000) - 1;
-}
-
-uint32_t ast2700_segment_addr_val(uint32_t start, uint32_t end)
-{
-	return (uint32_t)((((start) >> 16) & 0x7fff) |
-			 ((end + 1) & 0x7fff0000));
-}
-
-uint32_t ast2700_spi_get_fifo_offset(const struct device *dev)
-{
-	const struct aspeed_spi_config *config = dev->config;
-	struct aspeed_spi_data *data = dev->data;
-	struct spi_context *ctx = &data->ctx;
-	uint32_t cs = ctx->config->slave;
-	uint32_t decoding_reg;
-
-	decoding_reg = sys_read32(config->ctrl_base + SPI30_CE0_ADDR_DEC + cs * 4);
-
-	return (data->segment_start(decoding_reg) / ASPEED_SPI_SZ_16M);
 }
 
 static uint32_t aspeed_spi_io_mode(enum jesd216_mode_type mode)
@@ -463,8 +280,7 @@ static uint32_t aspeed_spi_cal_dummy_cycle(uint32_t bus_width,
 }
 
 static void aspeed_spi_read_data(uint32_t ahb_addr,
-				uint8_t *read_arr,
-				uint32_t read_cnt)
+		uint8_t *read_arr, uint32_t read_cnt)
 {
 	int i = 0;
 	uint32_t dword;
@@ -504,8 +320,7 @@ static void aspeed_spi_read_data(uint32_t ahb_addr,
 }
 
 static void aspeed_spi_write_data(uint32_t ahb_addr,
-				const uint8_t *write_arr,
-				uint32_t write_cnt)
+		const uint8_t *write_arr, uint32_t write_cnt)
 {
 	int i;
 	uint32_t dword;
@@ -537,16 +352,10 @@ static void aspeed_spi_start_tx(const struct device *dev)
 	struct aspeed_spi_data *data = dev->data;
 	struct spi_context *ctx = &data->ctx;
 	uint32_t cs = ctx->config->slave;
-	mm_reg_t mem_reg = data->decode_addr[cs].start;
 
 	if (!spi_context_tx_buf_on(ctx) && !spi_context_rx_buf_on(ctx)) {
 		spi_context_complete(ctx, dev, 0);
 		return;
-	}
-
-	if (config->spi_ctrl_fifo_enabled) {
-		mem_reg = config->ctrl_base + SPI200_DATA_FIFO_REG +
-			  ast2700_spi_get_fifo_offset(dev);
 	}
 
 	/* active cs */
@@ -555,17 +364,17 @@ static void aspeed_spi_start_tx(const struct device *dev)
 	sys_write32(data->cmd_mode[cs].user,
 			config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
 
-	sys_read32(config->ctrl_base  + SPI10_CE0_CTRL + cs * 4);
-
 	while (ctx->tx_buf && ctx->tx_len > 0) {
-		aspeed_spi_write_data(mem_reg, ctx->tx_buf, ctx->tx_len);
+		aspeed_spi_write_data(data->decode_addr[cs].start,
+			ctx->tx_buf, ctx->tx_len);
 		spi_context_update_tx(ctx, 1, ctx->tx_len);
 	};
 
 	k_busy_wait(2);
 
 	while (ctx->rx_buf && ctx->rx_len > 0) {
-		aspeed_spi_read_data(mem_reg, ctx->rx_buf, ctx->rx_len);
+		aspeed_spi_read_data(data->decode_addr[cs].start,
+			ctx->rx_buf, ctx->rx_len);
 		spi_context_update_rx(ctx, 1, ctx->rx_len);
 	};
 
@@ -585,11 +394,7 @@ static void aspeed_spi_nor_transceive_user(const struct device *dev,
 	struct aspeed_spi_data *data = dev->data;
 	struct spi_context *ctx = &data->ctx;
 	uint32_t cs = ctx->config->slave;
-	mm_reg_t mem_reg = data->decode_addr[cs].start;
 	uint8_t dummy[12] = {0};
-	uint32_t hspi_ctrl;
-
-	ARG_UNUSED(spi_cfg);
 
 #ifdef CONFIG_SPI_MONITOR_ASPEED
 	/* change internal MUX */
@@ -605,27 +410,16 @@ static void aspeed_spi_nor_transceive_user(const struct device *dev,
 		data->aspeed_spim_proprietary_pre_config();
 #endif
 
-	if (config->spi_ctrl_fifo_enabled) {
-		mem_reg = config->ctrl_base + SPI200_DATA_FIFO_REG +
-			  ast2700_spi_get_fifo_offset(dev);
-	}
-
-	/* Save current SPI54_MISC_CTRL value and clear SPI54_MISC_CTRL to disable SAFS */
-	hspi_ctrl = sys_read32(config->ctrl_base + SPI54_MISC_CTRL);
-	sys_write32(0x0, config->ctrl_base + SPI54_MISC_CTRL);
-
 	sys_write32(data->cmd_mode[cs].user | ASPEED_SPI_USER_INACTIVE,
 		config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
 	sys_write32(data->cmd_mode[cs].user, config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
-
-	sys_read32(config->ctrl_base  + SPI10_CE0_CTRL + cs * 4);
 
 	/* cmd */
 	sys_write32(data->cmd_mode[cs].user |
 		aspeed_spi_io_mode_user(JESD216_GET_CMD_BUSWIDTH(op_info.mode)),
 		config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
 
-	aspeed_spi_write_data(mem_reg, &op_info.opcode, 1);
+	aspeed_spi_write_data(data->decode_addr[cs].start, &op_info.opcode, 1);
 
 	/* addr */
 	sys_write32(data->cmd_mode[cs].user |
@@ -637,11 +431,12 @@ static void aspeed_spi_nor_transceive_user(const struct device *dev,
 
 	op_info.addr = sys_cpu_to_be32(op_info.addr);
 
-	aspeed_spi_write_data(mem_reg, (const uint8_t *)&op_info.addr,
-			      op_info.addr_len);
+	aspeed_spi_write_data(data->decode_addr[cs].start,
+		(const uint8_t *)&op_info.addr, op_info.addr_len);
 
 	/* dummy */
-	aspeed_spi_write_data(mem_reg, (const uint8_t *)dummy,
+	aspeed_spi_write_data(data->decode_addr[cs].start,
+		(const uint8_t *)&dummy,
 		(op_info.dummy_cycle / (8 / JESD216_GET_ADDR_BUSWIDTH(op_info.mode))));
 
 	/* data */
@@ -651,10 +446,12 @@ static void aspeed_spi_nor_transceive_user(const struct device *dev,
 
 	if (op_info.data_direct == SPI_NOR_DATA_DIRECT_IN) {
 		/* read data */
-		aspeed_spi_read_data(mem_reg, op_info.buf, op_info.data_len);
+		aspeed_spi_read_data(data->decode_addr[cs].start,
+				op_info.buf, op_info.data_len);
 	} else {
 		/* write data */
-		aspeed_spi_write_data(mem_reg, op_info.buf, op_info.data_len);
+		aspeed_spi_write_data(data->decode_addr[cs].start,
+				op_info.buf, op_info.data_len);
 	}
 
 	sys_write32(data->cmd_mode[cs].user | ASPEED_SPI_USER_INACTIVE,
@@ -670,9 +467,6 @@ static void aspeed_spi_nor_transceive_user(const struct device *dev,
 	if (config->mux_ctrl.master_idx != 0)
 		spim_scu_ctrl_clear(config->mux_ctrl.spi_monitor_common_ctrl, 0xf);
 #endif
-
-	/* Restore the original SPI54_MISC_CTRL setting. */
-	sys_write32(hspi_ctrl, config->ctrl_base + SPI54_MISC_CTRL);
 
 	spi_context_complete(ctx, dev, 0);
 }
@@ -704,7 +498,7 @@ void aspeed_spi_dma_isr(const void *param)
 #endif
 
 	if (!(sys_read32(config->ctrl_base + SPI08_INTR_CTRL) & SPI_DMA_STS)) {
-		LOG_ERR("DMA interrupt status not set");
+		LOG_ERR("Fail in ISR");
 	}
 
 	/* disable IRQ */
@@ -730,39 +524,7 @@ void aspeed_spi_dma_isr(const void *param)
 	spi_context_complete(ctx, dev, 0);
 }
 
-void ast2700_aspeed_spi_dma_isr(const void *param)
-{
-	const struct device *dev = param;
-	const struct aspeed_spi_config *config = dev->config;
-	struct aspeed_spi_data *const data = dev->data;
-	struct spi_context *ctx = &data->ctx;
-	uint32_t cs = ctx->config->slave;
-	uint32_t reg_val;
-
-	if (!(sys_read32(config->ctrl_base + SPI08_INTR_CTRL) & SPI_DMA_STS) ||
-	    !(sys_read32(config->ctrl_base + SPI08_INTR_CTRL) & SPI_DMA_IRQ_STS)) {
-		LOG_ERR("DMA interrupt status not set or DMA completion interrupt missing");
-	}
-
-	/* disable IRQ */
-	reg_val = sys_read32(config->ctrl_base + SPI08_INTR_CTRL);
-	reg_val &= ~SPI_DMA_IRQ_EN;
-	sys_write32(reg_val, config->ctrl_base + SPI08_INTR_CTRL);
-
-	/* disable DMA */
-	reg_val = sys_read32(config->ctrl_base + SPI08_INTR_CTRL);
-	reg_val |= SPI_DMA_IRQ_STS;
-	sys_write32(reg_val, config->ctrl_base + SPI08_INTR_CTRL);
-
-	sys_write32(0x0, config->ctrl_base + SPI80_DMA_CTRL);
-
-	sys_write32(data->cmd_mode[cs].normal_read,
-		config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
-
-	spi_context_complete(ctx, dev, 0);
-}
-
-void aspeed_spi_read_dma(const struct device *dev,
+static void aspeed_spi_read_dma(const struct device *dev,
 						const struct spi_config *spi_cfg,
 						struct spi_nor_op_info op_info)
 {
@@ -772,8 +534,6 @@ void aspeed_spi_read_dma(const struct device *dev,
 	uint32_t cs = ctx->config->slave;
 	uint32_t ctrl_reg;
 
-	ARG_UNUSED(spi_cfg);
-
 #ifdef CONFIG_SPI_MONITOR_ASPEED
 	/* change internal MUX */
 	if (config->mux_ctrl.master_idx != 0)
@@ -781,7 +541,7 @@ void aspeed_spi_read_dma(const struct device *dev,
 #endif
 
 	if (op_info.data_len > data->decode_addr[cs].len) {
-		LOG_WRN("Invalid read len(0x%08x, 0x%08x)",
+		LOG_WRN("Inavlid read len(0x%08x, 0x%08x)",
 			op_info.data_len, data->decode_addr[cs].len);
 		spi_context_complete(ctx, dev, 0);
 		return;
@@ -818,8 +578,8 @@ void aspeed_spi_read_dma(const struct device *dev,
 	sys_write32(ctrl_reg, config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
 
 	sys_write32(SPI_DMA_GET_REQ_MAGIC, config->ctrl_base + SPI80_DMA_CTRL);
-	if (sys_read32(config->ctrl_base + SPI80_DMA_CTRL) & SPI_DMA_REQUEST) {
-		while (!(sys_read32(config->ctrl_base + SPI80_DMA_CTRL) & SPI_DMA_GRANT))
+	if (sys_read32(config->ctrl_base + SPI80_DMA_CTRL) & SPI_DAM_REQUEST) {
+		while (!(sys_read32(config->ctrl_base + SPI80_DMA_CTRL) & SPI_DAM_GRANT))
 			;
 	}
 
@@ -834,7 +594,7 @@ void aspeed_spi_read_dma(const struct device *dev,
 	sys_write32(SPI_DMA_ENABLE, config->ctrl_base + SPI80_DMA_CTRL);
 }
 
-void aspeed_spi_write_dma(const struct device *dev,
+static void aspeed_spi_write_dma(const struct device *dev,
 						const struct spi_config *spi_cfg,
 						struct spi_nor_op_info op_info)
 {
@@ -844,8 +604,6 @@ void aspeed_spi_write_dma(const struct device *dev,
 	uint32_t cs = ctx->config->slave;
 	uint32_t ctrl_reg;
 
-	ARG_UNUSED(spi_cfg);
-
 #ifdef CONFIG_SPI_MONITOR_ASPEED
 	/* change internal MUX */
 	if (config->mux_ctrl.master_idx != 0)
@@ -853,7 +611,7 @@ void aspeed_spi_write_dma(const struct device *dev,
 #endif
 
 	if (op_info.data_len > data->decode_addr[cs].len) {
-		LOG_WRN("Invalid write len(0x%08x, 0x%08x)",
+		LOG_WRN("Inavlid write len(0x%08x, 0x%08x)",
 			op_info.data_len, data->decode_addr[cs].len);
 		spi_context_complete(ctx, dev, 0);
 		return;
@@ -889,8 +647,8 @@ void aspeed_spi_write_dma(const struct device *dev,
 	sys_write32(ctrl_reg, config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
 
 	sys_write32(SPI_DMA_GET_REQ_MAGIC, config->ctrl_base + SPI80_DMA_CTRL);
-	if (sys_read32(config->ctrl_base + SPI80_DMA_CTRL) & SPI_DMA_REQUEST) {
-		while (!(sys_read32(config->ctrl_base + SPI80_DMA_CTRL) & SPI_DMA_GRANT))
+	if (sys_read32(config->ctrl_base + SPI80_DMA_CTRL) & SPI_DAM_REQUEST) {
+		while (!(sys_read32(config->ctrl_base + SPI80_DMA_CTRL) & SPI_DAM_GRANT))
 			;
 	}
 
@@ -903,158 +661,6 @@ void aspeed_spi_write_dma(const struct device *dev,
 	aspeed_dma_irq_enable(dev);
 
 	sys_write32(SPI_DMA_ENABLE | SPI_DMA_WRITE, config->ctrl_base + SPI80_DMA_CTRL);
-}
-
-void ast2700_aspeed_spi_read_dma(const struct device *dev,
-						const struct spi_config *spi_cfg,
-						struct spi_nor_op_info op_info)
-{
-	const struct aspeed_spi_config *config = dev->config;
-	struct aspeed_spi_data *data = dev->data;
-	struct spi_context *ctx = &data->ctx;
-	uint32_t cs = ctx->config->slave;
-	uintptr_t dram_virt_addr;
-	uint32_t dram_phy_addr;
-	uint32_t ctrl_reg;
-	uint32_t flash_dma_addr;
-
-	ARG_UNUSED(spi_cfg);
-
-	if (op_info.data_len > data->decode_addr[cs].len) {
-		LOG_WRN("Invalid read len(0x%08x, 0x%08x)",
-			op_info.data_len, data->decode_addr[cs].len);
-		spi_context_complete(ctx, dev, 0);
-		return;
-	}
-
-	if ((op_info.addr % 4) != 0 || ((uint32_t)(op_info.buf) % 4) != 0) {
-		LOG_WRN("Address should be 4-byte aligned");
-		spi_context_complete(ctx, dev, 0);
-		return;
-	}
-
-	ctrl_reg = data->cmd_mode[cs].normal_read & SPI_CTRL_FREQ_MASK;
-	/* io mode */
-	ctrl_reg |= aspeed_spi_io_mode(op_info.mode);
-	/* cmd */
-	ctrl_reg |= ((uint32_t)op_info.opcode) << 16;
-	/* dummy cycle */
-	ctrl_reg |= ((uint32_t)(op_info.dummy_cycle /
-				(8 / JESD216_GET_ADDR_BUSWIDTH(op_info.mode)))) << 6;
-	ctrl_reg |= ASPEED_SPI_NORMAL_READ;
-	sys_write32(ctrl_reg, config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
-
-	sys_write32(0x0, config->ctrl_base + SPI80_DMA_CTRL);
-
-	sys_write32(0x0, config->ctrl_base + SPI7C_DMA_HI_ADDR_REG);
-	if (ast27xx_soc_virt_addr_to_phy_addr((uintptr_t)op_info.buf) >= ASPEED_DRAM_PHY_BASE)
-		sys_write32(0x4, config->ctrl_base + SPI7C_DMA_HI_ADDR_REG);
-
-	flash_dma_addr = (data->decode_addr[cs].start + op_info.addr -
-			  config->spi_mmap_base) & 0x7fffffff;
-	sys_write32(flash_dma_addr, config->ctrl_base + SPI84_DMA_FLASH_ADDR);
-
-	dram_virt_addr = (uintptr_t)op_info.buf;
-	dram_phy_addr = (uint32_t)ast27xx_soc_virt_addr_to_phy_addr(dram_virt_addr);
-
-	sys_write32(dram_phy_addr, config->ctrl_base + SPI88_DMA_RAM_ADDR);
-	sys_write32(op_info.data_len - 1, config->ctrl_base + SPI8C_DMA_LEN);
-#ifndef CONFIG_SOC_AST2700_BOOTMCU
-	aspeed_dma_irq_enable(dev);
-#endif
-	sys_write32(SPI_DMA_ENABLE, config->ctrl_base + SPI80_DMA_CTRL);
-
-#ifdef CONFIG_SOC_AST2700_BOOTMCU
-	uint32_t dma_busy;
-
-	do {
-		dma_busy = sys_read32(config->ctrl_base + SPI08_INTR_CTRL) &
-				      SPI_DMA_STS;
-		if (dma_busy == 0)
-			k_usleep(1);
-	} while (dma_busy == 0);
-
-	sys_write32(0x0, config->ctrl_base + SPI80_DMA_CTRL);
-
-	spi_context_complete(ctx, dev, 0);
-#endif
-}
-
-void ast2700_aspeed_spi_write_dma(const struct device *dev,
-						const struct spi_config *spi_cfg,
-						struct spi_nor_op_info op_info)
-{
-	const struct aspeed_spi_config *config = dev->config;
-	struct aspeed_spi_data *data = dev->data;
-	struct spi_context *ctx = &data->ctx;
-	uint32_t cs = ctx->config->slave;
-	uintptr_t dram_virt_addr;
-	uint32_t dram_phy_addr;
-	uint32_t ctrl_reg;
-	uint32_t flash_dma_addr;
-
-	ARG_UNUSED(spi_cfg);
-
-	if (op_info.data_len > data->decode_addr[cs].len) {
-		LOG_WRN("Invalid write len(0x%08x, 0x%08x)",
-			op_info.data_len, data->decode_addr[cs].len);
-		spi_context_complete(ctx, dev, 0);
-		return;
-	}
-
-	if ((op_info.addr % 4) != 0 || ((uint32_t)(op_info.buf) % 4) != 0) {
-		LOG_WRN("Address should be 4-byte aligned");
-		spi_context_complete(ctx, dev, 0);
-		return;
-	}
-
-	ctrl_reg = data->cmd_mode[cs].normal_write;
-	/* io mode */
-	ctrl_reg |= aspeed_spi_io_mode(op_info.mode);
-	/* cmd */
-	ctrl_reg |= ((uint32_t)op_info.opcode) << 16;
-	/* dummy cycle */
-	ctrl_reg |= ((uint32_t)(op_info.dummy_cycle /
-				(8 / JESD216_GET_ADDR_BUSWIDTH(op_info.mode)))) << 6;
-	ctrl_reg |= ASPEED_SPI_NORMAL_WRITE;
-	sys_write32(ctrl_reg, config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
-
-	sys_write32(0x0, config->ctrl_base + SPI80_DMA_CTRL);
-
-	sys_write32(0x0, config->ctrl_base + SPI7C_DMA_HI_ADDR_REG);
-	if (ast27xx_soc_virt_addr_to_phy_addr((uintptr_t)op_info.buf) >= ASPEED_DRAM_PHY_BASE)
-		sys_write32(0x4, config->ctrl_base + SPI7C_DMA_HI_ADDR_REG);
-
-	flash_dma_addr = (data->decode_addr[cs].start + op_info.addr -
-			  config->spi_mmap_base) & 0x7fffffff;
-	sys_write32(flash_dma_addr, config->ctrl_base + SPI84_DMA_FLASH_ADDR);
-
-	dram_virt_addr = (uintptr_t)op_info.buf;
-	dram_phy_addr = (uint32_t)ast27xx_soc_virt_addr_to_phy_addr(dram_virt_addr);
-
-	sys_write32(dram_phy_addr, config->ctrl_base + SPI88_DMA_RAM_ADDR);
-	sys_write32(op_info.data_len - 1, config->ctrl_base + SPI8C_DMA_LEN);
-
-#ifndef CONFIG_SOC_AST2700_BOOTMCU
-	aspeed_dma_irq_enable(dev);
-#endif
-
-	sys_write32(SPI_DMA_ENABLE | SPI_DMA_WRITE, config->ctrl_base + SPI80_DMA_CTRL);
-
-#ifdef CONFIG_SOC_AST2700_BOOTMCU
-	uint32_t dma_busy;
-
-	do {
-		dma_busy = sys_read32(config->ctrl_base + SPI08_INTR_CTRL) &
-				      SPI_DMA_STS;
-		if (dma_busy == 0)
-			k_usleep(1);
-	} while (dma_busy == 0);
-
-	sys_write32(0x0, config->ctrl_base + SPI80_DMA_CTRL);
-
-	spi_context_complete(ctx, dev, 0);
-#endif
 }
 #endif
 
@@ -1105,7 +711,7 @@ uint32_t aspeed_get_spi_freq_div(uint32_t bus_clk, uint32_t max_freq)
 	}
 
 	if (i == 0xf && j == 16) {
-		LOG_ERR("%s %d cannot get correct frequency division.", __func__, __LINE__);
+		LOG_ERR("%s %d cannot get correct frequence division.", __func__, __LINE__);
 		return 0;
 	}
 
@@ -1114,9 +720,9 @@ uint32_t aspeed_get_spi_freq_div(uint32_t bus_clk, uint32_t max_freq)
 
 /*
  * Check whether the data is not all 0 or 1 in order to
- * avoid calibrate unmount spi-flash.
+ * avoid calibriate umount spi-flash.
  */
-static bool aspeed_spi_calibration_enable(const uint8_t *buf, uint32_t sz)
+static bool aspeed_spi_calibriation_enable(const uint8_t *buf, uint32_t sz)
 {
 	const uint32_t *buf_32 = (const uint32_t *)buf;
 	uint32_t i;
@@ -1125,14 +731,49 @@ static bool aspeed_spi_calibration_enable(const uint8_t *buf, uint32_t sz)
 	for (i = 0; i < (sz / 4); i++) {
 		if (buf_32[i] != 0 && buf_32[i] != 0xffffffff)
 			valid_count++;
-		if (valid_count > 50)
+		if (valid_count > 100)
 			return true;
 	}
 
 	return false;
 }
 
-static int aspeed_optimized_timing(uint8_t *buf, uint32_t len)
+static uint32_t aspeed_spi_dma_checksum(const struct device *dev,
+	uint32_t div, uint32_t delay)
+{
+	struct aspeed_spi_data *data = dev->data;
+	const struct aspeed_spi_config *config = dev->config;
+	struct spi_context *ctx = &data->ctx;
+	uint32_t ctrl_reg = config->ctrl_base;
+	uint32_t ctrl_val;
+	uint32_t checksum;
+
+	sys_write32(SPI_DMA_GET_REQ_MAGIC, ctrl_reg + SPI80_DMA_CTRL);
+	if (sys_read32(ctrl_reg + SPI80_DMA_CTRL) & SPI_DAM_REQUEST) {
+		while (!(sys_read32(ctrl_reg + SPI80_DMA_CTRL) & SPI_DAM_GRANT))
+			;
+	}
+
+	sys_write32(data->decode_addr[ctx->config->slave].start +
+		    config->timing_calibration_start_off,
+		    ctrl_reg + SPI84_DMA_FLASH_ADDR);
+	sys_write32(SPI_CALIB_LEN, ctrl_reg + SPI8C_DMA_LEN);
+
+	ctrl_val = SPI_DMA_ENABLE | SPI_DMA_CALC_CKSUM | SPI_DMA_CALIB_MODE |
+		   (delay << 8) | ((div & 0xf) << 16);
+	sys_write32(ctrl_val, ctrl_reg + SPI80_DMA_CTRL);
+	while (!(sys_read32(ctrl_reg + SPI08_INTR_CTRL) & SPI_DMA_STATUS))
+		;
+
+	checksum = sys_read32(ctrl_reg + SPI90_CHECKSUM_RESULT);
+
+	sys_write32(0x0, ctrl_reg + SPI80_DMA_CTRL);
+	sys_write32(SPI_DMA_DISCARD_REQ_MAGIC, ctrl_reg + SPI80_DMA_CTRL);
+
+	return checksum;
+}
+
+static int aspeed_get_mid_point_of_longest_one(uint8_t *buf, uint32_t len)
 {
 	int i;
 	int start = 0, mid_point = 0;
@@ -1163,25 +804,7 @@ static int aspeed_optimized_timing(uint8_t *buf, uint32_t len)
 	return mid_point;
 }
 
-#define CALIBRATION_RESULT_BUF_LEN	(6 * 17)
-
-static bool aspeed_spi_check_reads(const struct device *dev,
-				   struct spi_nor_op_info op_info,
-				   uint8_t *buf, uint32_t len)
-{
-	op_info.buf = (void *)(buf + SPI_CALIB_LEN);
-	op_info.data_len = len;
-	aspeed_spi_nor_transceive_user(dev, NULL, op_info);
-
-	if (memcmp((void *)buf, (void *)(buf + op_info.data_len),
-		   op_info.data_len) != 0)
-		return false;
-
-	return true;
-}
-
-static void aspeed_spi_timing_calibration(const struct device *dev,
-				   struct spi_nor_op_info op_info)
+void aspeed_spi_timing_calibration(const struct device *dev)
 {
 	struct aspeed_spi_data *data = dev->data;
 	const struct aspeed_spi_config *config = dev->config;
@@ -1189,12 +812,14 @@ static void aspeed_spi_timing_calibration(const struct device *dev,
 	uint32_t ctrl_reg = config->ctrl_base;
 	uint32_t cs = ctx->config->slave;
 	uint32_t max_freq = ctx->config->frequency;
-	uint32_t timing_reg = ctrl_reg + SPI94_CE0_TIMING_CTRL + cs * 4;
 	/* HCLK/2, ..., HCKL/5 */
-	uint8_t calib_res[CALIBRATION_RESULT_BUF_LEN] = {0};
+	uint32_t hclk_masks[] = {7, 14, 6, 13};
+	uint8_t *calib_res = NULL;
+	uint8_t *check_buf = NULL;
 	uint32_t reg_val;
-	uint32_t hdiv = 2, hcycle, delay_ns, timing_val;
-	uint32_t hdiv_reg;
+	uint32_t checksum, gold_checksum;
+	uint32_t i, hcycle, delay_ns, final_delay = 0;
+	uint32_t hclk_div;
 	bool pass;
 	int calib_point;
 
@@ -1203,7 +828,8 @@ static void aspeed_spi_timing_calibration(const struct device *dev,
 	if (config->timing_calibration_disabled)
 		goto no_calib;
 
-	reg_val = sys_read32(timing_reg);
+	reg_val =
+		sys_read32(ctrl_reg + SPI94_CE0_TIMING_CTRL + cs * 4);
 	if (reg_val != 0) {
 		LOG_DBG("Already executed calibration.");
 		goto no_calib;
@@ -1231,56 +857,69 @@ static void aspeed_spi_timing_calibration(const struct device *dev,
 	 * use the related low frequency to get check calibration data
 	 * and get golden data.
 	 */
-	data->cmd_mode[cs].user &= ~SPI_CTRL_FREQ_MASK;
+	reg_val = sys_read32(ctrl_reg + SPI10_CE0_CTRL + cs * 4);
+	reg_val &= (~SPI_CTRL_FREQ_MASK);
+	sys_write32(reg_val, ctrl_reg + SPI10_CE0_CTRL + cs * 4);
 
-	memset(data->calib_buf, 0x0, SPI_CALIB_LEN * 2);
+	check_buf = k_malloc(SPI_CALIB_LEN);
+	if (!check_buf) {
+		LOG_ERR("Insufficient buffer for calibration.");
+		goto no_calib;
+	}
 
-	op_info.data_direct = SPI_NOR_DATA_DIRECT_IN;
-	op_info.addr = config->timing_calibration_start_off;
-	op_info.buf = data->calib_buf;
-	op_info.data_len = SPI_CALIB_LEN;
-	aspeed_spi_nor_transceive_user(dev, NULL, op_info);
+	LOG_DBG("reg_val = 0x%x", reg_val);
+	memcpy(check_buf,
+	       (uint8_t *)data->decode_addr[cs].start + config->timing_calibration_start_off,
+	       SPI_CALIB_LEN);
 
-	if (!aspeed_spi_calibration_enable(data->calib_buf, SPI_CALIB_LEN)) {
-		LOG_ERR("Flash data is monotonous, skip calibration.");
+	if (!aspeed_spi_calibriation_enable(check_buf, SPI_CALIB_LEN)) {
+		LOG_WRN("Flash data is monotonous, skip calibration.");
+		goto no_calib;
+	}
+
+	gold_checksum = aspeed_spi_dma_checksum(dev, 0, 0);
+
+	/*
+	 * allocate a space to record calibration result for
+	 * different timing compensation with fixed
+	 * HCLK division.
+	 */
+	calib_res = k_malloc(6 * 17);
+	if (!calib_res) {
+		LOG_ERR("Insufficient buffer for calibration result.");
 		goto no_calib;
 	}
 
 	/* From HCLK/2 to HCLK/5 */
-	for (hdiv = 2; hdiv < 6; hdiv++) {
-		if (max_freq < data->hclk / hdiv) {
-			LOG_DBG("skipping freq %d", data->hclk / hdiv);
+	for (i = 0; i < ARRAY_SIZE(hclk_masks); i++) {
+		if (max_freq < data->hclk / (i + 2)) {
+			LOG_DBG("skipping freq %d", data->hclk / (i + 2));
 			continue;
 		}
-		max_freq = data->hclk / hdiv;
+		max_freq = data->hclk / (i + 2);
 
-		data->cmd_mode[cs].user &= ~SPI_CTRL_FREQ_MASK;
-		data->cmd_mode[cs].user |= aspeed_get_spi_freq_div(data->hclk, max_freq);
-
-		sys_write32(0x0, timing_reg);
-		pass = aspeed_spi_check_reads(dev, op_info, data->calib_buf, SPI_CALIB_LEN);
-		LOG_DBG("HCLK/%d, no timing compensation: %s", hdiv,
+		checksum = aspeed_spi_dma_checksum(dev, hclk_masks[i], 0);
+		pass = (checksum == gold_checksum);
+		LOG_DBG("HCLK/%d, no timing compensation: %s", i + 2,
 			pass ? "PASS" : "FAIL");
+
+		memset(calib_res, 0x0, 6 * 17);
 
 		for (hcycle = 0; hcycle <= 5; hcycle++) {
 			/* increase DI delay by the step of 0.5ns */
 			LOG_DBG("Delay Enable : hcycle %x", hcycle);
 			for (delay_ns = 0; delay_ns <= 0xf; delay_ns++) {
-				timing_val = BIT(3) | hcycle | (delay_ns << 4);
-				timing_val <<= (hdiv - 2) << 3;
-				sys_write32(timing_val, timing_reg);
-
-				pass = aspeed_spi_check_reads(dev, op_info,
-							      data->calib_buf, SPI_CALIB_LEN);
+				checksum = aspeed_spi_dma_checksum(dev, hclk_masks[i],
+					BIT(3) | hcycle | (delay_ns << 4));
+				pass = (checksum == gold_checksum);
 				calib_res[hcycle * 17 + delay_ns] = pass;
 				LOG_DBG("HCLK/%d, %d HCLK cycle, %d delay_ns : %s",
-					hdiv, hcycle, delay_ns,
+					i + 2, hcycle, delay_ns,
 					pass ? "PASS" : "FAIL");
 			}
 		}
 
-		calib_point = aspeed_optimized_timing(calib_res,
-						      CALIBRATION_RESULT_BUF_LEN);
+		calib_point = aspeed_get_mid_point_of_longest_one(calib_res, 6 * 17);
 		if (calib_point < 0) {
 			LOG_INF("cannot get good calibration point.");
 			continue;
@@ -1288,34 +927,30 @@ static void aspeed_spi_timing_calibration(const struct device *dev,
 
 		hcycle = calib_point / 17;
 		delay_ns = calib_point % 17;
+		LOG_DBG("final hcycle: %d, delay_ns: %d", hcycle, delay_ns);
 
-		timing_val = (BIT(3) | hcycle | (delay_ns << 4)) << ((hdiv - 2) << 3);
-		sys_write32(timing_val, timing_reg);
-		LOG_DBG("final hcycle: %d, delay_ns: %d (%08x)",
-			hcycle, delay_ns, sys_read32(timing_reg));
+		final_delay = (BIT(3) | hcycle | (delay_ns << 4)) << (i * 8);
+		sys_write32(final_delay, ctrl_reg + SPI94_CE0_TIMING_CTRL + cs * 4);
 		break;
 	}
 
 no_calib:
 
-	if (hdiv == 6)
-		max_freq = ctx->config->frequency;
-
-	hdiv_reg = aspeed_get_spi_freq_div(data->hclk, max_freq);
+	hclk_div = aspeed_get_spi_freq_div(data->hclk, max_freq);
 
 	/* configure SPI clock frequency */
 	reg_val = sys_read32(ctrl_reg + SPI10_CE0_CTRL + cs * 4);
-	reg_val = (reg_val & (~SPI_CTRL_FREQ_MASK)) | hdiv_reg;
+	reg_val = (reg_val & (~SPI_CTRL_FREQ_MASK)) | hclk_div;
 	sys_write32(reg_val, ctrl_reg + SPI10_CE0_CTRL + cs * 4);
 
 	data->cmd_mode[cs].normal_read =
-		(data->cmd_mode[cs].normal_read & (~SPI_CTRL_FREQ_MASK)) | hdiv_reg;
+		(data->cmd_mode[cs].normal_read & (~SPI_CTRL_FREQ_MASK)) | hclk_div;
 
 	data->cmd_mode[cs].normal_write =
-		(data->cmd_mode[cs].normal_write & (~SPI_CTRL_FREQ_MASK)) | hdiv_reg;
+		(data->cmd_mode[cs].normal_write & (~SPI_CTRL_FREQ_MASK)) | hclk_div;
 
 	data->cmd_mode[cs].user =
-		(data->cmd_mode[cs].user & (~SPI_CTRL_FREQ_MASK)) | hdiv_reg;
+		(data->cmd_mode[cs].user & (~SPI_CTRL_FREQ_MASK)) | hclk_div;
 
 	/* add clock setting info for CE ctrl setting */
 	LOG_DBG("freq: %dMHz", max_freq / 1000000);
@@ -1327,16 +962,12 @@ no_calib:
 	if (config->mux_ctrl.master_idx != 0)
 		spim_scu_ctrl_clear(config->mux_ctrl.spi_monitor_common_ctrl, 0xf);
 #endif
-}
 
-#if defined(CONFIG_SPI_DMA_SUPPORT_ASPEED) && defined(CONFIG_SOC_AST2700)
-bool ast2700_aspeed_spi_dram_region(uintptr_t virt_addr)
-{
-	uint64_t phy_addr = ast27xx_soc_virt_addr_to_phy_addr(virt_addr);
-
-	return phy_addr >= ASPEED_DRAM_PHY_BASE;
+	if (check_buf)
+		k_free(check_buf);
+	if (calib_res)
+		k_free(calib_res);
 }
-#endif
 
 static int aspeed_spi_nor_transceive(const struct device *dev,
 						const struct spi_config *spi_cfg,
@@ -1352,30 +983,22 @@ static int aspeed_spi_nor_transceive(const struct device *dev,
 		ctx->config = spi_cfg;
 
 #ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
-	bool dram_region = true;
-#ifdef CONFIG_SOC_AST2700
-	uintptr_t buf_addr = (uintptr_t)(&((uint8_t *)op_info.buf)[0]);
-
-	dram_region = ast2700_aspeed_spi_dram_region(buf_addr);
-#endif
 	if (op_info.data_direct == SPI_NOR_DATA_DIRECT_IN) {
-		if (dram_region &&
-			!config->pure_spi_mode_only &&
+		if (!config->pure_spi_mode_only &&
 		    op_info.data_len > SPI_DMA_TRIGGER_LEN &&
 		    (op_info.addr % 4) == 0 &&
 		    ((uint32_t)(&((uint8_t *)op_info.buf)[0]) % 4) == 0) {
-			data->read_dma(dev, spi_cfg, op_info);
+			aspeed_spi_read_dma(dev, spi_cfg, op_info);
 		} else {
 			aspeed_spi_nor_transceive_user(dev, spi_cfg, op_info);
 		}
 	} else if (op_info.data_direct == SPI_NOR_DATA_DIRECT_OUT) {
 #ifdef CONFIG_SPI_DMA_WRITE_SUPPORT_ASPEED
-		if (dram_region &&
-		    !config->pure_spi_mode_only &&
+		if (!config->pure_spi_mode_only &&
 		    op_info.data_len > SPI_DMA_TRIGGER_LEN &&
 		    (op_info.addr % 4) == 0 &&
 		    ((uint32_t)(&((uint8_t *)op_info.buf)[0]) % 4) == 0) {
-			data->write_dma(dev, spi_cfg, op_info);
+			aspeed_spi_write_dma(dev, spi_cfg, op_info);
 		} else {
 			aspeed_spi_nor_transceive_user(dev, spi_cfg, op_info);
 		}
@@ -1394,8 +1017,8 @@ static int aspeed_spi_nor_transceive(const struct device *dev,
 	return ret;
 }
 
-static int aspeed_spi_decode_range_reinit_common(const struct device *dev,
-						 uint32_t flash_sz)
+static int aspeed_spi_decode_range_reinit(const struct device *dev,
+						uint32_t flash_sz)
 {
 	uint32_t cs, tmp;
 	const struct aspeed_spi_config *config = dev->config;
@@ -1411,68 +1034,49 @@ static int aspeed_spi_decode_range_reinit_common(const struct device *dev,
 		if (tmp == 0)
 			decode_sz_arr[cs] = 0;
 		else
-			decode_sz_arr[cs] =
-				data->segment_end(tmp) - data->segment_start(tmp) + 1;
-
+			decode_sz_arr[cs] = data->segment_end(tmp) - data->segment_start(tmp) + 1;
 		LOG_DBG("ori decode range 0x%08x", decode_sz_arr[cs]);
 		total_decode_range += decode_sz_arr[cs];
 	}
 
 	/* prepare new decode sz array */
-	if (total_decode_range - decode_sz_arr[ctx->config->slave] + flash_sz >
-	    data->max_decode_sz) {
+	if (total_decode_range - decode_sz_arr[ctx->config->slave]
+		+ flash_sz <= ASPEED_SPI_SZ_256M) {
+		decode_sz_arr[ctx->config->slave] = flash_sz;
+	} else {
+		/* do nothing, otherwise, decode range will be larger than 256MB */
 		LOG_WRN("decode size out of range 0x%08x", flash_sz);
-		return -EINVAL;
+		return 0;
 	}
-	decode_sz_arr[ctx->config->slave] = flash_sz;
 
 	/* modify decode range */
 	for (cs = 0; cs < config->max_cs; cs++) {
-		if (decode_sz_arr[cs] == 0) {
-			sys_write32(0x0,
-					config->ctrl_base +
-						SPI30_CE0_ADDR_DEC + cs * 4);
+		if (decode_sz_arr[cs] == 0)
 			continue;
-		}
 
-		start_addr = (cs == 0) ? data->decode_base : pre_end_addr;
+		if (cs == 0)
+			start_addr = config->spi_mmap_base;
+		else
+			start_addr = pre_end_addr;
 
 		end_addr = start_addr + decode_sz_arr[cs] - 1;
-
-		LOG_DBG("start: 0x%x end: 0x%x (0x%x)",
-			start_addr, end_addr, decode_sz_arr[cs]);
+		LOG_DBG("start: 0x%x end: 0x%x (0x%x)", start_addr, end_addr, decode_sz_arr[cs]);
 
 		sys_write32(data->segment_value(start_addr, end_addr),
-			    config->ctrl_base + SPI30_CE0_ADDR_DEC + cs * 4);
-
-		if (data->decode_base == 0)
-			data->decode_addr[cs].start = start_addr + config->spi_mmap_base;
-		else
-			data->decode_addr[cs].start = start_addr;
-
-		data->decode_addr[cs].len = decode_sz_arr[cs];
+			config->ctrl_base + SPI30_CE0_ADDR_DEC + cs * 4);
+		data->decode_addr[cs].start = start_addr;
+		if (cs == ctx->config->slave)
+			data->decode_addr[cs].len = flash_sz;
 
 		pre_end_addr = end_addr + 1;
 	}
 
 	LOG_DBG("decode reg: <0x%08x, 0x%08x, 0x%08x>",
-		sys_read32(config->ctrl_base + SPI30_CE0_ADDR_DEC),
-		sys_read32(config->ctrl_base + SPI30_CE0_ADDR_DEC + 4),
-		sys_read32(config->ctrl_base + SPI30_CE0_ADDR_DEC + 8));
+			sys_read32(config->ctrl_base + SPI30_CE0_ADDR_DEC + cs * 0),
+			sys_read32(config->ctrl_base + SPI30_CE0_ADDR_DEC + cs * 4),
+			sys_read32(config->ctrl_base + SPI30_CE0_ADDR_DEC + cs * 8));
 
 	return 0;
-}
-
-int aspeed_spi_decode_range_reinit(const struct device *dev,
-						uint32_t flash_sz)
-{
-	return aspeed_spi_decode_range_reinit_common(dev, flash_sz);
-}
-
-int ast2700_aspeed_spi_decode_range_reinit(const struct device *dev,
-					  uint32_t flash_sz)
-{
-	return aspeed_spi_decode_range_reinit_common(dev, flash_sz);
 }
 
 static int aspeed_spi_nor_read_init(const struct device *dev,
@@ -1483,6 +1087,7 @@ static int aspeed_spi_nor_read_init(const struct device *dev,
 	struct aspeed_spi_data *data = dev->data;
 	const struct aspeed_spi_config *config = dev->config;
 	struct spi_context *ctx = &data->ctx;
+	uint32_t reg_val;
 
 	spi_context_lock(ctx, false, NULL, NULL, spi_cfg);
 	if (!spi_context_configured(ctx, spi_cfg))
@@ -1494,7 +1099,7 @@ static int aspeed_spi_nor_read_init(const struct device *dev,
 
 	/* If internal MUX is used, don't reinit decoded address. */
 	if (config->mux_ctrl.master_idx == 0 && !config->pure_spi_mode_only) {
-		ret = data->decode_range_reinit(dev, op_info.data_len);
+		ret = aspeed_spi_decode_range_reinit(dev, op_info.data_len);
 		if (ret != 0)
 			goto end;
 	}
@@ -1510,21 +1115,9 @@ static int aspeed_spi_nor_read_init(const struct device *dev,
 	/* set controller to 4-byte mode */
 	if (op_info.addr_len == 4) {
 		sys_write32(sys_read32(config->ctrl_base + SPI04_CE_CTRL) |
-				(0x11 << ctx->config->slave),
-				config->ctrl_base + SPI04_CE_CTRL);
-#ifdef CONFIG_SOC_AST2700
-		/*
-		 * enable protection for SPI004[0+ce] and SPI004[4+ce] from soc reset
-		 * to make sure the 4-byte mode setting won't be cleared by soc reset
-		 */
-		sys_write32(sys_read32(config->ctrl_base + SPI1F4_SOCRST_LOCK) |
-				((0x11 << 4) << ctx->config->slave),
-			    config->ctrl_base + SPI1F4_SOCRST_LOCK);
-#endif
+			(0x11 << ctx->config->slave), config->ctrl_base + SPI04_CE_CTRL);
 	}
 
-#ifndef CONFIG_SOC_AST2700
-	uint32_t reg_val;
 	/* config for SAFS */
 	if (config->ctrl_type == HOST_SPI) {
 		reg_val = sys_read32(config->ctrl_base + SPIR6C_HOST_DIRECT_ACCESS_CMD_CTRL4);
@@ -1536,14 +1129,8 @@ static int aspeed_spi_nor_read_init(const struct device *dev,
 		reg_val = (reg_val & 0x0fffffff) | aspeed_spi_io_mode(op_info.mode);
 		sys_write32(reg_val, config->ctrl_base + SPIR6C_HOST_DIRECT_ACCESS_CMD_CTRL4);
 	}
-#endif
 
-#ifdef CONFIG_SOC_AST2700_BOOTMCU
-	/* AST2700 BootMCU does not support pinctrl, so need to initialize it manually */
-	ast2700_spi_pinctrl_post_init(dev, JESD216_GET_DATA_BUSWIDTH(op_info.mode));
-#endif
-
-	aspeed_spi_timing_calibration(dev, op_info);
+	aspeed_spi_timing_calibration(dev);
 
 end:
 
@@ -1558,20 +1145,16 @@ static int aspeed_spi_nor_write_init(const struct device *dev,
 {
 	int ret = 0;
 	struct aspeed_spi_data *data = dev->data;
+	const struct aspeed_spi_config *config = dev->config;
 	struct spi_context *ctx = &data->ctx;
+	uint32_t reg_val;
 
 	spi_context_lock(ctx, false, NULL, NULL, spi_cfg);
-	if (!spi_context_configured(ctx, spi_cfg))
-		ctx->config = spi_cfg;
 
 	data->cmd_mode[ctx->config->slave].normal_write &= (SPI_CTRL_FREQ_MASK);
 	data->cmd_mode[ctx->config->slave].normal_write |=
 			ASPEED_SPI_CTRL_VAL(aspeed_spi_io_mode(op_info.mode),
 				op_info.opcode, 0) | ASPEED_SPI_NORMAL_WRITE;
-
-#ifndef CONFIG_SOC_AST2700
-	const struct aspeed_spi_config *config = dev->config;
-	uint32_t reg_val;
 
 	if (config->ctrl_type == HOST_SPI) {
 		reg_val = sys_read32(config->ctrl_base + SPIR6C_HOST_DIRECT_ACCESS_CMD_CTRL4);
@@ -1585,7 +1168,6 @@ static int aspeed_spi_nor_write_init(const struct device *dev,
 
 		sys_write32(reg_val, config->ctrl_base + SPIR74_HOST_DIRECT_ACCESS_CMD_CTRL2);
 	}
-#endif
 
 	spi_context_release(ctx, ret);
 
@@ -1598,75 +1180,9 @@ static int aspeed_spi_release(const struct device *dev,
 {
 	struct aspeed_spi_data *data = dev->data;
 
-	ARG_UNUSED(spi_cfg);
-
 	spi_context_unlock_unconditionally(&data->ctx);
 
 	return 0;
-}
-
-static void aspeed_spi_decode_range_pre_init_common(const struct aspeed_spi_config *config,
-							struct aspeed_spi_data *data)
-{
-	uint32_t cs;
-	uint32_t unit_sz = data->decode_unit_sz;
-	uint32_t start_addr, end_addr, pre_end_addr = 0;
-	uint32_t max_cs = config->max_cs;
-	uint32_t decode_limit;
-
-	/* For PFR device, SPI controller always accesses flash by CS0.
-	 * For AST2700, config->mux_ctrl.master_idx is always 0.
-	 */
-	if (config->mux_ctrl.master_idx != 0) {
-		max_cs = 1;
-		unit_sz = data->max_decode_sz;
-	}
-
-	if (config->pure_spi_mode_only) {
-		unit_sz = data->max_decode_sz / config->max_cs;
-		unit_sz &= ~(data->decode_unit_sz - 1);
-	}
-
-	decode_limit = data->decode_base + data->max_decode_sz;
-
-	for (cs = 0; cs < max_cs; cs++) {
-		start_addr = (cs == 0) ? (pre_end_addr + data->decode_base) : pre_end_addr;
-		end_addr = start_addr + unit_sz - 1;
-
-		if (decode_limit <= end_addr) {
-			LOG_DBG("%s %d smc decode address overflow", __func__, __LINE__);
-			sys_write32(0, config->ctrl_base + SPI30_CE0_ADDR_DEC + cs * 4);
-			continue;
-		}
-
-		LOG_DBG("cs: %d start: 0x%08x, end: 0x%08x (%08x)",
-			cs, start_addr, end_addr, data->segment_value(start_addr, end_addr));
-
-		sys_write32(data->segment_value(start_addr, end_addr),
-			config->ctrl_base + SPI30_CE0_ADDR_DEC + cs * 4);
-		LOG_DBG("cs: %d 0x%08x", cs,
-			sys_read32(config->ctrl_base + SPI30_CE0_ADDR_DEC + cs * 4));
-
-		if (data->decode_base == 0)
-			data->decode_addr[cs].start = start_addr + config->spi_mmap_base;
-		else
-			data->decode_addr[cs].start = start_addr;
-
-		data->decode_addr[cs].len = unit_sz;
-		pre_end_addr = end_addr + 1;
-	}
-}
-
-void aspeed_decode_range_pre_init(const struct aspeed_spi_config *config,
-				  struct aspeed_spi_data *data)
-{
-	aspeed_spi_decode_range_pre_init_common(config, data);
-}
-
-void ast2700_aspeed_decode_range_pre_init(const struct aspeed_spi_config *config,
-				  struct aspeed_spi_data *data)
-{
-	aspeed_spi_decode_range_pre_init_common(config, data);
 }
 
 void aspeed_segment_function_init(const struct aspeed_spi_config *config,
@@ -1683,15 +1199,60 @@ void aspeed_segment_function_init(const struct aspeed_spi_config *config,
 		data->segment_end = ast1030_spi_segment_addr_end;
 		data->segment_value = ast1030_spi_segment_addr_val;
 	}
-#elif defined(CONFIG_SOC_AST2600)
+#else
 	data->segment_start = ast2600_segment_addr_start;
 	data->segment_end = ast2600_segment_addr_end;
 	data->segment_value = ast2600_segment_addr_val;
-#else
-	data->segment_start = ast2700_segment_addr_start;
-	data->segment_end = ast2700_segment_addr_end;
-	data->segment_value = ast2700_segment_addr_val;
+
 #endif
+}
+
+void aspeed_decode_range_pre_init(const struct aspeed_spi_config *config,
+				  struct aspeed_spi_data *data)
+{
+	uint32_t cs;
+	uint32_t unit_sz = ASPEED_SPI_SZ_2M; /* init 2M for each cs */
+	uint32_t start_addr, end_addr, pre_end_addr = 0;
+	uint32_t max_cs = config->max_cs;
+
+	/* For PFR device, SPI controller always accesses flash by CS0. */
+	if (config->mux_ctrl.master_idx != 0) {
+		max_cs = 1;
+		unit_sz = ASPEED_SPI_SZ_256M;
+	}
+
+	if (config->pure_spi_mode_only) {
+		unit_sz = ASPEED_SPI_SZ_256M / config->max_cs;
+		unit_sz &= ~(ASPEED_SPI_SZ_2M - 1);
+	}
+
+	for (cs = 0; cs < max_cs; cs++) {
+		if (cs == 0)
+			start_addr = config->spi_mmap_base;
+		else
+			start_addr = pre_end_addr;
+
+		end_addr = start_addr + unit_sz - 1;
+
+		/* the maximum decode size is 256MB */
+		if (config->spi_mmap_base + ASPEED_SPI_SZ_256M <= end_addr) {
+			LOG_DBG("%s %d smc decode address overflow\n", __func__, __LINE__);
+			sys_write32(0, config->ctrl_base + SPI30_CE0_ADDR_DEC + cs * 4);
+			continue;
+		}
+
+		LOG_DBG("cs: %d start: 0x%08x, end: 0x%08x (%08x)\n",
+			cs, start_addr, end_addr, data->segment_value(start_addr, end_addr));
+
+		sys_write32(data->segment_value(start_addr, end_addr),
+			config->ctrl_base + SPI30_CE0_ADDR_DEC + cs * 4);
+		LOG_DBG("cs: %d 0x%08x\n", cs,
+			sys_read32(config->ctrl_base + SPI30_CE0_ADDR_DEC + cs * 4));
+
+		data->decode_addr[cs].start = start_addr;
+		data->decode_addr[cs].len = unit_sz;
+		pre_end_addr = end_addr + 1;
+	}
 }
 
 void aspeed_ast1060_spim_proprietary_pre_config(void)
@@ -1785,79 +1346,51 @@ static int aspeed_spi_init(const struct device *dev)
 	uint32_t reg_val;
 	int ret;
 
-	reg_val = sys_read32(config->ctrl_base + SPI00_CE_TYPE_SETTING);
 	for (cs = 0; cs < config->max_cs; cs++) {
-		reg_val |= BIT(16 + cs);
+		reg_val = sys_read32(config->ctrl_base + SPI00_CE_TYPE_SETTING);
+		sys_write32(reg_val | BIT(16 + cs), config->ctrl_base + SPI00_CE_TYPE_SETTING);
+
 		data->cmd_mode[cs].user = ASPEED_SPI_USER;
 	}
-	sys_write32(reg_val, config->ctrl_base + SPI00_CE_TYPE_SETTING);
 
 	ret = clock_control_get_rate(config->clock_dev, config->clk_id,
 			       &data->hclk);
 	if (ret != 0)
 		return ret;
 
-#if defined(CONFIG_SOC_AST1030) || defined(CONFIG_SOC_AST1060) || defined(CONFIG_SOC_AST2600)
-	/* AST1030/AST1060/AST2600 SMC decode unit is 2MB, and SPI decode unit is 256MB. */
-	data->decode_base = config->spi_mmap_base;
-	data->decode_unit_sz = ASPEED_SPI_SZ_2M;
-	data->max_decode_sz = ASPEED_SPI_SZ_256M;
-	data->decode_range_pre_init = aspeed_decode_range_pre_init;
-	data->decode_range_reinit = aspeed_spi_decode_range_reinit;
-#ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
-	data->read_dma = aspeed_spi_read_dma;
-	data->write_dma = aspeed_spi_write_dma;
-#endif
-#else
-	/* AST2700 decode unit is 64MB, and the maximum decode size is 768MB. */
-	data->decode_base = 0;
-	data->decode_unit_sz = ASPEED_SPI_SZ_64M;
-	data->max_decode_sz = ASPEED_SPI_SZ_768M;
-	data->decode_range_pre_init = ast2700_aspeed_decode_range_pre_init;
-	data->decode_range_reinit = ast2700_aspeed_spi_decode_range_reinit;
-#ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
-	data->read_dma = ast2700_aspeed_spi_read_dma;
-	data->write_dma = ast2700_aspeed_spi_write_dma;
-#endif
-#endif
-
 	aspeed_segment_function_init(config, data);
-	data->decode_range_pre_init(config, data);
+	aspeed_decode_range_pre_init(config, data);
 
 	spi_context_unlock_unconditionally(&data->ctx);
 
 #ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
-	if (config->irq_config_func)
-		config->irq_config_func(dev);
+	/* irq init */
+	irq_connect_dynamic(config->irq_num, config->irq_priority,
+		aspeed_spi_dma_isr, dev, 0);
+	irq_enable(config->irq_num);
 #endif
 
 	if (config->mux_ctrl.master_idx != 0 &&
 		(config->mux_ctrl.spim_output_base == 0 ||
 		 !config->mux_ctrl.spi_monitor_common_ctrl)) {
-		LOG_ERR("[%s]Invalid dts setting for SPI internal mux master",
+		LOG_ERR("[%s]Invaild dts setting for SPI internal mux master",
 			dev->name);
 		return -EINVAL;
 	}
 
-#ifdef CONFIG_SOC_AST1060
 	if (config->aspeed_spim_proprietary_config_enable) {
 		data->aspeed_spim_proprietary_pre_config =
 			aspeed_ast1060_spim_proprietary_pre_config;
 		data->aspeed_spim_proprietary_post_config =
 			aspeed_ast1060_spim_proprietary_post_config;
 	}
-#endif
 
-#if defined(CONFIG_SOC_AST2700_BOOTMCU)
-	ast2700_spi_pinctrl_early_init(dev);
-	ast2700_spi_adjust_driving_strength();
-#else
 	ret = pinctrl_apply_state(config->pcfg, PINCTRL_STATE_DEFAULT);
 	if (ret != 0) {
-		LOG_ERR("[%s] fail to configure multi function pin", dev->name);
+		LOG_ERR("[%s] fail to configure multi function pin",
+			dev->name);
 		return ret;
 	}
-#endif
 
 	return 0;
 }
@@ -1874,58 +1407,19 @@ static const struct spi_driver_api aspeed_spi_driver_api = {
 	.spi_nor_op = &aspeed_spi_nor_ops,
 };
 
-#if defined(CONFIG_SPI_DMA_SUPPORT_ASPEED) && !defined(CONFIG_SOC_AST2700_BOOTMCU)
-#if defined(CONFIG_SOC_AST1030) || defined(CONFIG_SOC_AST1060) || defined(CONFIG_SOC_AST2600)
-#define ASPEED_SPI_DMA_ISR_HANDLER aspeed_spi_dma_isr
-#else
-#define ASPEED_SPI_DMA_ISR_HANDLER ast2700_aspeed_spi_dma_isr
-#endif
-#define ASPEED_SPI_IRQ_INIT(n)                                                  \
-	static void aspeed_spi_irq_config_func_##n(const struct device *dev)   \
-	{                                                                        \
-		ARG_UNUSED(dev);                                                 \
-		IRQ_CONNECT(DT_INST_IRQN(n),                                     \
-			    DT_INST_IRQ(n, priority),                            \
-			    ASPEED_SPI_DMA_ISR_HANDLER,                          \
-			    DEVICE_DT_INST_GET(n),                               \
-			    0);                                                  \
-		irq_enable(DT_INST_IRQN(n));                                    \
-	}
-
-#define ASPEED_SPI_IRQ_CONFIG_INIT(n) \
-	.irq_config_func = aspeed_spi_irq_config_func_##n,
-#else
-#define ASPEED_SPI_IRQ_INIT(n)
-#define ASPEED_SPI_IRQ_CONFIG_INIT(n) \
-	.irq_config_func = NULL,
-#endif
-
-#ifndef CONFIG_SOC_AST2700_BOOTMCU
-#define ASPEED_SPI_PINCTRL_DEFINE(n) \
-	PINCTRL_DT_INST_DEFINE(n);
-#define ASPEED_SPI_PINCTRL_CONFIG_INIT(n) \
-	.pcfg = PINCTRL_DT_INST_DEV_CONFIG_GET(n),
-#else
-#define ASPEED_SPI_PINCTRL_DEFINE(n)
-#define ASPEED_SPI_PINCTRL_CONFIG_INIT(n)
-#endif
-
-#define ASPEED_SPI_INIT(n)                                                  \
-	ASPEED_SPI_PINCTRL_DEFINE(n)                                        \
-	ASPEED_SPI_IRQ_INIT(n)                                              \
-	static struct aspeed_spi_config aspeed_spi_config_##n = {           \
-		.ctrl_base = DT_INST_REG_ADDR_BY_NAME(n, ctrl_reg),         \
-		.spi_mmap_base = DT_INST_REG_ADDR_BY_NAME(n, spi_mmap),     \
-		.max_cs = DT_INST_PROP(n, num_cs),                          \
-		.ctrl_type = DT_ENUM_IDX(DT_DRV_INST(n), ctrl_type),        \
-		.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(n)),         \
-		.clk_id = (clock_control_subsys_t)                          \
-			  DT_INST_CLOCKS_CELL(n, clk_id),                   \
-		ASPEED_SPI_IRQ_CONFIG_INIT(n)                               \
-		.mux_ctrl.master_idx =                                      \
-			DT_INST_PROP_OR(n, internal_mux_master, 0),         \
-		.mux_ctrl.spim_output_base =                               \
-			DT_INST_PROP_OR(n, spi_monitor_output_base, 0),     \
+#define ASPEED_SPI_INIT(n)						\
+	PINCTRL_DT_INST_DEFINE(n);	\
+	static struct aspeed_spi_config aspeed_spi_config_##n = { \
+		.ctrl_base = DT_INST_REG_ADDR_BY_NAME(n, ctrl_reg),		\
+		.spi_mmap_base = DT_INST_REG_ADDR_BY_NAME(n, spi_mmap),	\
+		.max_cs = DT_INST_PROP(n, num_cs),	\
+		.ctrl_type = DT_ENUM_IDX(DT_INST(n, DT_DRV_COMPAT), ctrl_type),	\
+		.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(n)),	\
+		.clk_id = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(n, clk_id),	\
+		.irq_num = DT_INST_IRQN(n),		\
+		.irq_priority = DT_INST_IRQ(n, priority),	\
+		.mux_ctrl.master_idx = DT_INST_PROP_OR(n, internal_mux_master, 0),	\
+		.mux_ctrl.spim_output_base = DT_INST_PROP_OR(n, spi_monitor_output_base, 0),	\
 		.mux_ctrl.spi_monitor_common_ctrl =	\
 			COND_CODE_1(DT_NODE_HAS_PROP(DT_INST(n, DT_DRV_COMPAT),	\
 						     spi_monitor_common_ctrl),	\
@@ -1933,32 +1427,29 @@ static const struct spi_driver_api aspeed_spi_driver_api = {
 								spi_monitor_common_ctrl,	\
 								0)),	\
 				    NULL),	\
-		.aspeed_spim_proprietary_config_enable =                   \
-			DT_PROP(DT_DRV_INST(n),                           \
-				spim_proprietary_config_enable),          \
-		.timing_calibration_disabled =                             \
-			DT_PROP(DT_DRV_INST(n),                           \
-				timing_calibration_disabled),              \
-		.timing_calibration_start_off =                            \
-			DT_INST_PROP_OR(n,                                \
-					timing_calibration_start_offset, \
-					0),                           \
-		.pure_spi_mode_only =                                      \
-			DT_PROP(DT_DRV_INST(n), pure_spi_mode_only),      \
-		.spi_ctrl_fifo_enabled =                                  \
-			DT_PROP(DT_DRV_INST(n), spi_ctrl_fifo_enabled),   \
-		ASPEED_SPI_PINCTRL_CONFIG_INIT(n)                         \
-	};                                                               \
-                                                                         \
-	static struct aspeed_spi_data aspeed_spi_data_##n = {             \
-		SPI_CONTEXT_INIT_LOCK(aspeed_spi_data_##n, ctx),          \
-		SPI_CONTEXT_INIT_SYNC(aspeed_spi_data_##n, ctx),          \
-	};                                                               \
-                                                                         \
-	DEVICE_DT_INST_DEFINE(n, &aspeed_spi_init, NULL,                 \
-			      &aspeed_spi_data_##n,                      \
-			      &aspeed_spi_config_##n, POST_KERNEL,      \
-			      75,                                        \
-			      &aspeed_spi_driver_api);
+		.aspeed_spim_proprietary_config_enable =	\
+			DT_PROP(DT_INST(n, DT_DRV_COMPAT),	\
+				spim_proprietary_config_enable),	\
+		.timing_calibration_disabled = DT_PROP(DT_INST(n, DT_DRV_COMPAT),	\
+						       timing_calibration_disabled),	\
+		.timing_calibration_start_off =	\
+			DT_INST_PROP_OR(n,	\
+					timing_calibration_start_offset,	\
+					0),	\
+		.pure_spi_mode_only = DT_PROP(DT_INST(n, DT_DRV_COMPAT), pure_spi_mode_only),	\
+		.pcfg = PINCTRL_DT_INST_DEV_CONFIG_GET(n),		\
+	};								\
+									\
+	static struct aspeed_spi_data aspeed_spi_data_##n = {	\
+		SPI_CONTEXT_INIT_LOCK(aspeed_spi_data_##n, ctx),	\
+		SPI_CONTEXT_INIT_SYNC(aspeed_spi_data_##n, ctx),	\
+	};								\
+									\
+	DEVICE_DT_INST_DEFINE(n, &aspeed_spi_init,			\
+			    NULL,					\
+			    &aspeed_spi_data_##n,			\
+			    &aspeed_spi_config_##n, POST_KERNEL,	\
+			    75,		\
+			    &aspeed_spi_driver_api);			\
 
 DT_INST_FOREACH_STATUS_OKAY(ASPEED_SPI_INIT)
