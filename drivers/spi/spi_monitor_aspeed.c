@@ -261,6 +261,7 @@ struct aspeed_spim_config {
 				     const uint8_t cmd_list[],
 				     uint32_t cmd_num, uint32_t flag);
 	void (*monitor_enable)(const struct device *dev, bool enable);
+	void (*ctrl_sw_rst)(const struct device *dev);
 	int (*blocked_log_init)(const struct device *dev);
 	void (*flash_rst_release)(const struct device *dev);
 	void (*mux_config)(const struct device *dev, enum spim_ext_mux_sel mux_sel);
@@ -1988,6 +1989,14 @@ void spim_lock_common(const struct device *dev)
 	config->misc_lock(dev);
 }
 
+void aspeed_spi_monitor_sw_rst(const struct device *dev)
+{
+	const struct aspeed_spim_config *config = dev->config;
+
+	if (config->ctrl_sw_rst)
+		config->ctrl_sw_rst(dev);
+}
+
 void spim_monitor_enable(const struct device *dev, bool enable)
 {
 	const struct aspeed_spim_config *config = dev->config;
@@ -2123,6 +2132,7 @@ static int aspeed_spi_monitor_common_init(const struct device *dev)
 		.dump_addr_priv = ast1060_dump_addr_priv_table,	\
 		.addr_priv_lock = ast1060_addr_priv_lock,	\
 		.misc_lock = ast1060_misc_lock,	\
+		.ctrl_sw_rst = ast1060_spim_sw_rst,	\
 },
 
 #define ASPEED_AST1060_SPIM_DEV_DATA(node_id) {	\
@@ -2195,6 +2205,7 @@ DT_INST_FOREACH_STATUS_OKAY(ASPEED_AST1060_SPI_MONITOR_COMMON_INIT)
 		.dump_addr_priv = ast2700_dump_addr_priv_table,	\
 		.addr_priv_lock = ast2700_addr_priv_table_lock,	\
 		.misc_lock = NULL,	\
+		.ctrl_sw_rst = ast2700_spim_sw_rst,	\
 },
 
 #define ASPEED_AST2700_SPIM_DEV_DATA(node_id) {	\

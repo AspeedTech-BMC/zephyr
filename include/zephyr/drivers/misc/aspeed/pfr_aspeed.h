@@ -127,7 +127,7 @@ void spim_lock_common(const struct device *dev);
 
 void spim_monitor_enable(const struct device *dev, bool enable);
 
-void ast1060_spim_sw_rst(const struct device *dev);
+void aspeed_spi_monitor_sw_rst(const struct device *dev);
 
 struct spim_log_info {
 	mem_addr_t log_ram_addr;
