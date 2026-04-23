@@ -316,6 +316,38 @@ static void release_spim_device(const struct device *dev)
 	}
 }
 
+void spim_scu_ctrl_set(const struct device *dev, uint32_t mask, uint32_t val)
+{
+	const struct aspeed_spim_common_config *config = dev->config;
+	struct aspeed_spim_common_data *const data = dev->data;
+	mm_reg_t spim_scu_ctrl = config->scu_base + SPIM_MODE_SCU_CTRL;
+	uint32_t reg_val;
+	/* Avoid SCU0F0 being accessed by more than a thread */
+	k_spinlock_key_t key = k_spin_lock(&data->scu_lock);
+
+	reg_val = sys_read32(spim_scu_ctrl);
+	reg_val &= ~(mask);
+	reg_val |= val;
+	sys_write32(reg_val, spim_scu_ctrl);
+
+	k_spin_unlock(&data->scu_lock, key);
+}
+
+void spim_scu_ctrl_clear(const struct device *dev, uint32_t clear_bits)
+{
+	const struct aspeed_spim_common_config *config = dev->config;
+	struct aspeed_spim_common_data *const data = dev->data;
+	mm_reg_t spim_scu_ctrl = config->scu_base + SPIM_MODE_SCU_CTRL;
+	uint32_t reg_val;
+	k_spinlock_key_t key = k_spin_lock(&data->scu_lock);
+
+	reg_val = sys_read32(spim_scu_ctrl);
+	reg_val &= ~(clear_bits);
+	sys_write32(reg_val, spim_scu_ctrl);
+
+	k_spin_unlock(&data->scu_lock, key);
+}
+
 #if defined(CONFIG_SOC_AST1060)
 static void acquire_log_op(const struct device *dev)
 {
@@ -333,23 +365,6 @@ static void release_log_op(const struct device *dev)
 
 		k_sem_give(&data->sem_log_op);
 	}
-}
-
-void spim_scu_ctrl_set(const struct device *dev, uint32_t mask, uint32_t val)
-{
-	const struct aspeed_spim_common_config *config = dev->config;
-	struct aspeed_spim_common_data *const data = dev->data;
-	mm_reg_t spim_scu_ctrl = config->scu_base + SPIM_MODE_SCU_CTRL;
-	uint32_t reg_val;
-	/* Avoid SCU0F0 being accessed by more than a thread */
-	k_spinlock_key_t key = k_spin_lock(&data->scu_lock);
-
-	reg_val = sys_read32(spim_scu_ctrl);
-	reg_val &= ~(mask);
-	reg_val |= val;
-	sys_write32(reg_val, spim_scu_ctrl);
-
-	k_spin_unlock(&data->scu_lock, key);
 }
 
 void ast1060_scu_monitor_config(const struct device *dev, bool enable)
@@ -380,21 +395,6 @@ void ast1060_ctrl_monitor_config(const struct device *dev, bool enable)
 	sys_write32(reg_val, config->ctrl_base);
 
 	release_spim_device(dev);
-}
-
-void spim_scu_ctrl_clear(const struct device *dev, uint32_t clear_bits)
-{
-	const struct aspeed_spim_common_config *config = dev->config;
-	struct aspeed_spim_common_data *const data = dev->data;
-	mm_reg_t spim_scu_ctrl = config->scu_base + SPIM_MODE_SCU_CTRL;
-	uint32_t reg_val;
-	k_spinlock_key_t key = k_spin_lock(&data->scu_lock);
-
-	reg_val = sys_read32(spim_scu_ctrl);
-	reg_val &= ~(clear_bits);
-	sys_write32(reg_val, spim_scu_ctrl);
-
-	k_spin_unlock(&data->scu_lock, key);
 }
 
 /*
