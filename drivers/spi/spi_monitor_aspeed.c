@@ -497,6 +497,13 @@ void ast1060_passthrough_config(const struct device *dev,
 	release_spim_device(dev);
 }
 
+/* Don't remove due to existing applications. */
+void spim_passthrough_config(const struct device *dev,
+	enum spim_passthrough_mode mode, bool passthrough_en)
+{
+	ast1060_passthrough_config(dev, mode, passthrough_en);
+}
+
 void ast1060_release_flash_rst(const struct device *dev)
 {
 	uint32_t val;

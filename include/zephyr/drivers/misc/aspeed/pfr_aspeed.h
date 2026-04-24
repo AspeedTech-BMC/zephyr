@@ -93,6 +93,9 @@ void spim_scu_ctrl_set(const struct device *dev, uint32_t mask, uint32_t val);
 void spim_scu_ctrl_clear(const struct device *dev, uint32_t clear_bits);
 void spim_ext_mux_config(const struct device *dev,
 	enum spim_ext_mux_sel mux_sel);
+void spim_passthrough_config(const struct device *dev,
+			     enum spim_passthrough_mode mode,
+			     bool passthrough_en);
 
 /* allow command table control */
 #define FLAG_CMD_TABLE_VALID         0x00000000
