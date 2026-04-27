@@ -4,8 +4,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#define DT_DRV_COMPAT aspeed_spi_controller
-
 #include <zephyr/device.h>
 #include <zephyr/drivers/clock_control.h>
 #include <zephyr/drivers/flash.h>
@@ -18,22 +16,12 @@ LOG_MODULE_REGISTER(spi_aspeed, CONFIG_SPI_LOG_LEVEL);
 #include <zephyr/sys/sys_io.h>
 #include <zephyr/sys/__assert.h>
 #include <zephyr/drivers/misc/aspeed/pfr_aspeed.h>
-#ifndef CONFIG_SOC_AST2700_BOOTMCU
 #include <zephyr/drivers/pinctrl.h>
-#endif
-
-#ifdef CONFIG_SOC_AST2700
 #include <soc.h>
-#ifdef CONFIG_SOC_AST2700_BOOTMCU
+
 #define FMC_CTRL_BASE               (0x14000000)
 #define SPI0_CTRL_BASE              (0x14010000)
 #define SPI1_CTRL_BASE              (0x14020000)
-#else
-#define FMC_CTRL_BASE               (0x74000000)
-#define SPI0_CTRL_BASE              (0x74010000)
-#define SPI1_CTRL_BASE              (0x74020000)
-#endif
-#endif
 
 #define SPI00_CE_TYPE_SETTING       (0x0000)
 #define SPI04_CE_CTRL               (0x0004)
@@ -141,6 +129,36 @@ struct aspeed_spim_internal_mux_ctrl {
 	const struct device *spi_monitor_common_ctrl;
 };
 
+struct aspeed_spi_config;
+struct aspeed_spi_data;
+
+struct aspeed_spi_ops {
+	void (*init_data)(const struct aspeed_spi_config *config,
+			  struct aspeed_spi_data *data);
+
+	int (*pinctrl_init)(const struct device *dev);
+	void (*pinctrl_post_init)(const struct device *dev,
+				  uint32_t max_bus_width);
+
+	void (*proprietary_config_init)(const struct aspeed_spi_config *config,
+					struct aspeed_spi_data *data);
+
+	void (*enable_4byte_mode)(const struct device *dev, uint32_t cs);
+
+	void (*safs_read_config)(const struct device *dev,
+				 const struct spi_nor_op_info *op_info);
+	void (*safs_write_config)(const struct device *dev,
+				  const struct spi_nor_op_info *op_info);
+#ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
+	bool (*dma_xfer_eligible)(const struct device *dev,
+			    const struct spi_nor_op_info *op_info);
+	void (*read_dma)(const struct device *dev, const struct spi_config *spi_cfg,
+		struct spi_nor_op_info op_info);
+	void (*write_dma)(const struct device *dev, const struct spi_config *spi_cfg,
+		struct spi_nor_op_info op_info);
+#endif
+};
+
 struct aspeed_spi_config {
 	mm_reg_t ctrl_base;
 	mm_reg_t spi_mmap_base;
@@ -149,20 +167,18 @@ struct aspeed_spi_config {
 	const struct device *clock_dev;
 	const clock_control_subsys_t clk_id;
 	void (*irq_config_func)(const struct device *dev);
+	const struct aspeed_spi_ops *ops;
 	bool timing_calibration_disabled;
 	uint32_t timing_calibration_start_off;
 	struct aspeed_spim_internal_mux_ctrl mux_ctrl;
 	bool aspeed_spim_proprietary_config_enable;
 	bool pure_spi_mode_only;
 	bool spi_ctrl_fifo_enabled;
-#ifndef CONFIG_SOC_AST2700_BOOTMCU
 	const struct pinctrl_dev_config *pcfg;
-#endif
 };
 
 struct aspeed_spi_data {
 	struct spi_context ctx;
-
 	struct aspeed_spi_decoded_addr decode_addr[ASPEED_MAX_CS];
 	struct aspeed_cmd_mode cmd_mode[ASPEED_MAX_CS];
 
@@ -181,12 +197,6 @@ struct aspeed_spi_data {
 
 	void (*aspeed_spim_proprietary_pre_config)(void);
 	void (*aspeed_spim_proprietary_post_config)(void);
-#ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
-	void (*read_dma)(const struct device *dev, const struct spi_config *spi_cfg,
-		struct spi_nor_op_info op_info);
-	void (*write_dma)(const struct device *dev, const struct spi_config *spi_cfg,
-		struct spi_nor_op_info op_info);
-#endif
 };
 
 #define SPIM_GPIO_INFO(__scu_reg__, __scu_bit__, __gpio_reg__, __gpio_bit__)	\
@@ -224,7 +234,6 @@ struct spim_gpio_info g_ast1060_spim_cs_gpio[4] = {
 	SPIM_GPIO_INFO(0x7e6e2694, BIT(16), 0x7e780020, BIT(16)),
 };
 
-#if defined(CONFIG_SOC_AST2700_BOOTMCU)
 #define FMC_PINCTRL_SCU_REG         0x14c02450
 #define SPI0_PINCTRL_SCU_REG        0x14c02434
 #define SPI1_PINCTRL_SCU_REG        0x14c02438
@@ -328,7 +337,6 @@ static void ast2700_spi_adjust_driving_strength(void)
 	reg |= 0x00002aaa;
 	sys_write32(reg, ASPEED_IO_SPI2_DRIVING);
 }
-#endif
 
 uint32_t ast2600_segment_addr_start(uint32_t reg_val)
 {
@@ -678,16 +686,6 @@ static void aspeed_spi_nor_transceive_user(const struct device *dev,
 }
 
 #ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
-static void aspeed_dma_irq_enable(const struct device *dev)
-{
-	const struct aspeed_spi_config *config = dev->config;
-	uint32_t reg_val;
-
-	reg_val = sys_read32(config->ctrl_base + SPI08_INTR_CTRL);
-	reg_val |= SPI_DMA_IRQ_EN;
-	sys_write32(reg_val, config->ctrl_base + SPI08_INTR_CTRL);
-}
-
 void aspeed_spi_dma_isr(const void *param)
 {
 	const struct device *dev = param;
@@ -703,9 +701,8 @@ void aspeed_spi_dma_isr(const void *param)
 		cs = 0;
 #endif
 
-	if (!(sys_read32(config->ctrl_base + SPI08_INTR_CTRL) & SPI_DMA_STS)) {
+	if (!(sys_read32(config->ctrl_base + SPI08_INTR_CTRL) & SPI_DMA_STS))
 		LOG_ERR("DMA interrupt status not set");
-	}
 
 	/* disable IRQ */
 	reg_val = sys_read32(config->ctrl_base + SPI08_INTR_CTRL);
@@ -730,36 +727,14 @@ void aspeed_spi_dma_isr(const void *param)
 	spi_context_complete(ctx, dev, 0);
 }
 
-void ast2700_aspeed_spi_dma_isr(const void *param)
+static void aspeed_dma_irq_enable(const struct device *dev)
 {
-	const struct device *dev = param;
 	const struct aspeed_spi_config *config = dev->config;
-	struct aspeed_spi_data *const data = dev->data;
-	struct spi_context *ctx = &data->ctx;
-	uint32_t cs = ctx->config->slave;
 	uint32_t reg_val;
 
-	if (!(sys_read32(config->ctrl_base + SPI08_INTR_CTRL) & SPI_DMA_STS) ||
-	    !(sys_read32(config->ctrl_base + SPI08_INTR_CTRL) & SPI_DMA_IRQ_STS)) {
-		LOG_ERR("DMA interrupt status not set or DMA completion interrupt missing");
-	}
-
-	/* disable IRQ */
 	reg_val = sys_read32(config->ctrl_base + SPI08_INTR_CTRL);
-	reg_val &= ~SPI_DMA_IRQ_EN;
+	reg_val |= SPI_DMA_IRQ_EN;
 	sys_write32(reg_val, config->ctrl_base + SPI08_INTR_CTRL);
-
-	/* disable DMA */
-	reg_val = sys_read32(config->ctrl_base + SPI08_INTR_CTRL);
-	reg_val |= SPI_DMA_IRQ_STS;
-	sys_write32(reg_val, config->ctrl_base + SPI08_INTR_CTRL);
-
-	sys_write32(0x0, config->ctrl_base + SPI80_DMA_CTRL);
-
-	sys_write32(data->cmd_mode[cs].normal_read,
-		config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
-
-	spi_context_complete(ctx, dev, 0);
 }
 
 void aspeed_spi_read_dma(const struct device *dev,
@@ -905,6 +880,38 @@ void aspeed_spi_write_dma(const struct device *dev,
 	sys_write32(SPI_DMA_ENABLE | SPI_DMA_WRITE, config->ctrl_base + SPI80_DMA_CTRL);
 }
 
+void ast2700_aspeed_spi_dma_isr(const void *param)
+{
+	const struct device *dev = param;
+	const struct aspeed_spi_config *config = dev->config;
+	struct aspeed_spi_data *const data = dev->data;
+	struct spi_context *ctx = &data->ctx;
+	uint32_t cs = ctx->config->slave;
+	uint32_t reg_val;
+
+	if (!(sys_read32(config->ctrl_base + SPI08_INTR_CTRL) & SPI_DMA_STS) ||
+	    !(sys_read32(config->ctrl_base + SPI08_INTR_CTRL) & SPI_DMA_IRQ_STS)) {
+		LOG_ERR("DMA interrupt status not set or DMA completion interrupt missing");
+	}
+
+	/* disable IRQ */
+	reg_val = sys_read32(config->ctrl_base + SPI08_INTR_CTRL);
+	reg_val &= ~SPI_DMA_IRQ_EN;
+	sys_write32(reg_val, config->ctrl_base + SPI08_INTR_CTRL);
+
+	/* disable DMA */
+	reg_val = sys_read32(config->ctrl_base + SPI08_INTR_CTRL);
+	reg_val |= SPI_DMA_IRQ_STS;
+	sys_write32(reg_val, config->ctrl_base + SPI08_INTR_CTRL);
+
+	sys_write32(0x0, config->ctrl_base + SPI80_DMA_CTRL);
+
+	sys_write32(data->cmd_mode[cs].normal_read,
+		config->ctrl_base + SPI10_CE0_CTRL + cs * 4);
+
+	spi_context_complete(ctx, dev, 0);
+}
+
 void ast2700_aspeed_spi_read_dma(const struct device *dev,
 						const struct spi_config *spi_cfg,
 						struct spi_nor_op_info op_info)
@@ -959,23 +966,25 @@ void ast2700_aspeed_spi_read_dma(const struct device *dev,
 
 	sys_write32(dram_phy_addr, config->ctrl_base + SPI88_DMA_RAM_ADDR);
 	sys_write32(op_info.data_len - 1, config->ctrl_base + SPI8C_DMA_LEN);
-#ifndef CONFIG_SOC_AST2700_BOOTMCU
+
+#ifndef CONFIG_SPI_ASPEED_DMA_POLLING_MODE
+	/* enable DMA completion interrupt */
 	aspeed_dma_irq_enable(dev);
-#endif
+	sys_write32(SPI_DMA_ENABLE, config->ctrl_base + SPI80_DMA_CTRL);
+#else
 	sys_write32(SPI_DMA_ENABLE, config->ctrl_base + SPI80_DMA_CTRL);
 
-#ifdef CONFIG_SOC_AST2700_BOOTMCU
+	/* Polling for DMA completion */
 	uint32_t dma_busy;
 
 	do {
 		dma_busy = sys_read32(config->ctrl_base + SPI08_INTR_CTRL) &
-				      SPI_DMA_STS;
+			   SPI_DMA_STS;
 		if (dma_busy == 0)
 			k_usleep(1);
 	} while (dma_busy == 0);
 
 	sys_write32(0x0, config->ctrl_base + SPI80_DMA_CTRL);
-
 	spi_context_complete(ctx, dev, 0);
 #endif
 }
@@ -1035,26 +1044,62 @@ void ast2700_aspeed_spi_write_dma(const struct device *dev,
 	sys_write32(dram_phy_addr, config->ctrl_base + SPI88_DMA_RAM_ADDR);
 	sys_write32(op_info.data_len - 1, config->ctrl_base + SPI8C_DMA_LEN);
 
-#ifndef CONFIG_SOC_AST2700_BOOTMCU
+#ifndef CONFIG_SPI_ASPEED_DMA_POLLING_MODE
+	/* enable DMA completion interrupt */
 	aspeed_dma_irq_enable(dev);
-#endif
-
+	sys_write32(SPI_DMA_ENABLE | SPI_DMA_WRITE, config->ctrl_base + SPI80_DMA_CTRL);
+#else
 	sys_write32(SPI_DMA_ENABLE | SPI_DMA_WRITE, config->ctrl_base + SPI80_DMA_CTRL);
 
-#ifdef CONFIG_SOC_AST2700_BOOTMCU
+	/* Polling for DMA completion */
 	uint32_t dma_busy;
 
 	do {
 		dma_busy = sys_read32(config->ctrl_base + SPI08_INTR_CTRL) &
-				      SPI_DMA_STS;
+			   SPI_DMA_STS;
 		if (dma_busy == 0)
 			k_usleep(1);
 	} while (dma_busy == 0);
 
 	sys_write32(0x0, config->ctrl_base + SPI80_DMA_CTRL);
-
 	spi_context_complete(ctx, dev, 0);
 #endif
+}
+
+static bool aspeed_spi_dma_xfer_eligible(const struct device *dev,
+		const struct spi_nor_op_info *op_info)
+{
+	const struct aspeed_spi_config *config = dev->config;
+
+	if (config->pure_spi_mode_only)
+		return false;
+
+	if (op_info->data_len <= SPI_DMA_TRIGGER_LEN)
+		return false;
+
+	if ((op_info->addr % 4) != 0)
+		return false;
+
+	if (((uintptr_t)op_info->buf % 4) != 0)
+		return false;
+
+	return true;
+}
+
+static bool ast2700_aspeed_spi_dram_region(uintptr_t virt_addr)
+{
+	uint64_t phy_addr = ast27xx_soc_virt_addr_to_phy_addr(virt_addr);
+
+	return phy_addr >= ASPEED_DRAM_PHY_BASE;
+}
+
+static bool ast2700_spi_dma_xfer_eligible(const struct device *dev,
+				const struct spi_nor_op_info *op_info)
+{
+	if (!aspeed_spi_dma_xfer_eligible(dev, op_info))
+		return false;
+
+	return ast2700_aspeed_spi_dram_region((uintptr_t)op_info->buf);
 }
 #endif
 
@@ -1329,15 +1374,6 @@ no_calib:
 #endif
 }
 
-#if defined(CONFIG_SPI_DMA_SUPPORT_ASPEED) && defined(CONFIG_SOC_AST2700)
-bool ast2700_aspeed_spi_dram_region(uintptr_t virt_addr)
-{
-	uint64_t phy_addr = ast27xx_soc_virt_addr_to_phy_addr(virt_addr);
-
-	return phy_addr >= ASPEED_DRAM_PHY_BASE;
-}
-#endif
-
 static int aspeed_spi_nor_transceive(const struct device *dev,
 						const struct spi_config *spi_cfg,
 						struct spi_nor_op_info op_info)
@@ -1352,33 +1388,22 @@ static int aspeed_spi_nor_transceive(const struct device *dev,
 		ctx->config = spi_cfg;
 
 #ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
-	bool dram_region = true;
-#ifdef CONFIG_SOC_AST2700
-	uintptr_t buf_addr = (uintptr_t)(&((uint8_t *)op_info.buf)[0]);
+	bool use_dma = false;
 
-	dram_region = ast2700_aspeed_spi_dram_region(buf_addr);
-#endif
+	if (config->ops && config->ops->dma_xfer_eligible)
+		use_dma = config->ops->dma_xfer_eligible(dev, &op_info);
+
 	if (op_info.data_direct == SPI_NOR_DATA_DIRECT_IN) {
-		if (dram_region &&
-			!config->pure_spi_mode_only &&
-		    op_info.data_len > SPI_DMA_TRIGGER_LEN &&
-		    (op_info.addr % 4) == 0 &&
-		    ((uint32_t)(&((uint8_t *)op_info.buf)[0]) % 4) == 0) {
-			data->read_dma(dev, spi_cfg, op_info);
-		} else {
+		if (use_dma && config->ops->read_dma)
+			config->ops->read_dma(dev, spi_cfg, op_info);
+		else
 			aspeed_spi_nor_transceive_user(dev, spi_cfg, op_info);
-		}
 	} else if (op_info.data_direct == SPI_NOR_DATA_DIRECT_OUT) {
 #ifdef CONFIG_SPI_DMA_WRITE_SUPPORT_ASPEED
-		if (dram_region &&
-		    !config->pure_spi_mode_only &&
-		    op_info.data_len > SPI_DMA_TRIGGER_LEN &&
-		    (op_info.addr % 4) == 0 &&
-		    ((uint32_t)(&((uint8_t *)op_info.buf)[0]) % 4) == 0) {
-			data->write_dma(dev, spi_cfg, op_info);
-		} else {
+		if (use_dma && config->ops->write_dma)
+			config->ops->write_dma(dev, spi_cfg, op_info);
+		else
 			aspeed_spi_nor_transceive_user(dev, spi_cfg, op_info);
-		}
 #else
 		aspeed_spi_nor_transceive_user(dev, spi_cfg, op_info);
 #endif
@@ -1508,40 +1533,18 @@ static int aspeed_spi_nor_read_init(const struct device *dev,
 			config->ctrl_base + SPI10_CE0_CTRL + ctx->config->slave * 4);
 
 	/* set controller to 4-byte mode */
-	if (op_info.addr_len == 4) {
-		sys_write32(sys_read32(config->ctrl_base + SPI04_CE_CTRL) |
-				(0x11 << ctx->config->slave),
-				config->ctrl_base + SPI04_CE_CTRL);
-#ifdef CONFIG_SOC_AST2700
-		/*
-		 * enable protection for SPI004[0+ce] and SPI004[4+ce] from soc reset
-		 * to make sure the 4-byte mode setting won't be cleared by soc reset
-		 */
-		sys_write32(sys_read32(config->ctrl_base + SPI1F4_SOCRST_LOCK) |
-				((0x11 << 4) << ctx->config->slave),
-			    config->ctrl_base + SPI1F4_SOCRST_LOCK);
-#endif
+	if (op_info.addr_len == 4 && config->ops->enable_4byte_mode) {
+		config->ops->enable_4byte_mode(dev,
+								ctx->config->slave);
 	}
 
-#ifndef CONFIG_SOC_AST2700
-	uint32_t reg_val;
-	/* config for SAFS */
-	if (config->ctrl_type == HOST_SPI) {
-		reg_val = sys_read32(config->ctrl_base + SPIR6C_HOST_DIRECT_ACCESS_CMD_CTRL4);
-		if (op_info.addr_len == 4)
-			reg_val = (reg_val & 0xffff00ff) | (op_info.opcode << 8);
-		else
-			reg_val = (reg_val & 0xffffff00) | op_info.opcode;
+	if (config->ops->safs_read_config)
+		config->ops->safs_read_config(dev, &op_info);
 
-		reg_val = (reg_val & 0x0fffffff) | aspeed_spi_io_mode(op_info.mode);
-		sys_write32(reg_val, config->ctrl_base + SPIR6C_HOST_DIRECT_ACCESS_CMD_CTRL4);
+	if (config->ops->pinctrl_post_init) {
+		config->ops->pinctrl_post_init(dev,
+			JESD216_GET_DATA_BUSWIDTH(op_info.mode));
 	}
-#endif
-
-#ifdef CONFIG_SOC_AST2700_BOOTMCU
-	/* AST2700 BootMCU does not support pinctrl, so need to initialize it manually */
-	ast2700_spi_pinctrl_post_init(dev, JESD216_GET_DATA_BUSWIDTH(op_info.mode));
-#endif
 
 	aspeed_spi_timing_calibration(dev, op_info);
 
@@ -1553,10 +1556,11 @@ end:
 }
 
 static int aspeed_spi_nor_write_init(const struct device *dev,
-						const struct spi_config *spi_cfg,
-						struct spi_nor_op_info op_info)
+				     const struct spi_config *spi_cfg,
+				     struct spi_nor_op_info op_info)
 {
 	int ret = 0;
+	const struct aspeed_spi_config *config = dev->config;
 	struct aspeed_spi_data *data = dev->data;
 	struct spi_context *ctx = &data->ctx;
 
@@ -1564,33 +1568,18 @@ static int aspeed_spi_nor_write_init(const struct device *dev,
 	if (!spi_context_configured(ctx, spi_cfg))
 		ctx->config = spi_cfg;
 
-	data->cmd_mode[ctx->config->slave].normal_write &= (SPI_CTRL_FREQ_MASK);
+	data->cmd_mode[ctx->config->slave].normal_write &= SPI_CTRL_FREQ_MASK;
 	data->cmd_mode[ctx->config->slave].normal_write |=
-			ASPEED_SPI_CTRL_VAL(aspeed_spi_io_mode(op_info.mode),
-				op_info.opcode, 0) | ASPEED_SPI_NORMAL_WRITE;
+		ASPEED_SPI_CTRL_VAL(aspeed_spi_io_mode(op_info.mode),
+				     op_info.opcode, 0) |
+		ASPEED_SPI_NORMAL_WRITE;
 
-#ifndef CONFIG_SOC_AST2700
-	const struct aspeed_spi_config *config = dev->config;
-	uint32_t reg_val;
-
-	if (config->ctrl_type == HOST_SPI) {
-		reg_val = sys_read32(config->ctrl_base + SPIR6C_HOST_DIRECT_ACCESS_CMD_CTRL4);
-		reg_val = (reg_val & 0xf0ffffff) | (aspeed_spi_io_mode(op_info.mode) >> 8);
-		sys_write32(reg_val, config->ctrl_base + SPIR6C_HOST_DIRECT_ACCESS_CMD_CTRL4);
-		reg_val = sys_read32(config->ctrl_base + SPIR74_HOST_DIRECT_ACCESS_CMD_CTRL2);
-		if (op_info.addr_len == 4)
-			reg_val = (reg_val & 0xffff00ff) | (op_info.opcode << 8);
-		else
-			reg_val = (reg_val & 0xffffff00) | op_info.opcode;
-
-		sys_write32(reg_val, config->ctrl_base + SPIR74_HOST_DIRECT_ACCESS_CMD_CTRL2);
-	}
-#endif
+	if (config->ops->safs_write_config)
+		config->ops->safs_write_config(dev, &op_info);
 
 	spi_context_release(ctx, ret);
 
 	return ret;
-
 }
 
 static int aspeed_spi_release(const struct device *dev,
@@ -1669,11 +1658,137 @@ void ast2700_aspeed_decode_range_pre_init(const struct aspeed_spi_config *config
 	aspeed_spi_decode_range_pre_init_common(config, data);
 }
 
-void aspeed_segment_function_init(const struct aspeed_spi_config *config,
-				  struct aspeed_spi_data *data)
-
+static void aspeed_spi_enable_4byte_mode(const struct device *dev,
+						uint32_t cs)
 {
-#if defined(CONFIG_SOC_AST1030) || defined(CONFIG_SOC_AST1060)
+	const struct aspeed_spi_config *config = dev->config;
+
+	sys_write32(sys_read32(config->ctrl_base + SPI04_CE_CTRL) |
+				(0x11 << cs),
+				config->ctrl_base + SPI04_CE_CTRL);
+}
+
+static void ast2700_spi_enable_4byte_mode(const struct device *dev,
+						uint32_t cs)
+{
+	const struct aspeed_spi_config *config = dev->config;
+
+	sys_write32(sys_read32(config->ctrl_base + SPI04_CE_CTRL) |
+				(0x11 << cs),
+				config->ctrl_base + SPI04_CE_CTRL);
+
+	/*
+	 * enable protection for SPI004[0 + ce] and SPI004[4 + ce] from soc reset
+	 * to make sure the 4-byte mode setting won't be cleared by soc reset
+	 */
+	sys_write32(sys_read32(config->ctrl_base + SPI1F4_SOCRST_LOCK) |
+		    ((0x11 << 4) << cs),
+		    config->ctrl_base + SPI1F4_SOCRST_LOCK);
+}
+
+/*
+ * Configure SAFS read command for HOST_SPI direct access.
+ *
+ * The read opcode is programmed into CMD_CTRL4. For 4-byte address mode,
+ * the opcode is placed in bits [15:8]; otherwise it is placed in bits [7:0].
+ * The read I/O mode field is also updated according to the SPI NOR operation.
+ */
+static void aspeed_spi_safs_read_config(const struct device *dev,
+					const struct spi_nor_op_info *op_info)
+{
+	const struct aspeed_spi_config *config = dev->config;
+	uint32_t reg_val;
+
+	if (config->ctrl_type != HOST_SPI)
+		return;
+
+	reg_val = sys_read32(config->ctrl_base +
+			     SPIR6C_HOST_DIRECT_ACCESS_CMD_CTRL4);
+
+	if (op_info->addr_len == 4)
+		reg_val = (reg_val & 0xffff00ff) | (op_info->opcode << 8);
+	else
+		reg_val = (reg_val & 0xffffff00) | op_info->opcode;
+
+	reg_val = (reg_val & 0x0fffffff) | aspeed_spi_io_mode(op_info->mode);
+
+	sys_write32(reg_val, config->ctrl_base +
+		    SPIR6C_HOST_DIRECT_ACCESS_CMD_CTRL4);
+}
+
+/*
+ * Configure SAFS write command for HOST_SPI direct access.
+ *
+ * The write I/O mode is programmed into CMD_CTRL4, while the write opcode is
+ * programmed into CMD_CTRL2. For 4-byte address mode, the opcode is placed in
+ * bits [15:8]; otherwise it is placed in bits [7:0].
+ */
+static void aspeed_spi_safs_write_config(const struct device *dev,
+				const struct spi_nor_op_info *op_info)
+{
+	const struct aspeed_spi_config *config = dev->config;
+	uint32_t reg_val;
+
+	if (config->ctrl_type != HOST_SPI)
+		return;
+
+	reg_val = sys_read32(config->ctrl_base +
+			     SPIR6C_HOST_DIRECT_ACCESS_CMD_CTRL4);
+	reg_val = (reg_val & 0xf0ffffff) |
+		  (aspeed_spi_io_mode(op_info->mode) >> 8);
+	sys_write32(reg_val, config->ctrl_base +
+		    SPIR6C_HOST_DIRECT_ACCESS_CMD_CTRL4);
+
+	reg_val = sys_read32(config->ctrl_base +
+			     SPIR74_HOST_DIRECT_ACCESS_CMD_CTRL2);
+
+	if (op_info->addr_len == 4)
+		reg_val = (reg_val & 0xffff00ff) | (op_info->opcode << 8);
+	else
+		reg_val = (reg_val & 0xffffff00) | op_info->opcode;
+
+	sys_write32(reg_val, config->ctrl_base +
+		    SPIR74_HOST_DIRECT_ACCESS_CMD_CTRL2);
+}
+
+static int ast2700_spi_lite_pinctrl_init(const struct device *dev)
+{
+	ast2700_spi_pinctrl_early_init(dev);
+	ast2700_spi_adjust_driving_strength();
+
+	return 0;
+}
+
+static void ast2700_spi_lite_pinctrl_post_init(const struct device *dev,
+						  uint32_t max_bus_width)
+{
+	ast2700_spi_pinctrl_post_init(dev, max_bus_width);
+}
+
+static int aspeed_spi_pinctrl_init(const struct device *dev)
+{
+	const struct aspeed_spi_config *config = dev->config;
+	int ret;
+
+	ret = pinctrl_apply_state(config->pcfg, PINCTRL_STATE_DEFAULT);
+	if (ret != 0) {
+		LOG_ERR("[%s] fail to configure multi function pin", dev->name);
+		return ret;
+	}
+
+	return 0;
+}
+
+/* This is for AST1030 and AST1060 initialization */
+static void aspeed_spi_init_data(const struct aspeed_spi_config *config,
+				  struct aspeed_spi_data *data)
+{
+	data->decode_base = config->spi_mmap_base;
+	data->decode_unit_sz = ASPEED_SPI_SZ_2M;
+	data->max_decode_sz = ASPEED_SPI_SZ_256M;
+	data->decode_range_pre_init = aspeed_decode_range_pre_init;
+	data->decode_range_reinit = aspeed_spi_decode_range_reinit;
+
 	if (config->ctrl_type == BOOT_SPI) {
 		data->segment_start = ast1030_fmc_segment_addr_start;
 		data->segment_end = ast1030_fmc_segment_addr_end;
@@ -1683,18 +1798,39 @@ void aspeed_segment_function_init(const struct aspeed_spi_config *config,
 		data->segment_end = ast1030_spi_segment_addr_end;
 		data->segment_value = ast1030_spi_segment_addr_val;
 	}
-#elif defined(CONFIG_SOC_AST2600)
+}
+
+static void ast2600_spi_init_data(const struct aspeed_spi_config *config,
+				  struct aspeed_spi_data *data)
+{
+	data->decode_base = config->spi_mmap_base;
+	data->decode_unit_sz = ASPEED_SPI_SZ_2M;
+	data->max_decode_sz = ASPEED_SPI_SZ_256M;
+	data->decode_range_pre_init = aspeed_decode_range_pre_init;
+	data->decode_range_reinit = aspeed_spi_decode_range_reinit;
+
 	data->segment_start = ast2600_segment_addr_start;
 	data->segment_end = ast2600_segment_addr_end;
 	data->segment_value = ast2600_segment_addr_val;
-#else
+}
+
+static void ast2700_spi_init_data(const struct aspeed_spi_config *config,
+				  struct aspeed_spi_data *data)
+{
+	ARG_UNUSED(config);
+
+	data->decode_base = 0;
+	data->decode_unit_sz = ASPEED_SPI_SZ_64M;
+	data->max_decode_sz = ASPEED_SPI_SZ_768M;
+	data->decode_range_pre_init = ast2700_aspeed_decode_range_pre_init;
+	data->decode_range_reinit = ast2700_aspeed_spi_decode_range_reinit;
+
 	data->segment_start = ast2700_segment_addr_start;
 	data->segment_end = ast2700_segment_addr_end;
 	data->segment_value = ast2700_segment_addr_val;
-#endif
 }
 
-void aspeed_ast1060_spim_proprietary_pre_config(void)
+static void ast1060_spim_proprietary_pre_config(void)
 {
 	uint32_t scu0f0_val;
 	uint32_t spim_idx;
@@ -1741,7 +1877,7 @@ void aspeed_ast1060_spim_proprietary_pre_config(void)
 	sys_write32(reg_val, g_ast1060_spim_cs_gpio[op_idx].scu_reg_addr);
 }
 
-void aspeed_ast1060_spim_proprietary_post_config(void)
+static void ast1060_spim_proprietary_post_config(void)
 {
 	uint32_t scu0f0_val;
 	uint32_t spim_idx;
@@ -1777,6 +1913,18 @@ void aspeed_ast1060_spim_proprietary_post_config(void)
 	sys_write32(reg_val, g_ast1060_spim_cs_gpio[op_idx].scu_reg_addr);
 }
 
+static void ast1060_spi_proprietary_config_init(const struct aspeed_spi_config *config,
+					struct aspeed_spi_data *data)
+{
+	if (!config->aspeed_spim_proprietary_config_enable)
+		return;
+
+	data->aspeed_spim_proprietary_pre_config =
+		ast1060_spim_proprietary_pre_config;
+	data->aspeed_spim_proprietary_post_config =
+		ast1060_spim_proprietary_post_config;
+}
+
 static int aspeed_spi_init(const struct device *dev)
 {
 	const struct aspeed_spi_config *config = dev->config;
@@ -1797,31 +1945,8 @@ static int aspeed_spi_init(const struct device *dev)
 	if (ret != 0)
 		return ret;
 
-#if defined(CONFIG_SOC_AST1030) || defined(CONFIG_SOC_AST1060) || defined(CONFIG_SOC_AST2600)
-	/* AST1030/AST1060/AST2600 SMC decode unit is 2MB, and SPI decode unit is 256MB. */
-	data->decode_base = config->spi_mmap_base;
-	data->decode_unit_sz = ASPEED_SPI_SZ_2M;
-	data->max_decode_sz = ASPEED_SPI_SZ_256M;
-	data->decode_range_pre_init = aspeed_decode_range_pre_init;
-	data->decode_range_reinit = aspeed_spi_decode_range_reinit;
-#ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
-	data->read_dma = aspeed_spi_read_dma;
-	data->write_dma = aspeed_spi_write_dma;
-#endif
-#else
-	/* AST2700 decode unit is 64MB, and the maximum decode size is 768MB. */
-	data->decode_base = 0;
-	data->decode_unit_sz = ASPEED_SPI_SZ_64M;
-	data->max_decode_sz = ASPEED_SPI_SZ_768M;
-	data->decode_range_pre_init = ast2700_aspeed_decode_range_pre_init;
-	data->decode_range_reinit = ast2700_aspeed_spi_decode_range_reinit;
-#ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
-	data->read_dma = ast2700_aspeed_spi_read_dma;
-	data->write_dma = ast2700_aspeed_spi_write_dma;
-#endif
-#endif
-
-	aspeed_segment_function_init(config, data);
+	if (config->ops && config->ops->init_data)
+		config->ops->init_data(config, data);
 	data->decode_range_pre_init(config, data);
 
 	spi_context_unlock_unconditionally(&data->ctx);
@@ -1839,25 +1964,12 @@ static int aspeed_spi_init(const struct device *dev)
 		return -EINVAL;
 	}
 
-#ifdef CONFIG_SOC_AST1060
-	if (config->aspeed_spim_proprietary_config_enable) {
-		data->aspeed_spim_proprietary_pre_config =
-			aspeed_ast1060_spim_proprietary_pre_config;
-		data->aspeed_spim_proprietary_post_config =
-			aspeed_ast1060_spim_proprietary_post_config;
-	}
-#endif
+	if (config->ops->proprietary_config_init)
+		config->ops->proprietary_config_init(config, data);
 
-#if defined(CONFIG_SOC_AST2700_BOOTMCU)
-	ast2700_spi_pinctrl_early_init(dev);
-	ast2700_spi_adjust_driving_strength();
-#else
-	ret = pinctrl_apply_state(config->pcfg, PINCTRL_STATE_DEFAULT);
-	if (ret != 0) {
-		LOG_ERR("[%s] fail to configure multi function pin", dev->name);
+	ret = config->ops->pinctrl_init(dev);
+	if (ret != 0)
 		return ret;
-	}
-#endif
 
 	return 0;
 }
@@ -1874,46 +1986,150 @@ static const struct spi_driver_api aspeed_spi_driver_api = {
 	.spi_nor_op = &aspeed_spi_nor_ops,
 };
 
-#if defined(CONFIG_SPI_DMA_SUPPORT_ASPEED) && !defined(CONFIG_SOC_AST2700_BOOTMCU)
-#if defined(CONFIG_SOC_AST1030) || defined(CONFIG_SOC_AST1060) || defined(CONFIG_SOC_AST2600)
-#define ASPEED_SPI_DMA_ISR_HANDLER aspeed_spi_dma_isr
-#else
-#define ASPEED_SPI_DMA_ISR_HANDLER ast2700_aspeed_spi_dma_isr
+/*
+ * Keep a common ops table for backward compatibility with existing
+ * AST1030/AST1060 DTBs using the legacy common compatible string.
+ *
+ * Newer device trees should use SoC-specific compatibles, but existing DTBs
+ * may still rely on this path. Preserve the AST1060-specific proprietary
+ * setup here to avoid breaking those systems.
+ */
+static const __maybe_unused struct aspeed_spi_ops aspeed_common_spi_ops = {
+	.init_data = aspeed_spi_init_data,
+	.pinctrl_init = aspeed_spi_pinctrl_init,
+	.pinctrl_post_init = NULL,
+	.proprietary_config_init = ast1060_spi_proprietary_config_init,
+	.enable_4byte_mode = aspeed_spi_enable_4byte_mode,
+	.safs_read_config = aspeed_spi_safs_read_config,
+	.safs_write_config = aspeed_spi_safs_write_config,
+#ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
+	.dma_xfer_eligible = aspeed_spi_dma_xfer_eligible,
+	.read_dma = aspeed_spi_read_dma,
+	.write_dma = aspeed_spi_write_dma,
 #endif
-#define ASPEED_SPI_IRQ_INIT(n)                                                  \
-	static void aspeed_spi_irq_config_func_##n(const struct device *dev)   \
-	{                                                                        \
-		ARG_UNUSED(dev);                                                 \
-		IRQ_CONNECT(DT_INST_IRQN(n),                                     \
-			    DT_INST_IRQ(n, priority),                            \
-			    ASPEED_SPI_DMA_ISR_HANDLER,                          \
-			    DEVICE_DT_INST_GET(n),                               \
-			    0);                                                  \
-		irq_enable(DT_INST_IRQN(n));                                    \
-	}
+};
 
-#define ASPEED_SPI_IRQ_CONFIG_INIT(n) \
-	.irq_config_func = aspeed_spi_irq_config_func_##n,
+static const __maybe_unused struct aspeed_spi_ops ast1030_spi_ops = {
+	.init_data = aspeed_spi_init_data,
+	.pinctrl_init = aspeed_spi_pinctrl_init,
+	.pinctrl_post_init = NULL,
+	.proprietary_config_init = NULL,
+	.enable_4byte_mode = aspeed_spi_enable_4byte_mode,
+	.safs_read_config = aspeed_spi_safs_read_config,
+	.safs_write_config = aspeed_spi_safs_write_config,
+#ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
+	.dma_xfer_eligible = aspeed_spi_dma_xfer_eligible,
+	.read_dma = aspeed_spi_read_dma,
+	.write_dma = aspeed_spi_write_dma,
+#endif
+};
+
+static const __maybe_unused struct aspeed_spi_ops ast1060_spi_ops = {
+	.init_data = aspeed_spi_init_data,
+	.pinctrl_init = aspeed_spi_pinctrl_init,
+	.pinctrl_post_init = NULL,
+	.proprietary_config_init = ast1060_spi_proprietary_config_init,
+	.enable_4byte_mode = aspeed_spi_enable_4byte_mode,
+	.safs_read_config = NULL,
+	.safs_write_config = NULL,
+#ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
+	.dma_xfer_eligible = aspeed_spi_dma_xfer_eligible,
+	.read_dma = aspeed_spi_read_dma,
+	.write_dma = aspeed_spi_write_dma,
+#endif
+};
+
+static const __maybe_unused struct aspeed_spi_ops ast2600_spi_ops = {
+	.init_data = ast2600_spi_init_data,
+	.pinctrl_init = aspeed_spi_pinctrl_init,
+	.pinctrl_post_init = NULL,
+	.proprietary_config_init = NULL,
+	.enable_4byte_mode = aspeed_spi_enable_4byte_mode,
+	.safs_read_config = aspeed_spi_safs_read_config,
+	.safs_write_config = aspeed_spi_safs_write_config,
+#ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
+	.dma_xfer_eligible = aspeed_spi_dma_xfer_eligible,
+	.read_dma = aspeed_spi_read_dma,
+	.write_dma = aspeed_spi_write_dma,
+#endif
+};
+
+static const __maybe_unused struct aspeed_spi_ops ast2700_spi_ops = {
+	.init_data = ast2700_spi_init_data,
+	.pinctrl_init = aspeed_spi_pinctrl_init,
+	.pinctrl_post_init = NULL,
+	.proprietary_config_init = NULL,
+	.enable_4byte_mode = ast2700_spi_enable_4byte_mode,
+	.safs_read_config = NULL,
+	.safs_write_config = NULL,
+#ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
+	.dma_xfer_eligible = ast2700_spi_dma_xfer_eligible,
+	.read_dma = ast2700_aspeed_spi_read_dma,
+	.write_dma = ast2700_aspeed_spi_write_dma,
+#endif
+};
+
+/*
+ * Lite SPI describes the ASPEED SPI controller variant without interrupt
+ * controller and pinctrl integration. Since it cannot signal completion via
+ * interrupts or configure pins through pinctrl, the driver uses a reduced
+ * feature set and falls back to polling where needed.
+ */
+static const __maybe_unused struct aspeed_spi_ops ast2700_spi_lite_ops = {
+	.init_data = ast2700_spi_init_data,
+	.pinctrl_init = ast2700_spi_lite_pinctrl_init,
+	.pinctrl_post_init = ast2700_spi_lite_pinctrl_post_init,
+	.proprietary_config_init = NULL,
+	.enable_4byte_mode = ast2700_spi_enable_4byte_mode,
+	.safs_read_config = NULL,
+	.safs_write_config = NULL,
+#ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
+	.dma_xfer_eligible = ast2700_spi_dma_xfer_eligible,
+	.read_dma = ast2700_aspeed_spi_read_dma,
+	.write_dma = ast2700_aspeed_spi_write_dma,
+#endif
+};
+
+static const __maybe_unused struct aspeed_spi_ops ast1040_spi_lite_ops = {
+	.init_data = ast2700_spi_init_data,
+	.pinctrl_init = ast2700_spi_lite_pinctrl_init,
+	.pinctrl_post_init = ast2700_spi_lite_pinctrl_post_init,
+	.proprietary_config_init = NULL,
+	.enable_4byte_mode = ast2700_spi_enable_4byte_mode,
+	.safs_read_config = NULL,
+	.safs_write_config = NULL,
+#ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
+	.dma_xfer_eligible = ast2700_spi_dma_xfer_eligible,
+	.read_dma = ast2700_aspeed_spi_read_dma,
+	.write_dma = ast2700_aspeed_spi_write_dma,
+#endif
+};
+
+#if defined(CONFIG_SPI_DMA_SUPPORT_ASPEED)
+#define ASPEED_SPI_IRQ_INIT(soc, n, isr)                                 \
+	static void aspeed_spi_irq_config_func_##soc##_##n(               \
+		const struct device *dev)                                  \
+	{                                                                \
+		ARG_UNUSED(dev);                                         \
+		IRQ_CONNECT(DT_INST_IRQN(n), DT_INST_IRQ(n, priority),   \
+			    isr, DEVICE_DT_INST_GET(n), 0);              \
+		irq_enable(DT_INST_IRQN(n));                             \
+	}
+#define ASPEED_SPI_IRQ_CONFIG_INIT(soc, n) \
+	.irq_config_func = aspeed_spi_irq_config_func_##soc##_##n,
 #else
-#define ASPEED_SPI_IRQ_INIT(n)
-#define ASPEED_SPI_IRQ_CONFIG_INIT(n) \
+#define ASPEED_SPI_IRQ_INIT(soc, n, isr)
+#define ASPEED_SPI_IRQ_CONFIG_INIT(soc, n) \
 	.irq_config_func = NULL,
 #endif
 
-#ifndef CONFIG_SOC_AST2700_BOOTMCU
 #define ASPEED_SPI_PINCTRL_DEFINE(n) \
 	PINCTRL_DT_INST_DEFINE(n);
 #define ASPEED_SPI_PINCTRL_CONFIG_INIT(n) \
 	.pcfg = PINCTRL_DT_INST_DEV_CONFIG_GET(n),
-#else
-#define ASPEED_SPI_PINCTRL_DEFINE(n)
-#define ASPEED_SPI_PINCTRL_CONFIG_INIT(n)
-#endif
 
-#define ASPEED_SPI_INIT(n)                                                  \
-	ASPEED_SPI_PINCTRL_DEFINE(n)                                        \
-	ASPEED_SPI_IRQ_INIT(n)                                              \
-	static struct aspeed_spi_config aspeed_spi_config_##n = {           \
+#define ASPEED_SPI_CONFIG_INIT(soc, n, soc_ops)                                \
+	static struct aspeed_spi_config aspeed_spi_config_##soc##_##n = {   \
 		.ctrl_base = DT_INST_REG_ADDR_BY_NAME(n, ctrl_reg),         \
 		.spi_mmap_base = DT_INST_REG_ADDR_BY_NAME(n, spi_mmap),     \
 		.max_cs = DT_INST_PROP(n, num_cs),                          \
@@ -1921,44 +2137,103 @@ static const struct spi_driver_api aspeed_spi_driver_api = {
 		.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(n)),         \
 		.clk_id = (clock_control_subsys_t)                          \
 			  DT_INST_CLOCKS_CELL(n, clk_id),                   \
-		ASPEED_SPI_IRQ_CONFIG_INIT(n)                               \
+		.ops = &(soc_ops),                                          \
 		.mux_ctrl.master_idx =                                      \
 			DT_INST_PROP_OR(n, internal_mux_master, 0),         \
-		.mux_ctrl.spim_output_base =                               \
+		.mux_ctrl.spim_output_base =                                \
 			DT_INST_PROP_OR(n, spi_monitor_output_base, 0),     \
-		.mux_ctrl.spi_monitor_common_ctrl =	\
-			COND_CODE_1(DT_NODE_HAS_PROP(DT_INST(n, DT_DRV_COMPAT),	\
-						     spi_monitor_common_ctrl),	\
-				    DEVICE_DT_GET(DT_INST_PHANDLE_BY_IDX(n,	\
-								spi_monitor_common_ctrl,	\
-								0)),	\
-				    NULL),	\
-		.aspeed_spim_proprietary_config_enable =                   \
-			DT_PROP(DT_DRV_INST(n),                           \
-				spim_proprietary_config_enable),          \
-		.timing_calibration_disabled =                             \
-			DT_PROP(DT_DRV_INST(n),                           \
-				timing_calibration_disabled),              \
-		.timing_calibration_start_off =                            \
-			DT_INST_PROP_OR(n,                                \
-					timing_calibration_start_offset, \
-					0),                           \
-		.pure_spi_mode_only =                                      \
-			DT_PROP(DT_DRV_INST(n), pure_spi_mode_only),      \
-		.spi_ctrl_fifo_enabled =                                  \
-			DT_PROP(DT_DRV_INST(n), spi_ctrl_fifo_enabled),   \
-		ASPEED_SPI_PINCTRL_CONFIG_INIT(n)                         \
-	};                                                               \
-                                                                         \
-	static struct aspeed_spi_data aspeed_spi_data_##n = {             \
-		SPI_CONTEXT_INIT_LOCK(aspeed_spi_data_##n, ctx),          \
-		SPI_CONTEXT_INIT_SYNC(aspeed_spi_data_##n, ctx),          \
+		.mux_ctrl.spi_monitor_common_ctrl =                         \
+			COND_CODE_1(DT_NODE_HAS_PROP(DT_DRV_INST(n),        \
+						     spi_monitor_common_ctrl),  \
+				    DEVICE_DT_GET(DT_INST_PHANDLE_BY_IDX(   \
+					    n, spi_monitor_common_ctrl, 0)), \
+				    NULL),                                  \
+		.aspeed_spim_proprietary_config_enable =                    \
+			DT_PROP(DT_DRV_INST(n),                             \
+				spim_proprietary_config_enable),            \
+		.timing_calibration_disabled =                              \
+			DT_PROP(DT_DRV_INST(n),                             \
+				timing_calibration_disabled),                \
+		.timing_calibration_start_off =                             \
+			DT_INST_PROP_OR(n, timing_calibration_start_offset,  \
+					0),                                  \
+		.pure_spi_mode_only =                                       \
+			DT_PROP(DT_DRV_INST(n), pure_spi_mode_only),        \
+		.spi_ctrl_fifo_enabled =                                    \
+			DT_PROP(DT_DRV_INST(n), spi_ctrl_fifo_enabled),
+
+#define ASPEED_SPI_DEFINE(soc, n)                                           \
+	static struct aspeed_spi_data aspeed_spi_data_##soc##_##n = {       \
+		SPI_CONTEXT_INIT_LOCK(aspeed_spi_data_##soc##_##n, ctx),    \
+		SPI_CONTEXT_INIT_SYNC(aspeed_spi_data_##soc##_##n, ctx),    \
 	};                                                               \
                                                                          \
 	DEVICE_DT_INST_DEFINE(n, &aspeed_spi_init, NULL,                 \
-			      &aspeed_spi_data_##n,                      \
-			      &aspeed_spi_config_##n, POST_KERNEL,      \
-			      75,                                        \
-			      &aspeed_spi_driver_api);
+			      &aspeed_spi_data_##soc##_##n,              \
+			      &aspeed_spi_config_##soc##_##n, POST_KERNEL, \
+			      75, &aspeed_spi_driver_api);
 
-DT_INST_FOREACH_STATUS_OKAY(ASPEED_SPI_INIT)
+#define ASPEED_SPI_INIT(soc, n, ops, isr)                                  \
+	ASPEED_SPI_PINCTRL_DEFINE(n)                                        \
+	ASPEED_SPI_IRQ_INIT(soc, n, isr)                                  \
+	ASPEED_SPI_CONFIG_INIT(soc, n, ops)                               \
+		ASPEED_SPI_IRQ_CONFIG_INIT(soc, n)                       \
+		ASPEED_SPI_PINCTRL_CONFIG_INIT(n)                         \
+	};                                                               \
+	ASPEED_SPI_DEFINE(soc, n)
+
+#define ASPEED_SPI_LITE_INIT(soc, n, ops)                               \
+	ASPEED_SPI_CONFIG_INIT(soc, n, ops)                               \
+		.irq_config_func = NULL,                                  \
+	};                                                               \
+	ASPEED_SPI_DEFINE(soc, n)
+
+/* For legacy dts support for AST1030 and AST1060 */
+#define ASPEED_COMMON_SPI_INIT(n)                                         \
+	ASPEED_SPI_INIT(common, n, aspeed_common_spi_ops, aspeed_spi_dma_isr)
+#undef DT_DRV_COMPAT
+#define DT_DRV_COMPAT aspeed_spi_controller
+DT_INST_FOREACH_STATUS_OKAY(ASPEED_COMMON_SPI_INIT)
+
+/* AST1030 */
+#define ASPEED_AST1030_SPI_INIT(n)                                         \
+	ASPEED_SPI_INIT(ast1030, n, ast1030_spi_ops, aspeed_spi_dma_isr)
+#undef DT_DRV_COMPAT
+#define DT_DRV_COMPAT aspeed_ast1030_spi_controller
+DT_INST_FOREACH_STATUS_OKAY(ASPEED_AST1030_SPI_INIT)
+
+/* AST1060 */
+#define ASPEED_AST1060_SPI_INIT(n)                                         \
+	ASPEED_SPI_INIT(ast1060, n, ast1060_spi_ops, aspeed_spi_dma_isr)
+#undef DT_DRV_COMPAT
+#define DT_DRV_COMPAT aspeed_ast1060_spi_controller
+DT_INST_FOREACH_STATUS_OKAY(ASPEED_AST1060_SPI_INIT)
+
+/* AST2600 */
+#define ASPEED_AST2600_SPI_INIT(n)                                         \
+	ASPEED_SPI_INIT(ast2600, n, ast2600_spi_ops, aspeed_spi_dma_isr)
+#undef DT_DRV_COMPAT
+#define DT_DRV_COMPAT aspeed_ast2600_spi_controller
+DT_INST_FOREACH_STATUS_OKAY(ASPEED_AST2600_SPI_INIT)
+
+/* AST2700 */
+#define ASPEED_AST2700_SPI_INIT(n)                                         \
+	ASPEED_SPI_INIT(ast2700, n, ast2700_spi_ops,                 \
+			ast2700_aspeed_spi_dma_isr)
+#undef DT_DRV_COMPAT
+#define DT_DRV_COMPAT aspeed_ast2700_spi_controller
+DT_INST_FOREACH_STATUS_OKAY(ASPEED_AST2700_SPI_INIT)
+
+/* AST2700 Boot MCU */
+#define ASPEED_AST2700_SPI_LITE_INIT(n)                                 \
+	ASPEED_SPI_LITE_INIT(ast2700_spi_lite, n, ast2700_spi_lite_ops)
+#undef DT_DRV_COMPAT
+#define DT_DRV_COMPAT aspeed_ast2700_spi_lite_controller
+DT_INST_FOREACH_STATUS_OKAY(ASPEED_AST2700_SPI_LITE_INIT)
+
+/* AST1040 RISC-V MCU */
+#define ASPEED_AST1040_SPI_LITE_INIT(n)                                 \
+	ASPEED_SPI_LITE_INIT(ast1040_spi_lite, n, ast1040_spi_lite_ops)
+#undef DT_DRV_COMPAT
+#define DT_DRV_COMPAT aspeed_ast1040_spi_lite_controller
+DT_INST_FOREACH_STATUS_OKAY(ASPEED_AST1040_SPI_LITE_INIT)
