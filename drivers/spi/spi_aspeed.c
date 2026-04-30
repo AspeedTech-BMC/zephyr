@@ -5,23 +5,16 @@
  */
 
 #include <zephyr/device.h>
-#include <zephyr/drivers/clock_control.h>
 #include <zephyr/drivers/flash.h>
-#include <zephyr/drivers/spi_nor.h>
-#include <zephyr/drivers/spi.h>
 #include <errno.h>
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(spi_aspeed, CONFIG_SPI_LOG_LEVEL);
-#include "spi_context.h"
-#include <zephyr/sys/sys_io.h>
-#include <zephyr/sys/__assert.h>
+#include "spi_aspeed.h"
 #include <zephyr/drivers/misc/aspeed/pfr_aspeed.h>
 #include <zephyr/drivers/pinctrl.h>
+#include <zephyr/sys/sys_io.h>
+#include <zephyr/sys/__assert.h>
 #include <soc.h>
-
-#define FMC_CTRL_BASE               (0x14000000)
-#define SPI0_CTRL_BASE              (0x14010000)
-#define SPI1_CTRL_BASE              (0x14020000)
 
 #define SPI00_CE_TYPE_SETTING       (0x0000)
 #define SPI04_CE_CTRL               (0x0004)
@@ -67,7 +60,6 @@ LOG_MODULE_REGISTER(spi_aspeed, CONFIG_SPI_LOG_LEVEL);
 #define SPIR6C_HOST_DIRECT_ACCESS_CMD_CTRL4	(0x006c)
 #define SPIR74_HOST_DIRECT_ACCESS_CMD_CTRL2	(0x0074)
 
-#define SPI_CALIB_LEN               0x200
 #define SPI_DMA_IRQ_STS             BIT(19)
 #define SPI_DMA_STS                 BIT(11)
 #define SPI_DMA_IRQ_EN              BIT(3)
@@ -84,8 +76,6 @@ LOG_MODULE_REGISTER(spi_aspeed, CONFIG_SPI_LOG_LEVEL);
 #define SPI_DMA_FLASH_MAP_BASE      0x60000000
 
 #define SPI_CTRL_FREQ_MASK          0x0F000F00
-
-#define ASPEED_MAX_CS               5
 
 #define ASPEED_SPI_NORMAL_READ      0x1
 #define ASPEED_SPI_NORMAL_WRITE     0x2
@@ -105,238 +95,6 @@ LOG_MODULE_REGISTER(spi_aspeed, CONFIG_SPI_LOG_LEVEL);
 
 #define ASPEED_SPI_CTRL_VAL(io_mode, opcode, dummy_cycle) \
 		((io_mode) | (((opcode) & 0xff) << 16) | (dummy_cycle))
-
-enum aspeed_ctrl_type {
-	BOOT_SPI,
-	HOST_SPI,
-	NORMAL_SPI
-};
-
-struct aspeed_cmd_mode {
-	uint32_t normal_read;
-	uint32_t normal_write;
-	uint32_t user;
-};
-
-struct aspeed_spi_decoded_addr {
-	mm_reg_t start;
-	uint32_t len;
-};
-
-struct aspeed_spim_internal_mux_ctrl {
-	uint32_t master_idx;
-	uint32_t spim_output_base;
-	const struct device *spi_monitor_common_ctrl;
-};
-
-struct aspeed_spi_config;
-struct aspeed_spi_data;
-
-struct aspeed_spi_ops {
-	void (*init_data)(const struct aspeed_spi_config *config,
-			  struct aspeed_spi_data *data);
-
-	int (*pinctrl_init)(const struct device *dev);
-	void (*pinctrl_post_init)(const struct device *dev,
-				  uint32_t max_bus_width);
-
-	void (*proprietary_config_init)(const struct aspeed_spi_config *config,
-					struct aspeed_spi_data *data);
-
-	void (*enable_4byte_mode)(const struct device *dev, uint32_t cs);
-
-	void (*safs_read_config)(const struct device *dev,
-				 const struct spi_nor_op_info *op_info);
-	void (*safs_write_config)(const struct device *dev,
-				  const struct spi_nor_op_info *op_info);
-#ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
-	bool (*dma_xfer_eligible)(const struct device *dev,
-			    const struct spi_nor_op_info *op_info);
-	void (*read_dma)(const struct device *dev, const struct spi_config *spi_cfg,
-		struct spi_nor_op_info op_info);
-	void (*write_dma)(const struct device *dev, const struct spi_config *spi_cfg,
-		struct spi_nor_op_info op_info);
-#endif
-};
-
-struct aspeed_spi_config {
-	mm_reg_t ctrl_base;
-	mm_reg_t spi_mmap_base;
-	uint32_t max_cs;
-	enum aspeed_ctrl_type ctrl_type;
-	const struct device *clock_dev;
-	const clock_control_subsys_t clk_id;
-	void (*irq_config_func)(const struct device *dev);
-	const struct aspeed_spi_ops *ops;
-	bool timing_calibration_disabled;
-	uint32_t timing_calibration_start_off;
-	struct aspeed_spim_internal_mux_ctrl mux_ctrl;
-	bool aspeed_spim_proprietary_config_enable;
-	bool pure_spi_mode_only;
-	bool spi_ctrl_fifo_enabled;
-	const struct pinctrl_dev_config *pcfg;
-};
-
-struct aspeed_spi_data {
-	struct spi_context ctx;
-	struct aspeed_spi_decoded_addr decode_addr[ASPEED_MAX_CS];
-	struct aspeed_cmd_mode cmd_mode[ASPEED_MAX_CS];
-
-	uint32_t hclk;
-	uint32_t decode_base;
-	uint32_t max_decode_sz;
-	uint32_t decode_unit_sz;
-	uint8_t calib_buf[SPI_CALIB_LEN * 2] __aligned(4);
-
-	uint32_t (*segment_start)(uint32_t val);
-	uint32_t (*segment_end)(uint32_t val);
-	uint32_t (*segment_value)(uint32_t start, uint32_t end);
-	void (*decode_range_pre_init)(const struct aspeed_spi_config *config,
-		struct aspeed_spi_data *data);
-	int (*decode_range_reinit)(const struct device *dev, uint32_t flash_sz);
-
-	void (*aspeed_spim_proprietary_pre_config)(void);
-	void (*aspeed_spim_proprietary_post_config)(void);
-};
-
-#define SPIM_GPIO_INFO(__scu_reg__, __scu_bit__, __gpio_reg__, __gpio_bit__)	\
-	{	\
-		.scu_reg_addr = __scu_reg__,	\
-		.scu_bit_mask = __scu_bit__,	\
-		.gpio_addr = __gpio_reg__,	\
-		.gpio_bit_mask = __gpio_bit__,	\
-		.gpio_ori_val = 0,	\
-	}
-
-/*
- * SPIM1CLKOUT: SCU690[7]   GPIO_A7 0x7e780000[7]
- * SPIM2CLKOUT: SCU690[21]  GPIO_C5 0x7e780000[21]
- * SPIM3CLKOUT: SCU694[3]   GPIO_E3 0x7e780020[3]
- * SPIM4CLKOUT: SCU694[17]  GPIO_G1 0x7e780020[17]
- */
-struct spim_gpio_info g_ast1060_spim_clk_gpio[4] = {
-	SPIM_GPIO_INFO(0x7e6e2690, BIT(7), 0x7e780000, BIT(7)),
-	SPIM_GPIO_INFO(0x7e6e2690, BIT(21), 0x7e780000, BIT(21)),
-	SPIM_GPIO_INFO(0x7e6e2694, BIT(3), 0x7e780020, BIT(3)),
-	SPIM_GPIO_INFO(0x7e6e2694, BIT(17), 0x7e780020, BIT(17)),
-};
-
-/*
- * SPIM1CSOUT: SCU690[1]   GPIO_A6 0x7e780000[6]
- * SPIM2CSOUT: SCU690[20]  GPIO_C4 0x7e780000[20]
- * SPIM3CSOUT: SCU694[2]   GPIO_E2 0x7e780020[2]
- * SPIM4CSOUT: SCU694[16]  GPIO_G0 0x7e780020[16]
- */
-struct spim_gpio_info g_ast1060_spim_cs_gpio[4] = {
-	SPIM_GPIO_INFO(0x7e6e2690, BIT(1), 0x7e780000, BIT(6)),
-	SPIM_GPIO_INFO(0x7e6e2690, BIT(20), 0x7e780000, BIT(20)),
-	SPIM_GPIO_INFO(0x7e6e2694, BIT(2), 0x7e780020, BIT(2)),
-	SPIM_GPIO_INFO(0x7e6e2694, BIT(16), 0x7e780020, BIT(16)),
-};
-
-#define FMC_PINCTRL_SCU_REG         0x14c02450
-#define SPI0_PINCTRL_SCU_REG        0x14c02434
-#define SPI1_PINCTRL_SCU_REG        0x14c02438
-#define SCU1_REG                    0x14c02000
-#define ASPEED_IO_FWSPI_DRIVING     (SCU1_REG + 0x4E0)
-#define ASPEED_IO_SPI0_DRIVING      (SCU1_REG + 0x4CC)
-#define ASPEED_IO_SPI1_DRIVING      (SCU1_REG + 0x4CC)
-#define ASPEED_IO_SPI2_DRIVING      (SCU1_REG + 0x4D0)
-
-static void ast2700_spi_pinctrl_early_init(const struct device *dev)
-{
-	const struct aspeed_spi_config *config = dev->config;
-	uint32_t reg_val;
-
-	switch (config->ctrl_base) {
-	case SPI0_CTRL_BASE:
-		reg_val = sys_read32(SPI0_PINCTRL_SCU_REG);
-		reg_val &= ~0x00000fff;
-		reg_val |= BIT(0) | BIT(4) | BIT(8);
-		sys_write32(reg_val, SPI0_PINCTRL_SCU_REG);
-		break;
-
-	case SPI1_CTRL_BASE:
-		reg_val = sys_read32(SPI1_PINCTRL_SCU_REG);
-		reg_val &= ~0x00f00fff;
-		reg_val |= BIT(0) | BIT(4) | BIT(8);
-		if (config->max_cs >= 2)
-			reg_val |= BIT(20);
-		sys_write32(reg_val, SPI1_PINCTRL_SCU_REG);
-		break;
-
-	default:
-		break;
-	}
-}
-
-static void ast2700_spi_pinctrl_post_init(const struct device *dev,
-					 uint32_t max_bus_width)
-{
-	const struct aspeed_spi_config *config = dev->config;
-	uint32_t reg_val;
-
-	switch (config->ctrl_base) {
-	case FMC_CTRL_BASE:
-		if (max_bus_width > 2) {
-			reg_val = sys_read32(FMC_PINCTRL_SCU_REG);
-			reg_val &= ~0xff000000;
-			reg_val |= BIT(24) | BIT(28);
-			sys_write32(reg_val, FMC_PINCTRL_SCU_REG);
-		}
-		break;
-
-	case SPI0_CTRL_BASE:
-		if (max_bus_width > 2) {
-			reg_val = sys_read32(SPI0_PINCTRL_SCU_REG);
-			reg_val &= ~0x000ff000;
-			reg_val |= BIT(12) | BIT(16);
-			sys_write32(reg_val, SPI0_PINCTRL_SCU_REG);
-		}
-		break;
-
-	case SPI1_CTRL_BASE:
-		if (max_bus_width > 2) {
-			reg_val = sys_read32(SPI1_PINCTRL_SCU_REG);
-			reg_val &= ~0x000ff000;
-			reg_val |= BIT(12) | BIT(16);
-			sys_write32(reg_val, SPI1_PINCTRL_SCU_REG);
-		}
-		break;
-
-	default:
-		break;
-	}
-}
-
-static void ast2700_spi_adjust_driving_strength(void)
-{
-	uint32_t reg;
-
-	/* FMC driving strength: SCUIO_4E0[15:0] */
-	reg = sys_read32(ASPEED_IO_FWSPI_DRIVING);
-	reg &= ~(0x0000ffff);
-	reg |= 0x0000aaaa;
-	sys_write32(reg, ASPEED_IO_FWSPI_DRIVING);
-
-	/* SPI0 driving strength: SCUIO_4CC[11:0] */
-	reg = sys_read32(ASPEED_IO_SPI0_DRIVING);
-	reg &= ~(0x00000fff);
-	reg |= 0x00000aaa;
-	sys_write32(reg, ASPEED_IO_SPI0_DRIVING);
-
-	/* SPI1 driving strength: SCUIO_4CC[27:16] */
-	reg = sys_read32(ASPEED_IO_SPI1_DRIVING);
-	reg &= ~(0x0fff0000);
-	reg |= 0x0aaa0000;
-	sys_write32(reg, ASPEED_IO_SPI1_DRIVING);
-
-	/* SPI2 driving strength: SCUIO_4D0[15:0] */
-	reg = sys_read32(ASPEED_IO_SPI2_DRIVING);
-	reg &= ~(0x0000ffff);
-	reg |= 0x00002aaa;
-	sys_write32(reg, ASPEED_IO_SPI2_DRIVING);
-}
 
 uint32_t ast2600_segment_addr_start(uint32_t reg_val)
 {
@@ -1751,20 +1509,6 @@ static void aspeed_spi_safs_write_config(const struct device *dev,
 		    SPIR74_HOST_DIRECT_ACCESS_CMD_CTRL2);
 }
 
-static int ast2700_spi_lite_pinctrl_init(const struct device *dev)
-{
-	ast2700_spi_pinctrl_early_init(dev);
-	ast2700_spi_adjust_driving_strength();
-
-	return 0;
-}
-
-static void ast2700_spi_lite_pinctrl_post_init(const struct device *dev,
-						  uint32_t max_bus_width)
-{
-	ast2700_spi_pinctrl_post_init(dev, max_bus_width);
-}
-
 static int aspeed_spi_pinctrl_init(const struct device *dev)
 {
 	const struct aspeed_spi_config *config = dev->config;
@@ -1828,101 +1572,6 @@ static void ast2700_spi_init_data(const struct aspeed_spi_config *config,
 	data->segment_start = ast2700_segment_addr_start;
 	data->segment_end = ast2700_segment_addr_end;
 	data->segment_value = ast2700_segment_addr_val;
-}
-
-static void ast1060_spim_proprietary_pre_config(void)
-{
-	uint32_t scu0f0_val;
-	uint32_t spim_idx;
-	uint32_t reg_val;
-	uint32_t op_idx;
-
-	scu0f0_val = sys_read32(0x7e6e20f0);
-	/* configure SPI CLK pin to GPIO input */
-	if ((scu0f0_val & 0x7) == 0)
-		return;
-
-	spim_idx = (scu0f0_val & 0x7) - 1;
-	if (spim_idx == 2)
-		op_idx = 3;
-	else if (spim_idx == 3)
-		op_idx = 2;
-	else
-		return;
-
-	/* change multiple function pin to GPIO mode. */
-	reg_val = sys_read32(g_ast1060_spim_clk_gpio[op_idx].scu_reg_addr);
-	reg_val &= ~(g_ast1060_spim_clk_gpio[op_idx].scu_bit_mask);
-	sys_write32(reg_val, g_ast1060_spim_clk_gpio[op_idx].scu_reg_addr);
-
-	/* change GPIO related to spim clk output pin to input mode. */
-	reg_val = sys_read32(g_ast1060_spim_clk_gpio[op_idx].gpio_addr + 0x4);
-	g_ast1060_spim_clk_gpio[op_idx].gpio_ori_val =
-		(reg_val & g_ast1060_spim_clk_gpio[op_idx].gpio_bit_mask);
-	reg_val &= ~(g_ast1060_spim_clk_gpio[op_idx].gpio_bit_mask);
-	sys_write32(reg_val, g_ast1060_spim_clk_gpio[op_idx].gpio_addr + 0x4);
-
-	/* change GPIO related to spim CS output pin to output mode. */
-	reg_val = sys_read32(g_ast1060_spim_cs_gpio[op_idx].gpio_addr);
-	reg_val |= g_ast1060_spim_cs_gpio[op_idx].gpio_bit_mask;
-	sys_write32(reg_val, g_ast1060_spim_cs_gpio[op_idx].gpio_addr);
-
-	reg_val = sys_read32(g_ast1060_spim_cs_gpio[op_idx].gpio_addr + 0x4);
-	reg_val |= g_ast1060_spim_cs_gpio[op_idx].gpio_bit_mask;
-	sys_write32(reg_val, g_ast1060_spim_cs_gpio[op_idx].gpio_addr + 0x4);
-
-	/* change multiple function pin to GPIO mode. */
-	reg_val = sys_read32(g_ast1060_spim_cs_gpio[op_idx].scu_reg_addr);
-	reg_val &= ~(g_ast1060_spim_cs_gpio[op_idx].scu_bit_mask);
-	sys_write32(reg_val, g_ast1060_spim_cs_gpio[op_idx].scu_reg_addr);
-}
-
-static void ast1060_spim_proprietary_post_config(void)
-{
-	uint32_t scu0f0_val;
-	uint32_t spim_idx;
-	uint32_t reg_val;
-	uint32_t op_idx;
-
-	scu0f0_val = sys_read32(0x7e6e20f0);
-	if ((scu0f0_val & 0x7) == 0)
-		return;
-
-	spim_idx = (scu0f0_val & 0x7) - 1;
-	if (spim_idx == 2)
-		op_idx = 3;
-	else if (spim_idx == 3)
-		op_idx = 2;
-	else
-		return;
-
-	/* restore its GPIO value related to spim clk output pin. */
-	reg_val = sys_read32(g_ast1060_spim_clk_gpio[op_idx].gpio_addr + 0x4);
-	reg_val &= ~(g_ast1060_spim_clk_gpio[op_idx].gpio_bit_mask);
-	reg_val |= g_ast1060_spim_clk_gpio[op_idx].gpio_ori_val;
-	sys_write32(reg_val, g_ast1060_spim_clk_gpio[op_idx].gpio_addr + 0x4);
-
-	/* change multiple function pin back to SPIM mode. */
-	reg_val = sys_read32(g_ast1060_spim_clk_gpio[op_idx].scu_reg_addr);
-	reg_val |= g_ast1060_spim_clk_gpio[op_idx].scu_bit_mask;
-	sys_write32(reg_val, g_ast1060_spim_clk_gpio[op_idx].scu_reg_addr);
-
-	/* change multiple function pin back to SPIM mode. */
-	reg_val = sys_read32(g_ast1060_spim_cs_gpio[op_idx].scu_reg_addr);
-	reg_val |= g_ast1060_spim_cs_gpio[op_idx].scu_bit_mask;
-	sys_write32(reg_val, g_ast1060_spim_cs_gpio[op_idx].scu_reg_addr);
-}
-
-static void ast1060_spi_proprietary_config_init(const struct aspeed_spi_config *config,
-					struct aspeed_spi_data *data)
-{
-	if (!config->aspeed_spim_proprietary_config_enable)
-		return;
-
-	data->aspeed_spim_proprietary_pre_config =
-		ast1060_spim_proprietary_pre_config;
-	data->aspeed_spim_proprietary_post_config =
-		ast1060_spim_proprietary_post_config;
 }
 
 static int aspeed_spi_init(const struct device *dev)
