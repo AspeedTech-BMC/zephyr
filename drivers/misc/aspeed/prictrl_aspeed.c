@@ -320,13 +320,13 @@ static void prictrl_mpu_cfg_dbg_dump(struct prictrl_mpu_cfg *mpu, int num)
 	int j = 0;
 
 	for (i = 0; i < num; i++) {
-		LOG_DBG("MPU config: start: 0x%08lx, end: 0x%08lx", mpu->start, mpu->end);
+		LOG_DBG("MPU config: start: 0x%08lx, end: 0x%08lx", mpu[i].start, mpu[i].end);
 
-		for (j = 0; j < mpu->l1_num; j++)
-			LOG_DBG("  Level1 MPU device[%d]: 0x%08x", j, mpu->l1_dev[j]);
+		for (j = 0; j < mpu[i].l1_num; j++)
+			LOG_DBG("  Level1 MPU device[%d]: 0x%08x", j, mpu[i].l1_dev[j]);
 
-		for (j = 0; j < mpu->l2_num; j++)
-			LOG_DBG("  Level2 MPU device[%d]: 0x%08x", j, mpu->l2_dev[j]);
+		for (j = 0; j < mpu[i].l2_num; j++)
+			LOG_DBG("  Level2 MPU device[%d]: 0x%08x", j, mpu[i].l2_dev[j]);
 	}
 }
 
@@ -490,6 +490,25 @@ static int prictrl_mpu_region_en(const struct prictrl_aspeed_config *cfg,
 	return 0;
 }
 
+static int prictrl0_mpu_config_region(const struct prictrl_aspeed_config *cfg,
+				      struct prictrl_mpu_cfg *mpu_cfg)
+{
+	int i = 0;
+	int ret = 0;
+
+	if (!cfg || !mpu_cfg)
+		return -EINVAL;
+
+	/* Configure h2m mpu regions */
+	for (i = 0; i < PRICTRL_MPU_MAX_NUM; i++) {
+		ret = prictrl_mpu_region_en(cfg, &mpu_cfg[i], PRICTRL_MPU_H2M0_MASK, i);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
+
 static int prictrl1_mpu_config_region(const struct prictrl_aspeed_config *cfg,
 				      struct prictrl_mpu_cfg *mpu_cfg)
 {
@@ -525,6 +544,29 @@ static int prictrl1_mpu_config_region(const struct prictrl_aspeed_config *cfg,
 /**********************************************************************
  * Privilege control memory protection initialization
  **********************************************************************/
+static int prictrl0_mpu_init(const struct device *dev)
+{
+	int rc = 0;
+	const struct prictrl_aspeed_config *cfg = dev ? dev->config : NULL;
+	const struct prictrl_mpu_cfg src_mpu0[] = {
+#if DT_NODE_HAS_PROP(PRICTRL_PROT_DTS(sdrammc), mpus)
+#define _PRICTRL_LEVEL h2m_port
+		DT_FOREACH_PROP_ELEM(PRICTRL_PROT_DTS(sdrammc), mpus, PRICTRL_DTS_MPU)
+#undef _PRICTRL_LEVEL
+#endif
+	};
+	struct prictrl_mpu_cfg mpu0[PRICTRL_MPU_MAX_NUM] = {0};
+
+	if (!cfg)
+		return -EINVAL;
+
+	/* rc < 0, build region error; rc == 0, no region to configure */
+	rc = prictrl_mpu_build_region(mpu0, src_mpu0, ARRAY_SIZE(src_mpu0), MPU_ID_H2M);
+	if (rc <= 0)
+		return rc;
+
+	return prictrl0_mpu_config_region(cfg, mpu0);
+}
 static int prictrl1_mpu_init(const struct device *dev)
 {
 	int rc = 0;
@@ -573,8 +615,16 @@ static int prictrl0_aspeed_init(const struct device *dev)
 		return -EINVAL;
 
 	ret = prictrl_peri_init(dev);
-	if (ret)
+	if (ret) {
+		LOG_ERR("Privilege control 0 peri initialization fail. %d", ret);
 		return ret;
+	}
+
+	ret = prictrl0_mpu_init(dev);
+	if (ret) {
+		LOG_ERR("Privilege control 0 MPU initialization fail. %d", ret);
+		return ret;
+	}
 
 	return 0;
 }
@@ -589,13 +639,13 @@ static int prictrl1_aspeed_init(const struct device *dev)
 
 	ret = prictrl_peri_init(dev);
 	if (ret) {
-		LOG_ERR("Privilege control peri initialization fail. %d", ret);
+		LOG_ERR("Privilege control 1 peri initialization fail. %d", ret);
 		return ret;
 	}
 
 	ret = prictrl1_mpu_init(dev);
 	if (ret) {
-		LOG_ERR("Privilege control MPU initialization fail. %d", ret);
+		LOG_ERR("Privilege control 1 MPU initialization fail. %d", ret);
 		return ret;
 	}
 
