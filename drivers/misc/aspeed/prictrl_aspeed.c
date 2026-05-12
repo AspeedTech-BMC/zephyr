@@ -254,33 +254,36 @@ static int prictrl_peri_group_init(const struct prictrl_aspeed_config *cfg,
 static int prictrl_hw_init(const struct device *dev)
 {
 	int i = 0;
+	bool init = false;
 	const uint32_t init_val = 0x7F7F7F7F;
+	const uint32_t default_val = 0x3F3F3F3F;
 	const uint32_t magic = 0x7F7F7F7E;
 	const struct prictrl_aspeed_config *cfg = dev ? dev->config : NULL;
 
 	if (!dev || !cfg)
 		return -EINVAL;
 
-	/* Initialize privilege control configuration register */
-	for (i = 0; i < 8; i++)
-		sys_write32(init_val, (cfg->reg + i * 4));
-
-	for (i = 0; i < 8; i++)
-		sys_write32(init_val, (cfg->reg + 0x100 + i * 4));
-
-	for (i = 0; i < 64; i++)
-		sys_write32(init_val, (cfg->reg + 0x200 + i * 4));
-
-	for (i = 0; i < 64; i++)
-		sys_write32(init_val, (cfg->reg + 0x300 + i * 4));
-
-	/* Check whether privilege control is ready */
 	sys_write32(magic, cfg->reg);
-	if (sys_read32(cfg->reg) != magic)
-		return -EAGAIN;
-	sys_write32(init_val, cfg->reg);
+	init = sys_read32(cfg->reg) != magic ? true : false;
 
-	return 0;
+	/* Initialize privilege control configuration register */
+	if (init) {
+		for (i = 0; i < 8; i++)
+			sys_write32(init_val, (cfg->reg + i * 4));
+
+		for (i = 0; i < 8; i++)
+			sys_write32(init_val, (cfg->reg + 0x100 + i * 4));
+
+		for (i = 0; i < 64; i++)
+			sys_write32(init_val, (cfg->reg + 0x200 + i * 4));
+
+		for (i = 0; i < 64; i++)
+			sys_write32(init_val, (cfg->reg + 0x300 + i * 4));
+	} else {
+		sys_write32(default_val, cfg->reg);
+	}
+
+	return init ? -EAGAIN : 0;
 }
 
 /**********************************************************************
@@ -296,7 +299,7 @@ static int prictrl_peri_init(const struct device *dev)
 
 	ret = prictrl_hw_init(dev);
 	if (ret)
-		return ret;
+		return ret == -EAGAIN ? 0 : ret;
 
 	/* Privilege control master group mapping */
 	ret = prictrl_peri_group_init(cfg, cfg->master, cfg->master_num);
