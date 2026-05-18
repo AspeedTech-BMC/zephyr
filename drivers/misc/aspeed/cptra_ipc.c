@@ -77,6 +77,13 @@ static const struct cptra_ipc_callback_tbl cptra_ipc_list[] = {
 	{ CPTRA_DICE_DRV_NAME, CPTRA_IPCCMD_GET_FMC_ALIAS_CSR, (cptra_callback_t)caliptra_get_fmc_alias_csr },
 	{ CPTRA_DICE_DRV_NAME, CPTRA_IPCCMD_SIGN_WITH_EXPORTED_ECDSA, (cptra_callback_t)caliptra_sign_with_exported_ecdsa },
 	{ CPTRA_DICE_DRV_NAME, CPTRA_IPCCMD_REVOKE_EXPORTED_CDI_HANDLE, (cptra_callback_t)caliptra_revoke_exported_cdi_handle },
+	{ CPTRA_MISC_DRV_NAME, CPTRA_IPCCMD_FIPS_SELF_TEST_START,
+	  (cptra_callback_t)caliptra_self_test_start },
+	{ CPTRA_MISC_DRV_NAME, CPTRA_IPCCMD_FIPS_SELF_TEST_GET_RESULTS,
+	  (cptra_callback_t)caliptra_self_test_get_results },
+	{ CPTRA_DICE_DRV_NAME, CPTRA_IPCCMD_GET_PCR_LOG, (cptra_callback_t)caliptra_get_pcr_log },
+	{ CPTRA_DICE_DRV_NAME, CPTRA_IPCCMD_REALLOCATE_DPE_CONTEXT_LIMITS,
+	  (cptra_callback_t)caliptra_reallocate_dpe_context_limits },
 	{ NULL, 0, NULL }
 };
 

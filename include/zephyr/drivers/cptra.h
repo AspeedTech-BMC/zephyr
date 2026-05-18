@@ -66,6 +66,8 @@ enum cptra_mbox_cmd {
 	CPTRA_MBCMD_GET_FMC_ALIAS_CSR               = 0x464D4352, /* "FMCR" */
 	CPTRA_MBCMD_SIGN_WITH_EXPORTED_ECDSA        = 0x53574545, /* "SWEE" */
 	CPTRA_MBCMD_REVOKE_EXPORTED_CDI_HANDLE      = 0x52564348, /* "RVCH" */
+	CPTRA_MBCMD_GET_PCR_LOG                     = 0x504C4F47, /* "PLOG" */
+	CPTRA_MBCMD_REALLOCATE_DPE_CONTEXT_LIMITS   = 0x52435458, /* "RCTX" */
 };
 
 union cptra_mbox_lock_s {
@@ -575,7 +577,7 @@ struct cptra_get_fmc_alias_csr_oa {
 	uint32_t chksum;
 	uint32_t fips_status;
 	uint32_t data_size;
-	uint8_t data[512]; /* Maximum size for the DER-encoded CSR */
+	uint8_t data[768]; /* Maximum size for the DER-encoded CSR */
 };
 
 struct cptra_get_idevid_csr_ia {
@@ -585,6 +587,27 @@ struct cptra_get_idevid_csr_oa {
 	uint32_t chksum;
 	uint32_t data_size;
 	uint8_t data[1024]; /* Maximum size for the DER-encoded CSR */
+};
+
+struct cptra_get_pcr_log_ia {
+};
+
+struct cptra_get_pcr_log_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+	uint32_t data_size;
+	uint8_t data[952]; /* max 17 PCR log entries */
+};
+
+struct cptra_reallocate_dpe_context_limits_ia {
+	uint32_t pl0_context_limit;
+};
+
+struct cptra_reallocate_dpe_context_limits_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+	uint32_t new_pl0_context_limit;
+	uint32_t new_pl1_context_limit;
 };
 
 struct cptra_sign_with_exported_ecdsa_ia {
@@ -863,6 +886,12 @@ __subsystem struct cptra_driver_api {
 	int (*caliptra_revoke_exported_cdi_handle)(const struct device *dev,
 						   struct cptra_revoke_exported_cdi_handle_ia *input,
 						   struct cptra_revoke_exported_cdi_handle_oa *output);
+	int (*caliptra_get_pcr_log)(const struct device *dev,
+				    struct cptra_get_pcr_log_ia *input,
+				    struct cptra_get_pcr_log_oa *output);
+	int (*caliptra_reallocate_dpe_context_limits)(const struct device *dev,
+					    struct cptra_reallocate_dpe_context_limits_ia *input,
+					    struct cptra_reallocate_dpe_context_limits_oa *output);
 };
 
 static inline int caliptra_fw_upload(const struct device *dev, uint8_t *buf, int size)
@@ -1266,6 +1295,33 @@ caliptra_revoke_exported_cdi_handle(const struct device *dev,
 
 	api = (struct cptra_driver_api *)dev->api;
 	tmp = api->caliptra_revoke_exported_cdi_handle(dev, input, output);
+
+	return tmp;
+}
+
+static inline int caliptra_get_pcr_log(const struct device *dev,
+				       struct cptra_get_pcr_log_ia *input,
+				       struct cptra_get_pcr_log_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_get_pcr_log(dev, input, output);
+
+	return tmp;
+}
+
+static inline int
+caliptra_reallocate_dpe_context_limits(const struct device *dev,
+				       struct cptra_reallocate_dpe_context_limits_ia *input,
+				       struct cptra_reallocate_dpe_context_limits_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_reallocate_dpe_context_limits(dev, input, output);
 
 	return tmp;
 }

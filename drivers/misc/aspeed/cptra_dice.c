@@ -1034,6 +1034,98 @@ int cptra_dice_init(const struct device *dev)
 	return 0;
 }
 
+static int aspeed_cptra_get_pcr_log(const struct device *dev,
+				    struct cptra_get_pcr_log_ia *input,
+				    struct cptra_get_pcr_log_oa *output)
+{
+	struct cptra_dice_drv_state *state = DEV_DATA(dev);
+	uint32_t cmd = CPTRA_MBCMD_GET_PCR_LOG;
+	uint32_t csum = 0, sts, dlen, ilen, olen;
+	int rc;
+
+	if (state->in_use) {
+		LOG_ERR("Peripheral in use");
+		return -EBUSY;
+	}
+
+	LOG_DBG("Start doing get_pcr_log");
+	state->in_use = true;
+
+	while (cptra_mbox_lock())
+		;
+
+	sts = cptra_mbox_status();
+	if (FIELD_GET(CPTRA_MBOX_STS_FSM_PS, sts) != CPTRA_MBFSM_RDY_FOR_CMD)
+		return -EACCES;
+
+	csum = cptra_mbox_csum(csum, (uint8_t *)&cmd, sizeof(cmd));
+	csum = cptra_mbox_csum(csum, (uint8_t *)input, sizeof(struct cptra_get_pcr_log_ia));
+
+	dlen = sizeof(csum) + sizeof(struct cptra_get_pcr_log_ia);
+	ilen = sizeof(struct cptra_get_pcr_log_ia);
+	olen = sizeof(struct cptra_get_pcr_log_oa);
+	rc = cptra_mbox_trigger(cmd, dlen, csum, (uint8_t *)input, ilen, (uint8_t *)output, olen);
+	if (rc)
+		aspeed_cptra_ifc_error(dev);
+
+	while (cptra_mbox_unlock())
+		;
+
+	LOG_DBG("chksum: 0x%x, fips_status: 0x%x, data_size: %u",
+		output->chksum, output->fips_status, output->data_size);
+
+	state->in_use = false;
+
+	return rc;
+}
+
+static int aspeed_cptra_reallocate_dpe_context_limits(const struct device *dev,
+		struct cptra_reallocate_dpe_context_limits_ia *input,
+		struct cptra_reallocate_dpe_context_limits_oa *output)
+{
+	struct cptra_dice_drv_state *state = DEV_DATA(dev);
+	uint32_t cmd = CPTRA_MBCMD_REALLOCATE_DPE_CONTEXT_LIMITS;
+	uint32_t csum = 0, sts, dlen, ilen, olen;
+	int rc;
+
+	if (state->in_use) {
+		LOG_ERR("Peripheral in use");
+		return -EBUSY;
+	}
+
+	LOG_DBG("Start doing reallocate_dpe_context_limits");
+	state->in_use = true;
+
+	while (cptra_mbox_lock())
+		;
+
+	sts = cptra_mbox_status();
+	if (FIELD_GET(CPTRA_MBOX_STS_FSM_PS, sts) != CPTRA_MBFSM_RDY_FOR_CMD)
+		return -EACCES;
+
+	csum = cptra_mbox_csum(csum, (uint8_t *)&cmd, sizeof(cmd));
+	csum = cptra_mbox_csum(csum, (uint8_t *)input,
+			       sizeof(struct cptra_reallocate_dpe_context_limits_ia));
+
+	dlen = sizeof(csum) + sizeof(struct cptra_reallocate_dpe_context_limits_ia);
+	ilen = sizeof(struct cptra_reallocate_dpe_context_limits_ia);
+	olen = sizeof(struct cptra_reallocate_dpe_context_limits_oa);
+	rc = cptra_mbox_trigger(cmd, dlen, csum, (uint8_t *)input, ilen, (uint8_t *)output, olen);
+	if (rc)
+		aspeed_cptra_ifc_error(dev);
+
+	while (cptra_mbox_unlock())
+		;
+
+	LOG_DBG("chksum: 0x%x, fips_status: 0x%x, pl0: %u, pl1: %u",
+		output->chksum, output->fips_status,
+		output->new_pl0_context_limit, output->new_pl1_context_limit);
+
+	state->in_use = false;
+
+	return rc;
+}
+
 static struct cptra_driver_api cptra_funcs = {
 	.caliptra_stash_measurement = aspeed_cptra_stash_measurement,
 	.caliptra_quote_pcrs = aspeed_cptra_quote_pcrs,
@@ -1055,6 +1147,8 @@ static struct cptra_driver_api cptra_funcs = {
 	.caliptra_get_fmc_alias_csr = aspeed_cptra_get_fmc_alias_csr,
 	.caliptra_sign_with_exported_ecdsa = aspeed_cptra_sign_with_exported_ecdsa,
 	.caliptra_revoke_exported_cdi_handle = aspeed_cptra_revoke_exported_cdi_handle,
+	.caliptra_get_pcr_log = aspeed_cptra_get_pcr_log,
+	.caliptra_reallocate_dpe_context_limits = aspeed_cptra_reallocate_dpe_context_limits,
 };
 
 static const struct cptra_dice_config cptra_dice_config = {
