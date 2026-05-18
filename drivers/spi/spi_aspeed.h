@@ -104,7 +104,6 @@ struct aspeed_spi_data {
 	uint32_t decode_base;
 	uint32_t max_decode_sz;
 	uint32_t decode_unit_sz;
-	uint8_t calib_buf[SPI_CALIB_LEN * 2] __aligned(4);
 
 	uint32_t (*segment_start)(uint32_t val);
 	uint32_t (*segment_end)(uint32_t val);

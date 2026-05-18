@@ -983,6 +983,8 @@ static bool aspeed_spi_check_reads(const struct device *dev,
 	return true;
 }
 
+static K_MUTEX_DEFINE(aspeed_spi_calib_data_buf_lock);
+
 static void aspeed_spi_timing_calibration(const struct device *dev,
 				   struct spi_nor_op_info op_info)
 {
@@ -994,6 +996,7 @@ static void aspeed_spi_timing_calibration(const struct device *dev,
 	uint32_t max_freq = ctx->config->frequency;
 	uint32_t timing_reg = ctrl_reg + SPI94_CE0_TIMING_CTRL + cs * 4;
 	/* HCLK/2, ..., HCKL/5 */
+	static uint8_t calib_buf[SPI_CALIB_LEN * 2] __aligned(4);
 	uint8_t calib_res[CALIBRATION_RESULT_BUF_LEN] = {0};
 	uint32_t reg_val;
 	uint32_t hdiv = 2, hcycle, delay_ns, timing_val;
@@ -1006,14 +1009,16 @@ static void aspeed_spi_timing_calibration(const struct device *dev,
 	if (config->timing_calibration_disabled)
 		goto no_calib;
 
+	k_mutex_lock(&aspeed_spi_calib_data_buf_lock, K_FOREVER);
+
 	reg_val = sys_read32(timing_reg);
 	if (reg_val != 0) {
 		LOG_DBG("Already executed calibration.");
-		goto no_calib;
+		goto unlock_calib;
 	}
 
 	if (config->mux_ctrl.master_idx != 0 && cs != 0)
-		goto no_calib;
+		goto unlock_calib;
 
 #ifdef CONFIG_SPI_MONITOR_ASPEED
 	/* change internal MUX */
@@ -1036,17 +1041,17 @@ static void aspeed_spi_timing_calibration(const struct device *dev,
 	 */
 	data->cmd_mode[cs].user &= ~SPI_CTRL_FREQ_MASK;
 
-	memset(data->calib_buf, 0x0, SPI_CALIB_LEN * 2);
+	memset(calib_buf, 0x0, SPI_CALIB_LEN * 2);
 
 	op_info.data_direct = SPI_NOR_DATA_DIRECT_IN;
 	op_info.addr = config->timing_calibration_start_off;
-	op_info.buf = data->calib_buf;
+	op_info.buf = calib_buf;
 	op_info.data_len = SPI_CALIB_LEN;
 	aspeed_spi_nor_transceive_user(dev, NULL, op_info);
 
-	if (!aspeed_spi_calibration_enable(data->calib_buf, SPI_CALIB_LEN)) {
+	if (!aspeed_spi_calibration_enable(calib_buf, SPI_CALIB_LEN)) {
 		LOG_ERR("Flash data is monotonous, skip calibration.");
-		goto no_calib;
+		goto unlock_calib;
 	}
 
 	/* From HCLK/2 to HCLK/5 */
@@ -1061,7 +1066,7 @@ static void aspeed_spi_timing_calibration(const struct device *dev,
 		data->cmd_mode[cs].user |= aspeed_get_spi_freq_div(data->hclk, max_freq);
 
 		sys_write32(0x0, timing_reg);
-		pass = aspeed_spi_check_reads(dev, op_info, data->calib_buf, SPI_CALIB_LEN);
+		pass = aspeed_spi_check_reads(dev, op_info, calib_buf, SPI_CALIB_LEN);
 		LOG_DBG("HCLK/%d, no timing compensation: %s", hdiv,
 			pass ? "PASS" : "FAIL");
 
@@ -1074,7 +1079,7 @@ static void aspeed_spi_timing_calibration(const struct device *dev,
 				sys_write32(timing_val, timing_reg);
 
 				pass = aspeed_spi_check_reads(dev, op_info,
-							      data->calib_buf, SPI_CALIB_LEN);
+							      calib_buf, SPI_CALIB_LEN);
 				calib_res[hcycle * 17 + delay_ns] = pass;
 				LOG_DBG("HCLK/%d, %d HCLK cycle, %d delay_ns : %s",
 					hdiv, hcycle, delay_ns,
@@ -1098,6 +1103,9 @@ static void aspeed_spi_timing_calibration(const struct device *dev,
 			hcycle, delay_ns, sys_read32(timing_reg));
 		break;
 	}
+
+unlock_calib:
+	k_mutex_unlock(&aspeed_spi_calib_data_buf_lock);
 
 no_calib:
 
