@@ -9,6 +9,7 @@
 #include <aspeed/ast10x0-g2-irq.h>
 #include <zephyr/dt-bindings/clock/ast27xx_clock.h>
 #include <zephyr/dt-bindings/reset/ast27xx_reset.h>
+#include <zephyr/dt-bindings/pinctrl/ast10x0-g2-pinctrl-groups.h>
 
 / {
 	cpus {
@@ -48,4 +49,6 @@
 &nvic {
 	arm,num-irq-priority-bits = <3>;
 };
+
+#include "ast10x0-g2-pinctrl.dtsi"
 
