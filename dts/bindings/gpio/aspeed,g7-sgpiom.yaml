@@ -1,0 +1,58 @@
+# Copyright (c) 2026 ASPEED
+# SPDX-License-Identifier: Apache-2.0
+
+description: ASPEED G7 SGPIOM node
+
+compatible: "aspeed,g7-sgpiom"
+
+include: [base.yaml, pinctrl-device.yaml]
+
+properties:
+  reg:
+    required: true
+
+  interrupts:
+    required: true
+
+  clocks:
+    required: true
+
+  aspeed,bus-freq:
+    type: int
+    default: 1000000
+    description:
+      SGPIO master clock frequency.
+
+  ngpios:
+    type: int
+    required: true
+    description:
+      Number of SGPIO signals. Must be a multiple of 8.
+
+child-binding:
+  description: ASPEED G7 SGPIOM GPIO bank node
+  include: gpio-controller.yaml
+  properties:
+    ngpios:
+      type: int
+      default: 32
+      description: Number of GPIOs exposed by this 32-slot SGPIO bank.
+
+    gpio-reserved:
+      type: int
+      required: false
+      description: |
+          Bit mask of GPIOs reserved from this bank.
+          If GPIOs 3, 4, and 10 are reserved the value is 0x418.
+
+    pin-offset:
+      type: int
+      required: true
+      description: First global SGPIO number covered by this bank.
+
+    "#gpio-cells":
+      const: 2
+
+  gpio-cells:
+  - pin
+  - flags
