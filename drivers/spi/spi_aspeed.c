@@ -361,6 +361,7 @@ static void aspeed_spi_nor_transceive_user(const struct device *dev,
 	/* change internal MUX */
 	if (config->mux_ctrl.master_idx != 0) {
 		cs = 0;
+		mem_reg = data->decode_addr[cs].start;
 		spim_scu_ctrl_set(config->mux_ctrl.spi_monitor_common_ctrl,
 				BIT(3), (config->mux_ctrl.master_idx - 1) << 3);
 		spim_scu_ctrl_set(config->mux_ctrl.spi_monitor_common_ctrl,
