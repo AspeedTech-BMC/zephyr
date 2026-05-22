@@ -3,10 +3,10 @@
  *
  * Copyright (c) 2021 ASPEED Technology Inc.
  */
-#ifndef _AST1040_IRQ_H_
-#define _AST1040_IRQ_H_
+#ifndef _AST10X0_G2_IRQ_H_
+#define _AST10X0_G2_IRQ_H_
 
-#define AST1040_IRQ_DEFAULT_PRIORITY	1
+#define AST10X0_G2_IRQ_DEFAULT_PRIORITY	1
 
 #define INTR_LPC			0
 #define INTR_SNOOP			1
@@ -136,4 +136,4 @@
 #define INTR_I2C_F2			189
 #define INTR_I2C_F3			190
 
-#endif /* #ifndef _AST1040_IRQ_H_ */
+#endif /* #ifndef _AST10X0_G2_IRQ_H_ */
