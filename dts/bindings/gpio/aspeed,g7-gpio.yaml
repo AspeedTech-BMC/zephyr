@@ -1,0 +1,60 @@
+# Copyright (c) 2026 ASPEED
+# SPDX-License-Identifier: Apache-2.0
+
+description: ASPEED G7 GPIO node
+
+compatible: "aspeed,g7-gpio"
+
+include: [base.yaml, pinctrl-device.yaml]
+
+properties:
+  reg:
+    required: true
+
+  interrupts:
+    required: true
+
+  clocks:
+    required: true
+
+  ngpios:
+    type: int
+    default: 216
+    description: |
+      Number of GPIOs implemented by this controller. The AST2700/AST10x0-G2
+      master GPIO controller defaults to 216 slots, with a 4-GPIO hole in bank
+      E/F/G/H. Boards may override this for smaller controller instances.
+
+  aspeed,deb-interval-us:
+    type: int
+    default: 5
+    description:
+      Debounce interval when a pin is configured with ASPEED_GPIO_DEBOUNCE.
+
+child-binding:
+  description: ASPEED G7 GPIO bank node
+  include: gpio-controller.yaml
+  properties:
+    ngpios:
+      type: int
+      default: 32
+      description: Number of GPIOs exposed by this 32-slot bank.
+
+    gpio-reserved:
+      type: int
+      required: false
+      description: |
+          Bit mask of GPIOs reserved from this bank.
+          If GPIOs 3, 4, and 10 are reserved the value is 0x418.
+
+    pin-offset:
+      type: int
+      required: true
+      description: First global GPIO number covered by this bank.
+
+    "#gpio-cells":
+      const: 2
+
+  gpio-cells:
+  - pin
+  - flags
