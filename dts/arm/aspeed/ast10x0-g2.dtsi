@@ -66,6 +66,30 @@
 			reg-shift = <2>;
 		};
 
+		adc0: adc@74c00000 {
+			compatible = "aspeed,adc";
+			reg = <0x74c00000 0x100>;
+			clocks = <&adc_clk>;
+			resets = <&sysrst SCU1_RESET_ADC>;
+			interrupts = <INTR_ADC AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+			#io-channel-cells = <1>;
+			aspeed,scu = <&syscon>;
+			aspeed,trim-data-locate = <0x9A0 0xf>;
+			status = "disabled";
+		};
+
+		adc1: adc@74c00100 {
+			compatible = "aspeed,adc";
+			reg = <0x74c00100 0x100>;
+			clocks = <&adc_clk>;
+			resets = <&sysrst SCU1_RESET_ADC>;
+			interrupts = <INTR_ADC AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+			#io-channel-cells = <1>;
+			aspeed,scu = <&syscon>;
+			aspeed,trim-data-locate = <0x9A0 0xf0>;
+			status = "disabled";
+		};
+
 		i2c_gr: i2c-global-regs@74c0f000 {
 			compatible = "aspeed,i2c-global";
 			#address-cells = <1>;
