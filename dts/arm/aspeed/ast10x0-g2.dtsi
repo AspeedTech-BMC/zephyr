@@ -34,6 +34,27 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 			ranges;
+			sysrst: reset-controller {
+				compatible = "aspeed,ast10x0-g2-reset", "aspeed,ast27xx-reset";
+				#reset-cells = <1>;
+			};
+
+			sysclk: system-clock {
+				compatible = "aspeed,ast10x0-g2-clock", "aspeed,ast27xx-scu1-clock";
+				#clock-cells = <1>;
+			};
+
+			adc_clk: adc_clk {
+				#clock-cells = <0>;
+				compatible = "fixed-factor-clock";
+				clocks = <&sysclk SCU1_CLK_APB>;
+				clock-mult = <1>;
+				clock-div = <2>;
+			};
+
+			pinctrl: pinctrl {
+				compatible = "aspeed,ast10x0-g2-pinctrl", "aspeed,g7-soc1-pinctrl";
+			};
 		};
 
 		uart12: serial@74c33c00 {
