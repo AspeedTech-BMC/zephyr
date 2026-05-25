@@ -111,6 +111,16 @@
 			};
 		};
 
+		peci: peci@74c1f000 {
+			compatible = "aspeed,peci";
+			reg = <0x74c1f000 0x100>;
+			interrupts = <INTR_PECI AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk SCU1_CLK_AHB>;
+			resets = <&sysrst SCU1_RESET_PECI>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+		};
+
 		i2c_gr: i2c-global-regs@74c0f000 {
 			compatible = "aspeed,i2c-global";
 			#address-cells = <1>;
