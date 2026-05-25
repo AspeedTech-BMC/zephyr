@@ -90,6 +90,27 @@
 			status = "disabled";
 		};
 
+		pwm_tach: pwm_tach@740c0000 {
+			reg = <0x740c0000 0x100>;
+			pwm: pwm {
+				compatible = "aspeed,pwm";
+				#pwm-cells = <3>;
+				npwms = <16>;
+				clocks = <&sysclk SCU1_CLK_AHB>;
+				resets = <&sysrst SCU1_RESET_PWM>;
+				status = "disabled";
+			};
+			tach: tach {
+				compatible = "aspeed,tach";
+				#address-cells = <1>;
+				#size-cells = <0>;
+				clocks = <&sysclk SCU1_CLK_AHB>;
+				resets = <&sysrst SCU1_RESET_PWM>;
+				interrupts = <INTR_TACH AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+				status = "disabled";
+			};
+		};
+
 		i2c_gr: i2c-global-regs@74c0f000 {
 			compatible = "aspeed,i2c-global";
 			#address-cells = <1>;
