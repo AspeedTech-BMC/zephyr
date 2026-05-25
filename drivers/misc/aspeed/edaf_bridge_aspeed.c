@@ -128,7 +128,7 @@ static int aspeed_edaf_bridge_init(const struct device *dev)
 			LOG_ERR("DDR mode but mem_base invalid");
 			return -ENODEV;
 		}
-		mbase = ast27xx_soc_virt_addr_to_phy_addr((uintptr_t)mbase);
+		mbase = TO_PHY_ADDR((uintptr_t)mbase);
 		/* Optional: set erase-with-1 behavior via global cfg */
 		if (cfg->edaf_erase_with_1) {
 			if (!cfg->have_edaf_gcfg) {
@@ -199,7 +199,7 @@ static int aspeed_edaf_bridge_init(const struct device *dev)
 
 	/* Mark eSPI channel 3 as ready if espi-base provided */
 	if (cfg->espi_base_valid) {
-		mm_reg_t espi_regs = (mm_reg_t)ast27xx_soc_phy_addr_to_virt_addr(cfg->espi_base);
+		mm_reg_t espi_regs = (mm_reg_t)TO_VIR_ADDR(cfg->espi_base);
 		uint32_t espi = sys_read32(espi_regs + ESPI_CHN3_FILTER_CTL);
 
 		espi &= ~ESPI_CHN3_FILTER_SAFS_SIZE;

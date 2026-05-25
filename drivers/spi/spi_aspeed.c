@@ -713,7 +713,7 @@ void ast2700_aspeed_spi_read_dma(const struct device *dev,
 	sys_write32(0x0, config->ctrl_base + SPI80_DMA_CTRL);
 
 	sys_write32(0x0, config->ctrl_base + SPI7C_DMA_HI_ADDR_REG);
-	if (ast27xx_soc_virt_addr_to_phy_addr((uintptr_t)op_info.buf) >= ASPEED_DRAM_PHY_BASE)
+	if (TO_PHY_ADDR((uintptr_t)op_info.buf) >= ASPEED_DRAM_PHY_BASE)
 		sys_write32(0x4, config->ctrl_base + SPI7C_DMA_HI_ADDR_REG);
 
 	flash_dma_addr = (data->decode_addr[cs].start + op_info.addr -
@@ -721,7 +721,7 @@ void ast2700_aspeed_spi_read_dma(const struct device *dev,
 	sys_write32(flash_dma_addr, config->ctrl_base + SPI84_DMA_FLASH_ADDR);
 
 	dram_virt_addr = (uintptr_t)op_info.buf;
-	dram_phy_addr = (uint32_t)ast27xx_soc_virt_addr_to_phy_addr(dram_virt_addr);
+	dram_phy_addr = (uint32_t)TO_PHY_ADDR(dram_virt_addr);
 
 	sys_write32(dram_phy_addr, config->ctrl_base + SPI88_DMA_RAM_ADDR);
 	sys_write32(op_info.data_len - 1, config->ctrl_base + SPI8C_DMA_LEN);
@@ -790,7 +790,7 @@ void ast2700_aspeed_spi_write_dma(const struct device *dev,
 	sys_write32(0x0, config->ctrl_base + SPI80_DMA_CTRL);
 
 	sys_write32(0x0, config->ctrl_base + SPI7C_DMA_HI_ADDR_REG);
-	if (ast27xx_soc_virt_addr_to_phy_addr((uintptr_t)op_info.buf) >= ASPEED_DRAM_PHY_BASE)
+	if (TO_PHY_ADDR((uintptr_t)op_info.buf) >= ASPEED_DRAM_PHY_BASE)
 		sys_write32(0x4, config->ctrl_base + SPI7C_DMA_HI_ADDR_REG);
 
 	flash_dma_addr = (data->decode_addr[cs].start + op_info.addr -
@@ -798,7 +798,7 @@ void ast2700_aspeed_spi_write_dma(const struct device *dev,
 	sys_write32(flash_dma_addr, config->ctrl_base + SPI84_DMA_FLASH_ADDR);
 
 	dram_virt_addr = (uintptr_t)op_info.buf;
-	dram_phy_addr = (uint32_t)ast27xx_soc_virt_addr_to_phy_addr(dram_virt_addr);
+	dram_phy_addr = (uint32_t)TO_PHY_ADDR(dram_virt_addr);
 
 	sys_write32(dram_phy_addr, config->ctrl_base + SPI88_DMA_RAM_ADDR);
 	sys_write32(op_info.data_len - 1, config->ctrl_base + SPI8C_DMA_LEN);
@@ -847,7 +847,7 @@ static bool aspeed_spi_dma_xfer_eligible(const struct device *dev,
 
 static bool ast2700_aspeed_spi_dram_region(uintptr_t virt_addr)
 {
-	uint64_t phy_addr = ast27xx_soc_virt_addr_to_phy_addr(virt_addr);
+	uint64_t phy_addr = TO_PHY_ADDR(virt_addr);
 
 	return phy_addr >= ASPEED_DRAM_PHY_BASE;
 }
