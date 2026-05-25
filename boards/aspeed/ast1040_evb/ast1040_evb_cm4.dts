@@ -306,3 +306,15 @@
 		size = <5>;
 	};
 };
+
+&gpio0 {
+	status = "okay";
+};
+
+&sgpiom0 {
+	status = "okay";
+};
+
+&sgpiom1 {
+	status = "okay";
+};
