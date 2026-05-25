@@ -28,7 +28,7 @@ void z_arm_platform_init(void)
 
 /* DMA address translation */
 #if defined(CONFIG_SOC_AST1040_BOOTMCU)
-uint64_t ast27xx_soc_virt_addr_to_phy_addr(uintptr_t addr)
+uint64_t ast10x0_g2_soc_virt_addr_to_phy_addr(uintptr_t addr)
 {
 	if (addr < 0x80000000) {
 		return addr;
@@ -37,12 +37,22 @@ uint64_t ast27xx_soc_virt_addr_to_phy_addr(uintptr_t addr)
 	return (uint64_t)(addr & ~0x80000000) | 0x400000000ULL;
 }
 
-uintptr_t ast27xx_soc_phy_addr_to_virt_addr(uint64_t addr)
+uintptr_t ast10x0_g2_soc_phy_addr_to_virt_addr(uint64_t addr)
 {
 	if (addr < 0x400000000) {
 		return addr;
 	}
 
 	return (uintptr_t)(addr - 0x400000000ULL) | 0x80000000UL;
+}
+#elif defined(CONFIG_SOC_AST1040_CM4)
+uint64_t ast10x0_g2_soc_virt_addr_to_phy_addr(uintptr_t addr)
+{
+	return (uint64_t)(addr - 0x60000000);
+}
+
+uintptr_t ast10x0_g2_soc_phy_addr_to_virt_addr(uint64_t addr)
+{
+	return (uintptr_t)(addr + 0x60000000);
 }
 #endif
