@@ -43,6 +43,155 @@
 			status = "disabled";
 			reg-shift = <2>;
 		};
+
+		gpio0: gpio@74c0b000 {
+			compatible = "aspeed,ast10x0-g2-gpio", "aspeed,g7-gpio";
+			reg = <0x74c0b000 0x1000>;
+			interrupts = <INTR_GPIO AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk SCU1_CLK_AHB>;
+			ngpios = <216>;
+			status = "disabled";
+
+			gpio0_0_31: gpio0_0_31 {
+				#gpio-cells = <2>;
+				gpio-controller;
+				pin-offset = <0>;
+			};
+			gpio0_32_63: gpio0_32_63 {
+				#gpio-cells = <2>;
+				gpio-controller;
+				pin-offset = <32>;
+				gpio-reserved = <0xf0000000>;
+			};
+			gpio0_64_95: gpio0_64_95 {
+				#gpio-cells = <2>;
+				gpio-controller;
+				pin-offset = <64>;
+			};
+			gpio0_96_127: gpio0_96_127 {
+				#gpio-cells = <2>;
+				gpio-controller;
+				pin-offset = <96>;
+			};
+			gpio0_128_159: gpio0_128_159 {
+				#gpio-cells = <2>;
+				gpio-controller;
+				pin-offset = <128>;
+			};
+			gpio0_160_191: gpio0_160_191 {
+				#gpio-cells = <2>;
+				gpio-controller;
+				pin-offset = <160>;
+			};
+			gpio0_192_215: gpio0_192_215 {
+				#gpio-cells = <2>;
+				gpio-controller;
+				ngpios = <24>;
+				pin-offset = <192>;
+			};
+		};
+
+		sgpiom0: sgpiom@74c0c000 {
+			compatible = "aspeed,ast10x0-g2-sgpiom", "aspeed,g7-sgpiom";
+			reg = <0x74c0c000 0x100>;
+			interrupts = <INTR_SGPIO0 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk SCU1_CLK_APB>;
+			aspeed,bus-freq = <12000000>;
+			ngpios = <256>;
+			status = "disabled";
+
+			sgpiom0_0_31: sgpiom0_0_31 {
+				#gpio-cells = <2>;
+				gpio-controller;
+				pin-offset = <0>;
+			};
+			sgpiom0_32_63: sgpiom0_32_63 {
+				#gpio-cells = <2>;
+				gpio-controller;
+				pin-offset = <32>;
+			};
+			sgpiom0_64_95: sgpiom0_64_95 {
+				#gpio-cells = <2>;
+				gpio-controller;
+				pin-offset = <64>;
+			};
+			sgpiom0_96_127: sgpiom0_96_127 {
+				#gpio-cells = <2>;
+				gpio-controller;
+				pin-offset = <96>;
+			};
+			sgpiom0_128_159: sgpiom0_128_159 {
+				#gpio-cells = <2>;
+				gpio-controller;
+				pin-offset = <128>;
+			};
+			sgpiom0_160_191: sgpiom0_160_191 {
+				#gpio-cells = <2>;
+				gpio-controller;
+				pin-offset = <160>;
+			};
+			sgpiom0_192_223: sgpiom0_192_223 {
+				#gpio-cells = <2>;
+				gpio-controller;
+				pin-offset = <192>;
+			};
+			sgpiom0_224_255: sgpiom0_224_255 {
+				#gpio-cells = <2>;
+				gpio-controller;
+				pin-offset = <224>;
+			};
+		};
+
+		sgpiom1: sgpiom@74c0d000 {
+			compatible = "aspeed,ast10x0-g2-sgpiom", "aspeed,g7-sgpiom";
+			reg = <0x74c0d000 0x100>;
+			interrupts = <INTR_SGPIO1 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk SCU1_CLK_APB>;
+			aspeed,bus-freq = <12000000>;
+			ngpios = <256>;
+			status = "disabled";
+
+			sgpiom1_0_31: sgpiom1_0_31 {
+				#gpio-cells = <2>;
+				gpio-controller;
+				pin-offset = <0>;
+			};
+			sgpiom1_32_63: sgpiom1_32_63 {
+				#gpio-cells = <2>;
+				gpio-controller;
+				pin-offset = <32>;
+			};
+			sgpiom1_64_95: sgpiom1_64_95 {
+				#gpio-cells = <2>;
+				gpio-controller;
+				pin-offset = <64>;
+			};
+			sgpiom1_96_127: sgpiom1_96_127 {
+				#gpio-cells = <2>;
+				gpio-controller;
+				pin-offset = <96>;
+			};
+			sgpiom1_128_159: sgpiom1_128_159 {
+				#gpio-cells = <2>;
+				gpio-controller;
+				pin-offset = <128>;
+			};
+			sgpiom1_160_191: sgpiom1_160_191 {
+				#gpio-cells = <2>;
+				gpio-controller;
+				pin-offset = <160>;
+			};
+			sgpiom1_192_223: sgpiom1_192_223 {
+				#gpio-cells = <2>;
+				gpio-controller;
+				pin-offset = <192>;
+			};
+			sgpiom1_224_255: sgpiom1_224_255 {
+				#gpio-cells = <2>;
+				gpio-controller;
+				pin-offset = <224>;
+			};
+		};
 	};
 };
 
