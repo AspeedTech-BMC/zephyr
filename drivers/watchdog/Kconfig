@@ -62,8 +62,6 @@ endif # WDT_COUNTER
 
 source "drivers/watchdog/Kconfig.aspeed"
 
-source "drivers/watchdog/Kconfig.aspeed_g7"
-
 source "drivers/watchdog/Kconfig.stm32"
 
 source "drivers/watchdog/Kconfig.cmsdk_apb"

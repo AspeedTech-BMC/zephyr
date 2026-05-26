@@ -22,7 +22,7 @@ child-binding:
       required: true
       description: Record the index(number) of SPI monitor controller.
 
-    aspeed,scu:
+    aspeed,scu1:
       type: phandle
       required: true
       description: phandle to SCU device tree node.

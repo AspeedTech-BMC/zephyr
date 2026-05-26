@@ -352,9 +352,75 @@
 		};
 
 		wdt0: wdt@14c37000 {
-			compatible = "aspeed,ast-watchdog-g7";
+			compatible = "aspeed,ast2700-watchdog";
 			reg = <0x14c37000 0x80>;
-			reset-mask= <0x0203e779 0x000003f6 0x000093ec 0x00303803 0x00020000>;
+			aspeed,scu0 = <&syscon0>;
+			aspeed,scu1 = <&syscon1>;
+			reset-mask = <0x8207ff79 0x000003f6 0x000093ec 0x40303803 0x00320000>;
+			status = "disabled";
+		};
+
+		wdt1: wdt@14c37080 {
+			compatible = "aspeed,ast2700-watchdog";
+			reg = <0x14c37080 0x80>;
+			aspeed,scu0 = <&syscon0>;
+			aspeed,scu1 = <&syscon1>;
+			reset-mask = <0x8207ff79 0x000003f6 0x000093ec 0x40303803 0x00320000>;
+			status = "disabled";
+		};
+
+		wdt2: wdt@14c37100 {
+			compatible = "aspeed,ast2700-watchdog";
+			reg = <0x14c37100 0x80>;
+			aspeed,scu0 = <&syscon0>;
+			aspeed,scu1 = <&syscon1>;
+			reset-mask = <0x8207ff79 0x000003f6 0x000093ec 0x40303803 0x00320000>;
+			status = "disabled";
+		};
+
+		wdt3: wdt@14c37180 {
+			compatible = "aspeed,ast2700-watchdog";
+			reg = <0x14c37180 0x80>;
+			aspeed,scu0 = <&syscon0>;
+			aspeed,scu1 = <&syscon1>;
+			reset-mask = <0x8207ff79 0x000003f6 0x000093ec 0x40303803 0x00320000>;
+			status = "disabled";
+		};
+
+		wdt4: wdt@14c37200 {
+			compatible = "aspeed,ast2700-watchdog";
+			reg = <0x14c37200 0x80>;
+			aspeed,scu0 = <&syscon0>;
+			aspeed,scu1 = <&syscon1>;
+			reset-mask = <0x8207ff79 0x000003f6 0x000093ec 0x40303803 0x00320000>;
+			status = "disabled";
+		};
+
+		wdt5: wdt@14c37280 {
+			compatible = "aspeed,ast2700-watchdog";
+			reg = <0x14c37280 0x80>;
+			aspeed,scu0 = <&syscon0>;
+			aspeed,scu1 = <&syscon1>;
+			reset-mask = <0x8207ff79 0x000003f6 0x000093ec 0x40303803 0x00320000>;
+			status = "disabled";
+		};
+
+		wdt6: wdt@14c37300 {
+			compatible = "aspeed,ast2700-watchdog";
+			reg = <0x14c37300 0x80>;
+			aspeed,scu0 = <&syscon0>;
+			aspeed,scu1 = <&syscon1>;
+			reset-mask = <0x8207ff79 0x000003f6 0x000093ec 0x40303803 0x00320000>;
+			status = "disabled";
+		};
+
+		wdt7: wdt@14c37380 {
+			compatible = "aspeed,ast2700-watchdog";
+			reg = <0x14c37380 0x80>;
+			aspeed,scu0 = <&syscon0>;
+			aspeed,scu1 = <&syscon1>;
+			reset-mask = <0x8207ff79 0x000003f6 0x000093ec 0x40303803 0x00320000>;
+			status = "disabled";
 		};
 
 		prictrl1: prictrl@14100000 {

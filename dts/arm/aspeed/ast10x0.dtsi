@@ -1048,28 +1048,28 @@
 
 			wdt1: wdt@1 {
 				reg = <1>;
-				aspeed,scu = <&syscon>;
+				aspeed,scu1 = <&syscon>;
 				reset-mask= <0x30f1ff1 0x03fffff1>;
 				status = "disabled";
 			};
 
 			wdt2: wdt@2 {
 				reg = <2>;
-				aspeed,scu = <&syscon>;
+				aspeed,scu1 = <&syscon>;
 				reset-mask= <0x30f1ff1 0x03fffff1>;
 				status = "disabled";
 			};
 
 			wdt3: wdt@3 {
 				reg = <3>;
-				aspeed,scu = <&syscon>;
+				aspeed,scu1 = <&syscon>;
 				reset-mask= <0x30f1ff1 0x03fffff1>;
 				status = "disabled";
 			};
 
 			wdt4: wdt@4 {
 				reg = <4>;
-				aspeed,scu = <&syscon>;
+				aspeed,scu1 = <&syscon>;
 				reset-mask= <0x30f1ff1 0x03fffff1>;
 				status = "disabled";
 			};

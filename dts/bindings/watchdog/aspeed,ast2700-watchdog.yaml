@@ -1,0 +1,34 @@
+# Copyright (c) 2023, ASPEED Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+description: ASPEED AST2700 watchdog timer controller
+
+compatible: "aspeed,ast2700-watchdog"
+
+include: [base.yaml]
+
+properties:
+  reg:
+    required: true
+
+  aspeed,scu1:
+    type: phandle
+    required: true
+    description: phandle to SCU1 device tree node.
+
+  aspeed,scu0:
+    type: phandle
+    required: true
+    description: phandle to SCU0 device tree node.
+
+  reset-mask:
+    type: array
+    required: true
+    description: Five 32-bit reset mask values for WDT SoC reset registers (offsets 0x1C-0x2C).
+
+  interrupts:
+    required: false
+    description: |
+      IRQ line for this WDT controller.
+      Omit for CPUs that do not require a WDT interrupt,
+      where hardware reset on timeout is sufficient.

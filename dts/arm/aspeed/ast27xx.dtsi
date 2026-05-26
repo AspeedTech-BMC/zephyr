@@ -257,6 +257,94 @@
 			ranges = <0 0x74c39000 0x1000>;
 		};
 
+		wdt0: wdt@74c37000 {
+			compatible = "aspeed,ast2700-watchdog";
+			reg = <0x74c37000 0x80>;
+			aspeed,scu0 = <&syscon0>;
+			aspeed,scu1 = <&syscon1>;
+			interrupt-parent = <&intc1_3>;
+			interrupts = <16 1>;
+			reset-mask = <0x8207ff79 0x000003f6 0x000093ec 0x40303803 0x00320000>;
+			status = "disabled";
+		};
+
+		wdt1: wdt@74c37080 {
+			compatible = "aspeed,ast2700-watchdog";
+			reg = <0x74c37080 0x80>;
+			aspeed,scu0 = <&syscon0>;
+			aspeed,scu1 = <&syscon1>;
+			interrupt-parent = <&intc1_3>;
+			interrupts = <17 1>;
+			reset-mask = <0x8207ff79 0x000003f6 0x000093ec 0x40303803 0x00320000>;
+			status = "disabled";
+		};
+
+		wdt2: wdt@74c37100 {
+			compatible = "aspeed,ast2700-watchdog";
+			reg = <0x74c37100 0x80>;
+			aspeed,scu0 = <&syscon0>;
+			aspeed,scu1 = <&syscon1>;
+			interrupt-parent = <&intc1_3>;
+			interrupts = <18 1>;
+			reset-mask = <0x8207ff79 0x000003f6 0x000093ec 0x40303803 0x00320000>;
+			status = "disabled";
+		};
+
+		wdt3: wdt@74c37180 {
+			compatible = "aspeed,ast2700-watchdog";
+			reg = <0x74c37180 0x80>;
+			aspeed,scu0 = <&syscon0>;
+			aspeed,scu1 = <&syscon1>;
+			interrupt-parent = <&intc1_3>;
+			interrupts = <19 1>;
+			reset-mask = <0x8207ff79 0x000003f6 0x000093ec 0x40303803 0x00320000>;
+			status = "disabled";
+		};
+
+		wdt4: wdt@74c37200 {
+			compatible = "aspeed,ast2700-watchdog";
+			reg = <0x74c37200 0x80>;
+			aspeed,scu0 = <&syscon0>;
+			aspeed,scu1 = <&syscon1>;
+			interrupt-parent = <&intc1_3>;
+			interrupts = <20 1>;
+			reset-mask = <0x8207ff79 0x000003f6 0x000093ec 0x40303803 0x00320000>;
+			status = "disabled";
+		};
+
+		wdt5: wdt@74c37280 {
+			compatible = "aspeed,ast2700-watchdog";
+			reg = <0x74c37280 0x80>;
+			aspeed,scu0 = <&syscon0>;
+			aspeed,scu1 = <&syscon1>;
+			interrupt-parent = <&intc1_3>;
+			interrupts = <21 1>;
+			reset-mask = <0x8207ff79 0x000003f6 0x000093ec 0x40303803 0x00320000>;
+			status = "disabled";
+		};
+
+		wdt6: wdt@74c37300 {
+			compatible = "aspeed,ast2700-watchdog";
+			reg = <0x74c37300 0x80>;
+			aspeed,scu0 = <&syscon0>;
+			aspeed,scu1 = <&syscon1>;
+			interrupt-parent = <&intc1_3>;
+			interrupts = <22 1>;
+			reset-mask = <0x8207ff79 0x000003f6 0x000093ec 0x40303803 0x00320000>;
+			status = "disabled";
+		};
+
+		wdt7: wdt@74c37380 {
+			compatible = "aspeed,ast2700-watchdog";
+			reg = <0x74c37380 0x80>;
+			aspeed,scu0 = <&syscon0>;
+			aspeed,scu1 = <&syscon1>;
+			interrupt-parent = <&intc1_3>;
+			interrupts = <23 1>;
+			reset-mask = <0x8207ff79 0x000003f6 0x000093ec 0x40303803 0x00320000>;
+			status = "disabled";
+		};
+
 		i2c_gr: i2c-global-regs@74c0f000 {
 			compatible = "aspeed,i2c-global";
 			#address-cells = <1>;
