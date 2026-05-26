@@ -76,7 +76,10 @@ static int i2c_global_init(const struct device *dev)
 	uint32_t *base = (uint32_t *)ASPEED_I2C_SRAM_BASE;
 	uint32_t chip_id = 0;
 
-#if defined(CONFIG_SOC_AST2700_SSP) || defined(CONFIG_SOC_AST2700_A1_SSP)
+#if defined(CONFIG_SOC_AST2700_SSP) || \
+	defined(CONFIG_SOC_AST2700_A1_SSP) || \
+	defined(CONFIG_SOC_AST1040_CM4)
+
 	chip_id = AST2700ID;
 	/* set i2c global setting */
 	sys_write32(I2CG_SET, i2c_global_base + ASPEED_I2CG_CONTROL);
