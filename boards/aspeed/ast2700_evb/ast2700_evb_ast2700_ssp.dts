@@ -15,7 +15,7 @@
 		zephyr,console = &uart4;
 		zephyr,shell-uart = &uart4;
 		zephyr,flash = &dram_ro_region;
-		zephyr,sram = &sram;
+		zephyr,sram = &dram_rw_region;
 		zephyr,entropy = &rng;
 		zephyr,custom-stack = &tcm;
 		zephyr,cached-memory = &dram_c_region;

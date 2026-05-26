@@ -15,7 +15,7 @@
 		zephyr,console = &uart7;
 		zephyr,shell-uart = &uart7;
 		zephyr,flash = &dram_ro_region;
-		zephyr,sram = &sram;
+		zephyr,sram = &dram_rw_region;
 	};
 
 	dram_rw_region: memory@20000 {
