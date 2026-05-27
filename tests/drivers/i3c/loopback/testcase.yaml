@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 ASPEED Technology Inc.
+
+common:
+  tags:
+    - drivers
+    - i3c
+  harness: console
+  harness_config:
+    fixture: i3c_loopback_wired
+    type: one_line
+    regex:
+      - "I3C LOOPBACK: PASS"
+
+tests:
+  drivers.i3c.loopback:
+    # Hardware loopback (controller's SDA/SCL wired to target's SDA/SCL).
+    # A board overlay must enable both I3C instances, supply
+    # zephyr,i3c-loopback-controller and zephyr,i3c-loopback-target chosens,
+    # and describe the dummy target child on the controller.
+    platform_allow:
+      - ast2700_evb/ast2700/ssp
+      - ast1040_evb/ast1040/cm4
+      - ast1080_evb/ast1080/cm4

@@ -1,0 +1,36 @@
+/*
+ * Copyright (c) 2026 ASPEED Technology Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * AST1080 EVB (Cortex-M4) I3C loopback wiring for
+ * tests/drivers/i3c/loopback. i3c1 is the primary controller, i3c0
+ * is the secondary target. Wire SDA/SCL of i3c0 and i3c1 together
+ * externally on the EVB to run the test.
+ */
+
+/ {
+	chosen {
+		zephyr,i3c-loopback-controller = &i3c1;
+		zephyr,i3c-loopback-target = &i3c0;
+	};
+};
+
+&i3c0 {
+	status = "okay";
+	secondary;
+	assigned-address = <0x70>;
+	dcr = <0x00>;
+	pid-extra-info = <0x000>;
+};
+
+&i3c1 {
+	status = "okay";
+	i3c-scl-hz = <1000000>;
+
+	loopback_target: target@70000007ec06010000 {
+		compatible = "i3c-dummy-device";
+		reg = <0x70 0x7ec 0x06010000>;
+		assigned-address = <0x70>;
+	};
+};
