@@ -104,6 +104,10 @@
 	status = "okay";
 };
 
+&wdt0 {
+	status = "okay";
+};
+
 &ipc0_s_ca35 {
 	status = "okay";
 	shmem_ch0 = <0x70000000 0x5080000 0x1000 0x200000>;

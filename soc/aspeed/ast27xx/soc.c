@@ -33,22 +33,14 @@
 extern char __RAM_NC_start[];
 extern char __RAM_NC_end[];
 
-#if IS_ENABLED(CONFIG_DT_HAS_ASPEED_AST_WATCHDOG_G7_ENABLED)
-#define WDT_REG			DT_REG_ADDR(DT_NODELABEL(wdt0))
+#if IS_ENABLED(CONFIG_WDT_ASPEED)
+void aspeed_wdt_reboot_device(const struct device *dev, int type);
 
 void sys_arch_reboot(int type)
 {
-	/*
-	 * FIXME:
-	 * Use aspeed_wdt_reboot_device once if the watchdog driver is ready
-	 */
-	sys_write32(0, WDT_REG + 0xc);
-	k_usleep(5);
-	sys_write32(0x100, WDT_REG + 0x4);
-	k_usleep(5);
-	sys_write32(0x4755, WDT_REG + 0x8);
-	k_usleep(5);
-	sys_write32(0x13, WDT_REG + 0xc);
+	const struct device *dev = DEVICE_DT_GET(DT_NODELABEL(wdt0));
+
+	aspeed_wdt_reboot_device(dev, type);
 }
 #endif
 
