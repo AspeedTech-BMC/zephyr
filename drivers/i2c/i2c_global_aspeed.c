@@ -78,7 +78,8 @@ static int i2c_global_init(const struct device *dev)
 
 #if defined(CONFIG_SOC_AST2700_SSP) || \
 	defined(CONFIG_SOC_AST2700_A1_SSP) || \
-	defined(CONFIG_SOC_AST1040_CM4)
+	defined(CONFIG_SOC_AST1040_CM4) || \
+	defined(CONFIG_SOC_AST1080_CM4)
 
 	chip_id = AST2700ID;
 	/* set i2c global setting */

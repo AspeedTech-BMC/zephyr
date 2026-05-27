@@ -1,0 +1,9 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Copyright (c) 2026 ASPEED Technology Inc.
+ */
+
+#include <arm/aspeed/ast10x0-g2.dtsi>
+
+/* AST1080-specific nodes go here. */

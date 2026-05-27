@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Aspeed AST1080 evaluation board configuration
+#
+# Copyright (c) 2023 Aspeed Technology Inc.
+
+config BOARD_AST1080_HAPS
+	select SOC_AST1080_CM4 if BOARD_AST1080_HAPS_AST1080_CM4
+	select SOC_AST1080_BOOTMCU if BOARD_AST1080_HAPS_AST1080_BOOTMCU
+
+config ASPEED_FPGA
+	bool "ASPEED FPGA support"
+	default n
+	help
+	  Enable support for ASPEED FPGA devices.
+
+config ASPEED_HAPS
+	bool "ASPEED HAPS support"
+	default n
+	help
+	  Enable support for ASPEED HAPS devices.

@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Copyright (c) 2023 ASPEED Technology Inc.
+
+config SOC_SERIES_AST10x0_G2
+	bool
+	select SOC_FAMILY_ASPEED
+	help
+	  Enable support for ASPEED AST10x0 G2 series (AST1040, AST1080)
+
+config SOC_SERIES_AST10x0_G2_CM4
+	bool
+	select SOC_SERIES_AST10x0_G2
+
+config SOC_SERIES_AST10x0_G2_BOOTMCU
+	bool
+	select SOC_SERIES_AST10x0_G2
+
+config SOC_AST1040_CM4
+	bool
+	select SOC_SERIES_AST10x0_G2_CM4
+	help
+	  AST1040 CM4 SOC
+
+config SOC_AST1040_BOOTMCU
+	bool
+	select SOC_SERIES_AST10x0_G2_BOOTMCU
+	help
+	  AST1040 BOOTMCU SOC
+
+config SOC_AST1080_CM4
+	bool
+	select SOC_SERIES_AST10x0_G2_CM4
+	help
+	  AST1080 CM4 SOC
+
+config SOC_AST1080_BOOTMCU
+	bool
+	select SOC_SERIES_AST10x0_G2_BOOTMCU
+	help
+	  AST1080 BOOTMCU SOC
+
+config SOC_SERIES
+	default "ast10x0_g2" if SOC_SERIES_AST10x0_G2
+
+config SOC
+	default "ast1040" if SOC_AST1040_CM4 || SOC_AST1040_BOOTMCU
+	default "ast1080" if SOC_AST1080_CM4 || SOC_AST1080_BOOTMCU

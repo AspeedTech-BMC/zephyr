@@ -1,0 +1,10 @@
+board:
+  name: ast1080_evb
+  vendor: aspeed
+  socs:
+  - name: ast1080
+    variants:
+    - name: cm4
+      cpucluster: cm4
+    - name: bootmcu
+      cpucluster: bootmcu

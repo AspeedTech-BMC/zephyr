@@ -2,9 +2,9 @@
 #
 # Copyright (c) 2023 ASPEED Technology Inc.
 
-if SOC_SERIES_AST1040
+if SOC_SERIES_AST10x0_G2
 
 rsource "Kconfig.defconfig.cm4"
 rsource "Kconfig.defconfig.bootmcu"
 
-endif # SOC_SERIES_AST1040
+endif # SOC_SERIES_AST10x0_G2

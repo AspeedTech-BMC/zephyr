@@ -1,0 +1,12 @@
+# Copyright (c) 2024 Aspeed Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+identifier: ast1080_haps
+name: Aspeed AST1080 HAPS FPGA
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+ram: 16384
+supported:
+  - serial
+vendor: aspeed

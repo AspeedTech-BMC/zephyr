@@ -1,0 +1,320 @@
+/*
+ * Copyright (c) 2024 Aspeed Technology Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+#include <arm/aspeed/ast1080.dtsi>
+
+/ {
+	model = "Aspeed AST1080 Evaluation board";
+	compatible = "aspeed,ast1080-evb";
+
+	chosen {
+		zephyr,console = &uart12;
+		zephyr,shell-uart = &uart12;
+		zephyr,flash = &dram_ro_region;
+		zephyr,sram = &sram;
+	};
+
+	dram_rw_region: memory@20000 {
+		device_type = "memory";
+		reg = <0x20000 DT_SIZE_K(128)>;
+	};
+
+	sram1: memory@60000 {
+		compatible = "zephyr,memory-region", "mmio-sram";
+		device_type = "memory";
+		reg = <0x60000 DT_SIZE_K(128)>;
+		zephyr,memory-region = "RAM_NC";
+	};
+
+	sram: memory@40000 {
+		device_type = "memory";
+		reg = <0x40000 DT_SIZE_K(128)>;
+	};
+};
+
+&uart12 {
+	clock-frequency = <1846153>;
+	current-speed = <115200>;
+	status = "okay";
+};
+
+&dram_ro_region {
+	reg = <0x0 DT_SIZE_K(128)>;
+};
+
+&nvic {
+	arm,num-irq-priority-bits = <3>;
+};
+
+&adc0 {
+	status = "okay";
+
+	pinctrl-names = "default";
+	pinctrl-0 = <pinctrl_adc0_default pinctrl_adc1_default
+		pinctrl_adc2_default pinctrl_adc3_default
+		pinctrl_adc4_default pinctrl_adc5_default
+		pinctrl_adc6_default pinctrl_adc7_default>;
+};
+
+&adc1 {
+	status = "okay";
+
+	pinctrl-names = "default";
+	pinctrl-0 = <pinctrl_adc8_default pinctrl_adc9_default
+		pinctrl_adc10_default pinctrl_adc11_default
+		pinctrl_adc12_default pinctrl_adc13_default
+		pinctrl_adc14_default pinctrl_adc15_default>;
+};
+
+&pwm {
+	status = "okay";
+
+	pinctrl-names = "default";
+	pinctrl-0 = <pinctrl_pwm0_default pinctrl_pwm1_default
+			pinctrl_pwm2_default pinctrl_pwm3_default
+			pinctrl_pwm4_default pinctrl_pwm5_default
+			pinctrl_pwm6_default pinctrl_pwm7_default
+			pinctrl_pwm8_default pinctrl_pwm9_default
+			pinctrl_pwm10_default pinctrl_pwm11_default
+			pinctrl_pwm12_default pinctrl_pwm13_default
+			pinctrl_pwm14_default pinctrl_pwm15_default>;
+
+};
+
+&tach {
+	status = "okay";
+
+	pinctrl-names = "default";
+	pinctrl-0 = <pinctrl_tach0_default pinctrl_tach1_default
+			pinctrl_tach2_default pinctrl_tach3_default
+			pinctrl_tach4_default pinctrl_tach5_default
+			pinctrl_tach6_default pinctrl_tach7_default
+			pinctrl_tach8_default pinctrl_tach9_default
+			pinctrl_tach10_default pinctrl_tach11_default
+			pinctrl_tach12_default pinctrl_tach13_default
+			pinctrl_tach14_default pinctrl_tach15_default>;
+
+	fan@0 {
+		reg = <0>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@1 {
+		reg = <1>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@2 {
+		reg = <2>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@3 {
+		reg = <3>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@4 {
+		reg = <4>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@5 {
+		reg = <5>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@6 {
+		reg = <6>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@7 {
+		reg = <7>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@8 {
+		reg = <8>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@9 {
+		reg = <9>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@a {
+		reg = <0xa>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@b {
+		reg = <0xb>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@c {
+		reg = <0xc>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@d {
+		reg = <0xd>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@e {
+		reg = <0xe>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@f {
+		reg = <0xf>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+};
+
+&i2c0 {
+	status = "okay";
+
+	eeprom0: eeprom@40 {
+		compatible = "zephyr,i2c-target-eeprom";
+		reg = <0x40>;
+		size = <256>;
+	};
+
+	ipmb0: ipmb@60 {
+		compatible = "aspeed,ipmb";
+		reg = <0x60>;
+		size = <5>;
+	};
+};
+
+&i2c1 {
+	status = "okay";
+
+	eeprom1: eeprom@41 {
+		compatible = "zephyr,i2c-target-eeprom";
+		reg = <0x41>;
+		size = <256>;
+	};
+
+	ipmb1: ipmb@61 {
+		compatible = "aspeed,ipmb";
+		reg = <0x61>;
+		size = <5>;
+	};
+};
+
+&i2c2 {
+	status = "okay";
+
+	eeprom2: eeprom@42 {
+		compatible = "zephyr,i2c-target-eeprom";
+		reg = <0x42>;
+		size = <256>;
+	};
+
+	ipmb2: ipmb@62 {
+		compatible = "aspeed,ipmb";
+		reg = <0x62>;
+		size = <5>;
+	};
+};
+
+&i2c3 {
+	status = "okay";
+
+	eeprom3: eeprom@43 {
+		compatible = "zephyr,i2c-target-eeprom";
+		reg = <0x43>;
+		size = <256>;
+	};
+
+	ipmb3: ipmb@63 {
+		compatible = "aspeed,ipmb";
+		reg = <0x63>;
+		size = <5>;
+	};
+};
+
+&i2c4 {
+	status = "okay";
+
+	eeprom4: eeprom@44 {
+		compatible = "zephyr,i2c-target-eeprom";
+		reg = <0x44>;
+		size = <256>;
+	};
+
+	ipmb4: ipmb@64 {
+		compatible = "aspeed,ipmb";
+		reg = <0x64>;
+		size = <5>;
+	};
+};
+
+&i2c5 {
+	status = "okay";
+
+	eeprom5: eeprom@45 {
+		compatible = "zephyr,i2c-target-eeprom";
+		reg = <0x45>;
+		size = <256>;
+	};
+
+	ipmb5: ipmb@65 {
+		compatible = "aspeed,ipmb";
+		reg = <0x65>;
+		size = <5>;
+	};
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&sgpiom0 {
+	status = "okay";
+};
+
+&sgpiom1 {
+	status = "okay";
+};

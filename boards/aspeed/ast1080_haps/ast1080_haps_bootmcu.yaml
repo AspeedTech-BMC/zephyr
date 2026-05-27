@@ -1,0 +1,12 @@
+# Copyright (c) 2025 Aspeed Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+identifier: ast1080_haps/ast1080/bootmcu
+name: Aspeed AST1080 BootMCU on HAPS FPGA
+type: mcu
+arch: riscv32
+toolchain:
+  - zephyr
+ram: 2048
+supported:
+  - serial
