@@ -33,7 +33,7 @@
 extern char __RAM_NC_start[];
 extern char __RAM_NC_end[];
 
-#if IS_ENABLED(CONFIG_WDT_ASPEED)
+#if IS_ENABLED(CONFIG_WDT_ASPEED) && DT_NODE_HAS_STATUS(DT_NODELABEL(wdt0), okay)
 void aspeed_wdt_reboot_device(const struct device *dev, int type);
 
 void sys_arch_reboot(int type)
