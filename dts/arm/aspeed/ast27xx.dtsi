@@ -642,6 +642,294 @@
 			manual-sda-delay = <0>;
 			status = "disabled";
 		};
+
+		i3c0: i3c@74c20000 {
+			compatible = "aspeed,g7-i3c-hci";
+			reg = <0x74c20000 0x1000>;
+			interrupt-parent = <&intc1_3>;
+			interrupts = <0 1>;
+			clocks = <&sysclk1 SCU1_CLK_GATE_I3C0CLK>;
+			resets = <&sysrst1 SCU1_RESET_I3C0>, <&sysrst1 SCU1_RESET_I3CDMA>;
+			reset-names = "core", "dma";
+			i2c-scl-hz = <1000000>;
+			i3c-scl-hz = <12500000>;
+			io-mode = "pio";
+			pinctrl-names = "default";
+			pinctrl-0 = <pinctrl_i3c0_default>;
+			status = "disabled";
+			#address-cells = <3>;
+			#size-cells = <0>;
+		};
+
+		i3c1: i3c@74c21000 {
+			compatible = "aspeed,g7-i3c-hci";
+			reg = <0x74c21000 0x1000>;
+			interrupt-parent = <&intc1_3>;
+			interrupts = <1 1>;
+			clocks = <&sysclk1 SCU1_CLK_GATE_I3C1CLK>;
+			resets = <&sysrst1 SCU1_RESET_I3C1>, <&sysrst1 SCU1_RESET_I3CDMA>;
+			reset-names = "core", "dma";
+			i2c-scl-hz = <1000000>;
+			i3c-scl-hz = <12500000>;
+			io-mode = "pio";
+			pinctrl-names = "default";
+			pinctrl-0 = <pinctrl_i3c1_default>;
+			status = "disabled";
+			#address-cells = <3>;
+			#size-cells = <0>;
+		};
+
+		i3c2: i3c@74c22000 {
+			compatible = "aspeed,g7-i3c-hci";
+			reg = <0x74c22000 0x1000>;
+			interrupt-parent = <&intc1_3>;
+			interrupts = <2 1>;
+			clocks = <&sysclk1 SCU1_CLK_GATE_I3C2CLK>;
+			resets = <&sysrst1 SCU1_RESET_I3C2>, <&sysrst1 SCU1_RESET_I3CDMA>;
+			reset-names = "core", "dma";
+			i2c-scl-hz = <1000000>;
+			i3c-scl-hz = <12500000>;
+			io-mode = "pio";
+			pinctrl-names = "default";
+			pinctrl-0 = <pinctrl_i3c2_default>;
+			status = "disabled";
+			#address-cells = <3>;
+			#size-cells = <0>;
+		};
+
+		i3c3: i3c@74c23000 {
+			compatible = "aspeed,g7-i3c-hci";
+			reg = <0x74c23000 0x1000>;
+			interrupt-parent = <&intc1_3>;
+			interrupts = <3 1>;
+			clocks = <&sysclk1 SCU1_CLK_GATE_I3C3CLK>;
+			resets = <&sysrst1 SCU1_RESET_I3C3>, <&sysrst1 SCU1_RESET_I3CDMA>;
+			reset-names = "core", "dma";
+			i2c-scl-hz = <1000000>;
+			i3c-scl-hz = <12500000>;
+			io-mode = "pio";
+			pinctrl-names = "default";
+			pinctrl-0 = <pinctrl_i3c3_default>;
+			status = "disabled";
+			#address-cells = <3>;
+			#size-cells = <0>;
+		};
+
+		i3c4: i3c@74c24000 {
+			compatible = "aspeed,g7-i3c-hci";
+			reg = <0x74c24000 0x1000>;
+			interrupt-parent = <&intc1_3>;
+			interrupts = <4 1>;
+			clocks = <&sysclk1 SCU1_CLK_GATE_I3C4CLK>;
+			resets = <&sysrst1 SCU1_RESET_I3C4>, <&sysrst1 SCU1_RESET_I3CDMA>;
+			reset-names = "core", "dma";
+			i2c-scl-hz = <1000000>;
+			i3c-scl-hz = <12500000>;
+			io-mode = "pio";
+			pinctrl-names = "default";
+			pinctrl-0 = <pinctrl_i3c4_default>;
+			status = "disabled";
+			#address-cells = <3>;
+			#size-cells = <0>;
+		};
+
+		i3c5: i3c@74c25000 {
+			compatible = "aspeed,g7-i3c-hci";
+			reg = <0x74c25000 0x1000>;
+			interrupt-parent = <&intc1_3>;
+			interrupts = <5 1>;
+			clocks = <&sysclk1 SCU1_CLK_GATE_I3C5CLK>;
+			resets = <&sysrst1 SCU1_RESET_I3C5>, <&sysrst1 SCU1_RESET_I3CDMA>;
+			reset-names = "core", "dma";
+			i2c-scl-hz = <1000000>;
+			i3c-scl-hz = <12500000>;
+			io-mode = "pio";
+			pinctrl-names = "default";
+			pinctrl-0 = <pinctrl_i3c5_default>;
+			status = "disabled";
+			#address-cells = <3>;
+			#size-cells = <0>;
+		};
+
+		i3c6: i3c@74c26000 {
+			compatible = "aspeed,g7-i3c-hci";
+			reg = <0x74c26000 0x1000>;
+			interrupt-parent = <&intc1_3>;
+			interrupts = <6 1>;
+			clocks = <&sysclk1 SCU1_CLK_GATE_I3C6CLK>;
+			resets = <&sysrst1 SCU1_RESET_I3C6>, <&sysrst1 SCU1_RESET_I3CDMA>;
+			reset-names = "core", "dma";
+			i2c-scl-hz = <1000000>;
+			i3c-scl-hz = <12500000>;
+			io-mode = "pio";
+			pinctrl-names = "default";
+			pinctrl-0 = <pinctrl_i3c6_default>;
+			status = "disabled";
+			#address-cells = <3>;
+			#size-cells = <0>;
+		};
+
+		i3c7: i3c@74c27000 {
+			compatible = "aspeed,g7-i3c-hci";
+			reg = <0x74c27000 0x1000>;
+			interrupt-parent = <&intc1_3>;
+			interrupts = <7 1>;
+			clocks = <&sysclk1 SCU1_CLK_GATE_I3C7CLK>;
+			resets = <&sysrst1 SCU1_RESET_I3C7>, <&sysrst1 SCU1_RESET_I3CDMA>;
+			reset-names = "core", "dma";
+			i2c-scl-hz = <1000000>;
+			i3c-scl-hz = <12500000>;
+			io-mode = "pio";
+			pinctrl-names = "default";
+			pinctrl-0 = <pinctrl_i3c7_default>;
+			status = "disabled";
+			#address-cells = <3>;
+			#size-cells = <0>;
+		};
+
+		i3c8: i3c@74c28000 {
+			compatible = "aspeed,g7-i3c-hci";
+			reg = <0x74c28000 0x1000>;
+			interrupt-parent = <&intc1_3>;
+			interrupts = <8 1>;
+			clocks = <&sysclk1 SCU1_CLK_GATE_I3C8CLK>;
+			resets = <&sysrst1 SCU1_RESET_I3C8>, <&sysrst1 SCU1_RESET_I3CDMA>;
+			reset-names = "core", "dma";
+			i2c-scl-hz = <1000000>;
+			i3c-scl-hz = <12500000>;
+			io-mode = "pio";
+			pinctrl-names = "default";
+			pinctrl-0 = <pinctrl_i3c8_default>;
+			status = "disabled";
+			#address-cells = <3>;
+			#size-cells = <0>;
+		};
+
+		i3c9: i3c@74c29000 {
+			compatible = "aspeed,g7-i3c-hci";
+			reg = <0x74c29000 0x1000>;
+			interrupt-parent = <&intc1_3>;
+			interrupts = <9 1>;
+			clocks = <&sysclk1 SCU1_CLK_GATE_I3C9CLK>;
+			resets = <&sysrst1 SCU1_RESET_I3C9>, <&sysrst1 SCU1_RESET_I3CDMA>;
+			reset-names = "core", "dma";
+			i2c-scl-hz = <1000000>;
+			i3c-scl-hz = <12500000>;
+			io-mode = "pio";
+			pinctrl-names = "default";
+			pinctrl-0 = <pinctrl_i3c9_default>;
+			status = "disabled";
+			#address-cells = <3>;
+			#size-cells = <0>;
+		};
+
+		i3c10: i3c@74c2a000 {
+			compatible = "aspeed,g7-i3c-hci";
+			reg = <0x74c2a000 0x1000>;
+			interrupt-parent = <&intc1_3>;
+			interrupts = <10 1>;
+			clocks = <&sysclk1 SCU1_CLK_GATE_I3C10CLK>;
+			resets = <&sysrst1 SCU1_RESET_I3C10>, <&sysrst1 SCU1_RESET_I3CDMA>;
+			reset-names = "core", "dma";
+			i2c-scl-hz = <1000000>;
+			i3c-scl-hz = <12500000>;
+			io-mode = "pio";
+			pinctrl-names = "default";
+			pinctrl-0 = <pinctrl_i3c10_default>;
+			status = "disabled";
+			#address-cells = <3>;
+			#size-cells = <0>;
+		};
+
+		i3c11: i3c@74c2b000 {
+			compatible = "aspeed,g7-i3c-hci";
+			reg = <0x74c2b000 0x1000>;
+			interrupt-parent = <&intc1_3>;
+			interrupts = <11 1>;
+			clocks = <&sysclk1 SCU1_CLK_GATE_I3C11CLK>;
+			resets = <&sysrst1 SCU1_RESET_I3C11>, <&sysrst1 SCU1_RESET_I3CDMA>;
+			reset-names = "core", "dma";
+			i2c-scl-hz = <1000000>;
+			i3c-scl-hz = <12500000>;
+			io-mode = "pio";
+			pinctrl-names = "default";
+			pinctrl-0 = <pinctrl_i3c11_default>;
+			status = "disabled";
+			#address-cells = <3>;
+			#size-cells = <0>;
+		};
+
+		i3c12: i3c@74c2c000 {
+			compatible = "aspeed,g7-i3c-hci";
+			reg = <0x74c2c000 0x1000>;
+			interrupt-parent = <&intc1_3>;
+			interrupts = <12 1>;
+			clocks = <&sysclk1 SCU1_CLK_GATE_I3C12CLK>;
+			resets = <&sysrst1 SCU1_RESET_I3C12>, <&sysrst1 SCU1_RESET_I3CDMA>;
+			reset-names = "core", "dma";
+			i2c-scl-hz = <1000000>;
+			i3c-scl-hz = <12500000>;
+			io-mode = "pio";
+			pinctrl-names = "default";
+			pinctrl-0 = <pinctrl_i3c12_default>;
+			status = "disabled";
+			#address-cells = <3>;
+			#size-cells = <0>;
+		};
+
+		i3c13: i3c@74c2d000 {
+			compatible = "aspeed,g7-i3c-hci";
+			reg = <0x74c2d000 0x1000>;
+			interrupt-parent = <&intc1_3>;
+			interrupts = <13 1>;
+			clocks = <&sysclk1 SCU1_CLK_GATE_I3C13CLK>;
+			resets = <&sysrst1 SCU1_RESET_I3C13>, <&sysrst1 SCU1_RESET_I3CDMA>;
+			reset-names = "core", "dma";
+			i2c-scl-hz = <1000000>;
+			i3c-scl-hz = <12500000>;
+			io-mode = "pio";
+			pinctrl-names = "default";
+			pinctrl-0 = <pinctrl_i3c13_default>;
+			status = "disabled";
+			#address-cells = <3>;
+			#size-cells = <0>;
+		};
+
+		i3c14: i3c@74c2e000 {
+			compatible = "aspeed,g7-i3c-hci";
+			reg = <0x74c2e000 0x1000>;
+			interrupt-parent = <&intc1_3>;
+			interrupts = <14 1>;
+			clocks = <&sysclk1 SCU1_CLK_GATE_I3C14CLK>;
+			resets = <&sysrst1 SCU1_RESET_I3C14>, <&sysrst1 SCU1_RESET_I3CDMA>;
+			reset-names = "core", "dma";
+			i2c-scl-hz = <1000000>;
+			i3c-scl-hz = <12500000>;
+			io-mode = "pio";
+			pinctrl-names = "default";
+			pinctrl-0 = <pinctrl_i3c14_default>;
+			status = "disabled";
+			#address-cells = <3>;
+			#size-cells = <0>;
+		};
+
+		i3c15: i3c@74c2f000 {
+			compatible = "aspeed,g7-i3c-hci";
+			reg = <0x74c2f000 0x1000>;
+			interrupt-parent = <&intc1_3>;
+			interrupts = <15 1>;
+			clocks = <&sysclk1 SCU1_CLK_GATE_I3C15CLK>;
+			resets = <&sysrst1 SCU1_RESET_I3C15>, <&sysrst1 SCU1_RESET_I3CDMA>;
+			reset-names = "core", "dma";
+			i2c-scl-hz = <1000000>;
+			i3c-scl-hz = <12500000>;
+			io-mode = "pio";
+			pinctrl-names = "default";
+			pinctrl-0 = <pinctrl_i3c15_default>;
+			status = "disabled";
+			#address-cells = <3>;
+			#size-cells = <0>;
+		};
 	};
 };
 
