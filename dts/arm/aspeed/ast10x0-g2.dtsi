@@ -343,6 +343,78 @@
 			};
 		};
 
+		wdt0: wdt@74c37000 {
+			compatible = "aspeed,ast10x0-g2-watchdog";
+			reg = <0x74c37000 0x80>;
+			aspeed,scu = <&syscon>;
+			interrupts = <INTR_WDT0 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+			reset-mask = <0x000019ec 0x2010e803 0x003e0000>;
+			status = "disabled";
+		};
+
+		wdt1: wdt@74c37080 {
+			compatible = "aspeed,ast10x0-g2-watchdog";
+			reg = <0x74c37080 0x80>;
+			aspeed,scu = <&syscon>;
+			interrupts = <INTR_WDT1 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+			reset-mask = <0x000019ec 0x2010e803 0x003e0000>;
+			status = "disabled";
+		};
+
+		wdt2: wdt@74c37100 {
+			compatible = "aspeed,ast10x0-g2-watchdog";
+			reg = <0x74c37100 0x80>;
+			aspeed,scu = <&syscon>;
+			interrupts = <INTR_WDT2 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+			reset-mask = <0x000019ec 0x2010e803 0x003e0000>;
+			status = "disabled";
+		};
+
+		wdt3: wdt@74c37180 {
+			compatible = "aspeed,ast10x0-g2-watchdog";
+			reg = <0x74c37180 0x80>;
+			aspeed,scu = <&syscon>;
+			interrupts = <INTR_WDT3 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+			reset-mask = <0x000019ec 0x2010e803 0x003e0000>;
+			status = "disabled";
+		};
+
+		wdt4: wdt@74c37200 {
+			compatible = "aspeed,ast10x0-g2-watchdog";
+			reg = <0x74c37200 0x80>;
+			aspeed,scu = <&syscon>;
+			interrupts = <INTR_WDT4 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+			reset-mask = <0x000019ec 0x2010e803 0x003e0000>;
+			status = "disabled";
+		};
+
+		wdt5: wdt@74c37280 {
+			compatible = "aspeed,ast10x0-g2-watchdog";
+			reg = <0x74c37280 0x80>;
+			aspeed,scu = <&syscon>;
+			interrupts = <INTR_WDT5 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+			reset-mask = <0x000019ec 0x2010e803 0x003e0000>;
+			status = "disabled";
+		};
+
+		wdt6: wdt@74c37300 {
+			compatible = "aspeed,ast10x0-g2-watchdog";
+			reg = <0x74c37300 0x80>;
+			aspeed,scu = <&syscon>;
+			interrupts = <INTR_WDT6 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+			reset-mask = <0x000019ec 0x2010e803 0x003e0000>;
+			status = "disabled";
+		};
+
+		wdt7: wdt@74c37380 {
+			compatible = "aspeed,ast10x0-g2-watchdog";
+			reg = <0x74c37380 0x80>;
+			aspeed,scu = <&syscon>;
+			interrupts = <INTR_WDT7 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+			reset-mask = <0x000019ec 0x2010e803 0x003e0000>;
+			status = "disabled";
+		};
+
 		sgpiom1: sgpiom@74c0d000 {
 			compatible = "aspeed,ast10x0-g2-sgpiom", "aspeed,g7-sgpiom";
 			reg = <0x74c0d000 0x100>;

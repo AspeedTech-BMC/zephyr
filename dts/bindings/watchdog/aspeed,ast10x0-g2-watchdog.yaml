@@ -1,0 +1,28 @@
+# Copyright (c) 2026, ASPEED Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+description: ASPEED AST10x0-G2 watchdog timer controller
+
+compatible: "aspeed,ast10x0-g2-watchdog"
+
+include: [base.yaml]
+
+properties:
+  reg:
+    required: true
+
+  aspeed,scu:
+    type: phandle
+    required: true
+    description: phandle to SCU device tree node.
+
+  reset-mask:
+    type: array
+    required: true
+    description: Three 32-bit reset mask values for WDT SoC reset registers (offsets 0x24-0x2C).
+
+  interrupts:
+    required: false
+    description: |
+      IRQ line for this WDT controller.
+      Omit for CPUs that do not require a WDT interrupt.

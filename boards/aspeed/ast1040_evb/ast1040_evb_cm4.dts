@@ -36,6 +36,10 @@
 	};
 };
 
+&wdt0 {
+	status = "okay";
+};
+
 &uart12 {
 	clock-frequency = <1846153>;
 	current-speed = <115200>;

@@ -31,13 +31,6 @@ LOG_MODULE_REGISTER(wdt_ast, CONFIG_WDT_LOG_LEVEL);
 #define WDT_TIMEOUT_STATUS_CLR_REG  0x0014
 #define WDT_TRIGGER_KEY             0xAEEDF123
 
-#define WDT_SCU_FULL_RST_EN_REG     0x00D8
-#define WDT_SCU_FULL_RST_EN         BIT(4)
-
-#define WDT_2700_SCU_FULL_RST_EN_REG  0x00C8
-#define WDT_2700_SCU0_FULL_RST_EN     BIT(9)
-#define WDT_2700_SCU1_FULL_RST_EN        BIT(7)
-
 #define WDT_RESTART_MAGIC           0x4755
 #define WDT_CTRL_RST_MASK           GENMASK(6, 5)
 #define WDT_CTRL_FULL_CHIP_RST      BIT(5)
@@ -70,7 +63,11 @@ struct aspeed_wdt_common_data {
 struct aspeed_wdt_config {
 	mm_reg_t ctrl_base;
 	mm_reg_t scu0_base;
+	uint32_t scu0_full_rst_reg_off;
+	uint32_t scu0_full_rst_bit;
 	mm_reg_t scu1_base;
+	uint32_t scu1_full_rst_reg_off;
+	uint32_t scu1_full_rst_bit;
 	const struct device *parent;
 	uint32_t ctrl_idx;
 	/* common_irq_line: true (AST1030/AST1060): all WDT controllers share one IRQ line,
@@ -139,16 +136,14 @@ void aspeed_wdt_reboot_device(const struct device *dev, int type)
 	if (type == SYS_REBOOT_COLD) {
 		ctrl_val |= WDT_CTRL_FULL_CHIP_RST;
 		if (config->scu0_base) {
-			sys_write32(sys_read32(config->scu0_base + WDT_2700_SCU_FULL_RST_EN_REG) &
-				    ~(WDT_2700_SCU0_FULL_RST_EN),
-				    config->scu0_base + WDT_2700_SCU_FULL_RST_EN_REG);
-			sys_write32(sys_read32(config->scu1_base + WDT_2700_SCU_FULL_RST_EN_REG) &
-				    ~(WDT_2700_SCU1_FULL_RST_EN),
-				    config->scu1_base + WDT_2700_SCU_FULL_RST_EN_REG);
-		} else {
-			sys_write32(sys_read32(config->scu1_base + WDT_SCU_FULL_RST_EN_REG) &
-				    ~(WDT_SCU_FULL_RST_EN),
-				    config->scu1_base + WDT_SCU_FULL_RST_EN_REG);
+			sys_write32(sys_read32(config->scu0_base + config->scu0_full_rst_reg_off) &
+				    ~(config->scu0_full_rst_bit),
+				    config->scu0_base + config->scu0_full_rst_reg_off);
+		}
+		if (config->scu1_base) {
+			sys_write32(sys_read32(config->scu1_base + config->scu1_full_rst_reg_off) &
+				    ~(config->scu1_full_rst_bit),
+				    config->scu1_base + config->scu1_full_rst_reg_off);
 		}
 	}
 	ctrl_val |= (WDT_CTRL_RST_WDT_BY_SOC | WDT_CTRL_RST_SYS | WDT_CTRL_ENABLE);
@@ -258,16 +253,14 @@ static int wdt_aspeed_setup(const struct device *dev, uint8_t options)
 		aspeed_wdt_config_rst_masks(config->ctrl_base, config->rst_mask_base_off,
 					    config->rst_mask_num, data->rst_mask);
 		if (config->scu0_base) {
-			sys_write32(sys_read32(config->scu0_base + WDT_2700_SCU_FULL_RST_EN_REG) &
-				    ~(WDT_2700_SCU0_FULL_RST_EN),
-				    config->scu0_base + WDT_2700_SCU_FULL_RST_EN_REG);
-			sys_write32(sys_read32(config->scu1_base + WDT_2700_SCU_FULL_RST_EN_REG) &
-				    ~(WDT_2700_SCU1_FULL_RST_EN),
-				    config->scu1_base + WDT_2700_SCU_FULL_RST_EN_REG);
-		} else {
-			sys_write32(sys_read32(config->scu1_base + WDT_SCU_FULL_RST_EN_REG) &
-				    ~(WDT_SCU_FULL_RST_EN),
-				    config->scu1_base + WDT_SCU_FULL_RST_EN_REG);
+			sys_write32(sys_read32(config->scu0_base + config->scu0_full_rst_reg_off) &
+				    ~(config->scu0_full_rst_bit),
+				    config->scu0_base + config->scu0_full_rst_reg_off);
+		}
+		if (config->scu1_base) {
+			sys_write32(sys_read32(config->scu1_base + config->scu1_full_rst_reg_off) &
+				    ~(config->scu1_full_rst_bit),
+				    config->scu1_base + config->scu1_full_rst_reg_off);
 		}
 	} else {
 		LOG_ERR("unsupported options: 0x%02x", options);
@@ -470,7 +463,11 @@ static const struct wdt_driver_api wdt_aspeed_driver_api __unused = {
 	.ctrl_base = DT_REG_ADDR(DT_PARENT(node_id)) + WDT_CTRL_REG_OFF *	\
 				(DT_REG_ADDR(node_id) - 1),	\
 	.scu0_base = 0,	\
+	.scu0_full_rst_reg_off = 0,	\
+	.scu0_full_rst_bit = 0,	\
 	.scu1_base = DT_REG_ADDR_BY_IDX(DT_PHANDLE_BY_IDX(node_id, aspeed_scu1, 0), 0), \
+	.scu1_full_rst_reg_off = 0x00D8,	\
+	.scu1_full_rst_bit = BIT(4),	\
 	.parent = DEVICE_DT_GET(DT_PARENT(node_id)),	\
 	.ctrl_idx = DT_REG_ADDR(node_id),	\
 	.common_irq_line = true,	\
@@ -558,8 +555,12 @@ DT_INST_FOREACH_STATUS_OKAY(ASPEED_WDT_COMMON_INIT)
 		.ctrl_base = DT_INST_REG_ADDR(n),	\
 		.scu0_base = DT_REG_ADDR_BY_IDX(	\
 				DT_PHANDLE_BY_IDX(DT_DRV_INST(n), aspeed_scu0, 0), 0),	\
+		.scu0_full_rst_reg_off = 0x00C8,	\
+		.scu0_full_rst_bit = BIT(9),	\
 		.scu1_base = DT_REG_ADDR_BY_IDX(	\
 				DT_PHANDLE_BY_IDX(DT_DRV_INST(n), aspeed_scu1, 0), 0),	\
+		.scu1_full_rst_reg_off = 0x00C8,	\
+		.scu1_full_rst_bit = BIT(7),	\
 		.parent = NULL,	\
 		.ctrl_idx = 0,	\
 		.common_irq_line = false,	\
@@ -585,3 +586,56 @@ DT_INST_FOREACH_STATUS_OKAY(ASPEED_WDT_COMMON_INIT)
 			      POST_KERNEL, 80, &wdt_aspeed_driver_api);
 
 DT_INST_FOREACH_STATUS_OKAY(ASPEED_WDT_AST2700_DT_DEFINE)
+
+/* ============================================================
+ * AST10x0-G2 (aspeed,ast10x0-g2-watchdog)
+ * ============================================================
+ */
+#undef DT_DRV_COMPAT
+#define DT_DRV_COMPAT aspeed_ast10x0_g2_watchdog
+
+#define ASPEED_WDT_AST10x0_G2_DT_DEFINE(n)	\
+	static int aspeed_wdt_ast10x0_g2_init_##n(const struct device *dev)	\
+	{	\
+		aspeed_wdt_init(dev);	\
+		COND_CODE_1(DT_INST_NODE_HAS_PROP(n, interrupts),	\
+			(IRQ_CONNECT(DT_INST_IRQN(n),	\
+				     DT_INST_IRQ(n, priority),	\
+				     wdt_aspeed_ast2700_isr,	\
+				     DEVICE_DT_INST_GET(n), 0);	\
+			 irq_enable(DT_INST_IRQN(n));),	\
+			())	\
+		return 0;	\
+	}	\
+	static const struct aspeed_wdt_config aspeed_wdt_ast10x0_g2_config_##n = {	\
+		.ctrl_base = DT_INST_REG_ADDR(n),	\
+		.scu0_base = 0,	\
+		.scu0_full_rst_reg_off = 0,	\
+		.scu0_full_rst_bit = 0,	\
+		.scu1_base = DT_REG_ADDR_BY_IDX(	\
+				DT_PHANDLE_BY_IDX(DT_DRV_INST(n), aspeed_scu, 0), 0),	\
+		.scu1_full_rst_reg_off = 0x00C8,	\
+		.scu1_full_rst_bit = BIT(7),	\
+		.parent = NULL,	\
+		.ctrl_idx = 0,	\
+		.common_irq_line = false,	\
+		.has_irq = DT_INST_NODE_HAS_PROP(n, interrupts),	\
+		.rst_mask_num = 3,	\
+		.rst_mask_base_off = 0x0024,	\
+		.sw_rst_mask_base_off = 0x0034,	\
+		.sw_rst_ctrl_off = 0x0030,	\
+	};	\
+	static struct aspeed_wdt_data aspeed_wdt_ast10x0_g2_data_##n = {	\
+		.rst_mask = {	\
+			DT_INST_PROP_BY_IDX(n, reset_mask, 0),	\
+			DT_INST_PROP_BY_IDX(n, reset_mask, 1),	\
+			DT_INST_PROP_BY_IDX(n, reset_mask, 2),	\
+		},	\
+	};	\
+	DEVICE_DT_INST_DEFINE(n, aspeed_wdt_ast10x0_g2_init_##n,	\
+			      NULL,	\
+			      &aspeed_wdt_ast10x0_g2_data_##n,	\
+			      &aspeed_wdt_ast10x0_g2_config_##n,	\
+			      POST_KERNEL, 80, &wdt_aspeed_driver_api);
+
+DT_INST_FOREACH_STATUS_OKAY(ASPEED_WDT_AST10x0_G2_DT_DEFINE)

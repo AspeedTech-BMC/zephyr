@@ -12,6 +12,7 @@
 #include <zephyr/cache.h>
 #include <string.h>
 #include <soc.h>
+#include <zephyr/sys/reboot.h>
 
 #define SCU1_REG		DT_REG_ADDR(DT_NODELABEL(syscon1))
 #define SCU1_RSTLOG0		(SCU1_REG + 0x050)
@@ -25,6 +26,18 @@ void z_arm_platform_init(void)
 	/* clear non-cached .bss */
 	(void)memset(__RAM_NC_start, 0, __RAM_NC_end - __RAM_NC_start);
 }
+
+#if IS_ENABLED(CONFIG_WDT_ASPEED) && defined(CONFIG_SOC_SERIES_AST10x0_G2_CM4) && \
+	DT_NODE_HAS_STATUS(DT_NODELABEL(wdt0), okay)
+void aspeed_wdt_reboot_device(const struct device *dev, int type);
+
+void sys_arch_reboot(int type)
+{
+	const struct device *dev = DEVICE_DT_GET(DT_NODELABEL(wdt0));
+
+	aspeed_wdt_reboot_device(dev, type);
+}
+#endif
 
 /* DMA address translation */
 #if defined(CONFIG_SOC_SERIES_AST10x0_G2_BOOTMCU)
