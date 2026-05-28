@@ -539,7 +539,7 @@ DT_INST_FOREACH_STATUS_OKAY(ASPEED_WDT_COMMON_INIT)
 #define DT_DRV_COMPAT aspeed_ast2700_watchdog
 
 #define ASPEED_WDT_AST2700_DT_DEFINE(n)	\
-	static int aspeed_wdt2700_init_##n(const struct device *dev)	\
+	static int aspeed_wdt_ast2700_init_##n(const struct device *dev)	\
 	{	\
 		aspeed_wdt_init(dev);	\
 		COND_CODE_1(DT_INST_NODE_HAS_PROP(n, interrupts),	\
@@ -551,7 +551,7 @@ DT_INST_FOREACH_STATUS_OKAY(ASPEED_WDT_COMMON_INIT)
 			())	\
 		return 0;	\
 	}	\
-	static const struct aspeed_wdt_config aspeed_wdt2700_config_##n = {	\
+	static const struct aspeed_wdt_config aspeed_wdt_ast2700_config_##n = {	\
 		.ctrl_base = DT_INST_REG_ADDR(n),	\
 		.scu0_base = DT_REG_ADDR_BY_IDX(	\
 				DT_PHANDLE_BY_IDX(DT_DRV_INST(n), aspeed_scu0, 0), 0),	\
@@ -570,7 +570,7 @@ DT_INST_FOREACH_STATUS_OKAY(ASPEED_WDT_COMMON_INIT)
 		.sw_rst_mask_base_off = 0x0034,	\
 		.sw_rst_ctrl_off = 0x0030,	\
 	};	\
-	static struct aspeed_wdt_data aspeed_wdt2700_data_##n = {	\
+	static struct aspeed_wdt_data aspeed_wdt_ast2700_data_##n = {	\
 		.rst_mask = {	\
 			DT_INST_PROP_BY_IDX(n, reset_mask, 0),	\
 			DT_INST_PROP_BY_IDX(n, reset_mask, 1),	\
@@ -579,10 +579,10 @@ DT_INST_FOREACH_STATUS_OKAY(ASPEED_WDT_COMMON_INIT)
 			DT_INST_PROP_BY_IDX(n, reset_mask, 4),	\
 		},	\
 	};	\
-	DEVICE_DT_INST_DEFINE(n, aspeed_wdt2700_init_##n,	\
+	DEVICE_DT_INST_DEFINE(n, aspeed_wdt_ast2700_init_##n,	\
 			      NULL,	\
-			      &aspeed_wdt2700_data_##n,	\
-			      &aspeed_wdt2700_config_##n,	\
+			      &aspeed_wdt_ast2700_data_##n,	\
+			      &aspeed_wdt_ast2700_config_##n,	\
 			      POST_KERNEL, 80, &wdt_aspeed_driver_api);
 
 DT_INST_FOREACH_STATUS_OKAY(ASPEED_WDT_AST2700_DT_DEFINE)
