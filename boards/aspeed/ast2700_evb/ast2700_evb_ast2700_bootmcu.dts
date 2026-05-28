@@ -23,6 +23,10 @@
 		emmc = &emmc;
 	};
 
+	sram: memory@14b80000 {
+		reg = <0x14b80000 0x2d400>;
+	};
+
 	ca35_s: ca35-s {
 		compatible = "aspeed,ast27xx-mpu";
 		#mpu-cells = <0>;

@@ -21,6 +21,10 @@
 		systick = &systick;
 		emmc = &emmc;
 	};
+
+	sram: memory@14b80000 {
+		reg = <0x14b80000 0x2d400>;
+	};
 };
 
 &uart12 {

@@ -12,15 +12,15 @@
 		zephyr,console = &ram_console;
 	};
 
-	ram_console: memory@14b8a000 {
+	ram_console: memory@14bac400 {
 		compatible = "zephyr,memory-region";
-		reg = <0x14b8a000 0x1000>;
+		reg = <0x14bac400 0x1000>;
 		zephyr,memory-region = "RAM_CONSOLE";
 	};
+};
 
-	sram: memory@14ba8000 {
-		reg = <0x14ba8000 0x17800>;
-	};
+&sram {
+	reg = <0x14b80a00 0x2ba00>;
 };
 
 &fmc {
@@ -43,4 +43,3 @@
 	spi-max-buswidth = <4>;
 	spi-max-frequency = <50000000>;
 };
-

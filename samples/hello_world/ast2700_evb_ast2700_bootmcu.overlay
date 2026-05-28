@@ -17,8 +17,4 @@
 		reg = <0x14b8a000 0x1000>;
 		zephyr,memory-region = "RAM_CONSOLE";
 	};
-
-	sram: memory@14ba8000 {
-		reg = <0x14ba8000 0x17800>;
-	};
 };
