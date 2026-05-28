@@ -230,4 +230,15 @@
 #define AC25    213
 #define AB25    214
 #define AC24    215
+
+/*
+ * Virtual ball identifiers for controller-wide mode/function bits that are
+ * not tied to a single physical ball (e.g. USB Port C/D mode select, SGMII
+ * enable, PCIe root-complex PERST). Driver uses pin->ball for logging only,
+ * so any unique index outside the physical-ball range is acceptable.
+ */
+#define PORTC_MODE      216
+#define PORTD_MODE      217
+#define SGMII0          218
+#define PCIERC2_PERST   219
 #endif /* ZEPHYR_INCLUDE_DT_BINDINGS_PINCTRL_AST27XX_SOC1_H_ */

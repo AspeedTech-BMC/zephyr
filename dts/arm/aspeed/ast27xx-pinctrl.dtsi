@@ -6,6 +6,569 @@
 #include <zephyr/dt-bindings/pinctrl/ast27xx-soc1-pinctrl.h>
 
 &pinctrl1 {
+	/* SCU3B0: USB Controller Register (PORTC/PORTD mode) */
+	/omit-if-no-ref/ pin_usb2cud: pin_usb2cud {
+		ball = <PORTC_MODE>;
+		sig_descs = <SIG_DESC(0x3b0, 0, 0)>;
+	};
+	/omit-if-no-ref/ pin_usb2cd: pin_usb2cd {
+		ball = <PORTC_MODE>;
+		sig_descs = <SIG_DESC(0x3b0, 0, 1)>;
+	};
+	/omit-if-no-ref/ pin_usb2ch: pin_usb2ch {
+		ball = <PORTC_MODE>;
+		sig_descs = <SIG_DESC(0x3b0, 0, 2)>;
+	};
+	/omit-if-no-ref/ pin_usb2cu: pin_usb2cu {
+		ball = <PORTC_MODE>;
+		sig_descs = <SIG_DESC(0x3b0, 0, 3)>;
+	};
+	/omit-if-no-ref/ pin_usb2dd: pin_usb2dd {
+		ball = <PORTD_MODE>;
+		sig_descs = <SIG_DESC(0x3b0, 2, 1)>;
+	};
+	/omit-if-no-ref/ pin_usb2dh: pin_usb2dh {
+		ball = <PORTD_MODE>;
+		sig_descs = <SIG_DESC(0x3b0, 2, 2)>;
+	};
+
+	/* SCU400: Multi-function Pin Control #1 */
+	/omit-if-no-ref/ pin_espi1_0: pin_espi1_0 {
+		ball = <C16>;
+		sig_descs = <SIG_DESC(0x400, 0, 1)>;
+	};
+	/omit-if-no-ref/ pin_lpc1_0: pin_lpc1_0 {
+		ball = <C16>;
+		sig_descs = <SIG_DESC(0x400, 0, 2)>;
+	};
+	/omit-if-no-ref/ pin_sd_0: pin_sd_0 {
+		ball = <C16>;
+		sig_descs = <SIG_DESC(0x400, 0, 3)>;
+	};
+	/omit-if-no-ref/ pin_di2c0scl: pin_di2c0scl {
+		ball = <C16>;
+		sig_descs = <SIG_DESC(0x400, 0, 4)>;
+	};
+	/omit-if-no-ref/ pin_vpi_0: pin_vpi_0 {
+		ball = <C16>;
+		sig_descs = <SIG_DESC(0x400, 0, 5)>;
+	};
+	/omit-if-no-ref/ pin_espi1_1: pin_espi1_1 {
+		ball = <C14>;
+		sig_descs = <SIG_DESC(0x400, 4, 1)>;
+	};
+	/omit-if-no-ref/ pin_lpc1_1: pin_lpc1_1 {
+		ball = <C14>;
+		sig_descs = <SIG_DESC(0x400, 4, 2)>;
+	};
+	/omit-if-no-ref/ pin_sd_1: pin_sd_1 {
+		ball = <C14>;
+		sig_descs = <SIG_DESC(0x400, 4, 3)>;
+	};
+	/omit-if-no-ref/ pin_di2c1scl: pin_di2c1scl {
+		ball = <C14>;
+		sig_descs = <SIG_DESC(0x400, 4, 4)>;
+	};
+	/omit-if-no-ref/ pin_vpi_1: pin_vpi_1 {
+		ball = <C14>;
+		sig_descs = <SIG_DESC(0x400, 4, 5)>;
+	};
+	/omit-if-no-ref/ pin_espi1_2: pin_espi1_2 {
+		ball = <C11>;
+		sig_descs = <SIG_DESC(0x400, 8, 1)>;
+	};
+	/omit-if-no-ref/ pin_lpc1_2: pin_lpc1_2 {
+		ball = <C11>;
+		sig_descs = <SIG_DESC(0x400, 8, 2)>;
+	};
+	/omit-if-no-ref/ pin_sd_2: pin_sd_2 {
+		ball = <C11>;
+		sig_descs = <SIG_DESC(0x400, 8, 3)>;
+	};
+	/omit-if-no-ref/ pin_di2c3scl: pin_di2c3scl {
+		ball = <C11>;
+		sig_descs = <SIG_DESC(0x400, 8, 4)>;
+	};
+	/omit-if-no-ref/ pin_vpi_2: pin_vpi_2 {
+		ball = <C11>;
+		sig_descs = <SIG_DESC(0x400, 8, 5)>;
+	};
+	/omit-if-no-ref/ pin_espi1_3: pin_espi1_3 {
+		ball = <D9>;
+		sig_descs = <SIG_DESC(0x400, 12, 1)>;
+	};
+	/omit-if-no-ref/ pin_lpc1_3: pin_lpc1_3 {
+		ball = <D9>;
+		sig_descs = <SIG_DESC(0x400, 12, 2)>;
+	};
+	/omit-if-no-ref/ pin_sd_3: pin_sd_3 {
+		ball = <D9>;
+		sig_descs = <SIG_DESC(0x400, 12, 3)>;
+	};
+	/omit-if-no-ref/ pin_di2c0sda: pin_di2c0sda {
+		ball = <D9>;
+		sig_descs = <SIG_DESC(0x400, 12, 4)>;
+	};
+	/omit-if-no-ref/ pin_vpi_3: pin_vpi_3 {
+		ball = <D9>;
+		sig_descs = <SIG_DESC(0x400, 12, 5)>;
+	};
+	/omit-if-no-ref/ pin_espi1_4: pin_espi1_4 {
+		ball = <F14>;
+		sig_descs = <SIG_DESC(0x400, 16, 1)>;
+	};
+	/omit-if-no-ref/ pin_lpc1_4: pin_lpc1_4 {
+		ball = <F14>;
+		sig_descs = <SIG_DESC(0x400, 16, 2)>;
+	};
+	/omit-if-no-ref/ pin_sd_4: pin_sd_4 {
+		ball = <F14>;
+		sig_descs = <SIG_DESC(0x400, 16, 3)>;
+	};
+	/omit-if-no-ref/ pin_di2c1sda: pin_di2c1sda {
+		ball = <F14>;
+		sig_descs = <SIG_DESC(0x400, 16, 4)>;
+	};
+	/omit-if-no-ref/ pin_vpi_4: pin_vpi_4 {
+		ball = <F14>;
+		sig_descs = <SIG_DESC(0x400, 16, 5)>;
+	};
+	/omit-if-no-ref/ pin_espi1_5: pin_espi1_5 {
+		ball = <D10>;
+		sig_descs = <SIG_DESC(0x400, 20, 1)>;
+	};
+	/omit-if-no-ref/ pin_lpc1_5: pin_lpc1_5 {
+		ball = <D10>;
+		sig_descs = <SIG_DESC(0x400, 20, 2)>;
+	};
+	/omit-if-no-ref/ pin_sd_5: pin_sd_5 {
+		ball = <D10>;
+		sig_descs = <SIG_DESC(0x400, 20, 3)>;
+	};
+	/omit-if-no-ref/ pin_di2c2scl: pin_di2c2scl {
+		ball = <D10>;
+		sig_descs = <SIG_DESC(0x400, 20, 4)>;
+	};
+	/omit-if-no-ref/ pin_vpi_5: pin_vpi_5 {
+		ball = <D10>;
+		sig_descs = <SIG_DESC(0x400, 20, 5)>;
+	};
+	/omit-if-no-ref/ pin_espi1_6: pin_espi1_6 {
+		ball = <C12>;
+		sig_descs = <SIG_DESC(0x400, 24, 1)>;
+	};
+	/omit-if-no-ref/ pin_lpc1_6: pin_lpc1_6 {
+		ball = <C12>;
+		sig_descs = <SIG_DESC(0x400, 24, 2)>;
+	};
+	/omit-if-no-ref/ pin_sd_6: pin_sd_6 {
+		ball = <C12>;
+		sig_descs = <SIG_DESC(0x400, 24, 3)>;
+	};
+	/omit-if-no-ref/ pin_di2c2sda: pin_di2c2sda {
+		ball = <C12>;
+		sig_descs = <SIG_DESC(0x400, 24, 4)>;
+	};
+	/omit-if-no-ref/ pin_espi1_7: pin_espi1_7 {
+		ball = <C13>;
+		sig_descs = <SIG_DESC(0x400, 28, 1)>;
+	};
+	/omit-if-no-ref/ pin_lpc1_7: pin_lpc1_7 {
+		ball = <C13>;
+		sig_descs = <SIG_DESC(0x400, 28, 2)>;
+	};
+	/omit-if-no-ref/ pin_sd_7: pin_sd_7 {
+		ball = <C13>;
+		sig_descs = <SIG_DESC(0x400, 28, 3)>;
+	};
+	/omit-if-no-ref/ pin_di2c3sda: pin_di2c3sda {
+		ball = <C13>;
+		sig_descs = <SIG_DESC(0x400, 28, 4)>;
+	};
+
+	/* SCU404: Multi-function Pin Control #2 */
+	/omit-if-no-ref/ pin_tach0: pin_tach0 {
+		ball = <AC26>;
+		sig_descs = <SIG_DESC(0x404, 0, 1)>;
+	};
+	/omit-if-no-ref/ pin_thru0_0: pin_thru0_0 {
+		ball = <AC26>;
+		sig_descs = <SIG_DESC(0x404, 0, 2)>;
+	};
+	/omit-if-no-ref/ pin_vpi_8: pin_vpi_8 {
+		ball = <AC26>;
+		sig_descs = <SIG_DESC(0x404, 0, 3)>;
+	};
+	/omit-if-no-ref/ pin_tach1: pin_tach1 {
+		ball = <AA25>;
+		sig_descs = <SIG_DESC(0x404, 4, 1)>;
+	};
+	/omit-if-no-ref/ pin_thru0_1: pin_thru0_1 {
+		ball = <AA25>;
+		sig_descs = <SIG_DESC(0x404, 4, 2)>;
+	};
+	/omit-if-no-ref/ pin_vpi_9: pin_vpi_9 {
+		ball = <AA25>;
+		sig_descs = <SIG_DESC(0x404, 4, 3)>;
+	};
+	/omit-if-no-ref/ pin_tach2: pin_tach2 {
+		ball = <AB23>;
+		sig_descs = <SIG_DESC(0x404, 8, 1)>;
+	};
+	/omit-if-no-ref/ pin_thru1_0: pin_thru1_0 {
+		ball = <AB23>;
+		sig_descs = <SIG_DESC(0x404, 8, 2)>;
+	};
+	/omit-if-no-ref/ pin_vpi_10: pin_vpi_10 {
+		ball = <AB23>;
+		sig_descs = <SIG_DESC(0x404, 8, 3)>;
+	};
+	/omit-if-no-ref/ pin_tach3: pin_tach3 {
+		ball = <U22>;
+		sig_descs = <SIG_DESC(0x404, 12, 1)>;
+	};
+	/omit-if-no-ref/ pin_thru1_1: pin_thru1_1 {
+		ball = <U22>;
+		sig_descs = <SIG_DESC(0x404, 12, 2)>;
+	};
+	/omit-if-no-ref/ pin_vpi_11: pin_vpi_11 {
+		ball = <U22>;
+		sig_descs = <SIG_DESC(0x404, 12, 3)>;
+	};
+	/omit-if-no-ref/ pin_tach4: pin_tach4 {
+		ball = <V21>;
+		sig_descs = <SIG_DESC(0x404, 16, 1)>;
+	};
+	/omit-if-no-ref/ pin_vpi_12: pin_vpi_12 {
+		ball = <V21>;
+		sig_descs = <SIG_DESC(0x404, 16, 3)>;
+	};
+	/omit-if-no-ref/ pin_ncts5: pin_ncts5 {
+		ball = <V21>;
+		sig_descs = <SIG_DESC(0x404, 16, 4)>;
+	};
+	/omit-if-no-ref/ pin_tach5: pin_tach5 {
+		ball = <N26>;
+		sig_descs = <SIG_DESC(0x404, 20, 1)>;
+	};
+	/omit-if-no-ref/ pin_vpi_13: pin_vpi_13 {
+		ball = <N26>;
+		sig_descs = <SIG_DESC(0x404, 20, 3)>;
+	};
+	/omit-if-no-ref/ pin_ndcd5: pin_ndcd5 {
+		ball = <N26>;
+		sig_descs = <SIG_DESC(0x404, 20, 4)>;
+	};
+	/omit-if-no-ref/ pin_tach6: pin_tach6 {
+		ball = <P25>;
+		sig_descs = <SIG_DESC(0x404, 24, 1)>;
+	};
+	/omit-if-no-ref/ pin_vpi_14: pin_vpi_14 {
+		ball = <P25>;
+		sig_descs = <SIG_DESC(0x404, 24, 3)>;
+	};
+	/omit-if-no-ref/ pin_ndsr5: pin_ndsr5 {
+		ball = <P25>;
+		sig_descs = <SIG_DESC(0x404, 24, 4)>;
+	};
+	/omit-if-no-ref/ pin_tach7: pin_tach7 {
+		ball = <N25>;
+		sig_descs = <SIG_DESC(0x404, 28, 1)>;
+	};
+	/omit-if-no-ref/ pin_vpi_15: pin_vpi_15 {
+		ball = <N25>;
+		sig_descs = <SIG_DESC(0x404, 28, 3)>;
+	};
+	/omit-if-no-ref/ pin_nri5: pin_nri5 {
+		ball = <N25>;
+		sig_descs = <SIG_DESC(0x404, 28, 4)>;
+	};
+
+	/* SCU408: Multi-function Pin Control #3 */
+	/omit-if-no-ref/ pin_tach8: pin_tach8 {
+		ball = <V23>;
+		sig_descs = <SIG_DESC(0x408, 0, 1)>;
+	};
+	/omit-if-no-ref/ pin_vpi_16: pin_vpi_16 {
+		ball = <V23>;
+		sig_descs = <SIG_DESC(0x408, 0, 3)>;
+	};
+	/omit-if-no-ref/ pin_ndtr5: pin_ndtr5 {
+		ball = <V23>;
+		sig_descs = <SIG_DESC(0x408, 0, 4)>;
+	};
+	/omit-if-no-ref/ pin_tach9: pin_tach9 {
+		ball = <W22>;
+		sig_descs = <SIG_DESC(0x408, 4, 1)>;
+	};
+	/omit-if-no-ref/ pin_vpi_17: pin_vpi_17 {
+		ball = <W22>;
+		sig_descs = <SIG_DESC(0x408, 4, 3)>;
+	};
+	/omit-if-no-ref/ pin_nrts5: pin_nrts5 {
+		ball = <W22>;
+		sig_descs = <SIG_DESC(0x408, 4, 4)>;
+	};
+	/omit-if-no-ref/ pin_tach10: pin_tach10 {
+		ball = <AB26>;
+		sig_descs = <SIG_DESC(0x408, 8, 1)>;
+	};
+	/omit-if-no-ref/ pin_salt12: pin_salt12 {
+		ball = <AB26>;
+		sig_descs = <SIG_DESC(0x408, 8, 2)>;
+	};
+	/omit-if-no-ref/ pin_vpi_18: pin_vpi_18 {
+		ball = <AB26>;
+		sig_descs = <SIG_DESC(0x408, 8, 3)>;
+	};
+	/omit-if-no-ref/ pin_ncts6: pin_ncts6 {
+		ball = <AB26>;
+		sig_descs = <SIG_DESC(0x408, 8, 4)>;
+	};
+	/omit-if-no-ref/ pin_tach11: pin_tach11 {
+		ball = <AD26>;
+		sig_descs = <SIG_DESC(0x408, 12, 1)>;
+	};
+	/omit-if-no-ref/ pin_salt13: pin_salt13 {
+		ball = <AD26>;
+		sig_descs = <SIG_DESC(0x408, 12, 2)>;
+	};
+	/omit-if-no-ref/ pin_vpi_19: pin_vpi_19 {
+		ball = <AD26>;
+		sig_descs = <SIG_DESC(0x408, 12, 3)>;
+	};
+	/omit-if-no-ref/ pin_ndcd6: pin_ndcd6 {
+		ball = <AD26>;
+		sig_descs = <SIG_DESC(0x408, 12, 4)>;
+	};
+	/omit-if-no-ref/ pin_tach12: pin_tach12 {
+		ball = <P26>;
+		sig_descs = <SIG_DESC(0x408, 16, 1)>;
+	};
+	/omit-if-no-ref/ pin_salt14: pin_salt14 {
+		ball = <P26>;
+		sig_descs = <SIG_DESC(0x408, 16, 2)>;
+	};
+	/omit-if-no-ref/ pin_vpi_20: pin_vpi_20 {
+		ball = <P26>;
+		sig_descs = <SIG_DESC(0x408, 16, 3)>;
+	};
+	/omit-if-no-ref/ pin_ndsr6: pin_ndsr6 {
+		ball = <P26>;
+		sig_descs = <SIG_DESC(0x408, 16, 4)>;
+	};
+	/omit-if-no-ref/ pin_tach13: pin_tach13 {
+		ball = <AE26>;
+		sig_descs = <SIG_DESC(0x408, 20, 1)>;
+	};
+	/omit-if-no-ref/ pin_salt15: pin_salt15 {
+		ball = <AE26>;
+		sig_descs = <SIG_DESC(0x408, 20, 2)>;
+	};
+	/omit-if-no-ref/ pin_vpi_21: pin_vpi_21 {
+		ball = <AE26>;
+		sig_descs = <SIG_DESC(0x408, 20, 3)>;
+	};
+	/omit-if-no-ref/ pin_nri6: pin_nri6 {
+		ball = <AE26>;
+		sig_descs = <SIG_DESC(0x408, 20, 4)>;
+	};
+	/omit-if-no-ref/ pin_tach14: pin_tach14 {
+		ball = <AF26>;
+		sig_descs = <SIG_DESC(0x408, 24, 1)>;
+	};
+	/omit-if-no-ref/ pin_lpc0_0: pin_lpc0_0 {
+		ball = <AF26>;
+		sig_descs = <SIG_DESC(0x408, 24, 2)>;
+	};
+	/omit-if-no-ref/ pin_vpi_22: pin_vpi_22 {
+		ball = <AF26>;
+		sig_descs = <SIG_DESC(0x408, 24, 3)>;
+	};
+	/omit-if-no-ref/ pin_ndtr6: pin_ndtr6 {
+		ball = <AF26>;
+		sig_descs = <SIG_DESC(0x408, 24, 4)>;
+	};
+	/omit-if-no-ref/ pin_tach15: pin_tach15 {
+		ball = <AF25>;
+		sig_descs = <SIG_DESC(0x408, 28, 1)>;
+	};
+	/omit-if-no-ref/ pin_lpc0_1: pin_lpc0_1 {
+		ball = <AF25>;
+		sig_descs = <SIG_DESC(0x408, 28, 2)>;
+	};
+	/omit-if-no-ref/ pin_vpi_23: pin_vpi_23 {
+		ball = <AF25>;
+		sig_descs = <SIG_DESC(0x408, 28, 3)>;
+	};
+	/omit-if-no-ref/ pin_nrts6: pin_nrts6 {
+		ball = <AF25>;
+		sig_descs = <SIG_DESC(0x408, 28, 4)>;
+	};
+
+	/* SCU40C: Multi-function Pin Control #4 */
+	/omit-if-no-ref/ pin_pwm0: pin_pwm0 {
+		ball = <AE25>;
+		sig_descs = <SIG_DESC(0x40c, 0, 1)>;
+	};
+	/omit-if-no-ref/ pin_siopbon0: pin_siopbon0 {
+		ball = <AE25>;
+		sig_descs = <SIG_DESC(0x40c, 0, 2)>;
+	};
+	/omit-if-no-ref/ pin_vpi_24: pin_vpi_24 {
+		ball = <AE25>;
+		sig_descs = <SIG_DESC(0x40c, 0, 3)>;
+	};
+	/omit-if-no-ref/ pin_spim0_0: pin_spim0_0 {
+		ball = <AE25>;
+		sig_descs = <SIG_DESC(0x40c, 0, 4)>;
+	};
+	/omit-if-no-ref/ pin_pwm1: pin_pwm1 {
+		ball = <AD25>;
+		sig_descs = <SIG_DESC(0x40c, 4, 1)>;
+	};
+	/omit-if-no-ref/ pin_siopbin0: pin_siopbin0 {
+		ball = <AD25>;
+		sig_descs = <SIG_DESC(0x40c, 4, 2)>;
+	};
+	/omit-if-no-ref/ pin_vpi_25: pin_vpi_25 {
+		ball = <AD25>;
+		sig_descs = <SIG_DESC(0x40c, 4, 3)>;
+	};
+	/omit-if-no-ref/ pin_spim0_1: pin_spim0_1 {
+		ball = <AD25>;
+		sig_descs = <SIG_DESC(0x40c, 4, 4)>;
+	};
+	/omit-if-no-ref/ pin_pwm2: pin_pwm2 {
+		ball = <AF23>;
+		sig_descs = <SIG_DESC(0x40c, 8, 1)>;
+	};
+	/omit-if-no-ref/ pin_sioscin0: pin_sioscin0 {
+		ball = <AF23>;
+		sig_descs = <SIG_DESC(0x40c, 8, 2)>;
+	};
+	/omit-if-no-ref/ pin_vpi_26: pin_vpi_26 {
+		ball = <AF23>;
+		sig_descs = <SIG_DESC(0x40c, 8, 3)>;
+	};
+	/omit-if-no-ref/ pin_spim0_2: pin_spim0_2 {
+		ball = <AF23>;
+		sig_descs = <SIG_DESC(0x40c, 8, 4)>;
+	};
+	/omit-if-no-ref/ pin_pwm3: pin_pwm3 {
+		ball = <AF20>;
+		sig_descs = <SIG_DESC(0x40c, 12, 1)>;
+	};
+	/omit-if-no-ref/ pin_sios3n0: pin_sios3n0 {
+		ball = <AF20>;
+		sig_descs = <SIG_DESC(0x40c, 12, 2)>;
+	};
+	/omit-if-no-ref/ pin_vpi_27: pin_vpi_27 {
+		ball = <AF20>;
+		sig_descs = <SIG_DESC(0x40c, 12, 3)>;
+	};
+	/omit-if-no-ref/ pin_spim0_3: pin_spim0_3 {
+		ball = <AF20>;
+		sig_descs = <SIG_DESC(0x40c, 12, 4)>;
+	};
+	/omit-if-no-ref/ pin_pwm4: pin_pwm4 {
+		ball = <AF21>;
+		sig_descs = <SIG_DESC(0x40c, 16, 1)>;
+	};
+	/omit-if-no-ref/ pin_sios5n0: pin_sios5n0 {
+		ball = <AF21>;
+		sig_descs = <SIG_DESC(0x40c, 16, 2)>;
+	};
+	/omit-if-no-ref/ pin_vpi_28: pin_vpi_28 {
+		ball = <AF21>;
+		sig_descs = <SIG_DESC(0x40c, 16, 3)>;
+	};
+	/omit-if-no-ref/ pin_spim0_4: pin_spim0_4 {
+		ball = <AF21>;
+		sig_descs = <SIG_DESC(0x40c, 16, 4)>;
+	};
+	/omit-if-no-ref/ pin_pwm5: pin_pwm5 {
+		ball = <AE21>;
+		sig_descs = <SIG_DESC(0x40c, 20, 1)>;
+	};
+	/omit-if-no-ref/ pin_siopwreqn0: pin_siopwreqn0 {
+		ball = <AE21>;
+		sig_descs = <SIG_DESC(0x40c, 20, 2)>;
+	};
+	/omit-if-no-ref/ pin_vpi_29: pin_vpi_29 {
+		ball = <AE21>;
+		sig_descs = <SIG_DESC(0x40c, 20, 3)>;
+	};
+	/omit-if-no-ref/ pin_spim0_5: pin_spim0_5 {
+		ball = <AE21>;
+		sig_descs = <SIG_DESC(0x40c, 20, 4)>;
+	};
+	/omit-if-no-ref/ pin_pwm6: pin_pwm6 {
+		ball = <AE23>;
+		sig_descs = <SIG_DESC(0x40c, 24, 1)>;
+	};
+	/omit-if-no-ref/ pin_sioonctrln0: pin_sioonctrln0 {
+		ball = <AE23>;
+		sig_descs = <SIG_DESC(0x40c, 24, 2)>;
+	};
+	/omit-if-no-ref/ pin_spim0_6: pin_spim0_6 {
+		ball = <AE23>;
+		sig_descs = <SIG_DESC(0x40c, 24, 4)>;
+	};
+	/omit-if-no-ref/ pin_pwm7: pin_pwm7 {
+		ball = <AD22>;
+		sig_descs = <SIG_DESC(0x40c, 28, 1)>;
+	};
+
+	/* SCU410: Multi-function Pin Control #5 */
+	/omit-if-no-ref/ pin_ncts0: pin_ncts0 {
+		ball = <AF17>;
+		sig_descs = <SIG_DESC(0x410, 0, 1)>;
+	};
+	/omit-if-no-ref/ pin_siopbon1: pin_siopbon1 {
+		ball = <AF17>;
+		sig_descs = <SIG_DESC(0x410, 0, 2)>;
+	};
+	/omit-if-no-ref/ pin_ndcd0: pin_ndcd0 {
+		ball = <AA16>;
+		sig_descs = <SIG_DESC(0x410, 4, 1)>;
+	};
+	/omit-if-no-ref/ pin_siopbin1: pin_siopbin1 {
+		ball = <AA16>;
+		sig_descs = <SIG_DESC(0x410, 4, 2)>;
+	};
+	/omit-if-no-ref/ pin_ndsr0: pin_ndsr0 {
+		ball = <Y16>;
+		sig_descs = <SIG_DESC(0x410, 8, 1)>;
+	};
+	/omit-if-no-ref/ pin_sioscin1: pin_sioscin1 {
+		ball = <Y16>;
+		sig_descs = <SIG_DESC(0x410, 8, 2)>;
+	};
+	/omit-if-no-ref/ pin_nri0: pin_nri0 {
+		ball = <V17>;
+		sig_descs = <SIG_DESC(0x410, 12, 1)>;
+	};
+	/omit-if-no-ref/ pin_sios3n1: pin_sios3n1 {
+		ball = <V17>;
+		sig_descs = <SIG_DESC(0x410, 12, 2)>;
+	};
+	/omit-if-no-ref/ pin_ndtr0: pin_ndtr0 {
+		ball = <J13>;
+		sig_descs = <SIG_DESC(0x410, 16, 1)>;
+	};
+	/omit-if-no-ref/ pin_sios5n1: pin_sios5n1 {
+		ball = <J13>;
+		sig_descs = <SIG_DESC(0x410, 16, 2)>;
+	};
+	/omit-if-no-ref/ pin_nrts0: pin_nrts0 {
+		ball = <AB16>;
+		sig_descs = <SIG_DESC(0x410, 20, 1)>;
+	};
+	/omit-if-no-ref/ pin_siopwreqn1: pin_siopwreqn1 {
+		ball = <AB16>;
+		sig_descs = <SIG_DESC(0x410, 20, 2)>;
+	};
 	/omit-if-no-ref/ pin_txd0: pin_txd0 {
 		ball = <AC16>;
 		sig_descs = <SIG_DESC(0x410, 24, 1)>;
@@ -15,31 +578,551 @@
 		sig_descs = <SIG_DESC(0x410, 28, 1)>;
 	};
 
+	/* SCU414: Multi-function Pin Control #6 */
+	/omit-if-no-ref/ pin_ncts1: pin_ncts1 {
+		ball = <AA15>;
+		sig_descs = <SIG_DESC(0x414, 0, 1)>;
+	};
+	/omit-if-no-ref/ pin_sioonctrln1: pin_sioonctrln1 {
+		ball = <AA15>;
+		sig_descs = <SIG_DESC(0x414, 0, 2)>;
+	};
+	/omit-if-no-ref/ pin_ndcd1: pin_ndcd1 {
+		ball = <AB15>;
+		sig_descs = <SIG_DESC(0x414, 4, 1)>;
+	};
+	/omit-if-no-ref/ pin_siopwrgd1: pin_siopwrgd1 {
+		ball = <AB15>;
+		sig_descs = <SIG_DESC(0x414, 4, 2)>;
+	};
+	/omit-if-no-ref/ pin_ndsr1: pin_ndsr1 {
+		ball = <AC15>;
+		sig_descs = <SIG_DESC(0x414, 8, 1)>;
+	};
+	/omit-if-no-ref/ pin_salt2: pin_salt2 {
+		ball = <AC15>;
+		sig_descs = <SIG_DESC(0x414, 8, 2)>;
+	};
+	/omit-if-no-ref/ pin_nri1: pin_nri1 {
+		ball = <AD15>;
+		sig_descs = <SIG_DESC(0x414, 12, 1)>;
+	};
+	/omit-if-no-ref/ pin_salt3: pin_salt3 {
+		ball = <AD15>;
+		sig_descs = <SIG_DESC(0x414, 12, 2)>;
+	};
+	/omit-if-no-ref/ pin_ndtr1: pin_ndtr1 {
+		ball = <Y15>;
+		sig_descs = <SIG_DESC(0x414, 16, 1)>;
+	};
+	/omit-if-no-ref/ pin_nrts1: pin_nrts1 {
+		ball = <AA14>;
+		sig_descs = <SIG_DESC(0x414, 20, 1)>;
+	};
+	/omit-if-no-ref/ pin_txd1: pin_txd1 {
+		ball = <W16>;
+		sig_descs = <SIG_DESC(0x414, 24, 1)>;
+	};
+	/omit-if-no-ref/ pin_rxd1: pin_rxd1 {
+		ball = <V16>;
+		sig_descs = <SIG_DESC(0x414, 28, 1)>;
+	};
+
+	/* SCU418: Multi-function Pin Control #7 */
+	/omit-if-no-ref/ pin_txd2: pin_txd2 {
+		ball = <AB18>;
+		sig_descs = <SIG_DESC(0x418, 0, 1)>;
+	};
+	/omit-if-no-ref/ pin_rxd2: pin_rxd2 {
+		ball = <AC18>;
+		sig_descs = <SIG_DESC(0x418, 4, 1)>;
+	};
+	/omit-if-no-ref/ pin_scl12: pin_scl12 {
+		ball = <AC18>;
+		sig_descs = <SIG_DESC(0x418, 4, 4)>;
+	};
+	/omit-if-no-ref/ pin_txd3: pin_txd3 {
+		ball = <K13>;
+		sig_descs = <SIG_DESC(0x418, 8, 1)>;
+	};
+	/omit-if-no-ref/ pin_wdtrst0n: pin_wdtrst0n {
+		ball = <K13>;
+		sig_descs = <SIG_DESC(0x418, 8, 2)>;
+	};
+	/omit-if-no-ref/ pin_pwm8: pin_pwm8 {
+		ball = <K13>;
+		sig_descs = <SIG_DESC(0x418, 8, 3)>;
+	};
+	/omit-if-no-ref/ pin_spim1_0: pin_spim1_0 {
+		ball = <K13>;
+		sig_descs = <SIG_DESC(0x418, 8, 5)>;
+	};
+	/omit-if-no-ref/ pin_rxd3: pin_rxd3 {
+		ball = <AA17>;
+		sig_descs = <SIG_DESC(0x418, 12, 1)>;
+	};
+	/omit-if-no-ref/ pin_wdtrst1n: pin_wdtrst1n {
+		ball = <AA17>;
+		sig_descs = <SIG_DESC(0x418, 12, 2)>;
+	};
+	/omit-if-no-ref/ pin_pwm9: pin_pwm9 {
+		ball = <AA17>;
+		sig_descs = <SIG_DESC(0x418, 12, 3)>;
+	};
+	/omit-if-no-ref/ pin_sda12: pin_sda12 {
+		ball = <AA17>;
+		sig_descs = <SIG_DESC(0x418, 12, 4)>;
+	};
+	/omit-if-no-ref/ pin_spim1_1: pin_spim1_1 {
+		ball = <AA17>;
+		sig_descs = <SIG_DESC(0x418, 12, 5)>;
+	};
+	/omit-if-no-ref/ pin_txd5: pin_txd5 {
+		ball = <AB17>;
+		sig_descs = <SIG_DESC(0x418, 16, 1)>;
+	};
+	/omit-if-no-ref/ pin_wdtrst2n: pin_wdtrst2n {
+		ball = <AB17>;
+		sig_descs = <SIG_DESC(0x418, 16, 2)>;
+	};
+	/omit-if-no-ref/ pin_pwm10: pin_pwm10 {
+		ball = <AB17>;
+		sig_descs = <SIG_DESC(0x418, 16, 3)>;
+	};
+	/omit-if-no-ref/ pin_scl13: pin_scl13 {
+		ball = <AB17>;
+		sig_descs = <SIG_DESC(0x418, 16, 4)>;
+	};
+	/omit-if-no-ref/ pin_spim1_2: pin_spim1_2 {
+		ball = <AB17>;
+		sig_descs = <SIG_DESC(0x418, 16, 5)>;
+	};
+	/omit-if-no-ref/ pin_rxd5: pin_rxd5 {
+		ball = <AD16>;
+		sig_descs = <SIG_DESC(0x418, 20, 1)>;
+	};
+	/omit-if-no-ref/ pin_wdtrst3n: pin_wdtrst3n {
+		ball = <AD16>;
+		sig_descs = <SIG_DESC(0x418, 20, 2)>;
+	};
+	/omit-if-no-ref/ pin_pwm11: pin_pwm11 {
+		ball = <AD16>;
+		sig_descs = <SIG_DESC(0x418, 20, 3)>;
+	};
+	/omit-if-no-ref/ pin_sda13: pin_sda13 {
+		ball = <AD16>;
+		sig_descs = <SIG_DESC(0x418, 20, 4)>;
+	};
+	/omit-if-no-ref/ pin_spim1_3: pin_spim1_3 {
+		ball = <AD16>;
+		sig_descs = <SIG_DESC(0x418, 20, 5)>;
+	};
 	/omit-if-no-ref/ pin_txd6: pin_txd6 {
 		ball = <AC17>;
 		sig_descs = <SIG_DESC(0x418, 24, 1)>;
+	};
+	/omit-if-no-ref/ pin_salt0: pin_salt0 {
+		ball = <AC17>;
+		sig_descs = <SIG_DESC(0x418, 24, 2)>;
+	};
+	/omit-if-no-ref/ pin_pwm12: pin_pwm12 {
+		ball = <AC17>;
+		sig_descs = <SIG_DESC(0x418, 24, 3)>;
+	};
+	/omit-if-no-ref/ pin_scl14: pin_scl14 {
+		ball = <AC17>;
+		sig_descs = <SIG_DESC(0x418, 24, 4)>;
+	};
+	/omit-if-no-ref/ pin_spim1_4: pin_spim1_4 {
+		ball = <AC17>;
+		sig_descs = <SIG_DESC(0x418, 24, 5)>;
 	};
 	/omit-if-no-ref/ pin_rxd6: pin_rxd6 {
 		ball = <AD17>;
 		sig_descs = <SIG_DESC(0x418, 28, 1)>;
 	};
+	/omit-if-no-ref/ pin_salt1: pin_salt1 {
+		ball = <AD17>;
+		sig_descs = <SIG_DESC(0x418, 28, 2)>;
+	};
+	/omit-if-no-ref/ pin_pwm13: pin_pwm13 {
+		ball = <AD17>;
+		sig_descs = <SIG_DESC(0x418, 28, 3)>;
+	};
+	/omit-if-no-ref/ pin_sda14: pin_sda14 {
+		ball = <AD17>;
+		sig_descs = <SIG_DESC(0x418, 28, 4)>;
+	};
+	/omit-if-no-ref/ pin_spim1_5: pin_spim1_5 {
+		ball = <AD17>;
+		sig_descs = <SIG_DESC(0x418, 28, 5)>;
+	};
 
+	/* SCU41C: Multi-function Pin Control #8 */
 	/omit-if-no-ref/ pin_txd7: pin_txd7 {
 		ball = <AE16>;
 		sig_descs = <SIG_DESC(0x41c, 0, 1)>;
+	};
+	/omit-if-no-ref/ pin_scl15: pin_scl15 {
+		ball = <AE16>;
+		sig_descs = <SIG_DESC(0x41c, 0, 2)>;
+	};
+	/omit-if-no-ref/ pin_pwm14: pin_pwm14 {
+		ball = <AE16>;
+		sig_descs = <SIG_DESC(0x41c, 0, 3)>;
+	};
+	/omit-if-no-ref/ pin_lpc1_8: pin_lpc1_8 {
+		ball = <AE16>;
+		sig_descs = <SIG_DESC(0x41c, 0, 4)>;
+	};
+	/omit-if-no-ref/ pin_spim1_6: pin_spim1_6 {
+		ball = <AE16>;
+		sig_descs = <SIG_DESC(0x41c, 0, 5)>;
 	};
 	/omit-if-no-ref/ pin_rxd7: pin_rxd7 {
 		ball = <AE17>;
 		sig_descs = <SIG_DESC(0x41c, 4, 1)>;
 	};
-	/omit-if-no-ref/ pin_fwspidq2: pin_fwspidq2 {
-		ball = <M16>;
-		sig_descs = <SIG_DESC(0x450, 24, 1)>;
+	/omit-if-no-ref/ pin_sda15: pin_sda15 {
+		ball = <AE17>;
+		sig_descs = <SIG_DESC(0x41c, 4, 2)>;
 	};
-	/omit-if-no-ref/ pin_fwspidq3: pin_fwspidq3 {
-		ball = <A15>;
-		sig_descs = <SIG_DESC(0x450, 28, 1)>;
+	/omit-if-no-ref/ pin_pwm15: pin_pwm15 {
+		ball = <AE17>;
+		sig_descs = <SIG_DESC(0x41c, 4, 3)>;
 	};
+	/omit-if-no-ref/ pin_lpc1_9: pin_lpc1_9 {
+		ball = <AE17>;
+		sig_descs = <SIG_DESC(0x41c, 4, 4)>;
+	};
+	/omit-if-no-ref/ pin_spim1_7: pin_spim1_7 {
+		ball = <AE17>;
+		sig_descs = <SIG_DESC(0x41c, 4, 5)>;
+	};
+	/omit-if-no-ref/ pin_sgpm1_2: pin_sgpm1_2 {
+		ball = <AB24>;
+		sig_descs = <SIG_DESC(0x41c, 8, 1)>;
+	};
+	/omit-if-no-ref/ pin_wdtrst7n: pin_wdtrst7n {
+		ball = <AB24>;
+		sig_descs = <SIG_DESC(0x41c, 8, 2)>;
+	};
+	/omit-if-no-ref/ pin_smon1_0: pin_smon1_0 {
+		ball = <AB24>;
+		sig_descs = <SIG_DESC(0x41c, 8, 5)>;
+	};
+	/omit-if-no-ref/ pin_sgpm1_3: pin_sgpm1_3 {
+		ball = <W26>;
+		sig_descs = <SIG_DESC(0x41c, 12, 1)>;
+	};
+	/omit-if-no-ref/ pin_smon1_1: pin_smon1_1 {
+		ball = <W26>;
+		sig_descs = <SIG_DESC(0x41c, 12, 5)>;
+	};
+
+	/* SCU420: Multi-function Pin Control #9 */
+	/omit-if-no-ref/ pin_hvi3c12scl: pin_hvi3c12scl {
+		ball = <W25>;
+		sig_descs = <SIG_DESC(0x420, 0, 1)>;
+	};
+	/omit-if-no-ref/ pin_di2c12scl: pin_di2c12scl {
+		ball = <W25>;
+		sig_descs = <SIG_DESC(0x420, 0, 2)>;
+	};
+	/omit-if-no-ref/ pin_hvi3c12sda: pin_hvi3c12sda {
+		ball = <Y23>;
+		sig_descs = <SIG_DESC(0x420, 4, 1)>;
+	};
+	/omit-if-no-ref/ pin_di2c12sda: pin_di2c12sda {
+		ball = <Y23>;
+		sig_descs = <SIG_DESC(0x420, 4, 2)>;
+	};
+	/omit-if-no-ref/ pin_hvi3c13scl: pin_hvi3c13scl {
+		ball = <Y24>;
+		sig_descs = <SIG_DESC(0x420, 8, 1)>;
+	};
+	/omit-if-no-ref/ pin_di2c13scl: pin_di2c13scl {
+		ball = <Y24>;
+		sig_descs = <SIG_DESC(0x420, 8, 2)>;
+	};
+	/omit-if-no-ref/ pin_hvi3c13sda: pin_hvi3c13sda {
+		ball = <W21>;
+		sig_descs = <SIG_DESC(0x420, 12, 1)>;
+	};
+	/omit-if-no-ref/ pin_di2c13sda: pin_di2c13sda {
+		ball = <W21>;
+		sig_descs = <SIG_DESC(0x420, 12, 2)>;
+	};
+	/omit-if-no-ref/ pin_hvi3c14scl: pin_hvi3c14scl {
+		ball = <AA23>;
+		sig_descs = <SIG_DESC(0x420, 16, 1)>;
+	};
+	/omit-if-no-ref/ pin_di2c14scl: pin_di2c14scl {
+		ball = <AA23>;
+		sig_descs = <SIG_DESC(0x420, 16, 2)>;
+	};
+	/omit-if-no-ref/ pin_hvi3c14sda: pin_hvi3c14sda {
+		ball = <AC22>;
+		sig_descs = <SIG_DESC(0x420, 20, 1)>;
+	};
+	/omit-if-no-ref/ pin_di2c14sda: pin_di2c14sda {
+		ball = <AC22>;
+		sig_descs = <SIG_DESC(0x420, 20, 2)>;
+	};
+	/omit-if-no-ref/ pin_hvi3c15scl: pin_hvi3c15scl {
+		ball = <AB22>;
+		sig_descs = <SIG_DESC(0x420, 24, 1)>;
+	};
+	/omit-if-no-ref/ pin_di2c15scl: pin_di2c15scl {
+		ball = <AB22>;
+		sig_descs = <SIG_DESC(0x420, 24, 2)>;
+	};
+	/omit-if-no-ref/ pin_hvi3c15sda: pin_hvi3c15sda {
+		ball = <Y21>;
+		sig_descs = <SIG_DESC(0x420, 28, 1)>;
+	};
+	/omit-if-no-ref/ pin_di2c15sda: pin_di2c15sda {
+		ball = <Y21>;
+		sig_descs = <SIG_DESC(0x420, 28, 2)>;
+	};
+
+	/* SCU424: Multi-function Pin Control #10 */
+	/omit-if-no-ref/ pin_i3c4scl: pin_i3c4scl {
+		ball = <AE20>;
+		sig_descs = <SIG_DESC(0x424, 0, 1)>;
+	};
+	/omit-if-no-ref/ pin_i3c4sda: pin_i3c4sda {
+		ball = <AF19>;
+		sig_descs = <SIG_DESC(0x424, 4, 1)>;
+	};
+	/omit-if-no-ref/ pin_i3c5scl: pin_i3c5scl {
+		ball = <Y22>;
+		sig_descs = <SIG_DESC(0x424, 8, 1)>;
+	};
+	/omit-if-no-ref/ pin_i3c5sda: pin_i3c5sda {
+		ball = <AA20>;
+		sig_descs = <SIG_DESC(0x424, 12, 1)>;
+	};
+	/omit-if-no-ref/ pin_i3c6scl: pin_i3c6scl {
+		ball = <AA22>;
+		sig_descs = <SIG_DESC(0x424, 16, 1)>;
+	};
+	/omit-if-no-ref/ pin_i3c6sda: pin_i3c6sda {
+		ball = <AB20>;
+		sig_descs = <SIG_DESC(0x424, 20, 1)>;
+	};
+	/omit-if-no-ref/ pin_i3c7scl: pin_i3c7scl {
+		ball = <AF18>;
+		sig_descs = <SIG_DESC(0x424, 24, 1)>;
+	};
+	/omit-if-no-ref/ pin_i3c7sda: pin_i3c7sda {
+		ball = <AE19>;
+		sig_descs = <SIG_DESC(0x424, 28, 1)>;
+	};
+
+	/* SCU428: Multi-function Pin Control #11 */
+	/omit-if-no-ref/ pin_i3c8scl: pin_i3c8scl {
+		ball = <AD20>;
+		sig_descs = <SIG_DESC(0x428, 0, 1)>;
+	};
+	/omit-if-no-ref/ pin_fsi0clk: pin_fsi0clk {
+		ball = <AD20>;
+		sig_descs = <SIG_DESC(0x428, 0, 2)>;
+	};
+	/omit-if-no-ref/ pin_i3c8sda: pin_i3c8sda {
+		ball = <AC20>;
+		sig_descs = <SIG_DESC(0x428, 4, 1)>;
+	};
+	/omit-if-no-ref/ pin_fsi0dat: pin_fsi0dat {
+		ball = <AC20>;
+		sig_descs = <SIG_DESC(0x428, 4, 2)>;
+	};
+	/omit-if-no-ref/ pin_i3c9scl: pin_i3c9scl {
+		ball = <AA21>;
+		sig_descs = <SIG_DESC(0x428, 8, 1)>;
+	};
+	/omit-if-no-ref/ pin_fsi1clk: pin_fsi1clk {
+		ball = <AA21>;
+		sig_descs = <SIG_DESC(0x428, 8, 2)>;
+	};
+	/omit-if-no-ref/ pin_i3c9sda: pin_i3c9sda {
+		ball = <AB21>;
+		sig_descs = <SIG_DESC(0x428, 12, 1)>;
+	};
+	/omit-if-no-ref/ pin_fsi1dat: pin_fsi1dat {
+		ball = <AB21>;
+		sig_descs = <SIG_DESC(0x428, 12, 2)>;
+	};
+	/omit-if-no-ref/ pin_i3c10scl: pin_i3c10scl {
+		ball = <AC19>;
+		sig_descs = <SIG_DESC(0x428, 16, 1)>;
+	};
+	/omit-if-no-ref/ pin_fsi2clk: pin_fsi2clk {
+		ball = <AC19>;
+		sig_descs = <SIG_DESC(0x428, 16, 2)>;
+	};
+	/omit-if-no-ref/ pin_i3c10sda: pin_i3c10sda {
+		ball = <AE18>;
+		sig_descs = <SIG_DESC(0x428, 20, 1)>;
+	};
+	/omit-if-no-ref/ pin_fsi2dat: pin_fsi2dat {
+		ball = <AE18>;
+		sig_descs = <SIG_DESC(0x428, 20, 2)>;
+	};
+	/omit-if-no-ref/ pin_i3c11scl: pin_i3c11scl {
+		ball = <AD19>;
+		sig_descs = <SIG_DESC(0x428, 24, 1)>;
+	};
+	/omit-if-no-ref/ pin_fsi3clk: pin_fsi3clk {
+		ball = <AD19>;
+		sig_descs = <SIG_DESC(0x428, 24, 2)>;
+	};
+	/omit-if-no-ref/ pin_i3c11sda: pin_i3c11sda {
+		ball = <AD18>;
+		sig_descs = <SIG_DESC(0x428, 28, 1)>;
+	};
+	/omit-if-no-ref/ pin_fsi3dat: pin_fsi3dat {
+		ball = <AD18>;
+		sig_descs = <SIG_DESC(0x428, 28, 2)>;
+	};
+
+	/* SCU42C: Multi-function Pin Control #12 */
+	/omit-if-no-ref/ pin_hvi3c0scl: pin_hvi3c0scl {
+		ball = <U25>;
+		sig_descs = <SIG_DESC(0x42c, 0, 1)>;
+	};
+	/omit-if-no-ref/ pin_di2c8scl: pin_di2c8scl {
+		ball = <U25>;
+		sig_descs = <SIG_DESC(0x42c, 0, 2)>;
+	};
+	/omit-if-no-ref/ pin_hvi3c0sda: pin_hvi3c0sda {
+		ball = <U26>;
+		sig_descs = <SIG_DESC(0x42c, 4, 1)>;
+	};
+	/omit-if-no-ref/ pin_di2c8sda: pin_di2c8sda {
+		ball = <U26>;
+		sig_descs = <SIG_DESC(0x42c, 4, 2)>;
+	};
+	/omit-if-no-ref/ pin_hvi3c1scl: pin_hvi3c1scl {
+		ball = <Y26>;
+		sig_descs = <SIG_DESC(0x42c, 8, 1)>;
+	};
+	/omit-if-no-ref/ pin_di2c9scl: pin_di2c9scl {
+		ball = <Y26>;
+		sig_descs = <SIG_DESC(0x42c, 8, 2)>;
+	};
+	/omit-if-no-ref/ pin_hvi3c1sda: pin_hvi3c1sda {
+		ball = <AA24>;
+		sig_descs = <SIG_DESC(0x42c, 12, 1)>;
+	};
+	/omit-if-no-ref/ pin_di2c9sda: pin_di2c9sda {
+		ball = <AA24>;
+		sig_descs = <SIG_DESC(0x42c, 12, 2)>;
+	};
+	/omit-if-no-ref/ pin_hvi3c2scl: pin_hvi3c2scl {
+		ball = <R25>;
+		sig_descs = <SIG_DESC(0x42c, 16, 1)>;
+	};
+	/omit-if-no-ref/ pin_di2c10scl: pin_di2c10scl {
+		ball = <R25>;
+		sig_descs = <SIG_DESC(0x42c, 16, 2)>;
+	};
+	/omit-if-no-ref/ pin_hvi3c2sda: pin_hvi3c2sda {
+		ball = <AA26>;
+		sig_descs = <SIG_DESC(0x42c, 20, 1)>;
+	};
+	/omit-if-no-ref/ pin_di2c10sda: pin_di2c10sda {
+		ball = <AA26>;
+		sig_descs = <SIG_DESC(0x42c, 20, 2)>;
+	};
+	/omit-if-no-ref/ pin_hvi3c3scl: pin_hvi3c3scl {
+		ball = <R26>;
+		sig_descs = <SIG_DESC(0x42c, 24, 1)>;
+	};
+	/omit-if-no-ref/ pin_di2c11scl: pin_di2c11scl {
+		ball = <R26>;
+		sig_descs = <SIG_DESC(0x42c, 24, 2)>;
+	};
+	/omit-if-no-ref/ pin_hvi3c3sda: pin_hvi3c3sda {
+		ball = <Y25>;
+		sig_descs = <SIG_DESC(0x42c, 28, 1)>;
+	};
+	/omit-if-no-ref/ pin_di2c11sda: pin_di2c11sda {
+		ball = <Y25>;
+		sig_descs = <SIG_DESC(0x42c, 28, 2)>;
+	};
+
+	/* SCU430: Multi-function Pin Control #13 */
+	/omit-if-no-ref/ pin_espi0_0: pin_espi0_0 {
+		ball = <B16>;
+		sig_descs = <SIG_DESC(0x430, 0, 1)>;
+	};
+	/omit-if-no-ref/ pin_lpc0_2: pin_lpc0_2 {
+		ball = <B16>;
+		sig_descs = <SIG_DESC(0x430, 0, 2)>;
+	};
+	/omit-if-no-ref/ pin_espi0_1: pin_espi0_1 {
+		ball = <D14>;
+		sig_descs = <SIG_DESC(0x430, 4, 1)>;
+	};
+	/omit-if-no-ref/ pin_lpc0_3: pin_lpc0_3 {
+		ball = <D14>;
+		sig_descs = <SIG_DESC(0x430, 4, 2)>;
+	};
+	/omit-if-no-ref/ pin_espi0_2: pin_espi0_2 {
+		ball = <B15>;
+		sig_descs = <SIG_DESC(0x430, 8, 1)>;
+	};
+	/omit-if-no-ref/ pin_lpc0_4: pin_lpc0_4 {
+		ball = <B15>;
+		sig_descs = <SIG_DESC(0x430, 8, 2)>;
+	};
+	/omit-if-no-ref/ pin_espi0_3: pin_espi0_3 {
+		ball = <B14>;
+		sig_descs = <SIG_DESC(0x430, 12, 1)>;
+	};
+	/omit-if-no-ref/ pin_lpc0_5: pin_lpc0_5 {
+		ball = <B14>;
+		sig_descs = <SIG_DESC(0x430, 12, 2)>;
+	};
+	/omit-if-no-ref/ pin_espi0_4: pin_espi0_4 {
+		ball = <C17>;
+		sig_descs = <SIG_DESC(0x430, 16, 1)>;
+	};
+	/omit-if-no-ref/ pin_lpc0_6: pin_lpc0_6 {
+		ball = <C17>;
+		sig_descs = <SIG_DESC(0x430, 16, 2)>;
+	};
+	/omit-if-no-ref/ pin_oscclk: pin_oscclk {
+		ball = <C17>;
+		sig_descs = <SIG_DESC(0x430, 16, 3)>;
+	};
+	/omit-if-no-ref/ pin_espi0_5: pin_espi0_5 {
+		ball = <B13>;
+		sig_descs = <SIG_DESC(0x430, 20, 1)>;
+	};
+	/omit-if-no-ref/ pin_lpc0_7: pin_lpc0_7 {
+		ball = <B13>;
+		sig_descs = <SIG_DESC(0x430, 20, 2)>;
+	};
+	/omit-if-no-ref/ pin_espi0_6: pin_espi0_6 {
+		ball = <E14>;
+		sig_descs = <SIG_DESC(0x430, 24, 1)>;
+	};
+	/omit-if-no-ref/ pin_lpc0_8: pin_lpc0_8 {
+		ball = <E14>;
+		sig_descs = <SIG_DESC(0x430, 24, 2)>;
+	};
+	/omit-if-no-ref/ pin_espi0_7: pin_espi0_7 {
+		ball = <C15>;
+		sig_descs = <SIG_DESC(0x430, 28, 1)>;
+	};
+	/omit-if-no-ref/ pin_lpc0_9: pin_lpc0_9 {
+		ball = <C15>;
+		sig_descs = <SIG_DESC(0x430, 28, 2)>;
+	};
+
+	/* SCU434: Multi-function Pin Control #14 */
 	/omit-if-no-ref/ pin_spi0ck: pin_spi0ck {
 		ball = <D24>;
 		sig_descs = <SIG_DESC(0x434, 0, 1)>;
@@ -68,43 +1151,87 @@
 		ball = <M15>;
 		sig_descs = <SIG_DESC(0x434, 24, 1)>;
 	};
+	/omit-if-no-ref/ pin_txd8: pin_txd8 {
+		ball = <M15>;
+		sig_descs = <SIG_DESC(0x434, 24, 3)>;
+	};
 	/omit-if-no-ref/ pin_spi0wpn: pin_spi0wpn {
 		ball = <B19>;
 		sig_descs = <SIG_DESC(0x434, 28, 1)>;
 	};
+	/omit-if-no-ref/ pin_rxd8: pin_rxd8 {
+		ball = <B19>;
+		sig_descs = <SIG_DESC(0x434, 28, 3)>;
+	};
+
+	/* SCU438: Multi-function Pin Control #15 */
 	/omit-if-no-ref/ pin_spi1ck: pin_spi1ck {
 		ball = <B26>;
 		sig_descs = <SIG_DESC(0x438, 0, 1)>;
+	};
+	/omit-if-no-ref/ pin_txd9: pin_txd9 {
+		ball = <B26>;
+		sig_descs = <SIG_DESC(0x438, 0, 3)>;
 	};
 	/omit-if-no-ref/ pin_spi1mosi: pin_spi1mosi {
 		ball = <A25>;
 		sig_descs = <SIG_DESC(0x438, 4, 1)>;
 	};
+	/omit-if-no-ref/ pin_rxd9: pin_rxd9 {
+		ball = <A25>;
+		sig_descs = <SIG_DESC(0x438, 4, 3)>;
+	};
 	/omit-if-no-ref/ pin_spi1miso: pin_spi1miso {
 		ball = <A24>;
 		sig_descs = <SIG_DESC(0x438, 8, 1)>;
+	};
+	/omit-if-no-ref/ pin_txd10: pin_txd10 {
+		ball = <A24>;
+		sig_descs = <SIG_DESC(0x438, 8, 3)>;
 	};
 	/omit-if-no-ref/ pin_spi1dq2: pin_spi1dq2 {
 		ball = <B24>;
 		sig_descs = <SIG_DESC(0x438, 12, 1)>;
 	};
+	/omit-if-no-ref/ pin_rxd10: pin_rxd10 {
+		ball = <B24>;
+		sig_descs = <SIG_DESC(0x438, 12, 3)>;
+	};
 	/omit-if-no-ref/ pin_spi1dq3: pin_spi1dq3 {
 		ball = <E26>;
 		sig_descs = <SIG_DESC(0x438, 16, 1)>;
+	};
+	/omit-if-no-ref/ pin_txd11: pin_txd11 {
+		ball = <E26>;
+		sig_descs = <SIG_DESC(0x438, 16, 3)>;
 	};
 	/omit-if-no-ref/ pin_spi1cs1: pin_spi1cs1 {
 		ball = <A21>;
 		sig_descs = <SIG_DESC(0x438, 20, 1)>;
 	};
+	/omit-if-no-ref/ pin_rxd11: pin_rxd11 {
+		ball = <A21>;
+		sig_descs = <SIG_DESC(0x438, 20, 3)>;
+	};
 	/omit-if-no-ref/ pin_spi1abr: pin_spi1abr {
 		ball = <A19>;
 		sig_descs = <SIG_DESC(0x438, 24, 1)>;
+	};
+	/omit-if-no-ref/ pin_thru2_0: pin_thru2_0 {
+		ball = <A19>;
+		sig_descs = <SIG_DESC(0x438, 24, 4)>;
 	};
 	/omit-if-no-ref/ pin_spi1wpn: pin_spi1wpn {
 		ball = <A18>;
 		sig_descs = <SIG_DESC(0x438, 28, 1)>;
 	};
-	/omit-if-no-ref/ pin_spi2cs1: pin_spi2cs0 {
+	/omit-if-no-ref/ pin_thru2_1: pin_thru2_1 {
+		ball = <A18>;
+		sig_descs = <SIG_DESC(0x438, 28, 4)>;
+	};
+
+	/* SCU43C: Multi-function Pin Control #16 */
+	/omit-if-no-ref/ pin_spi2cs0: pin_spi2cs0 {
 		ball = <D26>;
 		sig_descs = <SIG_DESC(0x43c, 0, 1)>;
 	};
@@ -124,12 +1251,722 @@
 		ball = <B25>;
 		sig_descs = <SIG_DESC(0x43c, 16, 1)>;
 	};
+	/omit-if-no-ref/ pin_thru3_0: pin_thru3_0 {
+		ball = <B25>;
+		sig_descs = <SIG_DESC(0x43c, 16, 4)>;
+	};
 	/omit-if-no-ref/ pin_spi2dq3: pin_spi2dq3 {
 		ball = <F26>;
 		sig_descs = <SIG_DESC(0x43c, 20, 1)>;
 	};
+	/omit-if-no-ref/ pin_thru3_1: pin_thru3_1 {
+		ball = <F26>;
+		sig_descs = <SIG_DESC(0x43c, 20, 4)>;
+	};
 	/omit-if-no-ref/ pin_spi2cs1: pin_spi2cs1 {
 		ball = <A26>;
 		sig_descs = <SIG_DESC(0x43c, 24, 1)>;
+	};
+	/omit-if-no-ref/ pin_fwspi_abr: pin_fwspi_abr {
+		ball = <A14>;
+		sig_descs = <SIG_DESC(0x43c, 28, 1)>;
+	};
+
+	/* SCU440: Multi-function Pin Control #17 */
+	/omit-if-no-ref/ pin_mdc2: pin_mdc2 {
+		ball = <E10>;
+		sig_descs = <SIG_DESC(0x440, 0, 1)>;
+	};
+	/omit-if-no-ref/ pin_pe2sgrstn_1: pin_pe2sgrstn_1 {
+		ball = <E10>;
+		sig_descs = <SIG_DESC(0x440, 0, 2)>;
+	};
+	/omit-if-no-ref/ pin_mdio2: pin_mdio2 {
+		ball = <E13>;
+		sig_descs = <SIG_DESC(0x440, 4, 1)>;
+	};
+	/omit-if-no-ref/ pin_jtagm1_0: pin_jtagm1_0 {
+		ball = <D12>;
+		sig_descs = <SIG_DESC(0x440, 8, 1)>;
+	};
+	/omit-if-no-ref/ pin_jtagm1_1: pin_jtagm1_1 {
+		ball = <F10>;
+		sig_descs = <SIG_DESC(0x440, 12, 1)>;
+	};
+	/omit-if-no-ref/ pin_jtagm1_2: pin_jtagm1_2 {
+		ball = <E11>;
+		sig_descs = <SIG_DESC(0x440, 16, 1)>;
+	};
+	/omit-if-no-ref/ pin_jtagm1_3: pin_jtagm1_3 {
+		ball = <F11>;
+		sig_descs = <SIG_DESC(0x440, 20, 1)>;
+	};
+	/omit-if-no-ref/ pin_jtagm1_4: pin_jtagm1_4 {
+		ball = <F13>;
+		sig_descs = <SIG_DESC(0x440, 24, 1)>;
+	};
+
+	/* SCU444: Multi-function Pin Control #18 */
+	/omit-if-no-ref/ pin_rgmii0_0: pin_rgmii0_0 {
+		ball = <C20>;
+		sig_descs = <SIG_DESC(0x444, 0, 1)>;
+	};
+	/omit-if-no-ref/ pin_rmii0_0: pin_rmii0_0 {
+		ball = <C20>;
+		sig_descs = <SIG_DESC(0x444, 0, 2)>;
+	};
+	/omit-if-no-ref/ pin_rgmii0_1: pin_rgmii0_1 {
+		ball = <C19>;
+		sig_descs = <SIG_DESC(0x444, 4, 1)>;
+	};
+	/omit-if-no-ref/ pin_rgmii0_2: pin_rgmii0_2 {
+		ball = <A8>;
+		sig_descs = <SIG_DESC(0x444, 8, 1)>;
+	};
+	/omit-if-no-ref/ pin_rmii0_1: pin_rmii0_1 {
+		ball = <A8>;
+		sig_descs = <SIG_DESC(0x444, 8, 2)>;
+	};
+	/omit-if-no-ref/ pin_rgmii0_3: pin_rgmii0_3 {
+		ball = <R14>;
+		sig_descs = <SIG_DESC(0x444, 12, 1)>;
+	};
+	/omit-if-no-ref/ pin_rmii0_2: pin_rmii0_2 {
+		ball = <R14>;
+		sig_descs = <SIG_DESC(0x444, 12, 2)>;
+	};
+	/omit-if-no-ref/ pin_rgmii0_4: pin_rgmii0_4 {
+		ball = <A7>;
+		sig_descs = <SIG_DESC(0x444, 16, 1)>;
+	};
+	/omit-if-no-ref/ pin_rmii0_3: pin_rmii0_3 {
+		ball = <A7>;
+		sig_descs = <SIG_DESC(0x444, 16, 2)>;
+	};
+	/omit-if-no-ref/ pin_rgmii0_5: pin_rgmii0_5 {
+		ball = <P14>;
+		sig_descs = <SIG_DESC(0x444, 20, 1)>;
+	};
+	/omit-if-no-ref/ pin_rmii0_4: pin_rmii0_4 {
+		ball = <P14>;
+		sig_descs = <SIG_DESC(0x444, 20, 2)>;
+	};
+	/omit-if-no-ref/ pin_rgmii0_6: pin_rgmii0_6 {
+		ball = <D20>;
+		sig_descs = <SIG_DESC(0x444, 24, 1)>;
+	};
+	/omit-if-no-ref/ pin_rmii0_rclko: pin_rmii0_rclko {
+		ball = <D20>;
+		sig_descs = <SIG_DESC(0x444, 24, 2)>;
+	};
+	/omit-if-no-ref/ pin_rgmii0_7: pin_rgmii0_7 {
+		ball = <A6>;
+		sig_descs = <SIG_DESC(0x444, 28, 1)>;
+	};
+	/omit-if-no-ref/ pin_rmii0_5: pin_rmii0_5 {
+		ball = <A6>;
+		sig_descs = <SIG_DESC(0x444, 28, 2)>;
+	};
+
+	/* SCU448: Multi-function Pin Control #19 */
+	/omit-if-no-ref/ pin_rgmii0_8: pin_rgmii0_8 {
+		ball = <B6>;
+		sig_descs = <SIG_DESC(0x448, 0, 1)>;
+	};
+	/omit-if-no-ref/ pin_rmii0_6: pin_rmii0_6 {
+		ball = <B6>;
+		sig_descs = <SIG_DESC(0x448, 0, 2)>;
+	};
+	/omit-if-no-ref/ pin_rgmii0_9: pin_rgmii0_9 {
+		ball = <N14>;
+		sig_descs = <SIG_DESC(0x448, 4, 1)>;
+	};
+	/omit-if-no-ref/ pin_rmii0_7: pin_rmii0_7 {
+		ball = <N14>;
+		sig_descs = <SIG_DESC(0x448, 4, 2)>;
+	};
+	/omit-if-no-ref/ pin_rgmii0_10: pin_rgmii0_10 {
+		ball = <B7>;
+		sig_descs = <SIG_DESC(0x448, 8, 1)>;
+	};
+	/omit-if-no-ref/ pin_rgmii0_11: pin_rgmii0_11 {
+		ball = <B8>;
+		sig_descs = <SIG_DESC(0x448, 12, 1)>;
+	};
+	/omit-if-no-ref/ pin_mdc0: pin_mdc0 {
+		ball = <B9>;
+		sig_descs = <SIG_DESC(0x448, 16, 1)>;
+	};
+	/omit-if-no-ref/ pin_mdio0: pin_mdio0 {
+		ball = <M14>;
+		sig_descs = <SIG_DESC(0x448, 20, 1)>;
+	};
+	/omit-if-no-ref/ pin_vga_hs: pin_vga_hs {
+		ball = <J11>;
+		sig_descs = <SIG_DESC(0x448, 24, 1)>;
+	};
+	/omit-if-no-ref/ pin_vga_vs: pin_vga_vs {
+		ball = <E7>;
+		sig_descs = <SIG_DESC(0x448, 28, 1)>;
+	};
+
+	/* SCU44C: Multi-function Pin Control #20 */
+	/omit-if-no-ref/ pin_rgmii1_0: pin_rgmii1_0 {
+		ball = <D19>;
+		sig_descs = <SIG_DESC(0x44c, 0, 1)>;
+	};
+	/omit-if-no-ref/ pin_rmii1_0: pin_rmii1_0 {
+		ball = <D19>;
+		sig_descs = <SIG_DESC(0x44c, 0, 2)>;
+	};
+	/omit-if-no-ref/ pin_dsgpm0_0: pin_dsgpm0_0 {
+		ball = <D19>;
+		sig_descs = <SIG_DESC(0x44c, 0, 4)>;
+	};
+	/omit-if-no-ref/ pin_rgmii1_1: pin_rgmii1_1 {
+		ball = <B11>;
+		sig_descs = <SIG_DESC(0x44c, 4, 1)>;
+	};
+	/omit-if-no-ref/ pin_sgps_0: pin_sgps_0 {
+		ball = <B11>;
+		sig_descs = <SIG_DESC(0x44c, 4, 5)>;
+	};
+	/omit-if-no-ref/ pin_rgmii1_2: pin_rgmii1_2 {
+		ball = <D15>;
+		sig_descs = <SIG_DESC(0x44c, 8, 1)>;
+	};
+	/omit-if-no-ref/ pin_rmii1_1: pin_rmii1_1 {
+		ball = <D15>;
+		sig_descs = <SIG_DESC(0x44c, 8, 2)>;
+	};
+	/omit-if-no-ref/ pin_rgmii1_3: pin_rgmii1_3 {
+		ball = <B12>;
+		sig_descs = <SIG_DESC(0x44c, 12, 1)>;
+	};
+	/omit-if-no-ref/ pin_rmii1_2: pin_rmii1_2 {
+		ball = <B12>;
+		sig_descs = <SIG_DESC(0x44c, 12, 2)>;
+	};
+	/omit-if-no-ref/ pin_rgmii1_4: pin_rgmii1_4 {
+		ball = <B10>;
+		sig_descs = <SIG_DESC(0x44c, 16, 1)>;
+	};
+	/omit-if-no-ref/ pin_rmii1_3: pin_rmii1_3 {
+		ball = <B10>;
+		sig_descs = <SIG_DESC(0x44c, 16, 2)>;
+	};
+	/omit-if-no-ref/ pin_dsgpm0_1: pin_dsgpm0_1 {
+		ball = <B10>;
+		sig_descs = <SIG_DESC(0x44c, 16, 4)>;
+	};
+	/omit-if-no-ref/ pin_rgmii1_5: pin_rgmii1_5 {
+		ball = <P13>;
+		sig_descs = <SIG_DESC(0x44c, 20, 1)>;
+	};
+	/omit-if-no-ref/ pin_rmii1_4: pin_rmii1_4 {
+		ball = <P13>;
+		sig_descs = <SIG_DESC(0x44c, 20, 2)>;
+	};
+	/omit-if-no-ref/ pin_rgmii1_6: pin_rgmii1_6 {
+		ball = <C18>;
+		sig_descs = <SIG_DESC(0x44c, 24, 1)>;
+	};
+	/omit-if-no-ref/ pin_rmii1_rclko: pin_rmii1_rclko {
+		ball = <C18>;
+		sig_descs = <SIG_DESC(0x44c, 24, 2)>;
+	};
+	/omit-if-no-ref/ pin_sgps_1: pin_sgps_1 {
+		ball = <C18>;
+		sig_descs = <SIG_DESC(0x44c, 24, 5)>;
+	};
+	/omit-if-no-ref/ pin_rgmii1_7: pin_rgmii1_7 {
+		ball = <C6>;
+		sig_descs = <SIG_DESC(0x44c, 28, 1)>;
+	};
+	/omit-if-no-ref/ pin_rmii1_5: pin_rmii1_5 {
+		ball = <C6>;
+		sig_descs = <SIG_DESC(0x44c, 28, 2)>;
+	};
+
+	/* SCU450: Multi-function Pin Control #21 */
+	/omit-if-no-ref/ pin_rgmii1_8: pin_rgmii1_8 {
+		ball = <C7>;
+		sig_descs = <SIG_DESC(0x450, 0, 1)>;
+	};
+	/omit-if-no-ref/ pin_rmii1_6: pin_rmii1_6 {
+		ball = <C7>;
+		sig_descs = <SIG_DESC(0x450, 0, 2)>;
+	};
+	/omit-if-no-ref/ pin_dsgpm0_2: pin_dsgpm0_2 {
+		ball = <C7>;
+		sig_descs = <SIG_DESC(0x450, 0, 4)>;
+	};
+	/omit-if-no-ref/ pin_rgmii1_9: pin_rgmii1_9 {
+		ball = <D7>;
+		sig_descs = <SIG_DESC(0x450, 4, 1)>;
+	};
+	/omit-if-no-ref/ pin_rmii1_7: pin_rmii1_7 {
+		ball = <D7>;
+		sig_descs = <SIG_DESC(0x450, 4, 2)>;
+	};
+	/omit-if-no-ref/ pin_dsgpm0_3: pin_dsgpm0_3 {
+		ball = <D7>;
+		sig_descs = <SIG_DESC(0x450, 4, 4)>;
+	};
+	/omit-if-no-ref/ pin_rgmii1_10: pin_rgmii1_10 {
+		ball = <N13>;
+		sig_descs = <SIG_DESC(0x450, 8, 1)>;
+	};
+	/omit-if-no-ref/ pin_sgps_2: pin_sgps_2 {
+		ball = <N13>;
+		sig_descs = <SIG_DESC(0x450, 8, 5)>;
+	};
+	/omit-if-no-ref/ pin_rgmii1_11: pin_rgmii1_11 {
+		ball = <C8>;
+		sig_descs = <SIG_DESC(0x450, 12, 1)>;
+	};
+	/omit-if-no-ref/ pin_sgps_3: pin_sgps_3 {
+		ball = <C8>;
+		sig_descs = <SIG_DESC(0x450, 12, 5)>;
+	};
+	/omit-if-no-ref/ pin_mdc1: pin_mdc1 {
+		ball = <C9>;
+		sig_descs = <SIG_DESC(0x450, 16, 1)>;
+	};
+	/omit-if-no-ref/ pin_mdio1: pin_mdio1 {
+		ball = <C10>;
+		sig_descs = <SIG_DESC(0x450, 20, 1)>;
+	};
+	/omit-if-no-ref/ pin_fwspidq2: pin_fwspidq2 {
+		ball = <M16>;
+		sig_descs = <SIG_DESC(0x450, 24, 1)>;
+	};
+	/omit-if-no-ref/ pin_fwspidq3: pin_fwspidq3 {
+		ball = <A15>;
+		sig_descs = <SIG_DESC(0x450, 28, 1)>;
+	};
+
+	/* SCU454: Multi-function Pin Control #22 */
+	/omit-if-no-ref/ pin_scl0: pin_scl0 {
+		ball = <G11>;
+		sig_descs = <SIG_DESC(0x454, 0, 1)>;
+	};
+	/omit-if-no-ref/ pin_ltpi_ps_i2c0scl: pin_ltpi_ps_i2c0scl {
+		ball = <G11>;
+		sig_descs = <SIG_DESC(0x454, 0, 2)>;
+	};
+	/omit-if-no-ref/ pin_sda0: pin_sda0 {
+		ball = <H7>;
+		sig_descs = <SIG_DESC(0x454, 4, 1)>;
+	};
+	/omit-if-no-ref/ pin_ltpi_ps_i2c0sda: pin_ltpi_ps_i2c0sda {
+		ball = <H7>;
+		sig_descs = <SIG_DESC(0x454, 4, 2)>;
+	};
+	/omit-if-no-ref/ pin_scl1: pin_scl1 {
+		ball = <H8>;
+		sig_descs = <SIG_DESC(0x454, 8, 1)>;
+	};
+	/omit-if-no-ref/ pin_ltpi_ps_i2c1scl: pin_ltpi_ps_i2c1scl {
+		ball = <H8>;
+		sig_descs = <SIG_DESC(0x454, 8, 2)>;
+	};
+	/omit-if-no-ref/ pin_sda1: pin_sda1 {
+		ball = <H9>;
+		sig_descs = <SIG_DESC(0x454, 12, 1)>;
+	};
+	/omit-if-no-ref/ pin_ltpi_ps_i2c1sda: pin_ltpi_ps_i2c1sda {
+		ball = <H9>;
+		sig_descs = <SIG_DESC(0x454, 12, 2)>;
+	};
+	/omit-if-no-ref/ pin_scl2: pin_scl2 {
+		ball = <H10>;
+		sig_descs = <SIG_DESC(0x454, 16, 1)>;
+	};
+	/omit-if-no-ref/ pin_ltpi_ps_i2c2scl: pin_ltpi_ps_i2c2scl {
+		ball = <H10>;
+		sig_descs = <SIG_DESC(0x454, 16, 2)>;
+	};
+	/omit-if-no-ref/ pin_sda2: pin_sda2 {
+		ball = <H11>;
+		sig_descs = <SIG_DESC(0x454, 20, 1)>;
+	};
+	/omit-if-no-ref/ pin_ltpi_ps_i2c2sda: pin_ltpi_ps_i2c2sda {
+		ball = <H11>;
+		sig_descs = <SIG_DESC(0x454, 20, 2)>;
+	};
+	/omit-if-no-ref/ pin_scl3: pin_scl3 {
+		ball = <J9>;
+		sig_descs = <SIG_DESC(0x454, 24, 1)>;
+	};
+	/omit-if-no-ref/ pin_ltpi_ps_i2c3scl: pin_ltpi_ps_i2c3scl {
+		ball = <J9>;
+		sig_descs = <SIG_DESC(0x454, 24, 2)>;
+	};
+	/omit-if-no-ref/ pin_sda3: pin_sda3 {
+		ball = <J10>;
+		sig_descs = <SIG_DESC(0x454, 28, 1)>;
+	};
+	/omit-if-no-ref/ pin_ltpi_ps_i2c3sda: pin_ltpi_ps_i2c3sda {
+		ball = <J10>;
+		sig_descs = <SIG_DESC(0x454, 28, 2)>;
+	};
+
+	/* SCU458: Multi-function Pin Control #23 */
+	/omit-if-no-ref/ pin_scl4: pin_scl4 {
+		ball = <E9>;
+		sig_descs = <SIG_DESC(0x458, 0, 1)>;
+	};
+	/omit-if-no-ref/ pin_i2cf1_0: pin_i2cf1_0 {
+		ball = <E9>;
+		sig_descs = <SIG_DESC(0x458, 0, 5)>;
+	};
+	/omit-if-no-ref/ pin_sda4: pin_sda4 {
+		ball = <F9>;
+		sig_descs = <SIG_DESC(0x458, 4, 1)>;
+	};
+	/omit-if-no-ref/ pin_i2cf1_1: pin_i2cf1_1 {
+		ball = <F9>;
+		sig_descs = <SIG_DESC(0x458, 4, 5)>;
+	};
+	/omit-if-no-ref/ pin_scl5: pin_scl5 {
+		ball = <F8>;
+		sig_descs = <SIG_DESC(0x458, 8, 1)>;
+	};
+	/omit-if-no-ref/ pin_i2cf1_2: pin_i2cf1_2 {
+		ball = <F8>;
+		sig_descs = <SIG_DESC(0x458, 8, 5)>;
+	};
+	/omit-if-no-ref/ pin_sda5: pin_sda5 {
+		ball = <M13>;
+		sig_descs = <SIG_DESC(0x458, 12, 1)>;
+	};
+	/omit-if-no-ref/ pin_i2cf1_3: pin_i2cf1_3 {
+		ball = <M13>;
+		sig_descs = <SIG_DESC(0x458, 12, 5)>;
+	};
+	/omit-if-no-ref/ pin_scl6: pin_scl6 {
+		ball = <F7>;
+		sig_descs = <SIG_DESC(0x458, 16, 1)>;
+	};
+	/omit-if-no-ref/ pin_i2cf2_0: pin_i2cf2_0 {
+		ball = <F7>;
+		sig_descs = <SIG_DESC(0x458, 16, 5)>;
+	};
+	/omit-if-no-ref/ pin_sda6: pin_sda6 {
+		ball = <D8>;
+		sig_descs = <SIG_DESC(0x458, 20, 1)>;
+	};
+	/omit-if-no-ref/ pin_i2cf2_1: pin_i2cf2_1 {
+		ball = <D8>;
+		sig_descs = <SIG_DESC(0x458, 20, 5)>;
+	};
+	/omit-if-no-ref/ pin_scl7: pin_scl7 {
+		ball = <E8>;
+		sig_descs = <SIG_DESC(0x458, 24, 1)>;
+	};
+	/omit-if-no-ref/ pin_i2cf2_2: pin_i2cf2_2 {
+		ball = <E8>;
+		sig_descs = <SIG_DESC(0x458, 24, 5)>;
+	};
+	/omit-if-no-ref/ pin_sda7: pin_sda7 {
+		ball = <L12>;
+		sig_descs = <SIG_DESC(0x458, 28, 1)>;
+	};
+	/omit-if-no-ref/ pin_i2cf2_3: pin_i2cf2_3 {
+		ball = <L12>;
+		sig_descs = <SIG_DESC(0x458, 28, 5)>;
+	};
+
+	/* SCU45C: Multi-function Pin Control #24 */
+	/omit-if-no-ref/ pin_scl8: pin_scl8 {
+		ball = <F12>;
+		sig_descs = <SIG_DESC(0x45c, 0, 1)>;
+	};
+	/omit-if-no-ref/ pin_i2cf0_0: pin_i2cf0_0 {
+		ball = <F12>;
+		sig_descs = <SIG_DESC(0x45c, 0, 5)>;
+	};
+	/omit-if-no-ref/ pin_sda8: pin_sda8 {
+		ball = <E12>;
+		sig_descs = <SIG_DESC(0x45c, 4, 1)>;
+	};
+	/omit-if-no-ref/ pin_i2cf0_1: pin_i2cf0_1 {
+		ball = <E12>;
+		sig_descs = <SIG_DESC(0x45c, 4, 5)>;
+	};
+	/omit-if-no-ref/ pin_scl9: pin_scl9 {
+		ball = <J12>;
+		sig_descs = <SIG_DESC(0x45c, 8, 1)>;
+	};
+	/omit-if-no-ref/ pin_i2cf0_2: pin_i2cf0_2 {
+		ball = <J12>;
+		sig_descs = <SIG_DESC(0x45c, 8, 5)>;
+	};
+	/omit-if-no-ref/ pin_sda9: pin_sda9 {
+		ball = <G7>;
+		sig_descs = <SIG_DESC(0x45c, 12, 1)>;
+	};
+	/omit-if-no-ref/ pin_canbus_stby: pin_canbus_stby {
+		ball = <G7>;
+		sig_descs = <SIG_DESC(0x45c, 12, 2)>;
+	};
+	/omit-if-no-ref/ pin_i2cf0_3: pin_i2cf0_3 {
+		ball = <G7>;
+		sig_descs = <SIG_DESC(0x45c, 12, 5)>;
+	};
+	/omit-if-no-ref/ pin_scl10: pin_scl10 {
+		ball = <G8>;
+		sig_descs = <SIG_DESC(0x45c, 16, 1)>;
+	};
+	/omit-if-no-ref/ pin_canbus_tx: pin_canbus_tx {
+		ball = <G8>;
+		sig_descs = <SIG_DESC(0x45c, 16, 2)>;
+	};
+	/omit-if-no-ref/ pin_sda10: pin_sda10 {
+		ball = <G9>;
+		sig_descs = <SIG_DESC(0x45c, 20, 1)>;
+	};
+	/omit-if-no-ref/ pin_canbus_rx: pin_canbus_rx {
+		ball = <G9>;
+		sig_descs = <SIG_DESC(0x45c, 20, 2)>;
+	};
+	/omit-if-no-ref/ pin_scl11: pin_scl11 {
+		ball = <G10>;
+		sig_descs = <SIG_DESC(0x45c, 24, 1)>;
+	};
+	/omit-if-no-ref/ pin_usbuart_d_p: pin_usbuart_d_p {
+		ball = <G10>;
+		sig_descs = <SIG_DESC(0x45c, 24, 2)>;
+	};
+	/omit-if-no-ref/ pin_sda11: pin_sda11 {
+		ball = <K12>;
+		sig_descs = <SIG_DESC(0x45c, 28, 1)>;
+	};
+	/omit-if-no-ref/ pin_usbuart_d_n: pin_usbuart_d_n {
+		ball = <K12>;
+		sig_descs = <SIG_DESC(0x45c, 28, 2)>;
+	};
+
+	/* SCU460: Multi-function Pin Control #25 */
+	/omit-if-no-ref/ pin_adc0: pin_adc0 {
+		ball = <W17>;
+		sig_descs = <SIG_DESC(0x460, 0, 0)>;
+	};
+	/omit-if-no-ref/ pin_salt4: pin_salt4 {
+		ball = <W17>;
+		sig_descs = <SIG_DESC(0x460, 0, 2)>;
+	};
+	/omit-if-no-ref/ pin_adc1: pin_adc1 {
+		ball = <V18>;
+		sig_descs = <SIG_DESC(0x460, 4, 0)>;
+	};
+	/omit-if-no-ref/ pin_salt5: pin_salt5 {
+		ball = <V18>;
+		sig_descs = <SIG_DESC(0x460, 4, 2)>;
+	};
+	/omit-if-no-ref/ pin_adc2: pin_adc2 {
+		ball = <W18>;
+		sig_descs = <SIG_DESC(0x460, 8, 0)>;
+	};
+	/omit-if-no-ref/ pin_salt6: pin_salt6 {
+		ball = <W18>;
+		sig_descs = <SIG_DESC(0x460, 8, 2)>;
+	};
+	/omit-if-no-ref/ pin_adc3: pin_adc3 {
+		ball = <Y17>;
+		sig_descs = <SIG_DESC(0x460, 12, 0)>;
+	};
+	/omit-if-no-ref/ pin_salt7: pin_salt7 {
+		ball = <Y17>;
+		sig_descs = <SIG_DESC(0x460, 12, 2)>;
+	};
+	/omit-if-no-ref/ pin_adc4: pin_adc4 {
+		ball = <AA18>;
+		sig_descs = <SIG_DESC(0x460, 16, 0)>;
+	};
+	/omit-if-no-ref/ pin_salt8: pin_salt8 {
+		ball = <AA18>;
+		sig_descs = <SIG_DESC(0x460, 16, 2)>;
+	};
+	/omit-if-no-ref/ pin_adc5: pin_adc5 {
+		ball = <AA13>;
+		sig_descs = <SIG_DESC(0x460, 20, 0)>;
+	};
+	/omit-if-no-ref/ pin_salt9: pin_salt9 {
+		ball = <AA13>;
+		sig_descs = <SIG_DESC(0x460, 20, 2)>;
+	};
+	/omit-if-no-ref/ pin_adc6: pin_adc6 {
+		ball = <Y18>;
+		sig_descs = <SIG_DESC(0x460, 24, 0)>;
+	};
+	/omit-if-no-ref/ pin_salt10: pin_salt10 {
+		ball = <Y18>;
+		sig_descs = <SIG_DESC(0x460, 24, 2)>;
+	};
+	/omit-if-no-ref/ pin_adc7: pin_adc7 {
+		ball = <AA12>;
+		sig_descs = <SIG_DESC(0x460, 28, 0)>;
+	};
+	/omit-if-no-ref/ pin_salt11: pin_salt11 {
+		ball = <AA12>;
+		sig_descs = <SIG_DESC(0x460, 28, 2)>;
+	};
+
+	/* SCU464: Multi-function Pin Control #26 */
+	/omit-if-no-ref/ pin_adc8: pin_adc8 {
+		ball = <W20>;
+		sig_descs = <SIG_DESC(0x464, 0, 0)>;
+	};
+	/omit-if-no-ref/ pin_adc9: pin_adc9 {
+		ball = <V20>;
+		sig_descs = <SIG_DESC(0x464, 4, 0)>;
+	};
+	/omit-if-no-ref/ pin_adc10: pin_adc10 {
+		ball = <Y11>;
+		sig_descs = <SIG_DESC(0x464, 8, 0)>;
+	};
+	/omit-if-no-ref/ pin_adc11: pin_adc11 {
+		ball = <V14>;
+		sig_descs = <SIG_DESC(0x464, 12, 0)>;
+	};
+	/omit-if-no-ref/ pin_adc12: pin_adc12 {
+		ball = <V19>;
+		sig_descs = <SIG_DESC(0x464, 16, 0)>;
+	};
+	/omit-if-no-ref/ pin_adc13: pin_adc13 {
+		ball = <W14>;
+		sig_descs = <SIG_DESC(0x464, 20, 0)>;
+	};
+	/omit-if-no-ref/ pin_auxpwrgood0: pin_auxpwrgood0 {
+		ball = <W14>;
+		sig_descs = <SIG_DESC(0x464, 20, 2)>;
+	};
+	/omit-if-no-ref/ pin_adc14: pin_adc14 {
+		ball = <Y20>;
+		sig_descs = <SIG_DESC(0x464, 24, 0)>;
+	};
+	/omit-if-no-ref/ pin_auxpwrgood1: pin_auxpwrgood1 {
+		ball = <Y20>;
+		sig_descs = <SIG_DESC(0x464, 24, 2)>;
+	};
+	/omit-if-no-ref/ pin_adc15: pin_adc15 {
+		ball = <AB19>;
+		sig_descs = <SIG_DESC(0x464, 28, 0)>;
+	};
+
+	/* SCU468: Multi-function Pin Control #27 */
+	/omit-if-no-ref/ pin_sgpm0_0: pin_sgpm0_0 {
+		ball = <U21>;
+		sig_descs = <SIG_DESC(0x468, 0, 1)>;
+	};
+	/omit-if-no-ref/ pin_smon0_0: pin_smon0_0 {
+		ball = <U21>;
+		sig_descs = <SIG_DESC(0x468, 0, 2)>;
+	};
+	/omit-if-no-ref/ pin_ncts2: pin_ncts2 {
+		ball = <U21>;
+		sig_descs = <SIG_DESC(0x468, 0, 3)>;
+	};
+	/omit-if-no-ref/ pin_maclink0: pin_maclink0 {
+		ball = <U21>;
+		sig_descs = <SIG_DESC(0x468, 0, 4)>;
+	};
+	/omit-if-no-ref/ pin_sgpm0_1: pin_sgpm0_1 {
+		ball = <T24>;
+		sig_descs = <SIG_DESC(0x468, 4, 1)>;
+	};
+	/omit-if-no-ref/ pin_smon0_1: pin_smon0_1 {
+		ball = <T24>;
+		sig_descs = <SIG_DESC(0x468, 4, 2)>;
+	};
+	/omit-if-no-ref/ pin_ndcd2: pin_ndcd2 {
+		ball = <T24>;
+		sig_descs = <SIG_DESC(0x468, 4, 3)>;
+	};
+	/omit-if-no-ref/ pin_maclink2: pin_maclink2 {
+		ball = <T24>;
+		sig_descs = <SIG_DESC(0x468, 4, 4)>;
+	};
+	/omit-if-no-ref/ pin_hbled: pin_hbled {
+		ball = <V24>;
+		sig_descs = <SIG_DESC(0x468, 8, 2)>;
+	};
+	/omit-if-no-ref/ pin_sgpm0_2: pin_sgpm0_2 {
+		ball = <V22>;
+		sig_descs = <SIG_DESC(0x468, 12, 1)>;
+	};
+	/omit-if-no-ref/ pin_smon0_2: pin_smon0_2 {
+		ball = <V22>;
+		sig_descs = <SIG_DESC(0x468, 12, 2)>;
+	};
+	/omit-if-no-ref/ pin_ndsr2: pin_ndsr2 {
+		ball = <V22>;
+		sig_descs = <SIG_DESC(0x468, 12, 3)>;
+	};
+	/omit-if-no-ref/ pin_sgpm0_3: pin_sgpm0_3 {
+		ball = <T23>;
+		sig_descs = <SIG_DESC(0x468, 16, 1)>;
+	};
+	/omit-if-no-ref/ pin_smon0_3: pin_smon0_3 {
+		ball = <T23>;
+		sig_descs = <SIG_DESC(0x468, 16, 2)>;
+	};
+	/omit-if-no-ref/ pin_nri2: pin_nri2 {
+		ball = <T23>;
+		sig_descs = <SIG_DESC(0x468, 16, 3)>;
+	};
+	/omit-if-no-ref/ pin_sgpm1_0: pin_sgpm1_0 {
+		ball = <AC25>;
+		sig_descs = <SIG_DESC(0x468, 20, 1)>;
+	};
+	/omit-if-no-ref/ pin_wdtrst4n: pin_wdtrst4n {
+		ball = <AC25>;
+		sig_descs = <SIG_DESC(0x468, 20, 2)>;
+	};
+	/omit-if-no-ref/ pin_ndtr2: pin_ndtr2 {
+		ball = <AC25>;
+		sig_descs = <SIG_DESC(0x468, 20, 3)>;
+	};
+	/omit-if-no-ref/ pin_smon1_2: pin_smon1_2 {
+		ball = <AC25>;
+		sig_descs = <SIG_DESC(0x468, 20, 4)>;
+	};
+	/omit-if-no-ref/ pin_sgpm1_1: pin_sgpm1_1 {
+		ball = <AB25>;
+		sig_descs = <SIG_DESC(0x468, 24, 1)>;
+	};
+	/omit-if-no-ref/ pin_wdtrst5n: pin_wdtrst5n {
+		ball = <AB25>;
+		sig_descs = <SIG_DESC(0x468, 24, 2)>;
+	};
+	/omit-if-no-ref/ pin_nrts2: pin_nrts2 {
+		ball = <AB25>;
+		sig_descs = <SIG_DESC(0x468, 24, 3)>;
+	};
+	/omit-if-no-ref/ pin_smon1_3: pin_smon1_3 {
+		ball = <AB25>;
+		sig_descs = <SIG_DESC(0x468, 24, 4)>;
+	};
+	/omit-if-no-ref/ pin_wdtrst6n: pin_wdtrst6n {
+		ball = <AC24>;
+		sig_descs = <SIG_DESC(0x468, 28, 2)>;
+	};
+	/omit-if-no-ref/ pin_maclink1: pin_maclink1 {
+		ball = <AC24>;
+		sig_descs = <SIG_DESC(0x468, 28, 3)>;
+	};
+
+	/* SCU47C: SGMII Pin Control */
+	/omit-if-no-ref/ pin_sgmii: pin_sgmii {
+		ball = <SGMII0>;
+		sig_descs = <SIG_DESC(0x47c, 0, 1)>;
+	};
+
+	/* SCU908: PCIe RC PERST Pin Control */
+	/omit-if-no-ref/ pin_pe2sgrstn_0: pin_pe2sgrstn_0 {
+		ball = <PCIERC2_PERST>;
+		sig_descs = <SIG_DESC(0x908, 1, 1)>;
 	};
 };
