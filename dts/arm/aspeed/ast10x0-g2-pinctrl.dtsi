@@ -266,33 +266,65 @@
 		ball = <P16>;
 		sig_descs = <SIG_DESC(0x410, 16, 1)>;
 	};
+	/omit-if-no-ref/ pin_smbf1sclin: pin_smbf1sclin {
+		ball = <P16>;
+		sig_descs = <SIG_DESC(0x410, 16, 3)>;
+	};
 	/omit-if-no-ref/ pin_sda10: pin_sda10 {
 		ball = <N13>;
 		sig_descs = <SIG_DESC(0x410, 20, 1)>;
+	};
+	/omit-if-no-ref/ pin_smbf1sdain: pin_smbf1sdain {
+		ball = <N13>;
+		sig_descs = <SIG_DESC(0x410, 20, 3)>;
 	};
 	/omit-if-no-ref/ pin_scl11: pin_scl11 {
 		ball = <P17>;
 		sig_descs = <SIG_DESC(0x410, 24, 1)>;
 	};
+	/omit-if-no-ref/ pin_smbf1sclout: pin_smbf1sclout {
+		ball = <P17>;
+		sig_descs = <SIG_DESC(0x410, 24, 3)>;
+	};
 	/omit-if-no-ref/ pin_sda11: pin_sda11 {
 		ball = <M14>;
 		sig_descs = <SIG_DESC(0x410, 28, 1)>;
+	};
+	/omit-if-no-ref/ pin_smbf1sdaout: pin_smbf1sdaout {
+		ball = <M14>;
+		sig_descs = <SIG_DESC(0x410, 28, 3)>;
 	};
 	/omit-if-no-ref/ pin_scl12: pin_scl12 {
 		ball = <N16>;
 		sig_descs = <SIG_DESC(0x414, 0, 1)>;
 	};
+	/omit-if-no-ref/ pin_smbf2sclin: pin_smbf2sclin {
+		ball = <N16>;
+		sig_descs = <SIG_DESC(0x414, 0, 3);
+	};
 	/omit-if-no-ref/ pin_sda12: pin_sda12 {
 		ball = <N17>;
 		sig_descs = <SIG_DESC(0x414, 4, 1)>;
+	};
+	/omit-if-no-ref/ pin_smbf2sdain: pin_smbf2sdain {
+		ball = <N17>;
+		sig_descs = <SIG_DESC(0x414, 4, 3)>;
 	};
 	/omit-if-no-ref/ pin_scl13: pin_scl13 {
 		ball = <M15>;
 		sig_descs = <SIG_DESC(0x414, 8, 1)>;
 	};
+	/omit-if-no-ref/ pin_smbf2sclout: pin_smbf2sclout {
+		ball = <M15>;
+		sig_descs = <SIG_DESC(0x414, 8, 3)>;
+	};
 	/omit-if-no-ref/ pin_sda13: pin_sda13 {
 		ball = <M16>;
 		sig_descs = <SIG_DESC(0x414, 12, 1)>;
+	};
+	/omit-if-no-ref/ pin_smbf2sdaout: pin_smbf2sdaout {
+		ball = <M16>;
+		sig_descs = <SIG_DESC(0x414, 12, 3)>;
 	};
 	/omit-if-no-ref/ pin_salt10: pin_salt10 {
 		ball = <F3>;
