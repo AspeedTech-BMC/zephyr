@@ -6,7 +6,7 @@
 #ifndef _AST10X0_G2_PINCTRL_GROUPS_H_
 #define _AST10X0_G2_PINCTRL_GROUPS_H_
 
-/* I2C / SMBus */
+/* I2C / SMBus / SMBus Filter */
 #define pinctrl_i2c0_default   &pin_scl0 &pin_sda0
 #define pinctrl_i2c1_default   &pin_scl1 &pin_sda1
 #define pinctrl_i2c2_default   &pin_scl2 &pin_sda2
@@ -21,6 +21,8 @@
 #define pinctrl_i2c11_default  &pin_scl11 &pin_sda11
 #define pinctrl_i2c12_default  &pin_scl12 &pin_sda12
 #define pinctrl_i2c13_default  &pin_scl13 &pin_sda13
+#define pinctrl_smbflt1_default &pin_smbf1sclin &pin_smbf1sdain &pin_smbf1sclout &pin_smbf1sdaout
+#define pinctrl_smbflt2_default &pin_smbf2sclin &pin_smbf2sdain &pin_smbf2sclout &pin_smbf2sdaout
 
 /* I3C */
 #define pinctrl_i3c0_default   &pin_i3cscl0 &pin_i3csda0
