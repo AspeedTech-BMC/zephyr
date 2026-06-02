@@ -1748,7 +1748,31 @@ static const __maybe_unused struct aspeed_spi_ops ast2700_spi_lite_ops = {
 #endif
 };
 
-static const __maybe_unused struct aspeed_spi_ops ast1040_spi_lite_ops = {
+/*
+ * AST10X0_G2 full SPI controller ops (with interrupt and pinctrl support).
+ * Reuses AST2700 data/DMA functions since AST10X0_G2 shares the same
+ * SPI controller architecture.
+ */
+static const __maybe_unused struct aspeed_spi_ops ast10x0_g2_spi_ops = {
+	.init_data = ast2700_spi_init_data,
+	.pinctrl_init = aspeed_spi_pinctrl_init,
+	.pinctrl_post_init = NULL,
+	.proprietary_config_init = NULL,
+	.enable_4byte_mode = ast2700_spi_enable_4byte_mode,
+	.safs_read_config = NULL,
+	.safs_write_config = NULL,
+#ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
+	.dma_xfer_eligible = ast2700_spi_dma_xfer_eligible,
+	.read_dma = ast2700_aspeed_spi_read_dma,
+	.write_dma = ast2700_aspeed_spi_write_dma,
+#endif
+};
+
+/*
+ * AST10X0_G2 lite SPI controller ops (MCU core variant, no interrupt/pinctrl).
+ * Falls back to polling and uses lite pinctrl helpers.
+ */
+static const __maybe_unused struct aspeed_spi_ops ast10x0_g2_spi_lite_ops = {
 	.init_data = ast2700_spi_init_data,
 	.pinctrl_init = ast2700_spi_lite_pinctrl_init,
 	.pinctrl_post_init = ast2700_spi_lite_pinctrl_post_init,
@@ -1860,6 +1884,13 @@ DT_INST_FOREACH_STATUS_OKAY(ASPEED_COMMON_SPI_INIT)
 #define DT_DRV_COMPAT aspeed_ast1030_spi_controller
 DT_INST_FOREACH_STATUS_OKAY(ASPEED_AST1030_SPI_INIT)
 
+/* AST1040/AST1080 */
+#define ASPEED_AST10X0_G2_SPI_INIT(n)                                         \
+	ASPEED_SPI_INIT(ast10x0_g2, n, ast10x0_g2_spi_ops, ast2700_aspeed_spi_dma_isr)
+#undef DT_DRV_COMPAT
+#define DT_DRV_COMPAT aspeed_ast10x0_g2_spi_controller
+DT_INST_FOREACH_STATUS_OKAY(ASPEED_AST10X0_G2_SPI_INIT)
+
 /* AST1060 */
 #define ASPEED_AST1060_SPI_INIT(n)                                         \
 	ASPEED_SPI_INIT(ast1060, n, ast1060_spi_ops, aspeed_spi_dma_isr)
@@ -1889,9 +1920,9 @@ DT_INST_FOREACH_STATUS_OKAY(ASPEED_AST2700_SPI_INIT)
 #define DT_DRV_COMPAT aspeed_ast2700_spi_lite_controller
 DT_INST_FOREACH_STATUS_OKAY(ASPEED_AST2700_SPI_LITE_INIT)
 
-/* AST1040 RISC-V MCU */
-#define ASPEED_AST1040_SPI_LITE_INIT(n)                                 \
-	ASPEED_SPI_LITE_INIT(ast1040_spi_lite, n, ast1040_spi_lite_ops)
+/* AST1040/AST1080 RISC-V MCU */
+#define ASPEED_AST10X0_G2_SPI_LITE_INIT(n)                                 \
+	ASPEED_SPI_LITE_INIT(ast10x0_g2_spi_lite, n, ast10x0_g2_spi_lite_ops)
 #undef DT_DRV_COMPAT
-#define DT_DRV_COMPAT aspeed_ast1040_spi_lite_controller
-DT_INST_FOREACH_STATUS_OKAY(ASPEED_AST1040_SPI_LITE_INIT)
+#define DT_DRV_COMPAT aspeed_ast10x0_g2_spi_lite_controller
+DT_INST_FOREACH_STATUS_OKAY(ASPEED_AST10X0_G2_SPI_LITE_INIT)

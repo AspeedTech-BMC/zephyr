@@ -8,7 +8,7 @@
 
 &soc {
 	fmc: spi@14000000 {
-		compatible = "aspeed,ast1040-spi-lite-controller";
+		compatible = "aspeed,ast10x0-g2-spi-lite-controller";
 		reg = <0x14000000 0x200>, <0x20000000 0x10000000>;
 		reg-names = "ctrl_reg", "spi_mmap";
 		clocks = <&sysclk SCU1_CLK_AHB>;

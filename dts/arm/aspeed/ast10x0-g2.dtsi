@@ -636,6 +636,32 @@
 				pin-offset = <224>;
 			};
 		};
+
+		fmc: spi@74000000 {
+			compatible = "aspeed,ast10x0-g2-spi-controller";
+			reg = <0x74000000 0x300>, <0x80000000 0x10000000>;
+			reg-names = "ctrl_reg", "spi_mmap";
+			interrupts = <INTR_FMC AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk SCU1_CLK_AHB>;
+			pinctrl-0 = <pinctrl_fwspi_quad_default>;
+			pinctrl-names = "default";
+			num-cs = <2>;
+			ctrl-type = "bspi";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			spi-ctrl-caps-mask = <0x000e0e0c>;
+			status = "disabled";
+
+			fmc_cs0: fmc@0 {
+				compatible = "jedec,spi-nor";
+				reg = <0>;
+				spi-max-buswidth = <1>;
+				spi-max-frequency = <25000000>;
+				jedec-id = [];
+				write-block-size = <4096>;
+				status = "okay";
+			};
+		};
 	};
 };
 

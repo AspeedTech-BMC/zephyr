@@ -322,3 +322,7 @@
 &sgpiom1 {
 	status = "okay";
 };
+
+&fmc {
+	status = "okay";
+};
