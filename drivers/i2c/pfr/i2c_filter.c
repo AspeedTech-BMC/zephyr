@@ -30,7 +30,7 @@ LOG_MODULE_REGISTER(i2c_pfr_filter);
 #else
 #ifdef ASPEED_I2C_FW_DUMP
 #define I2C_W_R(value, addr) LOG_INF("  dw %x %x", addr, value); sys_write32(value, addr);
-#define I2C_LW_R(value, addr) LOG_INF("  dw %x %lx", addr, value); sys_write32(value, addr);
+#define I2C_LW_R(value, addr) LOG_INF("  dw %x %x", addr, value); sys_write32(value, addr);
 #else
 #define I2C_W_R(value, addr) sys_write32(value, addr);
 #define I2C_LW_R(value, addr) sys_write32(value, addr);
@@ -225,7 +225,7 @@ uint8_t clr_idx, uint8_t clr_tbl)
 
 	/* set white list buffer into device */
 	if (data->filter_dev_en && data->filter_en) {
-		I2C_LW_R(TO_PHY_ADDR(&filter_tbl[(cfg->index)]),
+		I2C_LW_R((uint32_t)TO_PHY_ADDR((uintptr_t)&filter_tbl[(cfg->index)]),
 		(data->filter_dev_base + AST_I2C_F_BUF));
 	}
 
@@ -383,6 +383,15 @@ struct filter_info {
 
 #define ASPEED_FILTER_CHILD_DEV(node_id) { .dev = DEVICE_DT_GET(node_id) },
 
+#define I2C_FILTER_IRQ1(inst)						\
+	COND_CODE_1(DT_INST_IRQ_HAS_IDX(inst, 1),			\
+	(IRQ_CONNECT(DT_INST_IRQ_BY_IDX(inst, 1, irq),		\
+	DT_INST_IRQ_BY_IDX(inst, 1, priority),	\
+	ast_i2c_filter_isr,			\
+	DEVICE_DT_INST_GET(inst), 0);		\
+	irq_enable(DT_INST_IRQ_BY_IDX(inst, 1, irq));),	\
+	())
+
 #define I2C_FILTER_INIT(inst)				 \
 	PINCTRL_DT_INST_DEFINE(inst);                                           \
 	static struct filter_array child_filter_##inst[] = { DT_FOREACH_CHILD( \
@@ -423,14 +432,17 @@ struct filter_info {
 	DT_FOREACH_CHILD(DT_DRV_INST(inst), ASPEED_FILTER_CHILD_DEFINE)\
 	\
 	static void ast_i2c_filter_cfg_##inst(const struct device *dev) \
-	{									 \
-		ARG_UNUSED(dev);					 \
-	\
-		IRQ_CONNECT(DT_INST_IRQN(inst),	 \
-				DT_INST_IRQ(inst, priority),	 \
-				ast_i2c_filter_isr, DEVICE_DT_INST_GET(inst), 0); \
-	\
-		irq_enable(DT_INST_IRQN(inst));		 \
+	{					\
+		ARG_UNUSED(dev);								\
+						\
+		IRQ_CONNECT(DT_INST_IRQ_BY_IDX(inst, 0, irq),	\
+				DT_INST_IRQ_BY_IDX(inst, 0, priority),	\
+				ast_i2c_filter_isr,						\
+				DEVICE_DT_INST_GET(inst), 0);			\
+						\
+		irq_enable(DT_INST_IRQ_BY_IDX(inst, 0, irq));	\
+						\
+			I2C_FILTER_IRQ1(inst)					\
 	}
 
 DT_INST_FOREACH_STATUS_OKAY(I2C_FILTER_INIT)
