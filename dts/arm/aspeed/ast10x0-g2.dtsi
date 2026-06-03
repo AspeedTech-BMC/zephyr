@@ -121,6 +121,25 @@
 			#size-cells = <0>;
 		};
 
+		i2cfilter: i2c-filter@74c14000 {
+			compatible = "aspeed,i2c-filter";
+			reg = <0x74c14000 0x1000>;
+			clocks = <&sysclk SCU1_CLK_APB>;
+			interrupts = <INTR_I2C_F0 AST10X0_G2_IRQ_DEFAULT_PRIORITY>,
+						 <INTR_I2C_F1 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+			pinctrl-0 = <pinctrl_smbflt1_default pinctrl_smbflt2_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+			i2cfilter0: i2cfilter0 {
+				index = <0>;
+				clock = <100>;
+			};
+			i2cfilter1: i2cfilter1 {
+				index = <1>;
+				clock = <100>;
+			};
+		};
+
 		i2c_gr: i2c-global-regs@74c0f000 {
 			compatible = "aspeed,i2c-global";
 			#address-cells = <1>;
