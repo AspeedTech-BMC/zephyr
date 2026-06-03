@@ -300,7 +300,7 @@
 	};
 	/omit-if-no-ref/ pin_smbf2sclin: pin_smbf2sclin {
 		ball = <N16>;
-		sig_descs = <SIG_DESC(0x414, 0, 3);
+		sig_descs = <SIG_DESC(0x414, 0, 3)>;
 	};
 	/omit-if-no-ref/ pin_sda12: pin_sda12 {
 		ball = <N17>;
