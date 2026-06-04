@@ -26,6 +26,7 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME, CONFIG_I3C_ASPEED_LOG_LEVEL);
 struct i3c_dummy_device_config {
 	const struct device *bus;
 	const uint64_t pid;
+	uint16_t max_ibi_payload;
 };
 
 struct i3c_dummy_device_data {
@@ -74,12 +75,24 @@ static int i3c_dummy_device_init(const struct device *dev)
 	LOG_INF("%s (%012llx) belongs to bus %s", dev->name, config->pid, config->bus->name);
 
 	data->desc = i3c_device_find(config->bus, &i3c_id);
-	i3c_ibi_enable(data->desc);
+	if (!data->desc) {
+		LOG_ERR("%s: target descriptor not found on %s", dev->name, config->bus->name);
+		return -ENODEV;
+	}
 
+	/*
+	 * Wire up the IBI callback AND the maximum IBI payload size BEFORE
+	 * enabling IBI. The MIPI I3C HCI controller commits the DAT entry's
+	 * IBI_PAYLOAD bit and the per-device IBI accounting size from these
+	 * fields at i3c_ibi_enable() time; with max_ibi == 0 the controller
+	 * rejects every IBI byte the target emits (including the MDB byte
+	 * raised by pending-read-notify drivers like i3c-target-mqueue).
+	 */
 	data->desc->ibi_cb = i3c_dummy_device_ibi_cb;
+	data->desc->data_length.max_ibi = config->max_ibi_payload;
 	k_work_init(&data->work, i3c_dummy_device_work);
 
-	return 0;
+	return i3c_ibi_enable(data->desc);
 }
 
 #define I3C_DEVICE_ASPEED_INIT(n)                                                                  \
@@ -87,6 +100,7 @@ static int i3c_dummy_device_init(const struct device *dev)
 		.bus = DEVICE_DT_GET(DT_INST_BUS(n)),                                              \
 		.pid = ((uint64_t)DT_PROP_BY_IDX(DT_DRV_INST(n), reg, 1) << 32) |                  \
 		       DT_PROP_BY_IDX(DT_DRV_INST(n), reg, 2),                                     \
+		.max_ibi_payload = DT_INST_PROP(n, max_ibi_payload),                               \
 	};                                                                                         \
                                                                                                    \
 	static struct i3c_dummy_device_data i3c_dummy_device_data_##n;                           \

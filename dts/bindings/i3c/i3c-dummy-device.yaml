@@ -14,3 +14,16 @@ include:
 properties:
   label:
     type: string
+
+  max-ibi-payload:
+    type: int
+    default: 4
+    description: |
+      Maximum IBI payload size, in bytes, the controller-side descriptor
+      should advertise for this device when the driver calls
+      i3c_ibi_enable(). The MIPI I3C HCI controller uses this value to
+      decide whether to set the DAT entry's IBI_PAYLOAD bit and how big
+      the per-device IBI accounting buffer should be; leaving it at 0
+      makes the controller reject any IBI byte (including the MDB), so
+      this defaults to 4 which covers the single MDB byte that
+      pending-read-notify drivers (e.g. i3c-target-mqueue) emit.
