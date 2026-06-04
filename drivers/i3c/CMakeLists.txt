@@ -51,6 +51,8 @@ zephyr_library_sources_ifdef(
   i3c_aspeed.c
 )
 
+add_subdirectory_ifdef(CONFIG_I3C_MIPI_HCI mipi_hci)
+
 zephyr_library_sources_ifdef(
   CONFIG_I3C_DUMMY_DEVICE
   i3c_dummy_device.c

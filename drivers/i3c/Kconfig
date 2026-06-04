@@ -126,6 +126,7 @@ rsource "Kconfig.cdns"
 rsource "Kconfig.npcx"
 rsource "Kconfig.test"
 rsource "Kconfig.aspeed"
+source "drivers/i3c/mipi_hci/Kconfig"
 
 rsource "target/Kconfig"
 

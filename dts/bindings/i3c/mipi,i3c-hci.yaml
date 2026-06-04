@@ -1,0 +1,62 @@
+# Copyright (c) 2026 ASPEED Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Generic MIPI I3C Host Controller Interface binding.
+
+  This binding covers the silicon-agnostic surface of the MIPI I3C HCI
+  driver. Vendor extensions (Aspeed G7, etc.) live in dedicated bindings
+  that include this one and may add their own properties.
+
+  The driver registers under both this generic compatible and any
+  vendor-specific compatibles it understands. Each devicetree node is
+  bound to whichever binding YAML matches the first entry in its
+  `compatible` list — vendor-specific compatibles should come first so
+  the node picks up the vendor binding's extra properties.
+
+compatible: "mipi,i3c-hci"
+
+include: [i3c-controller.yaml, reset-device.yaml, pinctrl-device.yaml]
+
+properties:
+  reg:
+    required: true
+    description: |
+      Single register range covering the MIPI I3C HCI instance. Vendor
+      sub-block offsets (PHY, in-house, autocmd, ...) are discovered at
+      runtime from the HCI extended-capability descriptor.
+
+  clocks:
+    required: true
+
+  resets:
+    required: true
+
+  interrupts:
+    required: true
+
+  secondary:
+    type: boolean
+    description: Initialize as a secondary controller or target-capable device.
+
+  assigned-address:
+    type: int
+    description: |
+      Dynamic address when acting as main controller, or static address when
+      acting as target.
+
+  dcr:
+    type: int
+    description: Device Characteristics Register value for target mode.
+
+  pid-extra-info:
+    type: int
+    description: Extra information for PID bits [11:0].
+
+  io-mode:
+    type: string
+    default: "pio"
+    enum:
+      - "pio"
+      - "dma"
+    description: Select the HCI transfer engine.

@@ -1,0 +1,40 @@
+# Copyright (c) 2026 ASPEED Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig I3C_MIPI_HCI
+	bool "MIPI I3C HCI driver"
+	depends on DT_HAS_MIPI_I3C_HCI_ENABLED
+	default y
+	select I3C_IBI_WORKQUEUE if I3C_USE_IBI
+	help
+	  Enable the MIPI I3C Host Controller Interface driver skeleton.
+	  This option currently builds only Zephyr device-model stubs.
+
+if I3C_MIPI_HCI
+
+config I3C_MIPI_HCI_PIO
+	bool "MIPI I3C HCI PIO transfer mode"
+	default y
+	help
+	  Build the PIO transfer-mode stub.
+
+config I3C_MIPI_HCI_DMA
+	bool "MIPI I3C HCI DMA transfer mode"
+	default n
+	help
+	  Build the DMA transfer-mode stub. G7 commonly uses DMA, but
+	  this skeleton keeps PIO as the default until transfer logic exists.
+
+config I3C_MIPI_HCI_TARGET
+	bool "MIPI I3C HCI target and secondary-controller mode"
+	default y
+	help
+	  Build target-mode and secondary-controller support for the MIPI I3C
+	  HCI driver. The transfer engine still depends on the selected PIO or
+	  DMA implementation.
+
+module = I3C_MIPI_HCI
+module-str = i3c-mipi-hci
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # I3C_MIPI_HCI
