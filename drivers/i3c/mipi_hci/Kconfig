@@ -3,12 +3,15 @@
 
 menuconfig I3C_MIPI_HCI
 	bool "MIPI I3C HCI driver"
-	depends on DT_HAS_MIPI_I3C_HCI_ENABLED
+	depends on DT_HAS_ASPEED_G7_I3C_HCI_ENABLED || DT_HAS_MIPI_I3C_HCI_ENABLED
 	default y
 	select I3C_IBI_WORKQUEUE if I3C_USE_IBI
 	help
-	  Enable the MIPI I3C Host Controller Interface driver skeleton.
-	  This option currently builds only Zephyr device-model stubs.
+	  Enable the MIPI I3C Host Controller Interface driver. The
+	  vendor-agnostic core supports controller and target modes, PIO
+	  and DMA transfer engines, in-band interrupts, hot-join and
+	  HDR-DDR transfers. Silicon-specific behaviour plugs in through
+	  per-instance vendor extension back-ends.
 
 if I3C_MIPI_HCI
 
@@ -16,14 +19,31 @@ config I3C_MIPI_HCI_PIO
 	bool "MIPI I3C HCI PIO transfer mode"
 	default y
 	help
-	  Build the PIO transfer-mode stub.
+	  Build the PIO (FIFO-based) transfer engine. Selected at runtime
+	  for instances whose devicetree node sets io-mode = "pio".
 
 config I3C_MIPI_HCI_DMA
 	bool "MIPI I3C HCI DMA transfer mode"
 	default n
 	help
-	  Build the DMA transfer-mode stub. G7 commonly uses DMA, but
-	  this skeleton keeps PIO as the default until transfer logic exists.
+	  Build the DMA (ring-based) transfer engine. Selected at runtime
+	  for instances whose devicetree node sets io-mode = "dma".
+
+config I3C_MIPI_HCI_ASPEED_VENDOR
+	bool "ASPEED vendor extensions for MIPI I3C HCI"
+	default y if SOC_SERIES_AST27XX
+	help
+	  Build the ASPEED G7 (AST27xx / AST10x0-G2) vendor extension
+	  back-end: in-house register block, PHY bring-up, bus timing,
+	  DAT index policy, vendor IRQ decode and target-mode registers.
+
+config I3C_MIPI_HCI_ASPEED_AUTOCMD
+	bool "ASPEED MIPI I3C HCI auto-command engine"
+	depends on I3C_MIPI_HCI_ASPEED_VENDOR
+	default y if SOC_SERIES_AST27XX
+	help
+	  Build the ASPEED G7 auto-command slot programming helpers for
+	  the MIPI I3C HCI driver.
 
 config I3C_MIPI_HCI_TARGET
 	bool "MIPI I3C HCI target and secondary-controller mode"
@@ -31,7 +51,9 @@ config I3C_MIPI_HCI_TARGET
 	help
 	  Build target-mode and secondary-controller support for the MIPI I3C
 	  HCI driver. The transfer engine still depends on the selected PIO or
-	  DMA implementation.
+	  DMA implementation. Target mode requires a vendor back-end that
+	  implements the target register hooks; the MIPI HCI specification
+	  does not define target-mode operation.
 
 module = I3C_MIPI_HCI
 module-str = i3c-mipi-hci

@@ -15,4 +15,5 @@ zephyr_library_sources(
 
 zephyr_library_sources_ifdef(CONFIG_I3C_MIPI_HCI_PIO pio.c)
 zephyr_library_sources_ifdef(CONFIG_I3C_MIPI_HCI_DMA dma.c)
+zephyr_library_sources_ifdef(CONFIG_I3C_MIPI_HCI_ASPEED_VENDOR vendor_aspeed.c)
 zephyr_library_sources_ifdef(CONFIG_I3C_MIPI_HCI_TARGET target.c)

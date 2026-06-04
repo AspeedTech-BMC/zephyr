@@ -1,0 +1,50 @@
+# Copyright (c) 2026 ASPEED Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  ASPEED G7 MIPI I3C HCI controller.
+
+  This binding inherits the generic mipi,i3c-hci binding and adds the
+  Aspeed-specific tunables (SCL push-pull / open-drain timing, SDA
+  hold, target-mode PEC). The driver iterates both this compatible and
+  the generic one through DT_FOREACH_STATUS_OKAY in core.c, so any
+  devicetree node bound to this YAML is still picked up.
+
+  Devicetree nodes should list this compatible FIRST so Zephyr binds
+  this YAML to the node and validates the extra Aspeed-only properties
+  defined below. Example:
+
+      compatible = "aspeed,g7-i3c-hci";
+
+compatible: "aspeed,g7-i3c-hci"
+
+include: mipi,i3c-hci.yaml
+
+properties:
+  i3c-pp-scl-hi-period-ns:
+    type: int
+    description: I3C push-pull mode SCL high period in nanoseconds.
+
+  i3c-pp-scl-lo-period-ns:
+    type: int
+    description: I3C push-pull mode SCL low period in nanoseconds.
+
+  i3c-od-scl-hi-period-ns:
+    type: int
+    description: I3C open-drain mode SCL high period in nanoseconds.
+
+  i3c-od-scl-lo-period-ns:
+    type: int
+    description: I3C open-drain mode SCL low period in nanoseconds.
+
+  sda-tx-hold-ns:
+    type: int
+    description: SDA hold time with respect to the SCL edge, in nanoseconds.
+
+  ibi-append-pec:
+    type: boolean
+    description: Append a PEC byte to IBI data in target mode.
+
+  priv-xfer-pec:
+    type: boolean
+    description: Enable PEC handling for private transfers in target mode.
