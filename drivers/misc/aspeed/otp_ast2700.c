@@ -139,6 +139,7 @@ enum rom_patch_version_a2 {
 	A2_OTP_ROM_PATCH_V3 =	0x3376,
 	A2_OTP_ROM_PATCH_V4 =	0x3476,
 	A2_OTP_ROM_PATCH_V5 =	0x3576,
+	A2_OTP_ROM_PATCH_V6 =	0x3676,
 };
 
 struct otp_ast27xx_config {
@@ -326,6 +327,9 @@ static void aspeed_otp_rom_info_a2(const struct device *dev)
 		break;
 	case A2_OTP_ROM_PATCH_V5:
 		rom_ver_str = "v5";
+		break;
+	case A2_OTP_ROM_PATCH_V6:
+		rom_ver_str = "v6";
 		break;
 	default:
 		rom_ver_str = "Unknown";
