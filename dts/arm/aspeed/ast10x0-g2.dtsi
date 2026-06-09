@@ -140,6 +140,12 @@
 			};
 		};
 
+		mbxctrl: swmbx-ctrl {
+			compatible = "aspeed,swmbx-ctrl";
+			size = <256>;
+			status = "disabled";
+		};
+
 		i2c_gr: i2c-global-regs@74c0f000 {
 			compatible = "aspeed,i2c-global";
 			#address-cells = <1>;
