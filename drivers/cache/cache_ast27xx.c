@@ -208,8 +208,7 @@ int cache_data_invd_range(void *addr, size_t size)
 	uintptr_t base = CACHE_BASE;
 	unsigned int key = 0;
 
-	if (((uint32_t)addr < CACHED_MEM_ADDR) ||
-	    ((uint32_t)addr > CACHED_MEM_END)) {
+	if (!addr || size == 0U) {
 		return 0;
 	}
 
@@ -269,8 +268,7 @@ int cache_instr_invd_range(void *addr, size_t size)
 	uintptr_t base = CACHE_BASE;
 	unsigned int key = 0;
 
-	if (((uint32_t)addr < CACHED_MEM_ADDR) ||
-	    ((uint32_t)addr > CACHED_MEM_END)) {
+	if (!addr || size == 0U) {
 		return 0;
 	}
 
@@ -298,12 +296,15 @@ int cache_instr_invd_range(void *addr, size_t size)
 
 int cache_data_flush_all(void)
 {
-	return -ENOTSUP;
+	/* Write-through cache: nothing to flush, just barrier. */
+	barrier_dsync_fence_full();
+	return 0;
 }
 
 int cache_data_flush_and_invd_all(void)
 {
-	return -ENOTSUP;
+	barrier_dsync_fence_full();
+	return cache_data_invd_all();
 }
 
 int cache_data_flush_range(void *addr, size_t size)
@@ -311,15 +312,23 @@ int cache_data_flush_range(void *addr, size_t size)
 	ARG_UNUSED(addr);
 	ARG_UNUSED(size);
 
-	return -ENOTSUP;
+	/*
+	 * The AST27xx D-cache is write-through, so CPU writes are already
+	 * in memory by the time this function is called. No write-back is
+	 * needed -- only a barrier to ensure prior store buffers have
+	 * drained before any subsequent DMA fetch sees the data.
+	 */
+	barrier_dsync_fence_full();
+	return 0;
 }
 
 int cache_data_flush_and_invd_range(void *addr, size_t size)
 {
-	ARG_UNUSED(addr);
-	ARG_UNUSED(size);
-
-	return -ENOTSUP;
+	/* Write-through: "flush" half is a barrier (see cache_data_flush_range);
+	 * only the invalidate half does real HW work.
+	 */
+	barrier_dsync_fence_full();
+	return cache_data_invd_range(addr, size);
 }
 
 int cache_instr_flush_all(void)
