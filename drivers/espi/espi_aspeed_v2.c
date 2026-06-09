@@ -715,8 +715,10 @@ static void espi_ast2700_flash_init(struct espi_ast2700_flash *flash)
 	flash->dma.enable = DT_INST_PROP(0, flash_dma_mode);
 	flash->edaf.mode = DT_INST_PROP_OR(0, flash_edaf_mode, 2);
 	if (flash->edaf.mode == 0) {
-		flash->edaf.taddr = (uint64_t)DT_INST_PROP_BY_IDX(0, flash_edaf_tgt_addr, 0) << 32
-						| DT_INST_PROP_BY_IDX(0, flash_edaf_tgt_addr, 1);
+		flash->edaf.taddr = COND_CODE_1(DT_INST_NODE_HAS_PROP(0, flash_edaf_tgt_addr),
+			((uint64_t)DT_INST_PROP_BY_IDX(0, flash_edaf_tgt_addr, 0) << 32
+			| DT_INST_PROP_BY_IDX(0, flash_edaf_tgt_addr, 1)),
+			(0));
 	}
 
 	flash->edaf.size = FLASH_EDAF_ALIGN;
