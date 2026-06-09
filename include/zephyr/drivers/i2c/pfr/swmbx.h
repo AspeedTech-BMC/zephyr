@@ -9,8 +9,16 @@
 
 /* swmbx define */
 #define SWMBX_DEV_COUNT	0x2
+
+#if defined(CONFIG_SOC_AST1040_CM4) || \
+	defined(CONFIG_SOC_AST1080_CM4)
+#define SWMBX_BUF_BASE		0x74c19000
+#define SWMBX_INFO_BASE	0x74c19100
+#else
 #define SWMBX_BUF_BASE		0x7e7b0e00
 #define SWMBX_INFO_BASE	0x7e7b0f00
+#endif
+
 #define SWMBX_PROTECT_BITMAP	0x8
 #define SWMBX_NODE_COUNT	0x100
 #define SWMBX_FIFO_COUNT	0x4
