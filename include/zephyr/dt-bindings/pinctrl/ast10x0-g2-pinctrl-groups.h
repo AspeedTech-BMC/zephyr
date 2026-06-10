@@ -133,4 +133,14 @@
 #define pinctrl_espi_default   &pin_espid0 &pin_espid1 &pin_espid2 &pin_espid3 \
 				&pin_espick &pin_espics &pin_espialt &pin_espirst
 
+/* USB Port A (SCU3B0[1:0] SCU_USBA_SEL) */
+#define pinctrl_usb2aud_default &pin_usba_usbuart_vhub
+#define pinctrl_usb2ad_default  &pin_usba_vhub
+#define pinctrl_usb2ah_default  &pin_usba_ehci
+#define pinctrl_usb2au_default  &pin_usba_usbuart
+
+/* USB Port B (SCU3B0[3:2] SCU_USBB_SEL) */
+#define pinctrl_usb2bh_default  &pin_usbb_ehci
+#define pinctrl_usb2bd_default  &pin_usbb_vhub
+
 #endif /* _AST10X0_G2_PINCTRL_GROUPS_H_ */

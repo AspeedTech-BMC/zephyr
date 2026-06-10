@@ -111,6 +111,30 @@
 			};
 		};
 
+		udc0: udc@74120000 {
+			compatible = "aspeed,udc";
+			reg = <0x74120000 0x1000>;
+			interrupts = <INTR_USB2C AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+			num-bidir-endpoints = <22>;
+			clocks = <&sysclk SCU1_CLK_GATE_PORTCUSB2CLK>;
+			resets = <&sysrst SCU1_RESET_PORTC_VHUB_EHCI>;
+			pinctrl-0 = <pinctrl_usb2ad_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+		};
+
+		udc1: udc@74122000 {
+			compatible = "aspeed,udc";
+			reg = <0x74122000 0x1000>;
+			interrupts = <INTR_USB2D AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+			num-bidir-endpoints = <22>;
+			clocks = <&sysclk SCU1_CLK_GATE_PORTDUSB2CLK>;
+			resets = <&sysrst SCU1_RESET_PORTD_VHUB_EHCI>;
+			pinctrl-0 = <pinctrl_usb2bd_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+		};
+
 		peci: peci@74c1f000 {
 			compatible = "aspeed,peci";
 			reg = <0x74c1f000 0x100>;

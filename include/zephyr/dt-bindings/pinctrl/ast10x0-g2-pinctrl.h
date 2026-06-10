@@ -207,5 +207,7 @@
 #define E5      190
 #define F6      191
 #define J14     192
+#define PORTA_MODE      193
+#define PORTB_MODE      194
 
 #endif /* ZEPHYR_INCLUDE_DT_BINDINGS_PINCTRL_AST10X0_G2_H_ */

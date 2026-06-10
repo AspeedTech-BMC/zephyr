@@ -994,4 +994,33 @@
 		ball = <J14>;
 		sig_descs = <SIG_DESC(0x460, 4, 1)>;
 	};
+
+	/* SCU3B0[1:0] SCU_USBA_SEL */
+	/omit-if-no-ref/ pin_usba_usbuart_vhub: pin_usba_usbuart_vhub {
+		ball = <PORTA_MODE>;
+		sig_descs = <SIG_DESC(0x3B0, 0, 0)>;
+	};
+	/omit-if-no-ref/ pin_usba_vhub: pin_usba_vhub {
+		ball = <PORTA_MODE>;
+		sig_descs = <SIG_DESC(0x3B0, 0, 1)>;
+	};
+	/omit-if-no-ref/ pin_usba_ehci: pin_usba_ehci {
+		ball = <PORTA_MODE>;
+		sig_descs = <SIG_DESC(0x3B0, 0, 2)>;
+	};
+	/omit-if-no-ref/ pin_usba_usbuart: pin_usba_usbuart {
+		ball = <PORTA_MODE>;
+		sig_descs = <SIG_DESC(0x3B0, 0, 3)>;
+	};
+
+	/* SCU3B0[3:2] SCU_USBB_SEL */
+	/omit-if-no-ref/ pin_usbb_vhub: pin_usbb_vhub {
+		ball = <PORTB_MODE>;
+		sig_descs = <SIG_DESC(0x3B0, 2, 1)>;
+	};
+	/omit-if-no-ref/ pin_usbb_ehci: pin_usbb_ehci {
+		ball = <PORTB_MODE>;
+		sig_descs = <SIG_DESC(0x3B0, 2, 2)>;
+	};
+
 };
