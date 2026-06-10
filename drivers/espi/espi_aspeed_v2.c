@@ -655,6 +655,7 @@ static void espi_ast2700_flash_isr(struct espi_ast2700_data *data)
 	uint32_t sts;
 
 	sts = ESPI_RD(ESPI_CH3_INT_STS);
+
 	if (sts & ESPI_CH3_INT_STS_RX_CMPLT) {
 		ESPI_WR(ESPI_CH3_INT_STS_RX_CMPLT, ESPI_CH3_INT_STS);
 		k_sem_give(&flash->rx_ready);
@@ -726,6 +727,7 @@ static void espi_ast2700_flash_init(struct espi_ast2700_flash *flash)
 	flash->dma.tx_addr = TO_PHY_ADDR((uintptr_t)flash->dma.tx_virt);
 	flash->dma.rx_virt = flash_rx_buf;
 	flash->dma.rx_addr = TO_PHY_ADDR((uintptr_t)flash->dma.rx_virt);
+
 	k_sem_init(&flash->tx_lock, 1, 1);
 	k_sem_init(&flash->rx_lock, 1, 1);
 	k_sem_init(&flash->rx_ready, 0, 1);
@@ -1173,6 +1175,7 @@ int espi_aspeed_flash_put_tx(const struct device *dev, struct espi_aspeed_ioc *i
 	uint32_t reg;
 	uint32_t cyc, tag, len;
 	struct espi_comm_hdr *hdr = (struct espi_comm_hdr *)ioc->pkt;
+	struct espi_flash_rwe *flash_rwe = (struct espi_flash_rwe *)ioc->pkt;
 	struct espi_ast2700_data *data = (struct espi_ast2700_data *)dev->data;
 	struct espi_ast2700_flash *flash = &data->flash;
 
@@ -1186,20 +1189,23 @@ int espi_aspeed_flash_put_tx(const struct device *dev, struct espi_aspeed_ioc *i
 		goto unlock_n_out;
 	}
 
-	if (flash->dma.enable)
+	if (flash->dma.enable) {
 		memcpy(flash->dma.tx_virt, hdr + 1, ioc->pkt_len - sizeof(*hdr));
-	else
-		for (i = sizeof(*hdr); i < ioc->pkt_len; ++i)
+	} else {
+		for (i = sizeof(*hdr); i < ioc->pkt_len; ++i) {
 			ESPI_WR(ioc->pkt[i], ESPI_CH3_TX_DATA);
+		}
+	}
 
-	cyc = hdr->cyc;
-	tag = hdr->tag;
-	len = (hdr->len_h << 8) | (hdr->len_l & 0xff);
+	cyc = flash_rwe->cyc;
+	tag = flash_rwe->tag;
+	len = (flash_rwe->len_h << 8) | (flash_rwe->len_l & 0xff);
 
 	reg = FIELD_PREP(ESPI_CH3_TX_CTRL_CYC, cyc)
 	      | FIELD_PREP(ESPI_CH3_TX_CTRL_TAG, tag)
 	      | FIELD_PREP(ESPI_CH3_TX_CTRL_LEN, len)
 	      | ESPI_CH3_TX_CTRL_TRIG_PEND;
+
 	ESPI_WR(reg, ESPI_CH3_TX_CTRL);
 
 	rc = 0;
@@ -1277,25 +1283,58 @@ static int espi_ast2700_flash_rwe(const struct device *dev, struct espi_flash_pa
 	struct espi_flash_rwe *flash_rwe;
 	struct espi_aspeed_ioc ioc;
 	uint8_t pkt[sizeof(*flash_rwe) + ESPI_PLD_LEN_MAX];
+	uint32_t len;
+	uint32_t payload_len;
 
 	ioc.pkt = pkt;
-	ioc.pkt_len = sizeof(*flash_rwe) + pckt->len;
+
+	if (flash_op == ESPI_FLASH_ERASE || flash_op == ESPI_FLASH_READ) {
+		len = pckt->len;
+		payload_len = 0;
+	} else {
+		len = pckt->len;
+		payload_len = pckt->len;
+	}
 
 	flash_rwe = (struct espi_flash_rwe *)pkt;
 	flash_rwe->cyc = flash_op;
+	flash_rwe->len_h = (len >> 8) & 0xf;
 	flash_rwe->tag = FLASH_TAG;
-	flash_rwe->len_h = pckt->len >> 8;
-	flash_rwe->len_l = pckt->len & 0xff;
+	flash_rwe->len_l = len & 0xff;
 	flash_rwe->addr_be = BSWAP_32(pckt->flash_addr);
 
-	memcpy(flash_rwe + 1, pckt->buf, pckt->len);
+	ioc.pkt_len = sizeof(*flash_rwe) + payload_len;
+
+	if (payload_len && pckt->buf) {
+		memcpy(flash_rwe + 1, pckt->buf, payload_len);
+	}
 
 	return espi_aspeed_flash_put_tx(dev, &ioc);
 }
 
 static int espi_ast2700_flash_read(const struct device *dev, struct espi_flash_packet *pckt)
 {
-	return espi_ast2700_flash_rwe(dev, pckt, ESPI_FLASH_READ);
+	struct espi_aspeed_ioc ioc;
+	struct espi_flash_cmplt *cmplt;
+	uint8_t pkt[sizeof(*cmplt) + ESPI_PLD_LEN_MAX];
+	int rc;
+
+	rc = espi_ast2700_flash_rwe(dev, pckt, ESPI_FLASH_READ);
+	if (rc)
+		return rc;
+
+	ioc.pkt = pkt;
+	ioc.pkt_len = sizeof(pkt);
+
+	rc = espi_aspeed_flash_get_rx(dev, &ioc, true);
+	if (rc)
+		return rc;
+
+	cmplt = (struct espi_flash_cmplt *)pkt;
+	if (pckt->buf)
+		memcpy(pckt->buf, cmplt + 1, pckt->len);
+
+	return 0;
 }
 
 static int espi_ast2700_flash_write(const struct device *dev, struct espi_flash_packet *pckt)
