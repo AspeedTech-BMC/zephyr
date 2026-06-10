@@ -116,7 +116,9 @@
 
 	prictrl_bootmcu: prictrl-bootmcu {
 		compatible = "aspeed,prictrl-prot";
-		protect-dev = <IO_S_I_PRICTRL WRITE_PROT>, <C_S_C_PRICTRL WRITE_PROT>;
+		protect-dev = <IO_S_I_PRICTRL WRITE_PROT>,
+			      <C_S_C_PRICTRL WRITE_PROT>,
+			      <IO_S_I_SRAM WRITE_PROT>;
 		status = "okay";
 	};
 
