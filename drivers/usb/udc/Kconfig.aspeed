@@ -1,0 +1,23 @@
+# Copyright (c) 2026 Aspeed Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+config UDC_ASPEED
+	bool "ASPEED USB device controller driver"
+	default y
+	depends on DT_HAS_ASPEED_UDC_ENABLED
+	select CLOCK_CONTROL
+	select PINCTRL
+	select RESET
+	help
+	  ASPEED USB device controller driver for the new USB device stack.
+
+if UDC_ASPEED
+
+config UDC_ASPEED_EVENT_COUNT
+	int "ASPEED UDC internal event count"
+	range 4 64
+	default 16
+	help
+	  Number of ISR bottom-half events queued by the ASPEED UDC driver.
+
+endif # UDC_ASPEED

@@ -6,7 +6,7 @@ description: |
 
 compatible: "aspeed,udc"
 
-include: [base.yaml, reset-device.yaml, usb-ep.yaml]
+include: [base.yaml, reset-device.yaml, usb-ep.yaml, pinctrl-device.yaml]
 
 properties:
     reg:
