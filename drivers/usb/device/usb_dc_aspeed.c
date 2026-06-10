@@ -6,10 +6,13 @@
 
 #define DT_DRV_COMPAT aspeed_udc
 
+#include <zephyr/drivers/clock_control.h>
+#include <zephyr/drivers/pinctrl.h>
 #include <zephyr/drivers/reset.h>
 #include <stdio.h>
 #include <zephyr/usb/usb_device.h>
 #include <zephyr/cache.h>
+#include <zephyr/sys/util.h>
 
 #include "soc.h"
 #define LOG_LEVEL	CONFIG_USB_DRIVER_LOG_LEVEL
@@ -129,7 +132,13 @@ LOG_MODULE_REGISTER(usb_dc_aspeed);
 
 /*************************************************************************************/
 #define RX_DMA_BUFF_SIZE		1024
-#define AST_UDC_MAX_NUM_EP		5
+#define ASPEED_UDC_NODE			DT_COMPAT_GET_ANY_STATUS_OKAY(DT_DRV_COMPAT)
+#define AST_UDC_MAX_NUM_EP		DT_PROP(ASPEED_UDC_NODE, num_bidir_endpoints)
+
+BUILD_ASSERT(DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) <= 1,
+	     "ASPEED legacy USB device driver supports only one enabled UDC");
+BUILD_ASSERT(AST_UDC_MAX_NUM_EP <= 22,
+	     "ASPEED UDC supports at most 22 num_bidir_endpoints");
 
 /*
  * ASPEED UDC supports AST_UDC_MAX_NUM_EP bidirectional endpoints.
@@ -154,12 +163,12 @@ LOG_MODULE_REGISTER(usb_dc_aspeed);
  * In other words, non-control endpoints consume separate programmable
  * slots for OUT and IN, while EP0 shares the same slot for both directions.
  *
- * MAX_NUM_OF_EP_MAP equals 2 * num_bidir_endpoints (i.e., the maximum
+ * MAX_NUM_OF_EP_MAP equals 2 * AST_UDC_MAX_NUM_EP (i.e., the maximum
  * number of direction-specific entries).
  */
 #define EP_MAP_IDX(ep)			(USB_EP_GET_IDX(ep) * 2 + \
 					 (USB_EP_GET_DIR(ep) >> 7))
-#define MAX_NUM_OF_EP_MAP		(DT_INST_PROP(0, num_bidir_endpoints) * 2)
+#define MAX_NUM_OF_EP_MAP		(AST_UDC_MAX_NUM_EP * 2)
 
 enum ep_state {
 	ep_state_token = 0,
@@ -223,7 +232,11 @@ static struct usb_device_data dev_data;
 struct usb_aspeed_cfg {
 	const uint32_t base;
 	const struct reset_dt_spec reset;
+	const struct pinctrl_dev_config *pcfg;
+	const struct device *clock_dev;
+	clock_control_subsys_t clk_id;
 	const uint32_t max_epns;
+	void (*irq_config_func)(void);
 };
 
 #define DEV_CFG(dev) ((const struct usb_aspeed_cfg *const)(dev)->config)
@@ -591,11 +604,11 @@ static void usb_aspeed_isr(void)
 	if (isr & ISR_EP_ACK_STALL) {
 		LOG_DBG("ISR_EP_ACK_STALL");
 		ep_isr = sys_read32(dev_data.base + ASPEED_USB_EP_ACK_ISR);
-		for (i = 0; i < dev_data.max_epns; i++) {
-			if (ep_isr & (0x1 << i)) {
-				sys_write32(0x1 << i,
+		for (i = 1; i < dev_data.max_epns; i++) {
+			if (ep_isr & BIT(i - 1)) {
+				sys_write32(BIT(i - 1),
 					dev_data.base + ASPEED_USB_EP_ACK_ISR);
-				aspeed_udc_ep_handle(i + 1);
+				aspeed_udc_ep_handle(i);
 			}
 		}
 	}
@@ -653,6 +666,7 @@ static void usbd_work_handler(struct k_work *item)
 static int usb_aspeed_init(const struct device *dev)
 {
 	const struct usb_aspeed_cfg *config = DEV_CFG(dev);
+	int ret;
 	int i;
 
 	LOG_DBG("init");
@@ -666,7 +680,37 @@ static int usb_aspeed_init(const struct device *dev)
 		dev_data.max_epns = AST_UDC_MAX_NUM_EP;
 	}
 
-	reset_line_deassert_dt(&config->reset);
+	if (config->clock_dev) {
+		if (!device_is_ready(config->clock_dev)) {
+			LOG_ERR("clock control device not ready");
+			return -ENODEV;
+		}
+
+		ret = clock_control_on(config->clock_dev, config->clk_id);
+		if (ret != 0) {
+			LOG_ERR("failed to enable clock (%d)", ret);
+			return ret;
+		}
+	}
+
+	if (!device_is_ready(config->reset.dev)) {
+		LOG_ERR("reset device not ready");
+		return -ENODEV;
+	}
+
+	ret = reset_line_deassert_dt(&config->reset);
+	if (ret != 0) {
+		LOG_ERR("failed to deassert reset (%d)", ret);
+		return ret;
+	}
+
+	if (config->pcfg) {
+		ret = pinctrl_apply_state(config->pcfg, PINCTRL_STATE_DEFAULT);
+		if (ret < 0) {
+			LOG_ERR("failed to apply default pinctrl state (%d)", ret);
+			return ret;
+		}
+	}
 
 	/* wait 1 ms */
 	k_busy_wait(1000);
@@ -681,7 +725,7 @@ static int usb_aspeed_init(const struct device *dev)
 	sys_write32(IRQ_ACK_ALL, dev_data.base + ASPEED_USB_ISR);
 
 	sys_write32(0x0, dev_data.base + ASPEED_USB_EP_ACK_IER);
-	sys_write32(GENMASK(dev_data.max_epns, 0),
+	sys_write32(GENMASK(dev_data.max_epns - 2, 0),
 		    dev_data.base + ASPEED_USB_EP_ACK_ISR);
 
 	sys_write32(0, dev_data.base + ASPEED_USB_EP0_CTRL);
@@ -692,10 +736,7 @@ static int usb_aspeed_init(const struct device *dev)
 		dev_data.base + ASPEED_USB_PHY_CTRL0);
 
 	/* Connect and enable USB interrupt */
-	IRQ_CONNECT(DT_INST_IRQN(0), DT_INST_IRQ(0, priority),
-		    usb_aspeed_isr, 0, 0);
-
-	irq_enable(DT_INST_IRQN(0));
+	config->irq_config_func();
 
 	if (!dev_data.init) {
 		/* initialize dev_data */
@@ -1157,16 +1198,18 @@ int usb_dc_ep_enable(const uint8_t ep)
 			    ep_reg + ASPEED_EP_CONFIG);
 
 		if (dev_data.ep_data[ep_num].is_out) {
-			sys_write32(TO_PHY_ADDR(dev_data.ep_data[ep_num].rx_dma),
+			sys_write32(TO_PHY_ADDR((uintptr_t)dev_data.ep_data[ep_num].rx_dma),
 				    ep_reg + ASPEED_EP_DMA_BUFF);
 			sys_write32(0x1, ep_reg + ASPEED_EP_DMA_STS);
 		}
 	}
 
 	/* enable interrupts */
-	val = sys_read32(dev_data.base + ASPEED_USB_EP_ACK_IER);
-	val |= BIT(ep_num - 1);
-	sys_write32(val, dev_data.base + ASPEED_USB_EP_ACK_IER);
+	if (ep_num > 0) {
+		val = sys_read32(dev_data.base + ASPEED_USB_EP_ACK_IER);
+		val |= BIT(ep_num - 1);
+		sys_write32(val, dev_data.base + ASPEED_USB_EP_ACK_IER);
+	}
 
 	return 0;
 }
@@ -1196,9 +1239,11 @@ int usb_dc_ep_disable(const uint8_t ep)
 	atomic_clear(&dev_data.ep_data[ep_num].write_busy);
 
 	/* disable interrupts */
-	val = sys_read32(dev_data.base + ASPEED_USB_EP_ACK_IER);
-	val &= ~ep_num;
-	sys_write32(val, dev_data.base + ASPEED_USB_EP_ACK_IER);
+	if (ep_num > 0) {
+		val = sys_read32(dev_data.base + ASPEED_USB_EP_ACK_IER);
+		val &= ~BIT(ep_num - 1);
+		sys_write32(val, dev_data.base + ASPEED_USB_EP_ACK_IER);
+	}
 
 	return 0;
 }
@@ -1274,7 +1319,7 @@ int usb_dc_ep_write(const uint8_t ep, const uint8_t *const data,
 		LOG_DBG("trigger ep0 tx len: [%d/%d]", tx_len, data_len);
 		dev_data.ep_data[0].tx_last = tx_len;
 
-		sys_write32(TO_PHY_ADDR(dev_data.ep_data[0].tx_dma),
+		sys_write32(TO_PHY_ADDR((uintptr_t)dev_data.ep_data[0].tx_dma),
 			    dev_data.base + ASPEED_USB_EP0_DATA_BUFF);
 		aspeed_udc_ep0_tx(tx_len);
 
@@ -1295,7 +1340,7 @@ int usb_dc_ep_write(const uint8_t ep, const uint8_t *const data,
 		if (ret_bytes)
 			*ret_bytes = tx_len;
 
-		sys_write32(TO_PHY_ADDR(data), ep_reg + ASPEED_EP_DMA_BUFF);
+		sys_write32(TO_PHY_ADDR((uintptr_t)data), ep_reg + ASPEED_EP_DMA_BUFF);
 		sys_write32(EP_TX_LEN(tx_len), ep_reg + ASPEED_EP_DMA_STS);
 		sys_write32(EP_TX_LEN(tx_len) | 0x1,
 			ep_reg + ASPEED_EP_DMA_STS);
@@ -1557,11 +1602,37 @@ int usb_dc_ep_mps(uint8_t ep)
 	return dev_data.ep_data[ep_num].mps;
 }
 
+#define ASPEED_UDC_CLOCK_INIT(n)					       \
+	COND_CODE_1(DT_INST_NODE_HAS_PROP(n, clocks),			       \
+		    (.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(n)),       \
+		     .clk_id = (clock_control_subsys_t)			       \
+			       DT_INST_CLOCKS_CELL(n, clk_id),),		       \
+		    (.clock_dev = NULL,				       \
+		     .clk_id = CLOCK_CONTROL_SUBSYS_ALL,))
+
+#define ASPEED_UDC_PINCTRL_DT_INST_DEFINE(n)				       \
+	COND_CODE_1(DT_INST_PINCTRL_HAS_NAME(n, default),		       \
+		    (PINCTRL_DT_INST_DEFINE(n)), ())
+
+#define ASPEED_UDC_PINCTRL_DT_INST_DEV_CONFIG_GET(n)			       \
+	COND_CODE_1(DT_INST_PINCTRL_HAS_NAME(n, default),		       \
+		    (PINCTRL_DT_INST_DEV_CONFIG_GET(n)), (NULL))
+
 #define ASPEED_UDC_INIT(n)						       \
+	static void usb_aspeed_irq_config_##n(void)			       \
+	{								       \
+		IRQ_CONNECT(DT_INST_IRQN(n), DT_INST_IRQ(n, priority),	       \
+			    usb_aspeed_isr, 0, 0);			       \
+		irq_enable(DT_INST_IRQN(n));				       \
+	}								       \
+	ASPEED_UDC_PINCTRL_DT_INST_DEFINE(n);				       \
 	static const struct usb_aspeed_cfg usb_aspeed_cfg_##n = {	       \
 		.base = (uint32_t)DT_INST_REG_ADDR(n),	                       \
 		.reset = RESET_DT_SPEC_INST_GET(n),                            \
+		.pcfg = ASPEED_UDC_PINCTRL_DT_INST_DEV_CONFIG_GET(n),	       \
 		.max_epns = DT_INST_PROP(n, num_bidir_endpoints),              \
+		.irq_config_func = usb_aspeed_irq_config_##n,		       \
+		ASPEED_UDC_CLOCK_INIT(n)				       \
 	};								       \
 	DEVICE_DT_INST_DEFINE(n, usb_aspeed_init, NULL, NULL,		       \
 			      &usb_aspeed_cfg_##n,                             \

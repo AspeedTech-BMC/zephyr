@@ -244,7 +244,8 @@ config USB_NATIVE_POSIX_HS
 config USB_ASPEED
 	bool "ASPEED USB Device Controller Driver"
 	default y
-	depends on DT_HAS_ASPEED_UDC_ENABLED
+	depends on DT_HAS_ASPEED_UDC_ENABLED && !USB_DEVICE_STACK_NEXT
+	select PINCTRL
 	select USB_DC_HAS_HS_SUPPORT
 	help
 	  ASPEED USB Device Controller Driver
