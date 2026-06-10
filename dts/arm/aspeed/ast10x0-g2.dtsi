@@ -830,10 +830,11 @@
 		};
 
 		espi0: espi@74c05000 {
-			compatible = "aspeed,espi-v2";
+			compatible = "aspeed,espi-ast1040", "aspeed,espi-v2";
 			reg = <0x74c05000 0x1000>;
 			interrupts = <INTR_ESPI_GLOBAL AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk SCU1_CLK_AHB>;
+			aspeed,scu = <&syscon>;
 			status = "disabled";
 		};
 	};

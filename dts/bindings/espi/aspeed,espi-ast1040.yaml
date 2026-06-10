@@ -1,0 +1,14 @@
+# Copyright (c) 2021, ASPEED
+# SPDX-License-Identifier: Apache-2.0
+
+description: ASPEED eSPI for AST1040
+
+compatible: "aspeed,espi-ast1040"
+
+include: aspeed,espi-v2.yaml
+
+properties:
+    aspeed,scu:
+      type: phandle
+      required: false
+      description: phandle to SCU device tree node

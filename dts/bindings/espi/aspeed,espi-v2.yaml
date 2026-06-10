@@ -22,15 +22,20 @@ properties:
       required: false
       description: enable memory cycle for peripheral channel
 
-    perif-mcyc-src-addr:
-      type: int
+    perif-mcyc-dma-mode:
+      type: boolean
       required: false
-      description: host side decoding address of memory cycle
+      description: enable DMA for peripheral channel memory cycle
+
+    perif-mcyc-src-addr:
+      type: array
+      required: false
+      description: host side decoding address of memory cycle, as a 64-bit value in <high low> order
 
     perif-mcyc-size:
-      type: int
+      type: array
       required: false
-      description: region size for memory cycle
+      description: region size for memory cycle, as a 64-bit value in <high low> order
 
     vw-gpio-hw-mode:
       type: boolean
