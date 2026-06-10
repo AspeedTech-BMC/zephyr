@@ -63,6 +63,19 @@ LOG_MODULE_REGISTER(soc, LOG_LEVEL_ERR);
 #define INTC1G_IRQ_ROUTE_REG1 0xa0
 #define INTC1G_IRQ_ROUTE_REG2 0xc0
 
+/*
+ * INTC1 (intc1_global) reset-deassert status register. The INTC1 interrupt
+ * registers of a given processor are held in reset-assert until an external
+ * master (e.g. the PSP) releases them by clearing the corresponding bit here.
+ * While the bit is set the registers cannot be accessed, so poll it before
+ * touching the INTC1 path. We never clear it - that is the master's job.
+ *
+ *   BIT(1): SSP (irq_route_select == 0x2)
+ *   BIT(2): TSP (irq_route_select == 0x3)
+ */
+#define INTC1G_RESET_STATUS_REG 0x14
+#define INTC1G_RESET_POLL_MAX   100000
+
 /* 1-1 INTC: INTC0_0~INTC0_10 NVIC128~138 */
 /* 1-1 INTC: INTC0_11 bit0~bit9 NVIC160~192 */
 /* 6-1 INTC: INTC1_0~INTC1_5 which's parent is INTC0_11 bit0~bit5 */
@@ -223,11 +236,40 @@ static void intcg_set_irq_route(unsigned int irq_raw, int select)
  * 110: Route interrupt INTi(irq_raw) to MCU0
  * others: reserved"
  */
+/*
+ * Wait for the external master to deassert this processor's INTC1 reset.
+ * Until INTC1G_RESET_STATUS_REG's bit is cleared the INTC1 interrupt
+ * registers are inaccessible, so this must run before any INTC1 access.
+ */
+static void intc1g_wait_reset_deassert(void)
+{
+	uintptr_t reg = INTC1G_BASE + INTC1G_RESET_STATUS_REG;
+	uint32_t bit;
+
+	if (INTC1G_IRQ_ROUTE_SEL == 0x2) {
+		bit = BIT(1); /* routed to SSP */
+	} else if (INTC1G_IRQ_ROUTE_SEL == 0x3) {
+		bit = BIT(2); /* routed to TSP */
+	} else {
+		return;
+	}
+
+	for (int i = 0; i < INTC1G_RESET_POLL_MAX; i++) {
+		if (!(sys_read32(reg) & bit)) {
+			return;
+		}
+	}
+
+	LOG_ERR("INTC1 still in reset (reg 0x%lx, bit 0x%x); registers inaccessible", reg, bit);
+}
+
 static void intc1g_set_irq_route(unsigned int irq_raw, int select)
 {
 	uintptr_t base = INTC1G_BASE;
 	uint32_t byte_offset;
 	uint32_t bit_pos = irq_raw & BIT_MASK(5);
+
+	intc1g_wait_reset_deassert();
 
 	irq_raw = irq_raw - CONFIG_3RD_LVL_ISR_TBL_OFFSET;
 	byte_offset = (irq_raw >> 5) * 4;
