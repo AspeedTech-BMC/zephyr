@@ -12,6 +12,7 @@
 #include <zephyr/device.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/sys/byteorder.h>
 #include <zephyr/drivers/misc/aspeed/otp_ast27xx.h>
 
 #include "otp_info_ast27xx.h"
@@ -79,6 +80,8 @@ LOG_MODULE_REGISTER(otp_ast2700, CONFIG_LOG_DEFAULT_LEVEL);
 #define SEC_REGION_END_ADDR		0x1c00
 #define CAL_REGION_START_ADDR		SEC_REGION_END_ADDR
 #define CAL_REGION_END_ADDR		0x1f80
+#define   CAL_VENDOR_KEY_HASH_OFFSET	0x12
+#define   CAL_VENDOR_KEY_HASH_BYTES	48
 #define SW_PUF_REGION_START_ADDR	CAL_REGION_END_ADDR
 #define SW_PUF_REGION_END_ADDR		0x1fc0
 #define HW_PUF_REGION_START_ADDR	SW_PUF_REGION_END_ADDR
@@ -368,10 +371,13 @@ static void aspeed_otp_rom_info_a1(const struct device *dev)
 	LOG_INF("\tROM patch: %s", rom_ver_str);
 }
 
-static void aspeed_otp_rom_info(const struct device *dev)
+static void aspeed_otp_dump_info(const struct device *dev)
 {
-	uint32_t ver;
+	uint32_t offset = CAL_REGION_START_ADDR + CAL_VENDOR_KEY_HASH_OFFSET;
+	uint16_t hash[CAL_VENDOR_KEY_HASH_BYTES / sizeof(uint16_t)];
+	int ver, ret;
 
+	/* Dump ROM patch version */
 	aspeed_chip_version(dev, &ver);
 
 	if (ver == OTP_AST2700_A2) {
@@ -379,6 +385,16 @@ static void aspeed_otp_rom_info(const struct device *dev)
 	} else {
 		aspeed_otp_rom_info_a1(dev);
 	}
+
+	/* Dump vendor keyhash */
+	ret = aspeed_otp_read(dev, offset, hash, ARRAY_SIZE(hash));
+	if (ret) {
+		LOG_ERR("Failed to read vendor key hash");
+		return;
+	}
+
+	LOG_INF("\tVendor key hash: %04x%04x...",
+		sys_be16_to_cpu(hash[0]), sys_be16_to_cpu(hash[1]));
 }
 
 static int otp_ast27xx_init(const struct device *dev)
@@ -395,7 +411,7 @@ static int otp_ast27xx_init(const struct device *dev)
 		return rc;
 	}
 
-	aspeed_otp_rom_info(dev);
+	aspeed_otp_dump_info(dev);
 
 	LOG_INF("\t0x%x: OTP driver initialized", (uint32_t)cfg->base);
 
