@@ -61,14 +61,22 @@ LOG_MODULE_REGISTER(espi);
 #define   ESPI_CH0_CTRL_SW_RDY		BIT(1)
 #define ESPI_CH0_STS			0x104
 #define ESPI_CH0_INT_STS		0x108
+#if DT_HAS_COMPAT_STATUS_OKAY(aspeed_espi_ast1040)
+#define   ESPI_CH0_INT_STS_NP_RX_VALID	BIT(2)
+#endif
 #define   ESPI_CH0_INT_STS_PC_RX_CMPLT	BIT(0)
 #define ESPI_CH0_INT_EN			0x10c
+#if DT_HAS_COMPAT_STATUS_OKAY(aspeed_espi_ast1040)
+#define   ESPI_CH0_INT_EN_NP_RX_VALID	BIT(2)
+#endif
 #define   ESPI_CH0_INT_EN_PC_RX_CMPLT	BIT(0)
 #define ESPI_CH0_PC_RX_DMAL		0x110
 #define ESPI_CH0_PC_RX_DMAH		0x114
 #define ESPI_CH0_PC_RX_CTRL		0x118
 #define   ESPI_CH0_PC_RX_CTRL_SERV_PEND	BIT(31)
+#if DT_HAS_COMPAT_STATUS_OKAY(aspeed_espi_ast1040)
 #define   ESPI_CH0_PC_RX_CTRL_FW	BIT(24)
+#endif
 #define   ESPI_CH0_PC_RX_CTRL_LEN	GENMASK(23, 12)
 #define   ESPI_CH0_PC_RX_CTRL_TAG	GENMASK(11, 8)
 #define   ESPI_CH0_PC_RX_CTRL_CYC	GENMASK(7, 0)
@@ -77,7 +85,9 @@ LOG_MODULE_REGISTER(espi);
 #define ESPI_CH0_PC_TX_DMAH		0x124
 #define ESPI_CH0_PC_TX_CTRL		0x128
 #define   ESPI_CH0_PC_TX_CTRL_TRIG_PEND	BIT(31)
+#if DT_HAS_COMPAT_STATUS_OKAY(aspeed_espi_ast1040)
 #define   ESPI_CH0_PC_TX_CTRL_FW	BIT(24)
+#endif
 #define   ESPI_CH0_PC_TX_CTRL_LEN	GENMASK(23, 12)
 #define   ESPI_CH0_PC_TX_CTRL_TAG	GENMASK(11, 8)
 #define   ESPI_CH0_PC_TX_CTRL_CYC	GENMASK(7, 0)
@@ -293,8 +303,10 @@ struct espi_ast2700_perif {
 
 	struct k_sem pc_tx_lock;
 	struct k_sem np_tx_lock;
-	struct k_sem rx_lock;
-	struct k_sem rx_ready;
+	struct k_sem pc_rx_lock;
+	struct k_sem pc_rx_ready;
+	struct k_sem np_rx_lock;
+	struct k_sem np_rx_ready;
 };
 
 struct espi_ast2700_vw {
@@ -413,10 +425,18 @@ static void espi_ast2700_perif_isr(struct espi_ast2700_data *data)
 	uint32_t sts;
 
 	sts = ESPI_RD(ESPI_CH0_INT_STS);
+	LOG_INF("perif int sts: 0x%08x", sts);
+
+#if DT_HAS_COMPAT_STATUS_OKAY(aspeed_espi_ast1040)
+	if (sts & ESPI_CH0_INT_STS_NP_RX_VALID) {
+		ESPI_WR(ESPI_CH0_INT_STS_NP_RX_VALID, ESPI_CH0_INT_STS);
+		k_sem_give(&perif->np_rx_ready);
+	}
+#endif
 
 	if (sts & ESPI_CH0_INT_STS_PC_RX_CMPLT) {
 		ESPI_WR(ESPI_CH0_INT_STS_PC_RX_CMPLT, ESPI_CH0_INT_STS);
-		k_sem_give(&perif->rx_ready);
+		k_sem_give(&perif->pc_rx_ready);
 	}
 }
 
@@ -497,14 +517,19 @@ static void espi_ast2700_perif_reset(struct espi_ast2700_perif *perif)
 
 	ESPI_WR(ESPI_CH0_INT_EN_PC_RX_CMPLT, ESPI_CH0_INT_EN);
 
+#if DT_HAS_COMPAT_STATUS_OKAY(aspeed_espi_ast1040)
+	if (perif->mcyc.enable && !perif->mcyc.dma_mode) {
+		reg = ESPI_RD(ESPI_CH0_INT_EN) | ESPI_CH0_INT_EN_NP_RX_VALID;
+		ESPI_WR(reg, ESPI_CH0_INT_EN);
+	}
+#endif
+
 	reg = ESPI_RD(ESPI_CH0_CTRL) | ESPI_CH0_CTRL_SW_RDY;
 	ESPI_WR(reg, ESPI_CH0_CTRL);
 }
 
 static void espi_ast2700_perif_init(struct espi_ast2700_perif *perif)
 {
-	uint32_t reg;
-
 	perif->dma.enable = DT_INST_PROP(0, perif_dma_mode);
 	perif->dma.pc_rx_virt = perif_pc_rx_buf;
 	perif->dma.pc_rx_addr = TO_PHY_ADDR((uintptr_t)perif->dma.pc_rx_virt);
@@ -526,8 +551,10 @@ static void espi_ast2700_perif_init(struct espi_ast2700_perif *perif)
 
 	k_sem_init(&perif->pc_tx_lock, 1, 1);
 	k_sem_init(&perif->np_tx_lock, 1, 1);
-	k_sem_init(&perif->rx_lock, 1, 1);
-	k_sem_init(&perif->rx_ready, 0, 1);
+	k_sem_init(&perif->pc_rx_lock, 1, 1);
+	k_sem_init(&perif->pc_rx_ready, 0, 1);
+	k_sem_init(&perif->np_rx_lock, 1, 1);
+	k_sem_init(&perif->np_rx_ready, 0, 1);
 }
 
 /* virtual wire channel */
@@ -884,11 +911,11 @@ int espi_aspeed_perif_pc_get_rx(const struct device *dev, struct espi_aspeed_ioc
 	uint32_t *addr32 = (uint32_t *)(hdr + 1);
 	uint64_t *addr64 = (uint64_t *)(hdr + 1);
 
-	rc = k_sem_take(&perif->rx_lock, (blocking) ? K_FOREVER : K_NO_WAIT);
+	rc = k_sem_take(&perif->pc_rx_lock, (blocking) ? K_FOREVER : K_NO_WAIT);
 	if (rc)
 		return rc;
 
-	rc = k_sem_take(&perif->rx_ready, (blocking) ? K_FOREVER : K_NO_WAIT);
+	rc = k_sem_take(&perif->pc_rx_ready, (blocking) ? K_FOREVER : K_NO_WAIT);
 	if (rc)
 		goto unlock_n_out;
 
@@ -943,7 +970,7 @@ int espi_aspeed_perif_pc_get_rx(const struct device *dev, struct espi_aspeed_ioc
 	default:
 		__ASSERT(0, "Unrecognized eSPI peripheral packet");
 
-		k_sem_give(&perif->rx_ready);
+		k_sem_give(&perif->pc_rx_ready);
 		rc = -EFAULT;
 		goto unlock_n_out;
 	}
@@ -962,7 +989,7 @@ int espi_aspeed_perif_pc_get_rx(const struct device *dev, struct espi_aspeed_ioc
 	ESPI_WR(reg | ESPI_CH0_PC_RX_CTRL_SERV_PEND, ESPI_CH0_PC_RX_CTRL);
 
 unlock_n_out:
-	k_sem_give(&perif->rx_lock);
+	k_sem_give(&perif->pc_rx_lock);
 
 	return rc;
 }
@@ -1000,15 +1027,87 @@ int espi_aspeed_perif_pc_put_tx(const struct device *dev, struct espi_aspeed_ioc
 	      | FIELD_PREP(ESPI_CH0_PC_TX_CTRL_TAG, tag)
 	      | FIELD_PREP(ESPI_CH0_PC_TX_CTRL_LEN, len)
 	      | ESPI_CH0_PC_TX_CTRL_TRIG_PEND;
-	ESPI_WR(reg, ESPI_CH0_PC_TX_CTRL);
 
-	rc = 0;
+#ifdef DT_HAS_COMPAT_STATUS_OKAY(aspeed_espi_ast1040)
+	if (cyc == ESPI_PERIF_SUC_CMPLT || cyc == ESPI_PERIF_SUC_CMPLT_D_LAST ||
+		cyc == ESPI_PERIF_SUC_CMPLT_D_ONLY || cyc == ESPI_PERIF_UNSUC_CMPLT) {
+		reg |= ESPI_CH0_PC_TX_CTRL_FW;
+	}
+#endif
+
+	ESPI_WR(reg, ESPI_CH0_PC_TX_CTRL);
 
 unlock_n_out:
 	k_sem_give(&perif->pc_tx_lock);
 
 	return rc;
 }
+
+#if DT_HAS_COMPAT_STATUS_OKAY(aspeed_espi_ast1040)
+int espi_aspeed_perif_np_get_rx(const struct device *dev, struct espi_aspeed_ioc *ioc,
+				bool blocking)
+{
+	int rc;
+	uint32_t reg;
+	uint32_t len;
+	uint64_t addr;
+	struct espi_comm_hdr *hdr = (struct espi_comm_hdr *)ioc->pkt;
+	struct espi_perif_mem32 *mem32 = (struct espi_perif_mem32 *)ioc->pkt;
+	struct espi_perif_mem64 *mem64 = (struct espi_perif_mem64 *)ioc->pkt;
+	struct espi_perif_io *io = (struct espi_perif_io *)ioc->pkt;
+	struct espi_ast2700_data *data = (struct espi_ast2700_data *)dev->data;
+	struct espi_ast2700_perif *perif = &data->perif;
+
+	rc = k_sem_take(&perif->np_rx_lock, (blocking) ? K_FOREVER : K_NO_WAIT);
+	if (rc)
+		return rc;
+
+	rc = k_sem_take(&perif->np_rx_ready, (blocking) ? K_FOREVER : K_NO_WAIT);
+	if (rc)
+		goto unlock_n_out;
+
+	reg = ESPI_RD(ESPI_CH0_NP_RX_CTRL);
+	len = FIELD_GET(ESPI_CH0_NP_RX_CTRL_LEN, reg);
+
+	hdr->tag = FIELD_GET(ESPI_CH0_NP_RX_CTRL_TAG, reg);
+	hdr->len_h = len >> 8;
+	hdr->len_l = len & 0xff;
+
+	if (reg & ESPI_CH0_NP_RX_MEM64_RD) {
+		hdr->cyc = ESPI_PERIF_MEMRD64;
+		ioc->pkt_len = sizeof(struct espi_comm_hdr) + sizeof(uint64_t);
+		addr = ((uint64_t)ESPI_RD(ESPI_CH0_NP_RX_ADDRH) << 32) |
+		       ESPI_RD(ESPI_CH0_NP_RX_ADDRL);
+		sys_put_be64(addr, (uint8_t *)&mem64->addr_be);
+	} else if (reg & ESPI_CH0_NP_RX_MEM32_RD) {
+		hdr->cyc = ESPI_PERIF_MEMRD32;
+		ioc->pkt_len = sizeof(*mem32);
+		mem32->addr_be = sys_cpu_to_be32(ESPI_RD(ESPI_CH0_NP_RX_ADDRL));
+	} else if (reg & ESPI_CH0_NP_RX_IO_WR) {
+		hdr->cyc = ESPI_PERIF_IOWR;
+		ioc->pkt_len = sizeof(*io);
+		io->addr_be = sys_cpu_to_be16(ESPI_RD(ESPI_CH0_NP_RX_ADDRL) & 0xffff);
+	} else if (reg & ESPI_CH0_NP_RX_IO_RD) {
+		hdr->cyc = ESPI_PERIF_IORD;
+		ioc->pkt_len = sizeof(*io);
+		io->addr_be = sys_cpu_to_be16(ESPI_RD(ESPI_CH0_NP_RX_ADDRL) & 0xffff);
+	} else {
+		__ASSERT(0, "Unrecognized eSPI peripheral NP packet");
+
+		k_sem_give(&perif->np_rx_ready);
+		rc = -EFAULT;
+		goto unlock_n_out;
+	}
+
+	ESPI_WR(reg | ESPI_CH0_NP_RX_CTRL_SERV_PEND, ESPI_CH0_NP_RX_CTRL);
+	rc = 0;
+
+unlock_n_out:
+	k_sem_give(&perif->np_rx_lock);
+
+	return rc;
+}
+#endif
 
 int espi_aspeed_perif_np_put_tx(const struct device *dev, struct espi_aspeed_ioc *ioc)
 {

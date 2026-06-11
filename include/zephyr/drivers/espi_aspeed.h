@@ -16,6 +16,8 @@
 #define ESPI_PERIF_MEMRD64		0x02
 #define ESPI_PERIF_MEMWR32		0x01
 #define ESPI_PERIF_MEMWR64		0x03
+#define ESPI_PERIF_IORD			0x04
+#define ESPI_PERIF_IOWR			0x05
 #define ESPI_PERIF_MSG			0x10
 #define ESPI_PERIF_MSG_D		0x11
 #define ESPI_PERIF_SUC_CMPLT		0x06
@@ -63,6 +65,15 @@ struct espi_perif_mem64 {
 	uint8_t tag : 4;
 	uint8_t len_l;
 	uint32_t addr_be;
+	uint8_t data[];
+} __packed;
+
+struct espi_perif_io {
+	uint8_t cyc;
+	uint8_t len_h : 4;
+	uint8_t tag : 4;
+	uint8_t len_l;
+	uint16_t addr_be;
 	uint8_t data[];
 } __packed;
 
@@ -119,6 +130,10 @@ struct espi_aspeed_ioc {
 int espi_aspeed_perif_pc_get_rx(const struct device *dev, struct espi_aspeed_ioc *ioc,
 				bool blocking);
 int espi_aspeed_perif_pc_put_tx(const struct device *dev, struct espi_aspeed_ioc *ioc);
+#if DT_HAS_COMPAT_STATUS_OKAY(aspeed_espi_ast1040)
+int espi_aspeed_perif_np_get_rx(const struct device *dev, struct espi_aspeed_ioc *ioc,
+				bool blocking);
+#endif
 int espi_aspeed_perif_np_put_tx(const struct device *dev, struct espi_aspeed_ioc *ioc);
 int espi_aspeed_oob_get_rx(const struct device *dev, struct espi_aspeed_ioc *ioc, bool blocking);
 int espi_aspeed_oob_put_tx(const struct device *dev, struct espi_aspeed_ioc *ioc);
