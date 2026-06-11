@@ -68,6 +68,7 @@ LOG_MODULE_REGISTER(espi);
 #define ESPI_CH0_PC_RX_DMAH		0x114
 #define ESPI_CH0_PC_RX_CTRL		0x118
 #define   ESPI_CH0_PC_RX_CTRL_SERV_PEND	BIT(31)
+#define   ESPI_CH0_PC_RX_CTRL_FW	BIT(24)
 #define   ESPI_CH0_PC_RX_CTRL_LEN	GENMASK(23, 12)
 #define   ESPI_CH0_PC_RX_CTRL_TAG	GENMASK(11, 8)
 #define   ESPI_CH0_PC_RX_CTRL_CYC	GENMASK(7, 0)
@@ -76,6 +77,7 @@ LOG_MODULE_REGISTER(espi);
 #define ESPI_CH0_PC_TX_DMAH		0x124
 #define ESPI_CH0_PC_TX_CTRL		0x128
 #define   ESPI_CH0_PC_TX_CTRL_TRIG_PEND	BIT(31)
+#define   ESPI_CH0_PC_TX_CTRL_FW	BIT(24)
 #define   ESPI_CH0_PC_TX_CTRL_LEN	GENMASK(23, 12)
 #define   ESPI_CH0_PC_TX_CTRL_TAG	GENMASK(11, 8)
 #define   ESPI_CH0_PC_TX_CTRL_CYC	GENMASK(7, 0)
@@ -88,20 +90,44 @@ LOG_MODULE_REGISTER(espi);
 #define   ESPI_CH0_NP_TX_CTRL_TAG	GENMASK(11, 8)
 #define   ESPI_CH0_NP_TX_CTRL_CYC	GENMASK(7, 0)
 #define ESPI_CH0_NP_TX_DATA		0x13c
-#define ESPI_CH0_MCYC0_SADDRL		0x140
-#define ESPI_CH0_MCYC0_SADDRH		0x144
-#define ESPI_CH0_MCYC0_TADDRL		0x148
-#define ESPI_CH0_MCYC0_TADDRH		0x14c
-#define ESPI_CH0_MCYC0_MASKL		0x150
+#define ESPI_CH0_MCYC0_SADDRL	0x140
+#define ESPI_CH0_MCYC0_SADDRH	0x144
+#define ESPI_CH0_MCYC0_TADDRL	0x148
+#define ESPI_CH0_MCYC0_TADDRH	0x14c
+#define ESPI_CH0_MCYC0_MASKL	0x150
+#define   ESPI_CH0_MCYC0_MASKL_FW	BIT(1)
 #define   ESPI_CH0_MCYC0_MASKL_EN	BIT(0)
-#define ESPI_CH0_MCYC0_MASKH		0x154
-#define ESPI_CH0_MCYC1_SADDRL		0x158
-#define ESPI_CH0_MCYC1_SADDRH		0x15c
-#define ESPI_CH0_MCYC1_TADDRL		0x160
-#define ESPI_CH0_MCYC1_TADDRH		0x164
-#define ESPI_CH0_MCYC1_MASKL		0x168
+#define ESPI_CH0_MCYC0_MASKH	0x154
+#define ESPI_CH0_MCYC1_SADDRL	0x158
+#define ESPI_CH0_MCYC1_SADDRH	0x15c
+#define ESPI_CH0_MCYC1_TADDRL	0x160
+#define ESPI_CH0_MCYC1_TADDRH	0x164
+#define ESPI_CH0_MCYC1_MASKL	0x168
+#define   ESPI_CH0_MCYC1_MASKL_FW	BIT(1)
 #define   ESPI_CH0_MCYC1_MASKL_EN	BIT(0)
-#define ESPI_CH0_MCYC1_MASKH		0x16c
+#define ESPI_CH0_MCYC1_MASKH	0x16c
+#if DT_HAS_COMPAT_STATUS_OKAY(aspeed_espi_ast1040)
+#define ESPI_CH0_MCYC2_SADDRL	0x170
+#define ESPI_CH0_MCYC2_SADDRH	0x174
+#define ESPI_CH0_MCYC2_TADDRL	0x178
+#define ESPI_CH0_MCYC2_TADDRH	0x17c
+#define ESPI_CH0_MCYC2_MASKL	0x180
+#define   ESPI_CH0_MCYC2_MASKL_FW	BIT(1)
+#define   ESPI_CH0_MCYC2_MASKL_EN	BIT(0)
+#define ESPI_CH0_MCYC2_MASKH	0x184
+#define ESPI_CH0_PC_RX_ADDRL	0x1c4
+#define ESPI_CH0_PC_RX_ADDRH	0x1c8
+#define ESPI_CH0_NP_RX_CTRL		0x1d0
+#define   ESPI_CH0_NP_RX_CTRL_SERV_PEND	BIT(31)
+#define   ESPI_CH0_NP_RX_CTRL_LEN		GENMASK(23, 12)
+#define   ESPI_CH0_NP_RX_CTRL_TAG		GENMASK(11, 8)
+#define   ESPI_CH0_NP_RX_MEM64_RD	BIT(3)
+#define   ESPI_CH0_NP_RX_MEM32_RD	BIT(2)
+#define   ESPI_CH0_NP_RX_IO_WR		BIT(1)
+#define   ESPI_CH0_NP_RX_IO_RD		BIT(0)
+#define ESPI_CH0_NP_RX_ADDRL	0x1d4
+#define ESPI_CH0_NP_RX_ADDRH	0x1d8
+#endif
 #define ESPI_CH0_WPROT0			0x1f8
 #define ESPI_CH0_WPROT1			0x1fc
 
@@ -222,6 +248,11 @@ LOG_MODULE_REGISTER(espi);
 #define ESPI_CH3_WPROT0			0x4f8
 #define ESPI_CH3_WPROT1			0x4fc
 
+#if DT_HAS_COMPAT_STATUS_OKAY(aspeed_espi_ast1040)
+#define SCU_DBG_DIS_CFG		0x0c8
+#define   SCU_DIS_ESPI_AHB		BIT(0)
+#endif
+
 /* helper macro */
 #define ESPI_RD(reg)            sys_read32(espi_base + (reg))
 #define ESPI_WR(val, reg)       sys_write32((uint32_t)val, espi_base + (reg))
@@ -243,6 +274,7 @@ LOG_MODULE_REGISTER(espi);
 struct espi_ast2700_perif {
 	struct {
 		bool enable;
+		bool dma_mode;
 		uint8_t *virt;
 		uint64_t saddr;
 		uint64_t taddr;
@@ -352,6 +384,9 @@ struct espi_ast2700_data {
 };
 
 static uint32_t espi_base;
+#if DT_HAS_COMPAT_STATUS_OKAY(aspeed_espi_ast1040)
+static uint32_t scu_base;
+#endif
 static struct espi_ast2700_data espi_ast2700_data;
 
 /* peripheral channel */
@@ -365,7 +400,7 @@ static uint8_t perif_pc_tx_buf[0];
 static uint8_t perif_np_tx_buf[0];
 #endif
 
-#if DT_INST_PROP(0, perif_mcyc_enable)
+#if DT_INST_PROP(0, perif_mcyc_enable) && DT_INST_PROP(0, perif_mcyc_dma_mode)
 static uint8_t perif_mcyc_buf[DT_INST_PROP(0, perif_mcyc_size)]
 	__aligned(DT_INST_PROP(0, perif_mcyc_size)) NON_CACHED_BSS;
 #else
@@ -388,7 +423,7 @@ static void espi_ast2700_perif_isr(struct espi_ast2700_data *data)
 static void espi_ast2700_perif_reset(struct espi_ast2700_perif *perif)
 {
 	uint32_t reg;
-	uint32_t mask;
+	uint64_t mask;
 
 	ESPI_WR(0x0, ESPI_CH0_INT_EN);
 	ESPI_WR(0xffffffff, ESPI_CH0_INT_STS);
@@ -416,22 +451,33 @@ static void espi_ast2700_perif_reset(struct espi_ast2700_perif *perif)
 	ESPI_WR(reg, ESPI_CH0_CTRL);
 
 	if (perif->mcyc.enable) {
-		mask = ~(perif->mcyc.mcyc_size - 1);
-#ifdef ARM64
-		ESPI_WR(mask >> 32, ESPI_CH0_MCYC1_MASKH);
+#if DT_HAS_COMPAT_STATUS_OKAY(aspeed_espi_ast1040)
+		reg = sys_read32(scu_base + SCU_DBG_DIS_CFG);
+		reg &= ~SCU_DIS_ESPI_AHB;
+		sys_write32(reg, scu_base + SCU_DBG_DIS_CFG);
 #endif
-		ESPI_WR(mask & 0xffffffff, ESPI_CH0_MCYC1_MASKH);
+		mask = ~(perif->mcyc.mcyc_size - 1);
+		ESPI_WR(0xffffffff, ESPI_CH0_MCYC1_MASKH);
+		ESPI_WR(mask & 0xffffffff, ESPI_CH0_MCYC1_MASKL);
 		ESPI_WR((perif->mcyc.saddr >> 32), ESPI_CH0_MCYC1_SADDRH);
-		ESPI_WR((perif->mcyc.saddr & 0xffffffff), ESPI_CH0_MCYC1_SADDRH);
+		ESPI_WR((perif->mcyc.saddr & 0xffffffff), ESPI_CH0_MCYC1_SADDRL);
 		ESPI_WR((perif->mcyc.taddr >> 32), ESPI_CH0_MCYC1_TADDRH);
-		ESPI_WR((perif->mcyc.taddr & 0xffffffff), ESPI_CH0_MCYC1_TADDRH);
+		ESPI_WR((perif->mcyc.taddr & 0xffffffff), ESPI_CH0_MCYC1_TADDRL);
 
 		reg = ESPI_RD(ESPI_CH0_MCYC1_MASKL) | ESPI_CH0_MCYC1_MASKL_EN;
 		ESPI_WR(reg, ESPI_CH0_MCYC1_MASKL);
 
 		reg = ESPI_RD(ESPI_CH0_CTRL);
 		reg &= ~(ESPI_CH0_CTRL_MCYC_RD_DIS | ESPI_CH0_CTRL_MCYC_WR_DIS);
+
 		ESPI_WR(reg, ESPI_CH0_CTRL);
+
+#if DT_HAS_COMPAT_STATUS_OKAY(aspeed_espi_ast1040)
+		if (!perif->mcyc.dma_mode) {
+			reg = ESPI_RD(ESPI_CH0_MCYC1_MASKL) | ESPI_CH0_MCYC1_MASKL_FW;
+			ESPI_WR(reg, ESPI_CH0_MCYC1_MASKL);
+		}
+#endif
 	}
 
 	if (perif->dma.enable) {
@@ -457,6 +503,8 @@ static void espi_ast2700_perif_reset(struct espi_ast2700_perif *perif)
 
 static void espi_ast2700_perif_init(struct espi_ast2700_perif *perif)
 {
+	uint32_t reg;
+
 	perif->dma.enable = DT_INST_PROP(0, perif_dma_mode);
 	perif->dma.pc_rx_virt = perif_pc_rx_buf;
 	perif->dma.pc_rx_addr = TO_PHY_ADDR((uintptr_t)perif->dma.pc_rx_virt);
@@ -466,15 +514,14 @@ static void espi_ast2700_perif_init(struct espi_ast2700_perif *perif)
 	perif->dma.np_tx_addr = TO_PHY_ADDR((uintptr_t)perif->dma.np_tx_virt);
 
 	perif->mcyc.enable = DT_INST_PROP(0, perif_mcyc_enable);
+	perif->mcyc.dma_mode = DT_INST_PROP(0, perif_mcyc_dma_mode);
 	perif->mcyc.virt = perif_mcyc_buf;
-#ifdef ARM64
-	perif->mcyc.mcyc_size = (uint32_t)(DT_INST_PROP_OR(0, perif_mcyc_size, 0) << 32);
-#endif
-	perif->mcyc.mcyc_size |= (DT_INST_PROP_OR(1, perif_mcyc_size, 0));
-#ifdef ARM64
-	perif->mcyc.saddr = (uint32_t)(DT_INST_PROP_OR(0, perif_mcyc_src_addr, 0) << 32);
-#endif
-	perif->mcyc.saddr |= (DT_INST_PROP_OR(1, perif_mcyc_src_addr, 0));
+	perif->mcyc.mcyc_size = COND_CODE_1(DT_INST_NODE_HAS_PROP(0, perif_mcyc_size),
+		(((uint64_t)DT_INST_PROP_BY_IDX(0, perif_mcyc_size, 0) << 32) |
+		 DT_INST_PROP_BY_IDX(0, perif_mcyc_size, 1)), (0));
+	perif->mcyc.saddr = COND_CODE_1(DT_INST_NODE_HAS_PROP(0, perif_mcyc_src_addr),
+		(((uint64_t)DT_INST_PROP_BY_IDX(0, perif_mcyc_src_addr, 0) << 32) |
+		 DT_INST_PROP_BY_IDX(0, perif_mcyc_src_addr, 1)), (0));
 	perif->mcyc.taddr = TO_PHY_ADDR((uintptr_t)perif->mcyc.virt);
 
 	k_sem_init(&perif->pc_tx_lock, 1, 1);
@@ -736,10 +783,16 @@ static void espi_ast2700_flash_init(struct espi_ast2700_flash *flash)
 /* eSPI controller config. */
 struct espi_ast2700_config {
 	uintptr_t base;
+#if DT_HAS_COMPAT_STATUS_OKAY(aspeed_espi_ast1040)
+	uintptr_t scu_base;
+#endif
 };
 
 static const struct espi_ast2700_config espi_ast2700_config = {
 	.base = DT_INST_REG_ADDR(0),
+#if DT_HAS_COMPAT_STATUS_OKAY(aspeed_espi_ast1040)
+	.scu_base = DT_REG_ADDR_BY_IDX(DT_INST_PHANDLE_BY_IDX(0, aspeed_scu, 0), 0),
+#endif
 };
 
 static void espi_ast2700_isr(const struct device *dev)
@@ -782,6 +835,9 @@ static int espi_ast2700_init(const struct device *dev)
 	data->dev = dev;
 
 	espi_base = cfg->base;
+#if DT_HAS_COMPAT_STATUS_OKAY(aspeed_espi_ast1040)
+	scu_base = cfg->scu_base;
+#endif
 
 	reg = ESPI_RD(ESPI_INT_EN);
 	reg &= ~ESPI_INT_EN_RST_DEASSERT;
@@ -819,9 +875,14 @@ int espi_aspeed_perif_pc_get_rx(const struct device *dev, struct espi_aspeed_ioc
 	int i, rc;
 	uint32_t reg;
 	uint32_t cyc, tag, len;
+	uint64_t addr;
+	uint8_t *data_buf;
+	uint32_t data_len;
 	struct espi_comm_hdr *hdr = (struct espi_comm_hdr *)ioc->pkt;
 	struct espi_ast2700_data *data = (struct espi_ast2700_data *)dev->data;
 	struct espi_ast2700_perif *perif = &data->perif;
+	uint32_t *addr32 = (uint32_t *)(hdr + 1);
+	uint64_t *addr64 = (uint64_t *)(hdr + 1);
 
 	rc = k_sem_take(&perif->rx_lock, (blocking) ? K_FOREVER : K_NO_WAIT);
 	if (rc)
@@ -837,12 +898,32 @@ int espi_aspeed_perif_pc_get_rx(const struct device *dev, struct espi_aspeed_ioc
 	len = FIELD_GET(ESPI_CH0_PC_RX_CTRL_LEN, reg);
 
 	switch (cyc) {
+	case ESPI_PERIF_MEMWR32:
+		ioc->pkt_len = ((len) ? len : ESPI_PLD_LEN_MAX) +
+			sizeof(*hdr) + sizeof(uint32_t);
+		*addr32 = sys_cpu_to_be32(ESPI_RD(ESPI_CH0_PC_RX_ADDRL));
+		data_buf = (uint8_t *)(addr32 + 1);
+		data_len = ioc->pkt_len - sizeof(*hdr) - sizeof(uint32_t);
+		break;
+	case ESPI_PERIF_MEMWR64:
+		ioc->pkt_len = ((len) ? len : ESPI_PLD_LEN_MAX) +
+			sizeof(*hdr) + sizeof(uint64_t);
+		addr = ((uint64_t)ESPI_RD(ESPI_CH0_PC_RX_ADDRH) << 32) |
+		       ESPI_RD(ESPI_CH0_PC_RX_ADDRL);
+		*addr64 = sys_cpu_to_be64(addr);
+		data_buf = (uint8_t *)(addr32 + 2);
+		data_len = ioc->pkt_len - sizeof(*hdr) - sizeof(uint64_t);
+		break;
 	case ESPI_PERIF_MSG:
 		ioc->pkt_len = len + sizeof(struct espi_perif_msg);
+		data_buf = (uint8_t *)(hdr + 1);
+		data_len = ioc->pkt_len - sizeof(*hdr);
 		break;
 	case ESPI_PERIF_MSG_D:
 		ioc->pkt_len = ((len) ? len : ESPI_PLD_LEN_MAX) +
 			sizeof(struct espi_perif_msg);
+		data_buf = (uint8_t *)(hdr + 1);
+		data_len = ioc->pkt_len - sizeof(*hdr);
 		break;
 	case ESPI_PERIF_SUC_CMPLT_D_MIDDLE:
 	case ESPI_PERIF_SUC_CMPLT_D_FIRST:
@@ -850,10 +931,14 @@ int espi_aspeed_perif_pc_get_rx(const struct device *dev, struct espi_aspeed_ioc
 	case ESPI_PERIF_SUC_CMPLT_D_ONLY:
 		ioc->pkt_len = ((len) ? len : ESPI_PLD_LEN_MAX) +
 			sizeof(struct espi_perif_cmplt);
+		data_buf = (uint8_t *)(hdr + 1);
+		data_len = ioc->pkt_len - sizeof(*hdr);
 		break;
 	case ESPI_PERIF_SUC_CMPLT:
 	case ESPI_PERIF_UNSUC_CMPLT:
 		ioc->pkt_len = len + sizeof(struct espi_perif_cmplt);
+		data_buf = (uint8_t *)(hdr + 1);
+		data_len = ioc->pkt_len - sizeof(*hdr);
 		break;
 	default:
 		__ASSERT(0, "Unrecognized eSPI peripheral packet");
@@ -869,10 +954,10 @@ int espi_aspeed_perif_pc_get_rx(const struct device *dev, struct espi_aspeed_ioc
 	hdr->len_l = len & 0xff;
 
 	if (perif->dma.enable)
-		memcpy(hdr + 1, perif->dma.pc_rx_virt, ioc->pkt_len - sizeof(*hdr));
+		memcpy(data_buf, perif->dma.pc_rx_virt, data_len);
 	else
-		for (i = sizeof(*hdr); i < ioc->pkt_len; ++i)
-			ioc->pkt[i] = (ESPI_RD(ESPI_CH0_PC_RX_DATA) & 0xff);
+		for (i = 0; i < data_len; ++i)
+			data_buf[i] = (ESPI_RD(ESPI_CH0_PC_RX_DATA) & 0xff);
 
 	ESPI_WR(reg | ESPI_CH0_PC_RX_CTRL_SERV_PEND, ESPI_CH0_PC_RX_CTRL);
 
