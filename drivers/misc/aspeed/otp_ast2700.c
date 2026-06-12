@@ -135,15 +135,6 @@ enum rom_patch_version_a1 {
 	A1_OTP_ROM_PATCH_V3 =	0x3376,
 };
 
-enum rom_patch_version_a2 {
-	A2_OTP_ROM_PATCH_NONE =	0x0,
-	A2_OTP_ROM_PATCH_V1 =	0x3176,
-	A2_OTP_ROM_PATCH_V2 =	0x3276,
-	A2_OTP_ROM_PATCH_V3 =	0x3376,
-	A2_OTP_ROM_PATCH_V4 =	0x3476,
-	A2_OTP_ROM_PATCH_V5 =	0x3576,
-	A2_OTP_ROM_PATCH_V6 =	0x3676,
-};
 
 struct otp_ast27xx_config {
 	uintptr_t base;
@@ -307,39 +298,17 @@ static int aspeed_chip_version(const struct device *dev, uint32_t *chip_version)
 static void aspeed_otp_rom_info_a2(const struct device *dev)
 {
 	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
-	int rom_patch_ver;
-	char *rom_ver_str;
+	uint32_t rom_patch_ver;
 
-	/* Check ROM patch version */
 	rom_patch_ver = sys_read32(cfg->scu_base + SCU1_ROM_PATCH_OFFSET);
-	switch (rom_patch_ver) {
-	case A2_OTP_ROM_PATCH_NONE:
-		rom_ver_str = "None";
-		break;
-	case A2_OTP_ROM_PATCH_V1:
-		rom_ver_str = "v1";
-		break;
-	case A2_OTP_ROM_PATCH_V2:
-		rom_ver_str = "v2";
-		break;
-	case A2_OTP_ROM_PATCH_V3:
-		rom_ver_str = "v3";
-		break;
-	case A2_OTP_ROM_PATCH_V4:
-		rom_ver_str = "v4";
-		break;
-	case A2_OTP_ROM_PATCH_V5:
-		rom_ver_str = "v5";
-		break;
-	case A2_OTP_ROM_PATCH_V6:
-		rom_ver_str = "v6";
-		break;
-	default:
-		rom_ver_str = "Unknown";
-		break;
-	}
 
-	LOG_INF("\tROM patch: %s", rom_ver_str);
+	if (rom_patch_ver == 0x0) {
+		LOG_INF("\tROM patch: None");
+	} else if ((rom_patch_ver & 0xFF) == 'v') {
+		LOG_INF("\tROM patch: %.4s", (char *)&rom_patch_ver);
+	} else {
+		LOG_INF("\tROM patch: Unknown (0x%x)", rom_patch_ver);
+	}
 }
 
 static void aspeed_otp_rom_info_a1(const struct device *dev)
