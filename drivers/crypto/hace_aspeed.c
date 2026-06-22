@@ -421,6 +421,7 @@ static void aspeed_ahash_fill_padding(struct aspeed_hash_ctx *ctx,
 
 static int hash_trigger(struct device *dev, struct aspeed_hash_ctx *data, int len)
 {
+	uint64_t phy_src, phy_dst, phy_key;
 	struct aspeed_hace_config *config = DEV_CFG(dev);
 	struct hace_register_s *hace_register = (struct hace_register_s *)config->base;
 	int ret;
@@ -433,13 +434,23 @@ static int hash_trigger(struct device *dev, struct aspeed_hash_ctx *data, int le
 	hace_register->hace_sts.value = HACE_HASH_ISR;
 
 	if (data->method & HACE_SG_EN)
-		hace_register->hash_data_src.value = (uint32_t)data->sg;
+		phy_src = TO_PHY_ADDR((uintptr_t)data->sg);
 	else
-		hace_register->hash_data_src.value = (uint32_t)data->buffer;
+		phy_src = TO_PHY_ADDR((uintptr_t)data->buffer);
+	phy_dst = TO_PHY_ADDR((uintptr_t)data->digest);
+	phy_key = TO_PHY_ADDR((uintptr_t)data->digest);
 
-	hace_register->hash_dgst_dst.value = (uint32_t)data->digest;
-	hace_register->hash_key_buf.value = (uint32_t)data->digest;
+	/* Configure buffer address */
+	hace_register->hash_data_src.value = (uint32_t)phy_src;
+	hace_register->hash_dgst_dst.value = (uint32_t)phy_dst;
+	hace_register->hash_key_buf.value = (uint32_t)phy_key;
 
+	/* Configure buffer high address */
+	hace_register->hash_data_src_high.value = (uint32_t)(phy_src >> 32);
+	hace_register->hash_dgst_dst_high.value = (uint32_t)(phy_dst >> 32);
+	hace_register->hash_key_high.value = (uint32_t)(phy_key >> 32);
+
+	/* Trigger hace engine */
 	hace_register->hash_data_len.value = len;
 	hace_register->hash_cmd_reg.value = data->method;
 
@@ -473,7 +484,7 @@ static int aspeed_hash_update(struct hash_ctx *ctx, struct hash_pkt *pkt)
 	total_len = pkt->in_len + data->bufcnt - remainder;
 	i = 0;
 	if (data->bufcnt != 0) {
-		sg[0].addr = (uint32_t)data->buffer;
+		sg[0].addr = (uint32_t)TO_PHY_ADDR((uintptr_t)data->buffer);
 		sg[0].len = data->bufcnt;
 		if (total_len == data->bufcnt)
 			sg[0].len |= HACE_SG_LAST;
@@ -481,7 +492,7 @@ static int aspeed_hash_update(struct hash_ctx *ctx, struct hash_pkt *pkt)
 	}
 
 	if (total_len != data->bufcnt) {
-		sg[i].addr = (uint32_t)pkt->in_buf;
+		sg[i].addr = (uint32_t)TO_PHY_ADDR((uintptr_t)pkt->in_buf);
 		sg[i].len = (total_len - data->bufcnt) | HACE_SG_LAST;
 	}
 
@@ -489,6 +500,8 @@ static int aspeed_hash_update(struct hash_ctx *ctx, struct hash_pkt *pkt)
 	if (remainder != 0) {
 		memcpy(data->buffer, pkt->in_buf + (total_len - data->bufcnt), remainder);
 		data->bufcnt = remainder;
+	} else {
+		data->bufcnt = 0;
 	}
 
 	return rc;
@@ -503,7 +516,7 @@ static int aspeed_hash_final(struct hash_ctx *ctx, struct hash_pkt *pkt)
 
 	aspeed_ahash_fill_padding(data, 0);
 
-	sg[0].addr = (uint32_t)data->buffer;
+	sg[0].addr = (uint32_t)TO_PHY_ADDR((uintptr_t)data->buffer);
 	sg[0].len = data->bufcnt | HACE_SG_LAST;
 
 	rc = hash_trigger((struct device *)ctx->device, data, data->bufcnt);

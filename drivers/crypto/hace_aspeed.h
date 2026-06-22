@@ -167,6 +167,22 @@ union hash_padding_len_s {
 	volatile uint32_t value;
 }; /* 000000034 */
 
+union hash_reserve_s {
+	volatile uint32_t value;
+};
+
+union hash_data_src_high_s {
+	volatile uint32_t value;
+}; /* 000000090 */
+
+union hash_dgst_dst_high_s {
+	volatile uint32_t value;
+}; /* 000000094 */
+
+union hash_key_high_s {
+	volatile uint32_t value;
+}; /* 000000098 */
+
 struct hace_register_s {
 	union crypto_data_src_s crypto_data_src;			/* 00000000 */
 	union crypto_data_dst_s crypto_data_dst;			/* 00000004 */
@@ -182,6 +198,10 @@ struct hace_register_s {
 	union hash_data_len_s hash_data_len;				/* 0000002c */
 	union hash_cmd_reg_s hash_cmd_reg;				/* 00000030 */
 	union hash_padding_len_s hash_padding_len;			/* 00000034 */
+	union hash_reserve_s reserved[22];				/* 00000038-00000008C */
+	union hash_data_src_high_s hash_data_src_high;			/* 00000090 */
+	union hash_dgst_dst_high_s hash_dgst_dst_high;			/* 00000094 */
+	union hash_key_high_s hash_key_high;				/* 00000098 */
 };
 
 struct aspeed_hace_engine {

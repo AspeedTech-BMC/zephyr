@@ -9,6 +9,14 @@
 	};
 
 	soc {
+		hace: hace@72070000 {
+			compatible = "aspeed,hace";
+			reg = <0x72070000 0x200 0x72c1F000 0x10>;
+			clocks = <&sysclk0 SCU0_CLK_GATE_HACCLK>;
+			resets = <&sysrst0 SCU0_RESET_HACE>;
+			status = "disabled";
+		};
+
 		intc0_11: interrupt-controller@72102b00 {
 			compatible = "aspeed,ast2700-intc-ic";
 			reg = <0x72102b00 0x10>;
