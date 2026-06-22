@@ -336,7 +336,7 @@ static int aspeed_cptra_fw_info(const struct device *dev, struct cptra_fw_info_i
 		return -EBUSY;
 	}
 
-	LOG_INF("Start doing fw_info");
+	LOG_DBG("Start doing fw_info");
 	state->in_use = true;
 
 	while (cptra_mbox_lock())
@@ -361,21 +361,21 @@ static int aspeed_cptra_fw_info(const struct device *dev, struct cptra_fw_info_i
 	while (cptra_mbox_unlock())
 		;
 
-	LOG_INF("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
-	LOG_INF("pl0_pauser: 0x%x", output->pl0_pauser);
-	LOG_INF("runtime_svn: 0x%x", output->runtime_svn);
-	LOG_INF("min_runtime_svn: 0x%x", output->min_runtime_svn);
-	LOG_INF("fmc_manifest_svn: 0x%x", output->fmc_manifest_svn);
-	LOG_INF("attestation_disabled: 0x%x", output->attestation_disabled);
-	LOG_HEXDUMP_INF(output->rom_revision, sizeof(output->rom_revision), "rom_revision:");
-	LOG_HEXDUMP_INF(output->fmc_revision, sizeof(output->fmc_revision), "fmc_revision:");
-	LOG_HEXDUMP_INF(output->runtime_revision, sizeof(output->runtime_revision),
+	LOG_DBG("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
+	LOG_DBG("pl0_pauser: 0x%x", output->pl0_pauser);
+	LOG_DBG("runtime_svn: 0x%x", output->runtime_svn);
+	LOG_DBG("min_runtime_svn: 0x%x", output->min_runtime_svn);
+	LOG_DBG("fmc_manifest_svn: 0x%x", output->fmc_manifest_svn);
+	LOG_DBG("attestation_disabled: 0x%x", output->attestation_disabled);
+	LOG_HEXDUMP_DBG(output->rom_revision, sizeof(output->rom_revision), "rom_revision:");
+	LOG_HEXDUMP_DBG(output->fmc_revision, sizeof(output->fmc_revision), "fmc_revision:");
+	LOG_HEXDUMP_DBG(output->runtime_revision, sizeof(output->runtime_revision),
 			"runtime_revision:");
-	LOG_HEXDUMP_INF(output->rom_sha256_digest, sizeof(output->rom_sha256_digest),
+	LOG_HEXDUMP_DBG(output->rom_sha256_digest, sizeof(output->rom_sha256_digest),
 			"rom_sha256_digest:");
-	LOG_HEXDUMP_INF(output->fmc_sha384_digest, sizeof(output->fmc_sha384_digest),
+	LOG_HEXDUMP_DBG(output->fmc_sha384_digest, sizeof(output->fmc_sha384_digest),
 			"fmc_sha384_digest:");
-	LOG_HEXDUMP_INF(output->runtime_sha384_digest, sizeof(output->runtime_sha384_digest),
+	LOG_HEXDUMP_DBG(output->runtime_sha384_digest, sizeof(output->runtime_sha384_digest),
 			"runtime_sha384_digest:");
 
 	state->in_use = false;
