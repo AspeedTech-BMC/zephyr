@@ -153,7 +153,14 @@ out:
 #endif
 
 #if defined(CONFIG_ARM) && defined(CONFIG_PLATFORM_SPECIFIC_INIT)
-void z_arm_platform_init(void)
+/*
+ * Runs from reset.S before z_prep_c(), i.e. before .bss is zeroed, .data is
+ * copied, and __stack_chk_guard is initialised in z_cstart(). The stack
+ * canary must be disabled here: with CONFIG_STACK_CANARIES the prologue/epilogue
+ * would check a guard that is uninitialised (and may even be cleared by the
+ * memset below if it lands in this region), tripping __stack_chk_fail().
+ */
+FUNC_NO_STACK_PROTECTOR void z_arm_platform_init(void)
 {
 	/* clear non-cached .bss */
 	(void)memset(__RAM_NC_start, 0, __RAM_NC_end - __RAM_NC_start);

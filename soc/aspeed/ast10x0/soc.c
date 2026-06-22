@@ -106,7 +106,14 @@ struct sb_header sbh __attribute((used, section(".sboot"))) = {
 #endif
 };
 
-void z_arm_platform_init(void)
+/*
+ * Runs from reset.S before z_prep_c(), i.e. before .bss is zeroed, .data is
+ * copied, and __stack_chk_guard is initialised in z_cstart(). The stack
+ * canary must be disabled here: with CONFIG_STACK_CANARIES the prologue/epilogue
+ * would check a guard that is uninitialised (and may even be cleared by the
+ * memset below if it lands in this region), tripping __stack_chk_fail().
+ */
+FUNC_NO_STACK_PROTECTOR void z_arm_platform_init(void)
 {
 	uint32_t jtag_pinmux;
 	uint32_t base = DT_REG_ADDR(DT_NODELABEL(syscon));
