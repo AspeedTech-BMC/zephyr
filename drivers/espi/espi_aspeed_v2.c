@@ -1028,7 +1028,7 @@ int espi_aspeed_perif_pc_put_tx(const struct device *dev, struct espi_aspeed_ioc
 	      | FIELD_PREP(ESPI_CH0_PC_TX_CTRL_LEN, len)
 	      | ESPI_CH0_PC_TX_CTRL_TRIG_PEND;
 
-#ifdef DT_HAS_COMPAT_STATUS_OKAY(aspeed_espi_ast1040)
+#if DT_HAS_COMPAT_STATUS_OKAY(aspeed_espi_ast1040)
 	if (cyc == ESPI_PERIF_SUC_CMPLT || cyc == ESPI_PERIF_SUC_CMPLT_D_LAST ||
 		cyc == ESPI_PERIF_SUC_CMPLT_D_ONLY || cyc == ESPI_PERIF_UNSUC_CMPLT) {
 		reg |= ESPI_CH0_PC_TX_CTRL_FW;
@@ -1053,7 +1053,6 @@ int espi_aspeed_perif_np_get_rx(const struct device *dev, struct espi_aspeed_ioc
 	uint64_t addr;
 	struct espi_comm_hdr *hdr = (struct espi_comm_hdr *)ioc->pkt;
 	struct espi_perif_mem32 *mem32 = (struct espi_perif_mem32 *)ioc->pkt;
-	struct espi_perif_mem64 *mem64 = (struct espi_perif_mem64 *)ioc->pkt;
 	struct espi_perif_io *io = (struct espi_perif_io *)ioc->pkt;
 	struct espi_ast2700_data *data = (struct espi_ast2700_data *)dev->data;
 	struct espi_ast2700_perif *perif = &data->perif;
@@ -1078,7 +1077,7 @@ int espi_aspeed_perif_np_get_rx(const struct device *dev, struct espi_aspeed_ioc
 		ioc->pkt_len = sizeof(struct espi_comm_hdr) + sizeof(uint64_t);
 		addr = ((uint64_t)ESPI_RD(ESPI_CH0_NP_RX_ADDRH) << 32) |
 		       ESPI_RD(ESPI_CH0_NP_RX_ADDRL);
-		sys_put_be64(addr, (uint8_t *)&mem64->addr_be);
+		sys_put_be64(addr, ioc->pkt + sizeof(struct espi_comm_hdr));
 	} else if (reg & ESPI_CH0_NP_RX_MEM32_RD) {
 		hdr->cyc = ESPI_PERIF_MEMRD32;
 		ioc->pkt_len = sizeof(*mem32);
@@ -1540,8 +1539,125 @@ static int espi_ast2700_manage_callback(const struct device *dev,
 	return espi_manage_callback(&data->callbacks, callback, set);
 }
 
+/*
+ * espi_read_request: Target sends a non-posted memory read request to Controller
+ * and waits for the completion with data returned via PC RX.
+ *
+ * Flow: NP TX (MEMRD32/64) → Controller → PC RX (SUC_CMPLT_D_ONLY)
+ * req->data must point to a buffer of at least req->len bytes.
+ */
+static int espi_ast2700_read_request(const struct device *dev,
+				     struct espi_request_packet *req)
+{
+	int rc;
+	/* mem64 needs comm_hdr(3) + addr64(8) = 11 bytes; pad beyond struct size */
+	uint8_t tx_buf[sizeof(struct espi_perif_mem64) + sizeof(uint32_t)];
+	uint8_t rx_buf[sizeof(struct espi_perif_cmplt) + ESPI_PLD_LEN_MAX];
+	struct espi_perif_mem32 *mem32 = (struct espi_perif_mem32 *)tx_buf;
+	struct espi_perif_mem64 *mem64 = (struct espi_perif_mem64 *)tx_buf;
+	struct espi_perif_cmplt *cmplt = (struct espi_perif_cmplt *)rx_buf;
+	struct espi_aspeed_ioc tx_ioc = { .pkt = tx_buf };
+	struct espi_aspeed_ioc rx_ioc = { .pkt = rx_buf, .pkt_len = sizeof(rx_buf) };
+
+	switch (req->cycle_type) {
+	case ESPI_CYCLE_MEMORY_READ32:
+		mem32->cyc = ESPI_PERIF_MEMRD32;
+		mem32->tag = req->tag;
+		mem32->len_h = (req->len >> 8) & 0xf;
+		mem32->len_l = req->len & 0xff;
+		sys_put_be32(req->address, (uint8_t *)&mem32->addr_be);
+		tx_ioc.pkt_len = sizeof(*mem32);
+		break;
+	case ESPI_CYCLE_MEMORY_READ64:
+		mem64->cyc = ESPI_PERIF_MEMRD64;
+		mem64->tag = req->tag;
+		mem64->len_h = (req->len >> 8) & 0xf;
+		mem64->len_l = req->len & 0xff;
+		sys_put_be64((uint64_t)req->address,
+			     tx_buf + sizeof(struct espi_comm_hdr));
+		tx_ioc.pkt_len = sizeof(*mem64) + sizeof(uint32_t);
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	/* Split completion is not supported; limit to a single SUC_CMPLT_D_ONLY */
+	if (req->len > ESPI_PLD_LEN_MAX)
+		return -EINVAL;
+
+	rc = espi_aspeed_perif_np_put_tx(dev, &tx_ioc);
+	if (rc)
+		return rc;
+
+	rc = espi_aspeed_perif_pc_get_rx(dev, &rx_ioc, true);
+	if (rc)
+		return rc;
+
+	if (cmplt->cyc == ESPI_PERIF_UNSUC_CMPLT)
+		return -EIO;
+
+	if (cmplt->cyc != ESPI_PERIF_SUC_CMPLT_D_ONLY)
+		return -ENOTSUP;
+
+	if (req->data) {
+		uint16_t data_len = ((uint16_t)cmplt->len_h << 8) | cmplt->len_l;
+
+		memcpy(req->data, cmplt->data, MIN(data_len, req->len));
+	}
+
+	return 0;
+}
+
+/*
+ * espi_write_request: Target sends a posted memory write request to Controller.
+ *
+ * Builds a MEMWR32 or MEMWR64 packet from req and transmits it via PC TX.
+ * req->cycle_type must be ESPI_CYCLE_MEMORY_WRITE32 or ESPI_CYCLE_MEMORY_WRITE64.
+ */
+static int espi_ast2700_write_request(const struct device *dev,
+				      struct espi_request_packet *req)
+{
+	uint8_t pkt_buf[sizeof(struct espi_perif_mem64) + ESPI_PLD_LEN_MAX];
+	struct espi_perif_mem32 *mem32 = (struct espi_perif_mem32 *)pkt_buf;
+	struct espi_perif_mem64 *mem64 = (struct espi_perif_mem64 *)pkt_buf;
+	struct espi_aspeed_ioc ioc = { .pkt = pkt_buf };
+
+	if (req->len > ESPI_PLD_LEN_MAX)
+		return -EINVAL;
+
+	switch (req->cycle_type) {
+	case ESPI_CYCLE_MEMORY_WRITE32:
+		mem32->cyc = ESPI_PERIF_MEMWR32;
+		mem32->tag = req->tag;
+		mem32->len_h = (req->len >> 8) & 0xf;
+		mem32->len_l = req->len & 0xff;
+		sys_put_be32(req->address, (uint8_t *)&mem32->addr_be);
+		memcpy(mem32->data, req->data, req->len);
+		ioc.pkt_len = sizeof(*mem32) + req->len;
+		break;
+	case ESPI_CYCLE_MEMORY_WRITE64:
+		mem64->cyc = ESPI_PERIF_MEMWR64;
+		mem64->tag = req->tag;
+		mem64->len_h = (req->len >> 8) & 0xf;
+		mem64->len_l = req->len & 0xff;
+		sys_put_be64((uint64_t)req->address,
+			     pkt_buf + sizeof(struct espi_comm_hdr));
+		/* data follows the full 8-byte address at offset comm_hdr(3)+addr64(8)=11 */
+		memcpy(pkt_buf + sizeof(struct espi_comm_hdr) + sizeof(uint64_t),
+		       req->data, req->len);
+		ioc.pkt_len = sizeof(struct espi_comm_hdr) + sizeof(uint64_t) + req->len;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return espi_aspeed_perif_pc_put_tx(dev, &ioc);
+}
+
 static const struct espi_driver_api espi_ast2700_driver_api = {
 	.get_channel_status = espi_ast2700_channel_ready,
+	.read_request = espi_ast2700_read_request,
+	.write_request = espi_ast2700_write_request,
 	.send_oob = espi_ast2700_send_oob,
 	.receive_oob = espi_ast2700_receive_oob,
 	.flash_read = espi_ast2700_flash_read,
