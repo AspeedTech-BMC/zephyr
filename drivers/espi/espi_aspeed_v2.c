@@ -620,14 +620,22 @@ static uint8_t oob_rx_buf[0];
 
 static void espi_ast2700_oob_isr(struct espi_ast2700_data *data)
 {
-	struct espi_ast2700_oob *oob = &data->oob;
 	uint32_t sts;
 
 	sts = ESPI_RD(ESPI_CH2_INT_STS);
 
 	if (sts & ESPI_CH2_INT_STS_RX_CMPLT) {
 		ESPI_WR(ESPI_CH2_INT_STS_RX_CMPLT, ESPI_CH2_INT_STS);
-		k_sem_give(&oob->rx_ready);
+#ifdef CONFIG_ESPI_OOB_CHANNEL_RX_ASYNC
+		struct espi_event evt = {
+			.evt_type = ESPI_BUS_EVENT_OOB_RECEIVED,
+			.evt_details = 0,
+			.evt_data = 0,
+		};
+		espi_send_callbacks(&data->callbacks, data->dev, evt);
+#else
+		k_sem_give(&data->oob.rx_ready);
+#endif
 	}
 }
 
@@ -1162,13 +1170,22 @@ int espi_ast2700_oob_get_rx(const struct device *dev, struct espi_aspeed_ioc *io
 	struct espi_ast2700_data *data = (struct espi_ast2700_data *)dev->data;
 	struct espi_ast2700_oob *oob = &data->oob;
 
+#ifdef CONFIG_ESPI_OOB_CHANNEL_RX_ASYNC
+	/* In async mode, data is already present when this is called from callback.
+	 * If the lock is held by another reader, fail immediately rather than block.
+	 */
+	rc = k_sem_take(&oob->rx_lock, K_NO_WAIT);
+#else
 	rc = k_sem_take(&oob->rx_lock, (blocking) ? K_FOREVER : K_NO_WAIT);
+#endif
 	if (rc)
 		return rc;
 
+#ifndef CONFIG_ESPI_OOB_CHANNEL_RX_ASYNC
 	rc = k_sem_take(&oob->rx_ready, (blocking) ? K_FOREVER : K_NO_WAIT);
 	if (rc)
 		goto unlock_n_out;
+#endif
 
 	if (oob->dma.enable) {
 		wptr = ESPI_RD(ESPI_CH2_RX_DESC_WPTR);
@@ -1214,7 +1231,9 @@ int espi_ast2700_oob_get_rx(const struct device *dev, struct espi_aspeed_ioc *io
 
 	rc = 0;
 
+#ifndef CONFIG_ESPI_OOB_CHANNEL_RX_ASYNC
 unlock_n_out:
+#endif
 	k_sem_give(&oob->rx_lock);
 
 	return rc;
