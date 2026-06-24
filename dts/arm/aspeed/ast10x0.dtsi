@@ -777,7 +777,7 @@
 			clock-frequency = <I2C_BITRATE_FAST>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x7e7b0080 0x80>;
+			reg = <0x7e7b0080 0x80>, <0x7e7b0c00 0x20>;
 			interrupts = <INTR_I2C0 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			xfer-mode = "DMA";
@@ -796,7 +796,7 @@
 			clock-frequency = <I2C_BITRATE_FAST>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x7e7b0100 0x80>;
+			reg = <0x7e7b0100 0x80>, <0x7e7b0c20 0x20>;
 			interrupts = <INTR_I2C1 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			xfer-mode = "DMA";
@@ -815,7 +815,7 @@
 			clock-frequency = <I2C_BITRATE_FAST>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x7e7b0180 0x80>;
+			reg = <0x7e7b0180 0x80>, <0x7e7b0c40 0x20>;
 			interrupts = <INTR_I2C2 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			xfer-mode = "DMA";
@@ -834,7 +834,7 @@
 			clock-frequency = <I2C_BITRATE_FAST>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x7e7b0200 0x80>;
+			reg = <0x7e7b0200 0x80>, <0x7e7b0c60 0x20>;
 			interrupts = <INTR_I2C3 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			xfer-mode = "DMA";
@@ -853,7 +853,7 @@
 			clock-frequency = <I2C_BITRATE_FAST>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x7e7b0280 0x80>;
+			reg = <0x7e7b0280 0x80>, <0x7e7b0c80 0x20>;
 			interrupts = <INTR_I2C4 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			xfer-mode = "DMA";
@@ -872,7 +872,7 @@
 			clock-frequency = <I2C_BITRATE_FAST>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x7e7b0300 0x80>;
+			reg = <0x7e7b0300 0x80>, <0x7e7b0ca0 0x20>;
 			interrupts = <INTR_I2C5 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			xfer-mode = "DMA";
@@ -891,7 +891,7 @@
 			clock-frequency = <I2C_BITRATE_FAST>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x7e7b0380 0x80>;
+			reg = <0x7e7b0380 0x80>, <0x7e7b0cc0 0x20>;
 			interrupts = <INTR_I2C6 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			xfer-mode = "DMA";
@@ -910,7 +910,7 @@
 			clock-frequency = <I2C_BITRATE_FAST>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x7e7b0400 0x80>;
+			reg = <0x7e7b0400 0x80>, <0x7e7b0cc0 0x20>;
 			interrupts = <INTR_I2C7 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			xfer-mode = "DMA";
@@ -929,7 +929,7 @@
 			clock-frequency = <I2C_BITRATE_FAST>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x7e7b0480 0x80>;
+			reg = <0x7e7b0480 0x80>, <0x7e7b0ce0 0x20>;
 			interrupts = <INTR_I2C8 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			xfer-mode = "DMA";
@@ -948,7 +948,7 @@
 			clock-frequency = <I2C_BITRATE_FAST>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x7e7b0500 0x80>;
+			reg = <0x7e7b0500 0x80>, <0x7e7b0d00 0x20>;
 			interrupts = <INTR_I2C9 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			xfer-mode = "DMA";
@@ -967,7 +967,7 @@
 			clock-frequency = <I2C_BITRATE_FAST>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x7e7b0580 0x80>;
+			reg = <0x7e7b0580 0x80>, <0x7e7b0d20 0x20>;
 			interrupts = <INTR_I2C10 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			xfer-mode = "DMA";
@@ -986,7 +986,7 @@
 			clock-frequency = <I2C_BITRATE_FAST>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x7e7b0600 0x80>;
+			reg = <0x7e7b0600 0x80>, <0x7e7b0d40 0x20>;
 			interrupts = <INTR_I2C11 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			xfer-mode = "DMA";
@@ -1005,7 +1005,7 @@
 			clock-frequency = <I2C_BITRATE_FAST>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x7e7b0680 0x80>;
+			reg = <0x7e7b0680 0x80>, <0x7e7b0d60 0x20>;
 			interrupts = <INTR_I2C12 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			xfer-mode = "DMA";
@@ -1024,7 +1024,7 @@
 			clock-frequency = <I2C_BITRATE_FAST>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x7e7b0700 0x80>;
+			reg = <0x7e7b0700 0x80>, <0x7e7b0d80 0x20>;
 			interrupts = <INTR_I2C13 AST10X0_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk ASPEED_CLK_PCLK>;
 			xfer-mode = "DMA";

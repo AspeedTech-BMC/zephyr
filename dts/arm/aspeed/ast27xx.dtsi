@@ -360,7 +360,7 @@
 			clock-frequency = <I2C_BITRATE_FAST>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x74c0f100 0x100>;
+			reg = <0x74c0f100 0x100>, <0x74c0f1c0 0x40>;
 			interrupt-parent = <&intc1_2>;
 			interrupts = <0 1>;
 			clocks = <&sysclk1 SCU1_CLK_APB>;
@@ -378,7 +378,7 @@
 			clock-frequency = <I2C_BITRATE_FAST>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x74c0f200 0x100>;
+			reg = <0x74c0f200 0x100>, <0x74c0f2c0 0x40>;
 			interrupt-parent = <&intc1_2>;
 			interrupts = <1 1>;
 			clocks = <&sysclk1 SCU1_CLK_APB>;
@@ -396,7 +396,7 @@
 			clock-frequency = <I2C_BITRATE_FAST>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x74c0f300 0x100>;
+			reg = <0x74c0f300 0x100>, <0x74c0f3c0 0x40>;
 			interrupt-parent = <&intc1_2>;
 			interrupts = <2 1>;
 			clocks = <&sysclk1 SCU1_CLK_APB>;
@@ -414,7 +414,7 @@
 			clock-frequency = <I2C_BITRATE_FAST>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x74c0f400 0x100>;
+			reg = <0x74c0f400 0x100>, <0x74c0f4c0 0x40>;
 			interrupt-parent = <&intc1_2>;
 			interrupts = <3 1>;
 			clocks = <&sysclk1 SCU1_CLK_APB>;
@@ -432,7 +432,7 @@
 			clock-frequency = <I2C_BITRATE_FAST>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x74c0f500 0x100>;
+			reg = <0x74c0f500 0x100>, <0x74c0f5c0 0x40>;
 			interrupt-parent = <&intc1_2>;
 			interrupts = <4 1>;
 			clocks = <&sysclk1 SCU1_CLK_APB>;
@@ -450,7 +450,7 @@
 			clock-frequency = <I2C_BITRATE_FAST>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x74c0f600 0x100>;
+			reg = <0x74c0f600 0x100>, <0x74c0f6c0 0x40>;
 			interrupt-parent = <&intc1_2>;
 			interrupts = <5 1>;
 			clocks = <&sysclk1 SCU1_CLK_APB>;
@@ -468,7 +468,7 @@
 			clock-frequency = <I2C_BITRATE_FAST>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x74c0f700 0x100>;
+			reg = <0x74c0f700 0x100>, <0x74c0f7c0 0x40>;
 			interrupt-parent = <&intc1_2>;
 			interrupts = <6 1>;
 			clocks = <&sysclk1 SCU1_CLK_APB>;
@@ -486,7 +486,7 @@
 			clock-frequency = <I2C_BITRATE_FAST>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x74c0f800 0x100>;
+			reg = <0x74c0f800 0x100>, <0x74c0f8c0 0x40>;
 			interrupt-parent = <&intc1_2>;
 			interrupts = <7 1>;
 			clocks = <&sysclk1 SCU1_CLK_APB>;
@@ -504,7 +504,7 @@
 			clock-frequency = <I2C_BITRATE_FAST>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x74c0f900 0x100>;
+			reg = <0x74c0f900 0x100>, <0x74c0f9c0 0x40>;
 			interrupt-parent = <&intc1_2>;
 			interrupts = <8 1>;
 			clocks = <&sysclk1 SCU1_CLK_APB>;
@@ -522,7 +522,7 @@
 			clock-frequency = <I2C_BITRATE_FAST>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x74c0fa00 0x100>;
+			reg = <0x74c0fa00 0x100>, <0x74c0fac0 0x40>;
 			interrupt-parent = <&intc1_2>;
 			interrupts = <9 1>;
 			clocks = <&sysclk1 SCU1_CLK_APB>;
@@ -540,7 +540,7 @@
 			clock-frequency = <I2C_BITRATE_FAST>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x74c0fb00 0x100>;
+			reg = <0x74c0fb00 0x100>, <0x74c0fbc0 0x40>;
 			interrupt-parent = <&intc1_2>;
 			interrupts = <10 1>;
 			clocks = <&sysclk1 SCU1_CLK_APB>;
@@ -558,7 +558,7 @@
 			clock-frequency = <I2C_BITRATE_FAST>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x74c0fc00 0x100>;
+			reg = <0x74c0fc00 0x100>, <0x74c0fcc0 0x40>;
 			interrupt-parent = <&intc1_2>;
 			interrupts = <11 1>;
 			clocks = <&sysclk1 SCU1_CLK_APB>;
@@ -576,7 +576,7 @@
 			clock-frequency = <I2C_BITRATE_FAST>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x74c0fd00 0x100>;
+			reg = <0x74c0fd00 0x100>, <0x74c0fdc0 0x40>;
 			interrupt-parent = <&intc1_2>;
 			interrupts = <12 1>;
 			clocks = <&sysclk1 SCU1_CLK_APB>;
@@ -594,7 +594,7 @@
 			clock-frequency = <I2C_BITRATE_FAST>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x74c0fe00 0x100>;
+			reg = <0x74c0fe00 0x100>, <0x74c0fec0 0x40>;
 			interrupt-parent = <&intc1_2>;
 			interrupts = <13 1>;
 			clocks = <&sysclk1 SCU1_CLK_APB>;
@@ -612,7 +612,7 @@
 			clock-frequency = <I2C_BITRATE_FAST>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x74c0ff00 0x100>;
+			reg = <0x74c0ff00 0x100>, <0x74c0ffc0 0x40>;
 			interrupt-parent = <&intc1_2>;
 			interrupts = <14 1>;
 			clocks = <&sysclk1 SCU1_CLK_APB>;
@@ -630,7 +630,7 @@
 			clock-frequency = <I2C_BITRATE_FAST>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x74c10000 0x100>;
+			reg = <0x74c10000 0x100>, <0x74c100c0 0x40>;
 			interrupt-parent = <&intc1_2>;
 			interrupts = <15 1>;
 			clocks = <&sysclk1 SCU1_CLK_APB>;
