@@ -56,9 +56,6 @@
 #define CMD_WREAR           0xC5
 #define CMD_WINBOND_DIE_SEL 0xC2
 
-/* define the total ram size used to record exception log */
-#define SPIM_LOG_RAM_TOTAL_SIZE 2048
-
 struct cmd_table_info {
 	uint8_t cmd;
 	uint8_t reserved[3];

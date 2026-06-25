@@ -6,6 +6,14 @@
 #ifndef ZEPHYR_INCLUDE_DRIVERS_MISC_SPIM_AST2700_H_
 #define ZEPHYR_INCLUDE_DRIVERS_MISC_SPIM_AST2700_H_
 
+/*
+ * pfr_aspeed.h already defines all the types, macros, and function
+ * declarations in this block. Skip it when pfr_aspeed.h has already
+ * been included to avoid duplicate-definition errors in translation
+ * units that pull in both headers.
+ */
+#ifndef ZEPHYR_INCLUDE_DRIVERS_MISC_PFR_ASPEED_H_
+
 #include <zephyr/types.h>
 #include <stddef.h>
 #include <zephyr/device.h>
@@ -56,8 +64,6 @@
 #define CMD_WREAR           0xC5
 #define CMD_WINBOND_DIE_SEL 0xC2
 
-#define SPIM_LOG_RAM_TOTAL_SIZE 64
-
 struct cmd_table_info {
 	uint8_t cmd;
 	uint8_t reserved[3];
@@ -75,13 +81,6 @@ enum spim_ext_mux_sel {
 #define FLAG_CMD_TABLE_VALID_ONCE    0x00000001
 #define FLAG_CMD_TABLE_LOCK_ALL      0x00000002
 
-#define FLAG_ADDR_PRIV_WRITE_DIS     0x00000001
-#define FLAG_ADDR_PRIV_READ_DIS      0x00000002
-#define FLAG_ADDR_PRIV_TABLE_LOCK    0x00000004
-
-#define FLAG_SPIM_ACCESS_READ_EN     0x00000001
-#define FLAG_SPIM_ACCESS_WRITE_EN    0x00000002
-
 void spim_dump_allow_command_table(const struct device *dev);
 int spim_get_allow_cmd_slot(const struct device *dev,
 			    uint8_t cmd, uint32_t start_off);
@@ -91,12 +90,6 @@ int spim_lock_allow_command_table(const struct device *dev, uint8_t cmd, uint32_
 void spim_lock_common(const struct device *dev);
 void spim_dump_addr_priv_table(const struct device *dev);
 void spim_monitor_enable(const struct device *dev, bool enable);
-int ast2700_address_privilege_config(const struct device *dev,
-				     uint32_t addr, uint32_t len,
-				     uint32_t attr);
-int ast2700_address_privilege_remove(const struct device *dev,
-				     uint32_t addr, uint32_t len);
-void ast2700_spim_blocked_log_parser(const struct device *dev);
 
 struct spim_log_info {
 	mem_addr_t log_ram_addr;
@@ -109,5 +102,24 @@ void spim_isr_callback_install(const struct device *dev,
 	spim_isr_callback_t isr_callback);
 void spim_get_log_info(const struct device *dev, struct spim_log_info *info);
 uint32_t spim_get_ctrl_idx(const struct device *dev);
+void aspeed_spi_monitor_sw_rst(const struct device *dev);
+bool get_wdt_timeout_status(const struct device *dev);
 
-#endif
+#endif /* ZEPHYR_INCLUDE_DRIVERS_MISC_PFR_ASPEED_H_ */
+
+/* AST2700-specific — always available */
+#define FLAG_ADDR_PRIV_WRITE_DIS     0x00000001
+#define FLAG_ADDR_PRIV_READ_DIS      0x00000002
+#define FLAG_ADDR_PRIV_TABLE_LOCK    0x00000004
+
+#define FLAG_SPIM_ACCESS_READ_EN     0x00000001
+#define FLAG_SPIM_ACCESS_WRITE_EN    0x00000002
+
+int ast2700_address_privilege_config(const struct device *dev,
+				     uint32_t addr, uint32_t len,
+				     uint32_t attr);
+int ast2700_address_privilege_remove(const struct device *dev,
+				     uint32_t addr, uint32_t len);
+void ast2700_spim_blocked_log_parser(const struct device *dev);
+
+#endif /* ZEPHYR_INCLUDE_DRIVERS_MISC_SPIM_AST2700_H_ */

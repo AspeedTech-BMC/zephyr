@@ -10,6 +10,16 @@ config SPI_MONITOR_ASPEED
 
 config SPI_MONITOR_SHELL_ASPEED
 	bool "ASPEED SPI Monitor SHELL"
+	depends on SPI_MONITOR_ASPEED && SHELL
 	help
 	  Enable ASPEED SPI monitor shell commands.
+
+config ASPEED_SPIM_LOG_SIZE
+	int "ASPEED SPI Monitor RAM log buffer size"
+	depends on SPI_MONITOR_ASPEED
+	default 2048
+	help
+	  Size in bytes of the non-cached RAM buffer used to record SPIM blocked
+	  transaction logs (AST1060 RAM-based log). Set to 0 for SoCs that use
+	  FIFO-based logging (e.g. AST2700) to eliminate the buffer entirely.
 

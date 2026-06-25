@@ -118,7 +118,7 @@
 		};
 
 		spim0: spim_common@74000400 {
-			compatible = "aspeed,spi-monitor-controller";
+			compatible = "aspeed,ast2700-spi-monitor-controller";
 			reg = <0x74000400 0x1000>;
 			aspeed,scu = <&syscon1>;
 			#address-cells = <1>;
