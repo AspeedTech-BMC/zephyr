@@ -26,9 +26,6 @@ LOG_MODULE_REGISTER(i2c_aspeed);
 #define I2C_SLAVE_COUNT			3
 #define I2C_SLAVE_BUF_SIZE		256
 
-#define I2C_BUF_SIZE			0x20
-#define I2C_BUF_BASE			0xC00
-
 /* i2c global */
 #define ASPEED_I2CG_CLK_DIV		0x10
 #define ASPEED_I2CG_CONTROL		0x0C
@@ -939,7 +936,7 @@ static int i2c_aspeed_transfer(const struct device *dev, struct i2c_msg *msgs,
 					, i2c_base + AST_I2CS_DMA_LEN);
 				} else if (config->mode == BUFF_MODE) {
 					cmd |= AST_I2CS_RX_BUFF_EN;
-					sys_write32(AST_I2CC_SET_RX_BUF_LEN(I2C_BUF_SIZE)
+					sys_write32(AST_I2CC_SET_RX_BUF_LEN(config->buf_size)
 					, i2c_base + AST_I2CC_BUFF_CTRL);
 				} else {
 					cmd &= ~AST_I2CS_PKT_MODE_EN;
@@ -2421,8 +2418,6 @@ static int i2c_aspeed_init(const struct device *dev)
 	struct i2c_aspeed_config *config = DEV_CFG(dev);
 	struct i2c_aspeed_data *data = DEV_DATA(dev);
 	uint32_t i2c_base = DEV_BASE(dev);
-	uint32_t i2c_count = ((i2c_base & 0xFFF) / 0x80) - 1;
-	uint32_t i2c_base_offset = I2C_BUF_BASE + (i2c_count * 0x20);
 	uint32_t bitrate_cfg;
 	int error;
 #ifdef CONFIG_I2C_TARGET
@@ -2437,10 +2432,6 @@ static int i2c_aspeed_init(const struct device *dev)
 	if (!(sys_read32(config->global_reg + ASPEED_I2CG_CONTROL) & ASPEED_I2C_NEW_MODE)) {
 		return -ENOTSUP;
 	}
-
-	/* buffer mode base and size */
-	config->buf_base = config->global_reg + i2c_base_offset;
-	config->buf_size = I2C_BUF_SIZE;
 
 	/* byte mode check re-start */
 	data->slave_addr_last = 0xFF;
@@ -2641,8 +2632,10 @@ static const struct i2c_driver_api i2c_aspeed_driver_api = {
 	PINCTRL_DT_INST_DEFINE(n);                                                                 \
 	static void i2c_aspeed_config_func_##n(const struct device *dev);                          \
                                                                                                    \
-	static const struct i2c_aspeed_config i2c_aspeed_config_##n = {                            \
-		.base = DT_INST_REG_ADDR(n),                                                       \
+	static const struct i2c_aspeed_config i2c_aspeed_config_##n = {                        \
+		.base = DT_INST_REG_ADDR_BY_IDX(n, 0),                                             \
+		.buf_base = DT_INST_REG_ADDR_BY_IDX(n, 1),                                         \
+		.buf_size = DT_INST_REG_SIZE_BY_IDX(n, 1),                                         \
 		.irq_config_func = i2c_aspeed_config_func_##n,                                     \
 		.bitrate = DT_INST_PROP(n, clock_frequency),                                       \
 		.mode = DT_ENUM_IDX(DT_INST(n, DT_DRV_COMPAT), xfer_mode),                         \
