@@ -567,7 +567,7 @@ static int i2c_wait_completion(const struct device *dev)
 }
 
 static uint8_t
-aspeed_new_i2c_recover_bus(const struct device *dev)
+aspeed_i2c_recover_bus(const struct device *dev)
 {
 	struct i2c_aspeed_data *data = DEV_DATA(dev);
 	uint32_t i2c_base = DEV_BASE(dev);
@@ -715,7 +715,7 @@ static int i2c_aspeed_get_configure(const struct device *dev,
 	return 0;
 }
 
-static void aspeed_new_i2c_do_start(const struct device *dev)
+static void aspeed_i2c_do_start(const struct device *dev)
 {
 	struct i2c_aspeed_config *config = DEV_CFG(dev);
 	struct i2c_aspeed_data *data = DEV_DATA(dev);
@@ -895,7 +895,7 @@ static int i2c_aspeed_transfer(const struct device *dev, struct i2c_msg *msgs,
 	(sys_read32(i2c_base + AST_I2CC_STS_AND_BUFF) & AST_I2CC_BUS_BUSY_STS)) {
 		int ret;
 
-		ret = aspeed_new_i2c_recover_bus(dev);
+		ret = aspeed_i2c_recover_bus(dev);
 		if (ret) {
 			k_mutex_unlock(&data->trans_mutex);
 			return ret;
@@ -909,7 +909,7 @@ static int i2c_aspeed_transfer(const struct device *dev, struct i2c_msg *msgs,
 	data->msgs_count = num_msgs;
 	k_sem_reset(&data->sync_sem);
 
-	aspeed_new_i2c_do_start(dev);
+	aspeed_i2c_do_start(dev);
 
 	if (i2c_wait_completion(dev)) {
 		isr = sys_read32(i2c_base + AST_I2CM_ISR);
@@ -1012,7 +1012,7 @@ void do_i2cm_tx(const struct device *dev)
 		if (data->msgs_index == data->msgs_count) {
 			k_sem_give(&data->sync_sem);
 		} else {
-			aspeed_new_i2c_do_start(dev);
+			aspeed_i2c_do_start(dev);
 		}
 	} else {
 		/*do next tx*/
@@ -1126,7 +1126,7 @@ void do_i2cm_rx(const struct device *dev)
 		if (data->msgs_index == data->msgs_count) {
 			k_sem_give(&data->sync_sem);
 		} else {
-			aspeed_new_i2c_do_start(dev);
+			aspeed_i2c_do_start(dev);
 		}
 	} else {
 		/*next rx*/
@@ -1275,7 +1275,7 @@ int aspeed_i2c_master_irq(const struct device *dev)
 			data->msgs_index++;
 			/* if there is another message need to send, trigger here */
 			if (data->msgs_index < data->msgs_count) {
-				aspeed_new_i2c_do_start(dev);
+				aspeed_i2c_do_start(dev);
 			} else {
 				k_sem_give(&data->sync_sem);
 			}
