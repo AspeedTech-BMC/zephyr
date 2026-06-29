@@ -266,6 +266,10 @@ LOG_MODULE_REGISTER(i2c_aspeed);
 #define STX_DONE				BIT(1)
 #define SLAVE_STOP				BIT(0)
 
+/* 0x94 : Version control */
+#define AST2700_I2CC_VER_CTRL		0x94
+#define USE_DMA_MODE				BIT(2)
+
 /* i2c timeout counter: use base clk4 1Mhz
  * 1/(1000/4096) = 4.096ms * 8 = 32.768ms
  */
@@ -2450,12 +2454,27 @@ static int i2c_aspeed_init(const struct device *dev)
 	defined(CONFIG_SOC_AST2700_A1_SSP) || \
 	defined(CONFIG_SOC_AST1040_CM4) || \
 	defined(CONFIG_SOC_AST1080_CM4)
+	uint32_t reg;
 
 	data->version = AST2700;
-
-	/* AST2700 just support DMA mode */
-	if (config->mode != DMA_MODE)
+	reg = sys_read32(i2c_base + AST2700_I2CC_VER_CTRL);
+	/* AST2700 need select DMA / Buffer mode in the version register*/
+	if (config->mode == DMA_MODE) {
+		reg |= USE_DMA_MODE;
+	} else if (config->mode == BUFF_MODE) {
+		sys_write32(0x00, i2c_base + AST_I2CM_TX_DMA);
+		sys_write32(0x00, i2c_base + AST_I2CM_TX_DMA_H);
+		sys_write32(0x10, i2c_base + AST_I2CM_RX_DMA);
+		sys_write32(0x00, i2c_base + AST_I2CM_RX_DMA_H);
+		sys_write32(0x30, i2c_base + AST_I2CS_TX_DMA);
+		sys_write32(0x00, i2c_base + AST_I2CS_TX_DMA_H);
+		sys_write32(0x30, i2c_base + AST_I2CS_RX_DMA);
+		sys_write32(0x00, i2c_base + AST_I2CS_RX_DMA_H);
+		reg &= ~USE_DMA_MODE;
+	} else {
 		return -EINVAL;
+	}
+	sys_write32(reg, i2c_base + AST2700_I2CC_VER_CTRL);
 #else
 	data->version = AST2600;
 #endif
