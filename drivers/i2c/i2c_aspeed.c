@@ -115,6 +115,7 @@ LOG_MODULE_REGISTER(i2c_aspeed);
 #define AST_I2CM_BUS_RECOVER		BIT(13)
 #define AST_I2CM_SMBUS_ALT		BIT(12)
 
+#define AST2700_I2CM_ABNORMAL	BIT(8)
 #define AST_I2CM_SCL_LOW_TO		BIT(6)
 #define AST_I2CM_ABNORMAL		BIT(5)
 #define AST_I2CM_NORMAL_STOP		BIT(4)
@@ -372,6 +373,7 @@ struct i2c_aspeed_data {
 	/* function pointers */
 	uint32_t (*setup_tx)(uint32_t cmd, const struct device *dev);
 	uint32_t (*setup_rx)(uint32_t cmd, const struct device *dev);
+	uint32_t (*is_irq_err)(uint32_t cmd);
 
 #ifdef CONFIG_I2C_TARGET
 	unsigned char slave_dma_buf[I2C_SLAVE_BUF_SIZE];
@@ -1072,9 +1074,25 @@ static int i2c_aspeed_transfer(const struct device *dev, struct i2c_msg *msgs,
 	return data->cmd_err;
 }
 
-static int aspeed_i2c_is_irq_error(uint32_t irq_status)
+uint32_t ast2600_i2c_is_irq_error(uint32_t irq_status)
 {
 	if (irq_status & AST_I2CM_ARBIT_LOSS) {
+		return -EAGAIN;
+	}
+	if (irq_status & (AST_I2CM_SDA_DL_TO |
+			  AST_I2CM_SCL_LOW_TO)) {
+		return -EBUSY;
+	}
+	if (irq_status & (AST_I2CM_ABNORMAL)) {
+		return -EPROTO;
+	}
+
+	return 0;
+}
+
+uint32_t ast2700_i2c_is_irq_error(uint32_t irq_status)
+{
+	if (irq_status & AST2700_I2CM_ABNORMAL) {
 		return -EAGAIN;
 	}
 	if (irq_status & (AST_I2CM_SDA_DL_TO |
@@ -1226,7 +1244,7 @@ int aspeed_i2c_master_irq(const struct device *dev)
 		}
 	}
 
-	data->cmd_err = aspeed_i2c_is_irq_error(sts);
+	data->cmd_err = data->is_irq_err(sts);
 	if (data->cmd_err) {
 		LOG_DBG("received error interrupt: 0x%02x\n",
 			sts);
@@ -2465,6 +2483,8 @@ static int i2c_aspeed_init(const struct device *dev)
 		return -EINVAL;
 	}
 	sys_write32(reg, i2c_base + AST2700_I2CC_VER_CTRL);
+
+	data->is_irq_err = ast2700_i2c_is_irq_error;
 #else
 	data->version = AST2600;
 
@@ -2478,6 +2498,8 @@ static int i2c_aspeed_init(const struct device *dev)
 		data->setup_tx = ast2600_i2c_setup_byte_tx;
 		data->setup_rx = ast2600_i2c_setup_byte_rx;
 	}
+
+	data->is_irq_err = ast2600_i2c_is_irq_error;
 #endif
 
 	bitrate_cfg = i2c_map_dt_bitrate(config->bitrate);
