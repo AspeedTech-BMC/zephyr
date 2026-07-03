@@ -9,7 +9,13 @@
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/pinctrl.h>
 #include <zephyr/drivers/syscon.h>
+#ifdef CONFIG_SOC_SERIES_AST10x0_G2
+#include <zephyr/dt-bindings/pinctrl/ast10x0-g2-pinctrl.h>
+#define ASPEED_PINCTRL_BALL_NUM AST10X0_G2_BALL_NUM
+#else
 #include <zephyr/dt-bindings/pinctrl/ast27xx-soc1-pinctrl.h>
+#define ASPEED_PINCTRL_BALL_NUM AST27XX_SOC1_BALL_NUM
+#endif
 #include <pinctrl_soc.h>
 #include <zephyr/logging/log.h>
 
@@ -21,6 +27,42 @@ LOG_MODULE_REGISTER(pinctrl_aspeed_g7_soc1, LOG_LEVEL_INF);
 
 static const struct device *syscon = DEVICE_DT_GET(DT_INST_PARENT(0));
 
+static struct {
+	bool requested;
+	uint32_t sig_descs;
+#ifdef CONFIG_PINCTRL_ASPEED_STRING_NAME
+	const char *name;
+#endif
+} ball_owner[ASPEED_PINCTRL_BALL_NUM];
+
+static int pinctrl_request_ball(const pinctrl_soc_pin_t *pin)
+{
+	if (pin->ball < 0 || pin->ball >= ARRAY_SIZE(ball_owner)) {
+		LOG_ERR("Invalid ball %d", pin->ball);
+		return -EINVAL;
+	}
+
+	if (ball_owner[pin->ball].requested &&
+	    ball_owner[pin->ball].sig_descs != pin->sig_descs) {
+#ifdef CONFIG_PINCTRL_ASPEED_STRING_NAME
+		LOG_ERR("ball %d already requested by pin %s, reject pin %s", pin->ball,
+			ball_owner[pin->ball].name, pin->name);
+#else
+		LOG_ERR("ball %d already requested by sig_descs %08x, reject sig_descs %08x",
+			pin->ball, ball_owner[pin->ball].sig_descs, pin->sig_descs);
+#endif
+		return -EBUSY;
+	}
+
+	ball_owner[pin->ball].requested = true;
+	ball_owner[pin->ball].sig_descs = pin->sig_descs;
+#ifdef CONFIG_PINCTRL_ASPEED_STRING_NAME
+	ball_owner[pin->ball].name = pin->name;
+#endif
+
+	return 0;
+}
+
 static int pinctrl_configure_pin(const pinctrl_soc_pin_t *pin)
 {
 	uint32_t func_index, bit_offset, offset, value;
@@ -28,10 +70,15 @@ static int pinctrl_configure_pin(const pinctrl_soc_pin_t *pin)
 	int ret = 0;
 
 #ifdef CONFIG_PINCTRL_ASPEED_STRING_NAME
-	LOG_DBG("name %s, ball %d sig_descs %x", pin->name, pin->ball, pin->sig_descs);
+	LOG_DBG("name %s, ball %d sig_descs %x\n", pin->name, pin->ball, pin->sig_descs);
 #else
 	LOG_DBG("ball %d sig_descs %x", pin->ball, pin->sig_descs);
 #endif
+
+	ret = pinctrl_request_ball(pin);
+	if (ret) {
+		return ret;
+	}
 
 	func_index = FIELD_GET(PINCTRL_SIG_DESC_FUNC_IDX, pin->sig_descs);
 	bit_offset = FIELD_GET(PINCTRL_SIG_DESC_BIT_OFFSET, pin->sig_descs);

@@ -210,4 +210,7 @@
 #define PORTA_MODE      193
 #define PORTB_MODE      194
 
+/* Total number of ball identifiers (physical + virtual), keep in sync above */
+#define AST10X0_G2_BALL_NUM     195
+
 #endif /* ZEPHYR_INCLUDE_DT_BINDINGS_PINCTRL_AST10X0_G2_H_ */
