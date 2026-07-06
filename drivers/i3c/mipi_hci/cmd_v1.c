@@ -420,6 +420,15 @@ static void hci_cmd_v1_update_daa_target(struct i3c_hci *hci, uint8_t addr,
 	}
 
 	if (!target) {
+		/*
+		 * The wire-level assignment already happened; without a
+		 * matching devicetree child the address is only reserved.
+		 * Say so loudly - a PID mismatch here is the usual reason a
+		 * DT-described target "has no dynamic address" after DAA.
+		 */
+		LOG_WRN("DAA: no DT child matches PID 0x%012llx (BCR %#x DCR %#x); "
+			"address 0x%02x reserved but not attached",
+			(unsigned long long)pid, bcr, dcr, addr);
 		i3c_addr_slots_mark_i3c(&hci->common.attached_dev.addr_slots, addr);
 		return;
 	}
