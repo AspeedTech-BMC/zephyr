@@ -521,10 +521,22 @@ int cache_data_flush_and_invd_all(void)
 
 int cache_data_flush_range(void *addr, size_t size)
 {
-	ARG_UNUSED(addr);
-	ARG_UNUSED(size);
+	mem_addr_t last = ROUND_DOWN((mem_addr_t)addr + size - 1U, sizeof(uint32_t));
 
-	return -ENOTSUP;
+	/*
+	 * The cache is write-through, so there are no dirty lines to write
+	 * back.  However, CPU stores are posted in the memory controller
+	 * write queue and reads issued by other bus masters bypass pending
+	 * writes.  Invalidate the range so the read below misses the cache,
+	 * then read back the last word of the range: a read on the CPU port
+	 * stalls until the pending writes of the same port have committed
+	 * to memory, making the range visible to other masters.
+	 */
+	(void)cache_data_invd_range(addr, size);
+	barrier_dsync_fence_full();
+	(void)sys_read32(last);
+
+	return 0;
 }
 
 int cache_data_flush_and_invd_range(void *addr, size_t size)
