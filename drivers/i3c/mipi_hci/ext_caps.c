@@ -49,7 +49,7 @@ static int hci_extcap_hardware_id(struct i3c_hci *hci, uintptr_t base)
 {
 	hci->vendor_mipi_id = hci_extcap_read(base, 0x04);
 	hci->vendor_version_id = hci_extcap_read(base, 0x08);
-	hci->vendor_product_id = hci_extcap_read(base, 0x0c);
+	hci->vendor_product_id = hci_extcap_read(base, 0x0c) >> 16;
 
 	LOG_INF("vendor MIPI ID %#x", hci->vendor_mipi_id);
 	LOG_INF("vendor version ID %#x", hci->vendor_version_id);
