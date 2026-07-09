@@ -1,0 +1,8 @@
+# Copyright (c) 2026 ASPEED Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+description: ASPEED AST1080 SPI Monitor controller node
+
+compatible: "aspeed,ast1080-spi-monitor-controller"
+
+include: aspeed,spi-monitor-controller.yaml

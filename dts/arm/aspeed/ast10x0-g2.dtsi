@@ -829,6 +829,36 @@
 			};
 		};
 
+		spim0: spim_common@74c15000 {
+			compatible = "aspeed,ast1080-spi-monitor-controller";
+			reg = <0x74c15000 0x3000>;
+			aspeed,scu = <&syscon>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "disabled";
+
+			spim1: spim@1 {
+				interrupts = <INTR_SPI_F0 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+				reg = <1>;
+				allow-cmds = [];
+				status = "disabled";
+			};
+
+			spim2: spim@2 {
+				interrupts = <INTR_SPI_F1 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+				reg = <2>;
+				allow-cmds = [];
+				status = "disabled";
+			};
+
+			spim3: spim@3 {
+				interrupts = <INTR_SPI_F2 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+				reg = <3>;
+				allow-cmds = [];
+				status = "disabled";
+			};
+		};
+
 		espi0: espi@74c05000 {
 			compatible = "aspeed,espi-ast1040", "aspeed,espi-v2";
 			reg = <0x74c05000 0x1000>;

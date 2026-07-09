@@ -175,7 +175,9 @@ static uint8_t spim_log_arr[CONFIG_ASPEED_SPIM_LOG_SIZE] NON_CACHED_BSS_ALIGN16;
 #define SPIM_BLOCK_INFO_EN              BIT(31)
 
 /* PFR related control */
-#define SPIM_MODE_SCU_CTRL              (0x00f0)
+#define AST1060_SPIM_MODE_SCU_CTRL      (0x00f0)
+#define AST1080_SCU_ANALOG_MUX_MODE     (0x00D0)
+#define AST1080_SCU_SPI_MODE            (0x00D4)
 
 /* AST2700 */
 /* On AST2700, SPI monitor is concatenated after SPI controller */
@@ -271,6 +273,7 @@ struct aspeed_spim_config {
 
 struct aspeed_spim_common_config {
 	mm_reg_t scu_base;
+	uint32_t mode_ctrl_off;
 };
 
 struct aspeed_spim_common_data {
@@ -315,36 +318,52 @@ static void release_spim_device(const struct device *dev)
 	}
 }
 
-void spim_scu_ctrl_set(const struct device *dev, uint32_t mask, uint32_t val)
+static void spim_scu_reg_set(const struct device *dev, uint32_t reg_off,
+			      uint32_t mask, uint32_t val)
 {
 	const struct aspeed_spim_common_config *config = dev->config;
 	struct aspeed_spim_common_data *const data = dev->data;
-	mm_reg_t spim_scu_ctrl = config->scu_base + SPIM_MODE_SCU_CTRL;
+	mm_reg_t spim_scu_reg = config->scu_base + reg_off;
 	uint32_t reg_val;
 	/* Avoid SCU0F0 being accessed by more than a thread */
 	k_spinlock_key_t key = k_spin_lock(&data->scu_lock);
 
-	reg_val = sys_read32(spim_scu_ctrl);
+	reg_val = sys_read32(spim_scu_reg);
 	reg_val &= ~(mask);
 	reg_val |= val;
-	sys_write32(reg_val, spim_scu_ctrl);
+	sys_write32(reg_val, spim_scu_reg);
 
 	k_spin_unlock(&data->scu_lock, key);
+}
+
+static void spim_scu_reg_clear(const struct device *dev, uint32_t reg_off,
+				uint32_t clear_bits)
+{
+	const struct aspeed_spim_common_config *config = dev->config;
+	struct aspeed_spim_common_data *const data = dev->data;
+	mm_reg_t spim_scu_reg = config->scu_base + reg_off;
+	uint32_t reg_val;
+	k_spinlock_key_t key = k_spin_lock(&data->scu_lock);
+
+	reg_val = sys_read32(spim_scu_reg);
+	reg_val &= ~(clear_bits);
+	sys_write32(reg_val, spim_scu_reg);
+
+	k_spin_unlock(&data->scu_lock, key);
+}
+
+void spim_scu_ctrl_set(const struct device *dev, uint32_t mask, uint32_t val)
+{
+	const struct aspeed_spim_common_config *config = dev->config;
+
+	spim_scu_reg_set(dev, config->mode_ctrl_off, mask, val);
 }
 
 void spim_scu_ctrl_clear(const struct device *dev, uint32_t clear_bits)
 {
 	const struct aspeed_spim_common_config *config = dev->config;
-	struct aspeed_spim_common_data *const data = dev->data;
-	mm_reg_t spim_scu_ctrl = config->scu_base + SPIM_MODE_SCU_CTRL;
-	uint32_t reg_val;
-	k_spinlock_key_t key = k_spin_lock(&data->scu_lock);
 
-	reg_val = sys_read32(spim_scu_ctrl);
-	reg_val &= ~(clear_bits);
-	sys_write32(reg_val, spim_scu_ctrl);
-
-	k_spin_unlock(&data->scu_lock, key);
+	spim_scu_reg_clear(dev, config->mode_ctrl_off, clear_bits);
 }
 
 #if CONFIG_ASPEED_SPIM_LOG_SIZE > 0
@@ -609,6 +628,53 @@ static void ast1060_ext_mux_config(const struct device *dev,
 		} else {
 			spim_scu_ctrl_clear(config->parent, BIT(config->ctrl_idx - 1) << 12);
 		}
+	}
+
+	k_busy_wait(config->ext_mux_sel_delay_us);
+}
+
+/*
+ * SCU0D0 is the Analog Mux Mode Register (SCU_AM_MODE_x: 0=external signal,
+ * 1=internal signal) and SCU0D4 is the SPI Mode Register (SCU_SPIxO_MODE:
+ * 0=Filter Mode, 1=Master Mode).
+ */
+struct ast1080_spim_pinmux_bits {
+	uint32_t analog_mux_bits;
+	uint32_t spi_mode_bit;
+};
+
+static struct ast1080_spim_pinmux_bits ast1080_spim_pinmux_bits(uint32_t ctrl_idx)
+{
+	uint32_t bus = ctrl_idx - 1;
+	uint32_t base = bus * 7;
+
+	return (struct ast1080_spim_pinmux_bits) {
+		.analog_mux_bits = 0x7F << base,
+		.spi_mode_bit = BIT(bus),
+	};
+}
+
+static void ast1080_ext_mux_config(const struct device *dev,
+			    enum spim_ext_mux_sel mux_sel)
+{
+	const struct aspeed_spim_config *config = dev->config;
+	struct ast1080_spim_pinmux_bits bits = ast1080_spim_pinmux_bits(config->ctrl_idx);
+
+	if (mux_sel > SPIM_EXT_MUX_SEL_1) {
+		LOG_ERR("wrong ext mux selection (%d)", mux_sel);
+		return;
+	}
+
+	if (mux_sel == SPIM_EXT_MUX_SEL_1) {
+		spim_scu_reg_set(config->parent, AST1080_SCU_ANALOG_MUX_MODE,
+				  bits.analog_mux_bits, bits.analog_mux_bits);
+		spim_scu_reg_set(config->parent, AST1080_SCU_SPI_MODE,
+				  bits.spi_mode_bit, bits.spi_mode_bit);
+	} else {
+		spim_scu_reg_clear(config->parent, AST1080_SCU_ANALOG_MUX_MODE,
+				    bits.analog_mux_bits);
+		spim_scu_reg_clear(config->parent, AST1080_SCU_SPI_MODE,
+				    bits.spi_mode_bit);
 	}
 
 	k_busy_wait(config->ext_mux_sel_delay_us);
@@ -1007,7 +1073,7 @@ end:
 }
 #endif /* CONFIG_ASPEED_SPIM_LOG_SIZE > 0 */
 
-static void ast1060_spim_sw_rst(const struct device *dev)
+static void spim_sw_rst(const struct device *dev)
 {
 	const struct aspeed_spim_config *config = dev->config;
 	uint32_t reg_val;
@@ -1120,25 +1186,6 @@ static void ast2700_blocked_fifo_init(const struct device *dev)
 	release_spim_device(dev);
 }
 
-static void ast2700_spim_sw_rst(const struct device *dev)
-{
-	const struct aspeed_spim_config *config = dev->config;
-	uint32_t reg_val;
-
-	acquire_spim_device(dev);
-
-	reg_val = sys_read32(config->ctrl_base + SPIM_CTRL);
-	reg_val |= SPIM_SW_RST;
-	sys_write32(reg_val, config->ctrl_base + SPIM_CTRL);
-
-	k_usleep(5);
-
-	reg_val &= ~(SPIM_SW_RST);
-	sys_write32(reg_val, config->ctrl_base + SPIM_CTRL);
-
-	release_spim_device(dev);
-}
-
 /* On AST2700, only SSP and BootMCU can
  * access SPI monitor control registers.
  */
@@ -1169,12 +1216,26 @@ static void ast2700_spim_access_prot_init(const struct device *dev)
 
 static void ast2700_elec_char_init(const struct device *dev)
 {
-	ast2700_spim_sw_rst(dev);
-	ast2700_spi_decoding_win_config(dev);
+	spim_sw_rst(dev);
 	ast2700_push_pull_mode_config(dev);
+	ast2700_spi_decoding_win_config(dev);
 	ast2700_blocked_cs_config(dev);
 	ast2700_blocked_fifo_init(dev);
 	ast2700_spim_access_prot_init(dev);
+}
+
+static void ast1080_elec_char_init(const struct device *dev)
+{
+	const struct aspeed_spim_config *config = dev->config;
+
+	spim_sw_rst(dev);
+	ast2700_push_pull_mode_config(dev);
+	ast2700_spi_decoding_win_config(dev);
+	ast2700_blocked_cs_config(dev);
+	ast2700_blocked_fifo_init(dev);
+	ast2700_spim_access_prot_init(dev);
+	/* always keep at master mode during booting up stage */
+	spim_ext_mux_config(dev, config->ext_mux_sel_default);
 }
 
 #define ADDR_CTRL_REG0(base, idx) ((base) + (idx) * 8)
@@ -2113,7 +2174,7 @@ static const __maybe_unused struct aspeed_spim_soc_ops ast1060_spim_ops = {
 	.elec_char_init    = ast1060_elec_char_init,
 	.allow_cmd_table_init = spim_allow_cmd_table_init,
 	.monitor_enable    = ast1060_monitor_enable,
-	.ctrl_sw_rst       = ast1060_spim_sw_rst,
+	.ctrl_sw_rst       = spim_sw_rst,
 #if CONFIG_ASPEED_SPIM_LOG_SIZE > 0
 	.blocked_log_init  = ast1060_ram_log_init,
 #else
@@ -2126,12 +2187,26 @@ static const __maybe_unused struct aspeed_spim_soc_ops ast1060_spim_ops = {
 	.misc_lock         = ast1060_misc_lock,
 };
 
+static const __maybe_unused struct aspeed_spim_soc_ops ast1080_spim_ops = {
+	.addr_priv_init    = ast2700_addr_priv_init,
+	.elec_char_init    = ast1080_elec_char_init,
+	.allow_cmd_table_init = spim_allow_cmd_table_init,
+	.monitor_enable    = ast2700_monitor_enable,
+	.ctrl_sw_rst       = spim_sw_rst,
+	.blocked_log_init  = NULL,
+	.flash_rst_release = NULL,
+	.mux_config        = ast1080_ext_mux_config,
+	.dump_addr_priv    = ast2700_dump_addr_priv_table,
+	.addr_priv_lock    = ast2700_addr_priv_table_lock,
+	.misc_lock         = NULL,
+};
+
 static const __maybe_unused struct aspeed_spim_soc_ops ast2700_spim_ops = {
 	.addr_priv_init    = ast2700_addr_priv_init,
 	.elec_char_init    = ast2700_elec_char_init,
 	.allow_cmd_table_init = spim_allow_cmd_table_init,
 	.monitor_enable    = ast2700_monitor_enable,
-	.ctrl_sw_rst       = ast2700_spim_sw_rst,
+	.ctrl_sw_rst       = spim_sw_rst,
 	.blocked_log_init  = NULL,
 	.flash_rst_release = NULL,
 	.mux_config        = NULL,
@@ -2198,11 +2273,11 @@ static int aspeed_spi_monitor_common_init(const struct device *dev)
 	.pcfg            = COND_CODE_1(					\
 		DT_NODE_HAS_PROP(node_id, pinctrl_0),			\
 		(PINCTRL_DT_DEV_CONFIG_GET(node_id)), (NULL)),		\
+	.ext_mux_sel_default  = DT_PROP_OR(node_id, ext_mux_sel, 0),	\
+	.ext_mux_sel_delay_us =						\
+		DT_PROP_OR(node_id, ext_mux_sel_delay_us, 0),		\
 	COND_CODE_1(DT_NODE_HAS_PROP(node_id, ext_mux_sel_gpios), (	\
-		.ext_mux_sel_default  = DT_PROP_OR(node_id, ext_mux_sel, 0),\
 		.ext_mux_sel_gpios    = spim_ext_mux_sel_gpios_##node_id,\
-		.ext_mux_sel_delay_us =					\
-			DT_PROP_OR(node_id, ext_mux_sel_delay_us, 0),	\
 		.ext_mux_sel_gpio_num =					\
 			DT_PROP_LEN_OR(node_id, ext_mux_sel_gpios, 0),	\
 	), ())								\
@@ -2218,13 +2293,14 @@ static int aspeed_spi_monitor_common_init(const struct device *dev)
 			 POST_KERNEL, child_prio, NULL);
 
 /* ===== Main orchestrator ===== */
-#define ASPEED_SPIM_COMMON_INIT(n, cfg_fn, data_fn, define_fn, common_prio) \
+#define ASPEED_SPIM_COMMON_INIT(n, cfg_fn, data_fn, define_fn, common_prio, mode_ctrl_reg_off) \
 	DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n),			\
 				     ASPEED_PINCTRL_DT_NODE_DEFINE)	\
 	static struct aspeed_spim_common_config				\
 		aspeed_spim_common_config_##n = {			\
 		.scu_base = DT_REG_ADDR_BY_IDX(			\
 			DT_INST_PHANDLE_BY_IDX(n, aspeed_scu, 0), 0),	\
+		.mode_ctrl_off = (mode_ctrl_reg_off),			\
 	};								\
 	static struct aspeed_spim_common_data				\
 		aspeed_spim_common_data_##n;				\
@@ -2279,10 +2355,38 @@ static int aspeed_spi_monitor_common_init(const struct device *dev)
 #define ASPEED_AST1060_SPIM_INIT(n)					\
 	ASPEED_SPIM_COMMON_INIT(n, ASPEED_AST1060_SPIM_DEV_CFG,	\
 				ASPEED_AST1060_SPIM_DEV_DATA,		\
-				ASPEED_AST1060_SPIM_DT_DEFINE, 70)
+				ASPEED_AST1060_SPIM_DT_DEFINE, 70,	\
+				AST1060_SPIM_MODE_SCU_CTRL)
 #undef DT_DRV_COMPAT
 #define DT_DRV_COMPAT aspeed_spi_monitor_controller
 DT_INST_FOREACH_STATUS_OKAY(ASPEED_AST1060_SPIM_INIT)
+
+/* ===== AST1080 ===== */
+#define ASPEED_AST1080_SPIM_DEV_CFG(node_id) \
+	ASPEED_SPIM_DEV_CFG_BASE(node_id, &ast1080_spim_ops)
+
+#define ASPEED_AST1080_SPIM_DEV_DATA(node_id) {				\
+	.allow_cmd_list       = DT_PROP(node_id, allow_cmds),		\
+	.allow_cmd_num        = DT_PROP_LEN(node_id, allow_cmds),	\
+	COND_CODE_1(DT_NODE_HAS_PROP(node_id, addr_priv_configs), (	\
+	.addr_priv_config     = DT_PROP(node_id, addr_priv_configs),	\
+	.addr_priv_config_num = DT_PROP_LEN(node_id, addr_priv_configs),\
+	), ())								\
+	.dev                  = DEVICE_DT_GET(node_id),			\
+},
+
+#define ASPEED_AST1080_SPIM_DT_DEFINE(node_id) \
+	ASPEED_SPIM_DT_DEFINE_BASE(node_id, 81)
+
+#define ASPEED_AST1080_SPIM_INIT(n)					\
+	ASPEED_SPIM_COMMON_INIT(n, ASPEED_AST1080_SPIM_DEV_CFG,	\
+				ASPEED_AST1080_SPIM_DEV_DATA,		\
+				ASPEED_AST1080_SPIM_DT_DEFINE, 80,	\
+				AST1080_SCU_ANALOG_MUX_MODE)
+#undef DT_DRV_COMPAT
+#define DT_DRV_COMPAT aspeed_ast1080_spi_monitor_controller
+DT_INST_FOREACH_STATUS_OKAY(ASPEED_AST1080_SPIM_INIT)
+#undef DT_DRV_COMPAT
 
 /* ===== AST2700 ===== */
 #define ASPEED_AST2700_SPIM_DEV_CFG(node_id) \
@@ -2301,10 +2405,12 @@ DT_INST_FOREACH_STATUS_OKAY(ASPEED_AST1060_SPIM_INIT)
 #define ASPEED_AST2700_SPIM_DT_DEFINE(node_id) \
 	ASPEED_SPIM_DT_DEFINE_BASE(node_id, 81)
 
+/* AST2700 never calls spim_scu_ctrl_set/clear(); offset unused. */
 #define ASPEED_AST2700_SPIM_INIT(n)					\
 	ASPEED_SPIM_COMMON_INIT(n, ASPEED_AST2700_SPIM_DEV_CFG,	\
 				ASPEED_AST2700_SPIM_DEV_DATA,		\
-				ASPEED_AST2700_SPIM_DT_DEFINE, 80)
+				ASPEED_AST2700_SPIM_DT_DEFINE, 80,	\
+				AST1060_SPIM_MODE_SCU_CTRL)
 #undef DT_DRV_COMPAT
 #define DT_DRV_COMPAT aspeed_ast2700_spi_monitor_controller
 DT_INST_FOREACH_STATUS_OKAY(ASPEED_AST2700_SPIM_INIT)
