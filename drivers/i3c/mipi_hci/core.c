@@ -1185,9 +1185,11 @@ static void mipi_i3c_hci_handle_core_irq(struct i3c_hci *hci)
 	}
 
 	if (status & INTR_HC_INTERNAL_ERR) {
-		hci_reg_write(hci, INTR_SIGNAL_ENABLE, 0);
-		hci_reg_write(hci, INTR_STATUS, INTR_HC_INTERNAL_ERR);
-		(void)k_work_submit(&hci->halt_rst_work);
+		if (hci->is_target) {
+			hci_reg_write(hci, INTR_SIGNAL_ENABLE, 0);
+			hci_reg_write(hci, INTR_STATUS, INTR_HC_INTERNAL_ERR);
+			(void)k_work_submit(&hci->halt_rst_work);
+		}
 		status &= ~INTR_HC_INTERNAL_ERR;
 	}
 
