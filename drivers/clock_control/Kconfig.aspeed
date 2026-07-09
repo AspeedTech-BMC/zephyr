@@ -17,7 +17,7 @@ config CLOCK_CONTROL_AST26XX
 
 config CLOCK_CONTROL_AST27XX
 	bool "AST2700 clock control driver"
-	default n
+	default y
 	depends on DT_HAS_ASPEED_AST27XX_SCU0_CLOCK_ENABLED || DT_HAS_ASPEED_AST27XX_SCU1_CLOCK_ENABLED
 	help
 	  This option enables the clock driver for ASPEED AST27XX series SOC.
@@ -25,6 +25,6 @@ config CLOCK_CONTROL_AST27XX
 config CLOCK_CONTROL_AST1040
 	bool "AST1040 clock control driver"
 	default y
-	depends on DT_HAS_ASPEED_AST27XX_SCU1_CLOCK_ENABLED
+	depends on DT_HAS_ASPEED_AST10X0_G2_CLOCK_ENABLED
 	help
 	  This option enables the clock driver for ASPEED AST1040 series SOC.

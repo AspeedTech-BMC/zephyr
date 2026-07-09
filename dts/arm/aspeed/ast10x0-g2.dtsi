@@ -41,7 +41,7 @@
 			};
 
 			sysclk: system-clock {
-				compatible = "aspeed,ast10x0-g2-clock", "aspeed,ast27xx-scu1-clock";
+				compatible = "aspeed,ast10x0-g2-clock";
 				#clock-cells = <1>;
 			};
 
