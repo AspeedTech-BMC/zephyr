@@ -82,6 +82,7 @@
 };
 
 &fmc {
+	status = "okay";
 	timing-calibration-disabled;
 };
 #endif

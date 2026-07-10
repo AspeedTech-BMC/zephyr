@@ -5,26 +5,3 @@
  */
 
 #include <riscv/aspeed/ast10x0-g2.dtsi>
-
-&soc {
-	fmc: spi@14000000 {
-		compatible = "aspeed,ast10x0-g2-spi-lite-controller";
-		reg = <0x14000000 0x200>, <0x20000000 0x10000000>;
-		reg-names = "ctrl_reg", "spi_mmap";
-		clocks = <&sysclk SCU1_CLK_AHB>;
-		num-cs = <1>;
-		ctrl-type = "bspi";
-		#address-cells = <1>;
-		#size-cells = <0>;
-		spi-ctrl-caps-mask = <0x000e0e0c>;
-
-		fmc_cs0: fmc@0 {
-			compatible = "jedec,spi-nor";
-			reg = <0>;
-			spi-max-buswidth = <1>;
-			spi-max-frequency = <25000000>;
-			jedec-id = [];
-			write-block-size = <4096>;
-		};
-	};
-};
