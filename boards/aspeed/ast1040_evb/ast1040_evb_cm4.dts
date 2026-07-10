@@ -322,6 +322,30 @@
 	status = "okay";
 };
 
+&spi0 {
+	status = "okay";
+};
+
+&spi0_cs0 {
+	status = "okay";
+};
+
+&spi0_cs1 {
+	status = "okay";
+};
+
+&spi1 {
+	status = "okay";
+};
+
+&spi1_cs0 {
+	status = "okay";
+};
+
+&spi1_cs1 {
+	status = "okay";
+};
+
 #if 1
 zephyr_udc0: &udc0 {
 	status = "okay";

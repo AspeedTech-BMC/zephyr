@@ -821,11 +821,89 @@
 			fmc_cs0: fmc@0 {
 				compatible = "jedec,spi-nor";
 				reg = <0>;
-				spi-max-buswidth = <1>;
+				spi-max-buswidth = <4>;
 				spi-max-frequency = <25000000>;
 				jedec-id = [];
-				write-block-size = <4096>;
 				status = "okay";
+			};
+
+			fmc_cs1: fmc@1 {
+				compatible = "jedec,spi-nor";
+				reg = <1>;
+				spi-max-buswidth = <4>;
+				spi-max-frequency = <25000000>;
+				jedec-id = [];
+				status = "disabled";
+			};
+		};
+
+		spi0: spi@74010000 {
+			compatible = "aspeed,ast10x0-g2-spi-controller";
+			reg = <0x74010000 0x300>, <0xA0000000 0x10000000>;
+			reg-names = "ctrl_reg", "spi_mmap";
+			interrupts = <INTR_SPI0 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk SCU1_CLK_AHB>;
+			pinctrl-0 = <pinctrl_spim0_default pinctrl_spim0_quad_default
+				     pinctrl_spim0_cs1_default>;
+			pinctrl-names = "default";
+			num-cs = <4>;
+			ctrl-type = "nspi";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			spi-ctrl-caps-mask = <0x000e0e0c>;
+			status = "disabled";
+
+			spi0_cs0: spi0@0 {
+				compatible = "jedec,spi-nor";
+				reg = <0>;
+				spi-max-buswidth = <4>;
+				spi-max-frequency = <25000000>;
+				jedec-id = [];
+				status = "disabled";
+			};
+
+			spi0_cs1: spi0@1 {
+				compatible = "jedec,spi-nor";
+				reg = <1>;
+				spi-max-buswidth = <4>;
+				spi-max-frequency = <25000000>;
+				jedec-id = [];
+				status = "disabled";
+			};
+		};
+
+		spi1: spi@74020000 {
+			compatible = "aspeed,ast10x0-g2-spi-controller";
+			reg = <0x74020000 0x300>, <0xC0000000 0x10000000>;
+			reg-names = "ctrl_reg", "spi_mmap";
+			interrupts = <INTR_SPI1 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk SCU1_CLK_AHB>;
+			pinctrl-0 = <pinctrl_spim1_default pinctrl_spim1_quad_default
+				     pinctrl_spim1_cs1_default>;
+			pinctrl-names = "default";
+			num-cs = <2>;
+			ctrl-type = "nspi";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			spi-ctrl-caps-mask = <0x000e0e0c>;
+			status = "disabled";
+
+			spi1_cs0: spi1@0 {
+				compatible = "jedec,spi-nor";
+				reg = <0>;
+				spi-max-buswidth = <4>;
+				spi-max-frequency = <25000000>;
+				jedec-id = [];
+				status = "disabled";
+			};
+
+			spi1_cs1: spi1@1 {
+				compatible = "jedec,spi-nor";
+				reg = <1>;
+				spi-max-buswidth = <4>;
+				spi-max-frequency = <25000000>;
+				jedec-id = [];
+				status = "disabled";
 			};
 		};
 
