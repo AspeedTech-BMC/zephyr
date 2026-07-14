@@ -170,3 +170,7 @@
 	flash-dma-mode;
 	flash-edaf-tgt-addr = <0x4 0x31000000>;
 };
+
+&otp {
+	status = "okay";
+};

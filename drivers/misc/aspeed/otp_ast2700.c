@@ -33,7 +33,16 @@ LOG_MODULE_REGISTER(otp_ast2700, CONFIG_LOG_DEFAULT_LEVEL);
 #define OTP_CMD_PROG_MULTI		0x23b1e365
 
 #define OTP_CMD_OFFSET			0x20
+
+#if defined(CONFIG_SOC_AST2700_SSP)
+#define OTP_MASTER			OTP_M2
+#elif defined(CONFIG_SOC_AST2700_TSP)
+#define OTP_MASTER			OTP_M3
+#else
+/* bootmcu */
 #define OTP_MASTER			OTP_M1
+#endif
+
 
 #define OTP_KEY				0x0
 #define OTP_CMD				(OTP_MASTER * OTP_CMD_OFFSET + 0x4)
@@ -108,8 +117,13 @@ LOG_MODULE_REGISTER(otp_ast2700, CONFIG_LOG_DEFAULT_LEVEL);
 #define ID0_AST2720A2			0x06020203
 #define ID1_AST2720A2			0x06020203
 
+#if defined(CONFIG_SOC_AST2700_SSP) || defined(CONFIG_SOC_AST2700_TSP)
+#define SCU0_REVISION_ID		0x72C02000
+#define SCU1_REVISION_ID		0x74C02000
+#else
 #define SCU0_REVISION_ID		0x12C02000
 #define SCU1_REVISION_ID		0x14C02000
+#endif
 
 enum otp_error_code {
 	OTP_SUCCESS,
@@ -382,7 +396,7 @@ static int otp_ast27xx_init(const struct device *dev)
 
 	aspeed_otp_dump_info(dev);
 
-	LOG_INF("\t0x%x: OTP driver initialized", (uint32_t)cfg->base);
+	LOG_INF("\t0x%x: OTP driver initialized, MASTER: 0x%x", (uint32_t)cfg->base, OTP_MASTER);
 
 	return rc;
 }

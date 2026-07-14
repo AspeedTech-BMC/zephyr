@@ -988,10 +988,12 @@ static int otp_ast27xx_init(void)
 	if (ret)
 		return ret;
 
-	ver = otp_get_chip_version(otp_dev, &ver);
+	otp_get_chip_version(otp_dev, &ver);
 	switch (ver) {
 	case OTP_AST2700_A1:
 		OTP_INF("Chip: AST2700-A1\n");
+		/* AST2700-A1 OTP tables dropped to reduce code size; unsupported on this build */
+#if defined(OTP_AST2700_INFO_UTILITY)
 		info_cb.version = OTP_AST2700_A1;
 		info_cb.rbp_info = a1_rbp_info;
 		info_cb.rbp_info_len = ARRAY_SIZE(a1_rbp_info);
@@ -1005,6 +1007,26 @@ static int otp_ast27xx_init(void)
 		info_cb.cal_info_len = ARRAY_SIZE(a1_cal_info);
 		info_cb.key_info = a1_key_type;
 		info_cb.key_info_len = ARRAY_SIZE(a1_key_type);
+#endif
+		break;
+	case OTP_AST2700_A2:
+		OTP_INF("Chip: AST2700-A2\n");
+		/* AST2700-A2 OTP tables dropped to reduce code size; unsupported on this build */
+#if defined(OTP_AST2700_INFO_UTILITY)
+		info_cb.version = OTP_AST2700_A2;
+		info_cb.rbp_info = a2_rbp_info;
+		info_cb.rbp_info_len = ARRAY_SIZE(a2_rbp_info);
+		info_cb.conf_info = a2_conf_info;
+		info_cb.conf_info_len = ARRAY_SIZE(a2_conf_info);
+		info_cb.strap_info = a2_strap_info;
+		info_cb.strap_info_len = ARRAY_SIZE(a2_strap_info);
+		info_cb.strap_ext_info = a2_strap_ext_info;
+		info_cb.strap_ext_info_len = ARRAY_SIZE(a2_strap_ext_info);
+		info_cb.cal_info = a2_cal_info;
+		info_cb.cal_info_len = ARRAY_SIZE(a2_cal_info);
+		info_cb.key_info = a2_key_type;
+		info_cb.key_info_len = ARRAY_SIZE(a2_key_type);
+#endif
 		break;
 	default:
 		OTP_INF("SOC is not supported\n");

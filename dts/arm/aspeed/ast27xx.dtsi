@@ -197,6 +197,13 @@
 			status = "disabled";
 		};
 
+		otp: otp@74c07000 {
+			compatible = "aspeed,ast27xx-otp";
+			reg = <0x74c07000 0x1000>;
+			aspeed,scu = <&syscon1>;
+			status = "disabled";
+		};
+
 		espi0: espi@74c05000 {
 			compatible = "aspeed,espi-v2";
 			reg = <0x74c05000 0x1000>;
