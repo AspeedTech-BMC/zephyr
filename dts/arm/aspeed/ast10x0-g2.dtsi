@@ -977,6 +977,12 @@
 				interrupts = <INTR_POSTCODE AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
 				status = "disabled";
 			};
+
+			snoop: snoop {
+				compatible = "aspeed,snoop";
+				interrupts = <INTR_SNOOP AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+				status = "disabled";
+			};
 		};
 	};
 };
