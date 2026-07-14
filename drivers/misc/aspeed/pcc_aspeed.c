@@ -9,6 +9,7 @@
 #include <zephyr/drivers/clock_control.h>
 #include <zephyr/drivers/misc/aspeed/pcc_aspeed.h>
 #include <zephyr/kernel.h>
+#include <zephyr/cache.h>
 #include <zephyr/logging/log.h>
 
 LOG_MODULE_REGISTER(pcc_aspeed);
@@ -45,6 +46,9 @@ LOG_MODULE_REGISTER(pcc_aspeed);
 #define   PCCR2_RX_TMOUT_INT		BIT(2)
 #define   PCCR2_RX_AVAIL_INT		BIT(1)
 #define PCCR3   0x13c
+#define   PCCR3_FIFO_WR_PTR_MASK		GENMASK(31, 24)
+#define   PCCR3_FIFO_RD_PTR_MASK		GENMASK(23, 16)
+#define   PCCR3_DATA_CNT_MASK		GENMASK(15, 8)
 #define   PCCR3_FIFO_DATA_MASK		GENMASK(7, 0)
 
 #define PCC_FIFO_DEPTH	256
@@ -97,7 +101,7 @@ struct pcc_aspeed_config {
 };
 
 #if DT_INST_PROP(0, dma_mode)
-static uint8_t pcc_ringbuf[DT_INST_PROP(0, dma_ringbuf_size)] NON_CACHED_BSS_ALIGN16;
+static uint8_t pcc_ringbuf[DT_INST_PROP(0, dma_ringbuf_size)] __aligned(CONFIG_DCACHE_LINE_SIZE);
 #else
 static uint8_t pcc_ringbuf[PCC_FIFO_DEPTH * 2];
 #endif
@@ -123,14 +127,25 @@ static void pcc_aspeed_isr_dma(const struct device *dev)
 	struct pcc_aspeed_data *data = (struct pcc_aspeed_data *)dev->data;
 
 	reg = LPC_RD(PCCR2);
+	LOG_INF("PCCR2 : 0x%08x", reg);
 	if (!(reg & PCCR2_DMA_DONE))
 		return;
 
 	LPC_WR(reg, PCCR2);
 
 	reg = LPC_RD(PCCR6);
+	LOG_INF("PCCR6 : 0x%08x", reg);
 	cur_idx = (reg & PCCR6_DMA_CUR_ADDR_MASK) - (data->dma_addr & PCCR6_DMA_CUR_ADDR_MASK);
 	pre_idx = data->dma_virt_idx;
+
+	LOG_INF("\tcur_idx : 0x%08x", cur_idx);
+	LOG_INF("\tpre_idx : 0x%08x", pre_idx);
+
+	/*
+	 * The PCC DMA engine writes directly to RAM, bypassing the CPU cache,
+	 * so stale cached data must be invalidated before the CPU reads it.
+	 */
+	sys_cache_data_invd_all();
 
 	if (data->rx_cb)
 		data->rx_cb(data->dma_virt, data->dma_size, pre_idx, cur_idx);
@@ -141,7 +156,7 @@ static void pcc_aspeed_isr_dma(const struct device *dev)
 static void pcc_aspeed_isr_fifo(const struct device *dev)
 {
 	int i = 0;
-	uint32_t reg;
+	uint32_t reg, val;
 	struct pcc_aspeed_data *data = (struct pcc_aspeed_data *)dev->data;
 
 	reg = LPC_RD(PCCR2);
@@ -152,10 +167,19 @@ static void pcc_aspeed_isr_fifo(const struct device *dev)
 	}
 
 	if (reg & (PCCR2_RX_TMOUT_INT | PCCR2_RX_AVAIL_INT)) {
-		while (reg & PCCR2_DATA_RDY) {
-			pcc_ringbuf[i++] = (LPC_RD(PCCR3) & PCCR3_FIFO_DATA_MASK);
-			reg = LPC_RD(PCCR2);
+		val = LPC_RD(PCCR3);
+		while (val & PCCR3_DATA_CNT_MASK) {
+			pcc_ringbuf[i++] = (val & PCCR3_FIFO_DATA_MASK);
+			val = LPC_RD(PCCR3);
 		}
+
+		/*
+		 * PCCR3_DATA_CNT_MASK reports how many bytes remain *after* the
+		 * byte returned by this very read, so the read that brings the
+		 * count to 0 still carries one last valid byte that the loop
+		 * above never pushes (its count check happens before the push).
+		 */
+		pcc_ringbuf[i++] = (val & PCCR3_FIFO_DATA_MASK);
 
 		if (data->rx_cb)
 			data->rx_cb(pcc_ringbuf, sizeof(pcc_ringbuf), 0, i);
@@ -239,7 +263,7 @@ static int pcc_aspeed_init(const struct device *dev)
 		reg |= PCCR0_EN_DMA_INT | PCCR0_EN_DMA_MODE;
 	} else {
 		reg &= ~PCCR0_RX_TRIG_LVL_MASK;
-		reg |= ((PCC_FIFO_THR_4_EIGHTH << PCCR0_RX_TRIG_LVL_SHIFT)
+		reg |= ((PCC_FIFO_THR_1_BYTE << PCCR0_RX_TRIG_LVL_SHIFT)
 			& PCCR0_RX_TRIG_LVL_MASK);
 		reg |= PCCR0_EN_RX_OVR_INT | PCCR0_EN_RX_TMOUT_INT | PCCR0_EN_RX_AVAIL_INT;
 	}
