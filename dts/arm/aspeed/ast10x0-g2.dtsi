@@ -967,6 +967,17 @@
 			aspeed,scu = <&syscon>;
 			status = "disabled";
 		};
+
+		lsc: lsc@7e789000 {
+			compatible = "aspeed,lsc";
+			reg = <0x74c31000 0x1000>;
+
+			pcc: pcc {
+				compatible = "aspeed,pcc";
+				interrupts = <INTR_POSTCODE AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+				status = "disabled";
+			};
+		};
 	};
 };
 
