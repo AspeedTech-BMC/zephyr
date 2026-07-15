@@ -1111,7 +1111,7 @@
 			status = "disabled";
 		};
 
-		lsc: lsc@7e789000 {
+		lsc: lsc@74c31000 {
 			compatible = "aspeed,lsc";
 			reg = <0x74c31000 0x1000>;
 
@@ -1125,6 +1125,15 @@
 				compatible = "aspeed,snoop";
 				interrupts = <INTR_SNOOP AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
 				status = "disabled";
+			};
+
+			uart_routing: uart-routing {
+				compatible = "aspeed,ast1040-uart-routing", "aspeed,uart-routing";
+				status = "disabled";
+				ch-name = "uart0", "uart1", "uart2", "uart3", "UART9";
+				sel-io = "io0", "io1", "io2", "io3", "io9";
+				io-name = "io0", "io1", "io2", "io3", "io9";
+				sel-ch = "uart0", "uart1", "uart2", "uart3", "UART9";
 			};
 		};
 	};

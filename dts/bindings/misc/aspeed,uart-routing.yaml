@@ -1,0 +1,72 @@
+# Copyright (c) 2026, ASPEED
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  ASPEED UART routing (HICR9/HICRA I/O-pin <-> UART-controller mux).
+
+  Each mux field on HICR9/HICRA picks, for one UART controller or one
+  I/O pin, which peer it is wired to. This binding configures those
+  fields with two parallel-array pairs, matched up by index:
+
+    - ch-name[i] (a UART controller, e.g. "uart0") is routed to
+      sel-io[i] (an I/O pin, e.g. "io0").
+    - io-name[i] (an I/O pin, e.g. "io1") is routed to sel-ch[i]
+      (a UART controller, e.g. "uart1").
+
+  i.e. "ch"-prefixed properties name UART controllers and "io"-prefixed
+  properties name I/O pins; "sel-io" gives the I/O target for each
+  "ch-name" entry, and "sel-ch" gives the UART target for each
+  "io-name" entry. All four arrays must be the same shape: ch-name and
+  sel-io must be the same length as each other, and io-name and sel-ch
+  must be the same length as each other (the two pairs may differ in
+  length from one another).
+
+  Valid names/settings are chip-specific (different ASPEED SoCs wire
+  HICR9/HICRA differently), so a node must list a chip-specific
+  compatible (e.g. "aspeed,ast1040-uart-routing") in addition to the
+  generic "aspeed,uart-routing" -- the driver uses that chip-specific
+  string to look up the matching routing table (see
+  uart_routing_chip_table[] and the per-selector "options[]" tables in
+  uart_routing_aspeed.c, e.g. "uart0".."uart3", "uart9", "uart12",
+  "io0".."io3", "io9", "reserved"). Every entry is applied once at
+  boot, in the order listed; any mux field left out of both pairs
+  keeps its hardware reset routing.
+
+  Example: route UART0 out to I/O pin 0, UART1 out to I/O pin 1, and
+  loop I/O pin 9 back in to UART9:
+
+    uart_routing: uart-routing {
+            compatible = "aspeed,ast1040-uart-routing", "aspeed,uart-routing";
+            status = "okay";
+
+            ch-name = "uart0", "uart1";
+            sel-io  = "io0",   "io1";
+
+            io-name = "io9";
+            sel-ch  = "uart9";
+    };
+
+compatible: "aspeed,uart-routing"
+
+include: base.yaml
+
+properties:
+  ch-name:
+    type: string-array
+    required: true
+    description: UART controllers to route, e.g. "uart0". Paired with sel-io by index.
+
+  sel-io:
+    type: string-array
+    required: true
+    description: I/O pin each corresponding ch-name entry is routed to.
+
+  io-name:
+    type: string-array
+    required: true
+    description: I/O pins to route, e.g. "io0". Paired with sel-ch by index.
+
+  sel-ch:
+    type: string-array
+    required: true
+    description: UART controller each corresponding io-name entry is routed to.

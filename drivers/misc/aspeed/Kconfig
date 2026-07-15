@@ -46,6 +46,12 @@ config PCC_ASPEED
 	  over eSPI.
 	  Say y if you wish to use LPC PCC on ASPEED MCU.
 
+config UART_ROUTING_ASPEED
+	bool "ASPEED UART routing driver"
+	depends on SOC_FAMILY_ASPEED
+	help
+	  This option enables UART routing driver for ASPEED SoCs.
+
 config OTP_ASPEED
 	bool "ASPEED OTP Utility"
 	depends on SOC_FAMILY_ASPEED
