@@ -23,8 +23,9 @@
 		emmc = &emmc;
 	};
 
+	/* 172 KB */
 	sram: memory@14b80000 {
-		reg = <0x14b80000 0x2d400>;
+		reg = <0x14b80000 0x2b000>;
 	};
 
 	ca35_s: ca35-s {
