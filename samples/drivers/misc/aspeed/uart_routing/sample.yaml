@@ -1,0 +1,5 @@
+sample:
+  name: Aspeed UART routing shell demo sample
+tests:
+  sample.board.ast1040_evb_ast1040_cm4:
+    platform_allow: ast1040_evb/ast1040/cm4
