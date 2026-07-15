@@ -128,7 +128,7 @@ static int aspeed_edaf_bridge_init(const struct device *dev)
 			LOG_ERR("DDR mode but mem_base invalid");
 			return -ENODEV;
 		}
-		mbase = TO_PHY_ADDR((uintptr_t)mbase);
+
 		/* Optional: set erase-with-1 behavior via global cfg */
 		if (cfg->edaf_erase_with_1) {
 			if (!cfg->have_edaf_gcfg) {
