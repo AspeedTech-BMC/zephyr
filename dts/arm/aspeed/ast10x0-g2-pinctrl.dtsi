@@ -623,11 +623,11 @@
 		sig_descs = <SIG_DESC(0x43c, 16, 4)>;
 	};
 	/omit-if-no-ref/ pin_sgpm1in: pin_sgpm1in {
-		ball = <D7>;
+		ball = <B5>;
 		sig_descs = <SIG_DESC(0x43c, 20, 1)>;
 	};
 	/omit-if-no-ref/ pin_wdt7: pin_wdt7 {
-		ball = <D7>;
+		ball = <B5>;
 		sig_descs = <SIG_DESC(0x43c, 20, 4)>;
 	};
 	/omit-if-no-ref/ pin_espid0: pin_espid0 {
