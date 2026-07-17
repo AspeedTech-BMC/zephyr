@@ -19,3 +19,11 @@ properties:
     type: int
     required: false
     description: Size of ECC memory in bytes
+  aes-enable:
+    type: boolean
+    required: false
+    description: Enable AES encryption for SDRAM
+  aes-size:
+    type: int
+    required: false
+    description: Size of AES encryption in bytes
