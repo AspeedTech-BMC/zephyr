@@ -15,7 +15,7 @@
 
 	chosen {
 		zephyr,sram = &sram;
-		zephyr,entropy = &rng;
+		zephyr,entropy = &nisttrng;
 	};
 
 	aliases {
@@ -272,6 +272,10 @@
 };
 
 &otp {
+	status = "okay";
+};
+
+&nisttrng {
 	status = "okay";
 };
 

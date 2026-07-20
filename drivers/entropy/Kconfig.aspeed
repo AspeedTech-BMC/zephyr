@@ -9,12 +9,22 @@ config ENTROPY_ASPEED_TRNG
 	select ENTROPY_HAS_DRIVER
 	help
 	  This option enables the true random number generator
-	  driver based on the TRNG.
+	  driver based on the SCU HWRNG.
+
+config ENTROPY_ASPEED_NISTTRNG
+	bool "Aspeed AST2700 NIST TRNG driver"
+	depends on SOC_SERIES_AST27XX
+	select ENTROPY_HAS_DRIVER
+	help
+	  Enable the NIST SP 800-90A compliant CTR_DRBG (AES-256) TRNG
+	  driver for the AST2700 SoC. This driver uses the dedicated NIST
+	  TRNG hardware block, which is distinct from the legacy SCU HWRNG
+	  used by ENTROPY_ASPEED_TRNG.
 
 config RANDOM_SHELL
 	bool "Enable random shell"
 	default y
-	depends on ENTROPY_ASPEED_TRNG
+	depends on ENTROPY_ASPEED_TRNG || ENTROPY_ASPEED_NISTTRNG
 	depends on SHELL
 	help
 	  Enable random shell for testing.

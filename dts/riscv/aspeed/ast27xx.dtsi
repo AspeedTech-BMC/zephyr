@@ -207,6 +207,12 @@
 			reg = <0x14c020f0 0x8>;
 		};
 
+		nisttrng: nisttrng@14c3b000 {
+			compatible = "aspeed,ast2700-nisttrng";
+			reg = <0x14c3b000 0x40>;
+			status = "disabled";
+		};
+
 		otp: otp@14c07000 {
 			compatible = "aspeed,ast27xx-otp";
 			reg = <0x14c07000 0x1000>;

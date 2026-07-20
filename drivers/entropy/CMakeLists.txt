@@ -34,6 +34,7 @@ zephyr_library_sources_ifdef(CONFIG_ENTROPY_GECKO_SE           entropy_gecko_se.
 zephyr_library_sources_ifdef(CONFIG_ENTROPY_PSA_CRYPTO_RNG     entropy_psa_crypto.c)
 zephyr_library_sources_ifdef(CONFIG_ENTROPY_NPCX_DRBG          entropy_npcx_drbg.c)
 zephyr_library_sources_ifdef(CONFIG_ENTROPY_ASPEED_TRNG        entropy_aspeed_trng.c)
+zephyr_library_sources_ifdef(CONFIG_ENTROPY_ASPEED_NISTTRNG    entropy_aspeed_nisttrng.c)
 zephyr_library_sources_ifdef(CONFIG_RANDOM_SHELL               random_shell.c)
 
 zephyr_library_link_libraries_ifdef(CONFIG_BUILD_WITH_TFM tfm_api)

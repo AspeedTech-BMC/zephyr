@@ -1,0 +1,17 @@
+# Copyright (c) 2026 ASPEED Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Aspeed AST2700 NIST TRNG (SP 800-90A CTR_DRBG with AES-256).
+
+  The NIST TRNG implements a hardware DRBG compliant with NIST SP 800-90A.
+  Initialization sequences: zeroize → generate noise → create state.
+  Each GEN_RANDOM command produces 128 bits of output (RAND0-RAND3).
+
+compatible: "aspeed,ast2700-nisttrng"
+
+include: base.yaml
+
+properties:
+  reg:
+    required: true
