@@ -1,0 +1,44 @@
+/*
+ * Copyright (c) 2026 Aspeed Technology Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+&adc0 {
+	status = "okay";
+
+	pinctrl-names = "default";
+	pinctrl-0 = <pinctrl_adc0_default pinctrl_adc1_default
+		pinctrl_adc2_default pinctrl_adc3_default
+		pinctrl_adc4_default pinctrl_adc5_default
+		pinctrl_adc6_default pinctrl_adc7_default>;
+};
+
+&adc1 {
+	status = "okay";
+
+	pinctrl-names = "default";
+	pinctrl-0 = <pinctrl_adc8_default pinctrl_adc9_default
+		pinctrl_adc10_default pinctrl_adc11_default
+		pinctrl_adc12_default pinctrl_adc13_default
+		pinctrl_adc14_default pinctrl_adc15_default>;
+};
+
+/*
+ * Provides slot0_partition, referenced by the board dts's
+ * zephyr,code-partition chosen node (boards/aspeed/ast1030_evb/ast1030_evb.dts)
+ * which the shared board dts itself never defines. Supplied here instead of
+ * editing the shared board dts, following the same per-app overlay pattern
+ * used by samples/boards/ast1030_evb/demo/boards/ast1030_evb.overlay.
+ */
+&fmc_cs0 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		slot0_partition: partition@0 {
+			label = "image-0";
+			reg = <0x0 0x100000>;
+		};
+	};
+};
