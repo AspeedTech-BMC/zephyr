@@ -1,0 +1,6 @@
+tests:
+  boards.ast1030_evb.i2c:
+    platform_allow: ast1030_evb
+    tags:
+      - drivers
+      - i2c

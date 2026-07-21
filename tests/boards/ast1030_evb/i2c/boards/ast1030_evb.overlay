@@ -1,0 +1,91 @@
+/*
+ * Copyright (c) 2026 Aspeed Technology Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
+ * Bus pairing mirrors the old CI test: i2c0/i2c1, i2c2/i2c3, i2c4/i2c5 are
+ * wired together on the EVB. Each pair carries one IPMB target (on the
+ * even bus) and one EEPROM target (on the odd bus), so either half can
+ * act as bus master for the other's target.
+ */
+
+&i2c0 {
+	status = "okay";
+
+	ipmb0: ipmb@50 {
+		compatible = "aspeed,ipmb";
+		reg = <0x50>;
+		size = <5>;
+	};
+};
+
+&i2c1 {
+	status = "okay";
+
+	eeprom1: eeprom@41 {
+		compatible = "zephyr,i2c-target-eeprom";
+		reg = <0x41>;
+		size = <256>;
+	};
+};
+
+&i2c2 {
+	status = "okay";
+
+	ipmb2: ipmb@52 {
+		compatible = "aspeed,ipmb";
+		reg = <0x52>;
+		size = <5>;
+	};
+};
+
+&i2c3 {
+	status = "okay";
+
+	eeprom3: eeprom@43 {
+		compatible = "zephyr,i2c-target-eeprom";
+		reg = <0x43>;
+		size = <256>;
+	};
+};
+
+&i2c4 {
+	status = "okay";
+
+	ipmb4: ipmb@54 {
+		compatible = "aspeed,ipmb";
+		reg = <0x54>;
+		size = <5>;
+	};
+};
+
+&i2c5 {
+	status = "okay";
+
+	eeprom5: eeprom@45 {
+		compatible = "zephyr,i2c-target-eeprom";
+		reg = <0x45>;
+		size = <256>;
+	};
+};
+
+/*
+ * Provides slot0_partition, referenced by the board dts's
+ * zephyr,code-partition chosen node (boards/aspeed/ast1030_evb/ast1030_evb.dts)
+ * which the shared board dts itself never defines. Supplied here instead of
+ * editing the shared board dts, following the same per-app overlay pattern
+ * used by samples/boards/ast1030_evb/demo/boards/ast1030_evb.overlay.
+ */
+&fmc_cs0 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		slot0_partition: partition@0 {
+			label = "image-0";
+			reg = <0x0 0x100000>;
+		};
+	};
+};
