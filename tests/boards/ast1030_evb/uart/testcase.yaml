@@ -1,0 +1,6 @@
+tests:
+  boards.ast1030_evb.uart:
+    platform_allow: ast1030_evb
+    tags:
+      - drivers
+      - uart

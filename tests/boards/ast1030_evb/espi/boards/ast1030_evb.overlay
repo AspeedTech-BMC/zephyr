@@ -1,0 +1,28 @@
+/*
+ * Copyright (c) 2026 Aspeed Technology Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+&espi {
+	status = "okay";
+};
+
+/*
+ * Provides slot0_partition, referenced by the board dts's
+ * zephyr,code-partition chosen node (boards/aspeed/ast1030_evb/ast1030_evb.dts)
+ * which the shared board dts itself never defines. Supplied here instead of
+ * editing the shared board dts, following the same per-app overlay pattern
+ * used by samples/boards/ast1030_evb/demo/boards/ast1030_evb.overlay.
+ */
+&fmc_cs0 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		slot0_partition: partition@0 {
+			label = "image-0";
+			reg = <0x0 0x100000>;
+		};
+	};
+};
