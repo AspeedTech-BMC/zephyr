@@ -1,0 +1,58 @@
+/*
+ * Copyright (c) 2026 Aspeed Technology Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
+ * i3c0-to-i3c1 self-loopback (mirrors the old ast1030 CI i3c test):
+ * i3c0 plays the role of the bus controller; i3c1 runs in secondary/target
+ * mode and exposes an i3c-target-mqueue child device (i3c1_smq). The
+ * controller attaches i3c1 as an I3C device dynamically at runtime
+ * (i3c_attach_i3c_device()), so unlike i3c1_smq it has no static DT child
+ * node of its own under i3c0.
+ *
+ * assigned-address values (0x8 for i3c0, 0x9 for i3c1) and the i3c1_smq
+ * reg/mandatory-data-byte are carried over from the old
+ * tests/boards/ast1030/boards/ast1030_evb.overlay (aspeed-dev-v2.6.0) and
+ * samples/boards/ast1030_evb/demo overlay respectively.
+ */
+&i3c0 {
+	status = "okay";
+	assigned-address = <0x8>;
+};
+
+&i3c1 {
+	status = "okay";
+	secondary;
+	dcr = <0xcc>;
+	assigned-address = <0x9>;
+
+	i3c1_smq: i3c-tmq@7ec80011000 {
+		compatible = "i3c-target-mqueue";
+		reg = <0x0 0x7ec 0x80011000>;
+		msg-size = <128>;
+		num-of-msgs = <4>;
+		mandatory-data-byte = <0xbf>;
+		status = "okay";
+	};
+};
+
+/*
+ * Provides slot0_partition, referenced by the board dts's
+ * zephyr,code-partition chosen node (boards/aspeed/ast1030_evb/ast1030_evb.dts)
+ * which the shared board dts itself never defines. Supplied here instead of
+ * editing the shared board dts, following the same per-app overlay pattern
+ * used by samples/boards/ast1030_evb/demo/boards/ast1030_evb.overlay.
+ */
+&fmc_cs0 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		slot0_partition: partition@0 {
+			label = "image-0";
+			reg = <0x0 0x100000>;
+		};
+	};
+};
