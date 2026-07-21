@@ -58,6 +58,133 @@
 			};
 		};
 
+		uart0: serial@74c33000 {
+			compatible = "ns16550";
+			reg = <0x74c33000 0x100>;
+			interrupts = <INTR_UART0 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk SCU1_CLK_GATE_UART0CLK>;
+			status = "disabled";
+			reg-shift = <2>;
+		};
+
+		uart1: serial@74c33100 {
+			compatible = "ns16550";
+			reg = <0x74c33100 0x100>;
+			interrupts = <INTR_UART1 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk SCU1_CLK_GATE_UART1CLK>;
+			status = "disabled";
+			reg-shift = <2>;
+		};
+
+		uart2: serial@74c33200 {
+			compatible = "ns16550";
+			reg = <0x74c33200 0x100>;
+			interrupts = <INTR_UART2 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk SCU1_CLK_GATE_UART2CLK>;
+			pinctrl-0 = <pinctrl_uart2_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+			reg-shift = <2>;
+		};
+
+		uart3: serial@74c33300 {
+			compatible = "ns16550";
+			reg = <0x74c33300 0x100>;
+			interrupts = <INTR_UART3 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk SCU1_CLK_GATE_UART3CLK>;
+			pinctrl-0 = <pinctrl_uart3_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+			reg-shift = <2>;
+		};
+
+		uart4: serial@74c33400 {
+			compatible = "ns16550";
+			reg = <0x74c33400 0x100>;
+			interrupts = <INTR_UART4 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+			pinctrl-0 = <pinctrl_uart4_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+			reg-shift = <2>;
+		};
+
+		uart5: serial@74c33500 {
+			compatible = "ns16550";
+			reg = <0x74c33500 0x100>;
+			interrupts = <INTR_UART5 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk SCU1_CLK_GATE_UART5CLK>;
+			pinctrl-0 = <pinctrl_uart5_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+			reg-shift = <2>;
+		};
+
+		uart6: serial@74c33600 {
+			compatible = "ns16550";
+			reg = <0x74c33600 0x100>;
+			interrupts = <INTR_UART6 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk SCU1_CLK_GATE_UART6CLK>;
+			pinctrl-0 = <pinctrl_uart6_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+			reg-shift = <2>;
+		};
+
+		uart7: serial@74c33700 {
+			compatible = "ns16550";
+			reg = <0x74c33700 0x100>;
+			interrupts = <INTR_UART7 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk SCU1_CLK_GATE_UART7CLK>;
+			pinctrl-0 = <pinctrl_uart7_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+			reg-shift = <2>;
+		};
+
+		uart8: serial@74c33800 {
+			compatible = "ns16550";
+			reg = <0x74c33800 0x100>;
+			interrupts = <INTR_UART8 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk SCU1_CLK_GATE_UART8CLK>;
+			pinctrl-0 = <pinctrl_uart8_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+			reg-shift = <2>;
+		};
+
+		uart9: serial@74c33900 {
+			compatible = "ns16550";
+			reg = <0x74c33900 0x100>;
+			interrupts = <INTR_UART9 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk SCU1_CLK_GATE_UART9CLK>;
+			pinctrl-0 = <pinctrl_uart9_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+			reg-shift = <2>;
+		};
+
+		uart10: serial@74c33a00 {
+			compatible = "ns16550";
+			reg = <0x74c33a00 0x100>;
+			interrupts = <INTR_UART10 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk SCU1_CLK_GATE_UART10CLK>;
+			pinctrl-0 = <pinctrl_uart10_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+			reg-shift = <2>;
+		};
+
+		uart11: serial@74c33b00 {
+			compatible = "ns16550";
+			reg = <0x74c33b00 0x100>;
+			interrupts = <INTR_UART11 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+			clocks = <&sysclk SCU1_CLK_GATE_UART11CLK>;
+			pinctrl-0 = <pinctrl_uart11_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+			reg-shift = <2>;
+		};
+
 		uart12: serial@74c33c00 {
 			compatible = "ns16550";
 			reg = <0x74c33c00 0x100>;
