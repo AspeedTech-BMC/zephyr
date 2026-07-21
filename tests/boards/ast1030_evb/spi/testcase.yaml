@@ -1,0 +1,7 @@
+tests:
+  boards.ast1030_evb.spi:
+    platform_allow: ast1030_evb
+    tags:
+      - drivers
+      - spi
+      - flash
