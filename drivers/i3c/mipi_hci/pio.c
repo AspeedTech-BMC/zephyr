@@ -195,16 +195,6 @@ static void hci_pio_read_ibi_word(struct i3c_hci *hci, uint8_t **buf,
 	*buf += len;
 }
 
-static bool hci_pio_xfer_payload_too_big(struct i3c_hci *hci, struct hci_xfer *xfer)
-{
-	if (!xfer->data || xfer->data_len == 0U) {
-		return false;
-	}
-
-	return hci->vendor && hci->vendor->payload_too_big &&
-	       hci->vendor->payload_too_big(xfer->data_len);
-}
-
 static void hci_pio_write_cmd(struct i3c_hci *hci, struct hci_xfer *xfer)
 {
 	unsigned int desc_words = hci_pio_cmd_desc_words(hci);
@@ -1132,9 +1122,6 @@ static int hci_pio_queue_xfer(struct i3c_hci *hci, struct hci_xfer *xfer, int n)
 		return -EINVAL;
 	}
 	for (int i = 0; i < n; i++) {
-		if (hci_pio_xfer_payload_too_big(hci, &xfer[i])) {
-			return -EFBIG;
-		}
 		xfer[i].next_xfer = (i + 1 < n) ? &xfer[i + 1] : NULL;
 		xfer[i].next_data = NULL;
 		xfer[i].next_resp = NULL;

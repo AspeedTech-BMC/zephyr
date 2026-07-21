@@ -140,11 +140,6 @@ static int mipi_i3c_hci_check_data_len(struct i3c_hci *hci, uint32_t len)
 		return -EFBIG;
 	}
 
-	if (hci->vendor && hci->vendor->payload_too_big &&
-	    hci->vendor->payload_too_big(len)) {
-		return -EFBIG;
-	}
-
 	return 0;
 }
 

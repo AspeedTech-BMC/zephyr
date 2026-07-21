@@ -155,7 +155,6 @@ enum mipi_i3c_hci_target_event {
 struct mipi_i3c_hci_vendor_ops {
 	int (*init)(struct i3c_hci *hci);
 	int (*autocmd_init)(struct i3c_hci *hci);
-	bool (*payload_too_big)(unsigned int data_len);
 	uint32_t (*get_status)(struct i3c_hci *hci);
 	void (*ccc_handler)(struct i3c_hci *hci, uint8_t ccc);
 	void (*set_ibi_terminate_len)(struct i3c_hci *hci, uint16_t max_len);

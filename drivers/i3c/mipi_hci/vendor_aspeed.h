@@ -21,8 +21,6 @@ static inline void ast_inhouse_write(const struct i3c_hci *hci, uint32_t reg, ui
 	sys_write32(val, (mem_addr_t)(hci->VENDOR_regs + reg));
 }
 
-#define ASPEED_HC_PAYLOAD_LIMIT 128U
-
 #define ASPEED_I3C_CTRL 0x0
 #define ASPEED_I3C_CTRL_STOP_QUEUE_PT BIT(31)
 #define ASPEED_I3C_CTRL_INIT BIT(4)
@@ -432,7 +430,6 @@ void mipi_i3c_hci_aspeed_set_ibi_terminate_len(struct i3c_hci *hci, uint16_t max
 void mipi_i3c_hci_aspeed_set_slv_pid(struct i3c_hci *hci, uint64_t pid);
 void mipi_i3c_hci_aspeed_set_slv_char_ctrl(struct i3c_hci *hci, uint8_t bcr, uint8_t dcr,
 					   bool static_addr_en);
-bool mipi_i3c_hci_aspeed_payload_too_big(unsigned int data_len);
 uint32_t mipi_i3c_hci_aspeed_get_status(struct i3c_hci *hci);
 void mipi_i3c_hci_aspeed_dma_start(struct i3c_hci *hci);
 void mipi_i3c_hci_aspeed_dma_drain(struct i3c_hci *hci);
@@ -529,12 +526,6 @@ static inline void mipi_i3c_hci_aspeed_set_slv_char_ctrl(struct i3c_hci *hci, ui
 	ARG_UNUSED(bcr);
 	ARG_UNUSED(dcr);
 	ARG_UNUSED(static_addr_en);
-}
-
-static inline bool mipi_i3c_hci_aspeed_payload_too_big(unsigned int data_len)
-{
-	ARG_UNUSED(data_len);
-	return false;
 }
 
 static inline uint32_t mipi_i3c_hci_aspeed_get_status(struct i3c_hci *hci)

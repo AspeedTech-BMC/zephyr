@@ -555,11 +555,6 @@ int mipi_i3c_hci_target_tx_write(const struct device *dev, uint8_t *buf, uint16_
 		return 0;
 	}
 
-	if (hci->vendor && hci->vendor->payload_too_big &&
-	    hci->vendor->payload_too_big(len)) {
-		return -EFBIG;
-	}
-
 	k_mutex_lock(&hci->control_mutex, K_FOREVER);
 	ret = mipi_i3c_hci_target_submit_read_data(hci, buf, len);
 	k_mutex_unlock(&hci->control_mutex);
@@ -703,12 +698,6 @@ int mipi_i3c_hci_target_pending_read_notify(const struct device *dev, uint8_t *b
 
 	if (!hci->is_target) {
 		return -ENOTSUP;
-	}
-
-	if (hci->vendor && hci->vendor->payload_too_big &&
-	    (hci->vendor->payload_too_big(len) ||
-	     hci->vendor->payload_too_big(notifier->payload_len))) {
-		return -EFBIG;
 	}
 
 	k_mutex_lock(&hci->control_mutex, K_FOREVER);

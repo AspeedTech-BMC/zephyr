@@ -170,8 +170,7 @@ static int aspeed_i3c_autocmd_pack(struct i3c_hci *hci,
 		return -EINVAL;
 	}
 
-	if (entry->data_len > MIN(ASPEED_HC_PAYLOAD_LIMIT,
-				  ASPEED_I3C_AUTOCMD_DESC_DATA_LEN_MAX)) {
+	if (entry->data_len > ASPEED_I3C_AUTOCMD_DESC_DATA_LEN_MAX) {
 		return -EFBIG;
 	}
 
@@ -589,11 +588,6 @@ void mipi_i3c_hci_aspeed_set_slv_char_ctrl(struct i3c_hci *hci, uint8_t bcr, uin
 	}
 
 	ast_inhouse_write(hci, ASPEED_I3C_SLV_CHAR_CTRL, reg);
-}
-
-bool mipi_i3c_hci_aspeed_payload_too_big(unsigned int data_len)
-{
-	return data_len > ASPEED_HC_PAYLOAD_LIMIT;
 }
 
 uint32_t mipi_i3c_hci_aspeed_get_status(struct i3c_hci *hci)
@@ -1255,7 +1249,6 @@ static bool mipi_i3c_hci_aspeed_dma_addr_visible(struct i3c_hci *hci, uint64_t p
 const struct mipi_i3c_hci_vendor_ops mipi_i3c_hci_aspeed_ops = {
 	.init = mipi_i3c_hci_aspeed_init,
 	.autocmd_init = mipi_i3c_hci_aspeed_autocmd_init,
-	.payload_too_big = mipi_i3c_hci_aspeed_payload_too_big,
 	.get_status = mipi_i3c_hci_aspeed_get_status,
 	.ccc_handler = mipi_i3c_hci_aspeed_ccc_handler,
 	.set_ibi_terminate_len = mipi_i3c_hci_aspeed_set_ibi_terminate_len,
