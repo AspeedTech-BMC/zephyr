@@ -9,8 +9,8 @@
 #include <aspeed/ast27xx.dtsi>
 
 / {
-	model = "AST2700-FPGA AST2700-BOOTMCU";
-	compatible = "aspeed,ast2700-fpga-ast2700-bootmcu";
+	model = "AST2705-EVB AST2700-BOOTMCU";
+	compatible = "aspeed,ast2705-evb-ast2700-bootmcu";
 
 	chosen {
 		zephyr,sram = &sram;

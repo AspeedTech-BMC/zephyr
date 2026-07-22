@@ -1,5 +1,5 @@
 board:
-  name: ast2755_evb
+  name: ast2705_evb
   vendor: aspeed
   socs:
   - name: ast2700

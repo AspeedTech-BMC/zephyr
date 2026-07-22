@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Aspeed AST2700 Evaluation board configuration
+#
+# Copyright (c) 2023 Aspeed Technology Inc.
+
+config BOARD_AST2705_EVB
+	select SOC_AST2700_SSP if BOARD_AST2705_EVB_AST2700_SSP
+	select SOC_AST2700_SSP if BOARD_AST2705_EVB_AST2700_SSP_TSP
+	select SOC_AST2700_TSP if BOARD_AST2705_EVB_AST2700_TSP
+	select SOC_AST2700_BOOTMCU if BOARD_AST2705_EVB_AST2700_BOOTMCU
+
+config ASPEED_FPGA
+	bool "ASPEED FPGA support"
+	default n
+	help
+	  Enable support for ASPEED FPGA devices.
+
+config ASPEED_HAPS
+	bool "ASPEED HAPS support"
+	default n
+	help
+	  Enable support for ASPEED HAPS devices.
+
+if SHELL
+config SHELL_PROMPT_UART
+	default "ssp:~$ " if BOARD_AST2705_EVB_AST2705_SSP
+	default "tsp:~$ " if BOARD_AST2705_EVB_AST2705_TSP
+	default "ssp_tsp:~$ " if BOARD_AST2705_EVB_AST2705_SSP_TSP
+	default "bootmcu:~$ " if BOARD_AST2705_EVB_AST2705_BOOTMCU
+endif
