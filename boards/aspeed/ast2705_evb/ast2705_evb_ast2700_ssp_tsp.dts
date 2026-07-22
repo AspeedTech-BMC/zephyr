@@ -1,0 +1,15 @@
+/*
+ * Copyright (c) 2025 Aspeed Technology Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+#include "ast2705_evb_ast2700_ssp.dts"
+
+/ {
+	sram: memory@70006000 {
+		device_type = "memory";
+		reg = <0x70006000 DT_SIZE_K(48)>;  // 48KB
+	};
+};

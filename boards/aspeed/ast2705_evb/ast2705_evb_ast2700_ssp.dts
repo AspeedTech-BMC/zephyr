@@ -1,0 +1,172 @@
+/*
+ * Copyright (c) 2023 Aspeed Technology Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+#include <aspeed/ast27xx_ssp.dtsi>
+
+/ {
+	model = "Aspeed AST2705-SSP EVB board";
+	compatible = "aspeed,ast2705-evb-ast2700-ssp";
+
+	chosen {
+		zephyr,console = &uart4;
+		zephyr,shell-uart = &uart4;
+		zephyr,flash = &dram_ro_region;
+		zephyr,sram = &dram_rw_region;
+		zephyr,entropy = &rng;
+		zephyr,custom-stack = &tcm;
+		zephyr,cached-memory = &dram_c_region;
+	};
+
+	dram_rw_region: memory@20000 {
+		device_type = "memory";
+		reg = <0x20000 DT_SIZE_K(16384 - 128)>;
+	};
+
+	/* non-cached DMA memory */
+	dram_nc_region: memory@1000000 {
+		compatible = "zephyr,memory-region";
+		device_type = "memory";
+		reg = <0x1000000 DT_SIZE_K(16384)>;
+		zephyr,memory-region = "RAM_NC";
+	};
+
+	dram_c_region: memory@5080000 {
+		device_type = "memory";
+		reg = <0x5080000 DT_SIZE_K(8192)>;
+	};
+
+	ipc_s_ca35_data: memory@70000000 {
+		compatible = "zephyr,memory-region";
+		device_type = "memory";
+		reg = <0x70000000 DT_SIZE_K(4)>;
+		zephyr,memory-region = "IPC_SHARE_MEM_LOCAL_S_CA35_DATA";
+	};
+
+	ipc_ns_ca35_data: memory@70001000 {
+		compatible = "zephyr,memory-region";
+		device_type = "memory";
+		reg = <0x70001000 DT_SIZE_K(4)>;
+		zephyr,memory-region = "IPC_SHARE_MEM_LOCAL_NS_CA35_DATA";
+	};
+
+	ipc_bootmcu_ro_data: memory@70002000 {
+		compatible = "zephyr,memory-region";
+		device_type = "memory";
+		reg = <0x70002000 DT_SIZE_K(4)>;
+		zephyr,memory-region = "IPC_SHARE_MEM_REMOTE_BOOTMCU_DATA";
+	};
+
+	ipc_bootmcu_ro_caliptra: memory@70003000 {
+		compatible = "zephyr,memory-region";
+		device_type = "memory";
+		reg = <0x70003000 DT_SIZE_K(4)>;
+		zephyr,memory-region = "IPC_SHARE_MEM_REMOTE_BOOTMCU_CALIPTRA";
+	};
+
+	ipc_bootmcu_data: memory@70004000 {
+		compatible = "zephyr,memory-region";
+		device_type = "memory";
+		reg = <0x70004000 DT_SIZE_K(4)>;
+		zephyr,memory-region = "IPC_SHARE_MEM_LOCAL_BOOTMCU_DATA";
+	};
+
+	ipc_bootmcu_caliptra: memory@70005000 {
+		compatible = "zephyr,memory-region";
+		device_type = "memory";
+		reg = <0x70005000 DT_SIZE_K(4)>;
+		zephyr,memory-region = "IPC_SHARE_MEM_LOCAL_BOOTMCU_CALIPTRA";
+	};
+
+	sram: memory@70006000 {
+		device_type = "memory";
+		reg = <0x70006000 DT_SIZE_K(104)>;  // 104KB
+	};
+
+	tcm: memory@1fffe000 {
+		compatible = "zephyr,memory-region";
+		reg = <0x1fffe000 0x00002000>;  // 8KB
+		zephyr,memory-region = "CUSTOM_STACK";
+	};
+};
+
+/* .text and .rodata sections */
+&dram_ro_region {
+	reg = <0x0 DT_SIZE_K(128)>;
+};
+
+&uart4 {
+	clock-frequency = <1846153>;
+	current-speed = <115200>;
+	status = "okay";
+};
+
+&wdt0 {
+	status = "okay";
+};
+
+&ipc0_s_ca35 {
+	status = "okay";
+	shmem_ch0 = <0x70000000 0x5080000 0x1000 0x200000>;
+};
+
+&ipc0_ns_ca35 {
+	status = "okay";
+	shmem_ch0 = <0x70001000 0x5480000 0x1000 0x200000>;
+};
+
+&ipc0_tsp {
+	status = "okay";
+};
+
+&ipc1_bootmcu {
+	status = "okay";
+	shmem_ch0 = <0x70002000 0x70003000 0x1000 0x1000>;
+	shmem_ch1 = <0x70004000 0x70005000 0x1000 0x1000>;
+};
+
+&intc_global {
+	status = "okay";
+};
+
+&intc1_global {
+	status = "okay";
+};
+
+&intc0_11 {
+	status = "okay";
+};
+
+&intc1_0 {
+	status = "okay";
+};
+
+&intc1_1 {
+	status = "okay";
+};
+
+&intc1_2 {
+	status = "okay";
+};
+
+&intc1_3 {
+	status = "okay";
+};
+
+&intc1_4 {
+	status = "okay";
+};
+
+&intc1_5 {
+	status = "okay";
+};
+
+&espi0 {
+	status = "okay";
+	flash-edaf-mode = <0x0>;
+	flash-dma-mode;
+	flash-edaf-tgt-addr = <0x4 0x31000000>;
+};
