@@ -270,3 +270,88 @@ void ast1060_spi_proprietary_config_init(const struct aspeed_spi_config *config,
 	data->aspeed_spim_proprietary_post_config =
 		aspeed_ast1060_spim_proprietary_post_config;
 }
+
+/*
+ * AST1080 SPI0 pin-mux setup.
+ *
+ * Only a devicetree node with the `cs-group-analog-mux-enable` property
+ * set (the AST1080 SPI0 node) actually wires the CS0/CS1 <-> CS2/CS3
+ * analog mux; every other instance (AST1040 SPI0, FMC, SPI1) leaves it
+ * unset and these stay no-ops there.
+ */
+#define AST10X0_G2_SCU0D0              0x74C020D0
+#define AST10X0_G2_SCU0D4              0x74C020D4
+#define AST10X0_G2_SCU414              0x74C02414
+#define AST10X0_G2_SCU418              0x74C02418
+#define AST10X0_G2_SCU450              0x74C02450
+#define AST10X0_G2_SCU454              0x74C02454
+
+void ast10x0_g2_spi_proprietary_config_init(const struct aspeed_spi_config *config,
+					 struct aspeed_spi_data *data)
+{
+	uint32_t reg_val;
+
+	ARG_UNUSED(data);
+
+	if (!config->cs_group_analog_mux_enable) {
+		return;
+	}
+
+	/*
+	 * SCU450[26:24]/[30:28] = 2
+	 * SCU454[2:0]/[6:4]/[10:8] = 2
+	 */
+	reg_val = sys_read32(AST10X0_G2_SCU450);
+	reg_val &= ~(BIT_MASK(3) << 24 | BIT_MASK(3) << 28);
+	reg_val |= (2 << 24) | (2 << 28);
+	sys_write32(reg_val, AST10X0_G2_SCU450);
+
+	reg_val = sys_read32(AST10X0_G2_SCU454);
+	reg_val &= ~(BIT_MASK(3) << 0 | BIT_MASK(3) << 4 | BIT_MASK(3) << 8);
+	reg_val |= (2 << 0) | (2 << 4) | (2 << 8);
+	sys_write32(reg_val, AST10X0_G2_SCU454);
+
+	/*
+	 * SCU414[18:16]/[22:20]/[26:24]/[30:28] = 2
+	 * SCU418[2:0]/[6:4]/[10:8] = 2
+	 */
+	reg_val = sys_read32(AST10X0_G2_SCU414);
+	reg_val &= ~(BIT_MASK(3) << 16 | BIT_MASK(3) << 20 |
+		     BIT_MASK(3) << 24 | BIT_MASK(3) << 28);
+	reg_val |= (2 << 16) | (2 << 20) | (2 << 24) | (2 << 28);
+	sys_write32(reg_val, AST10X0_G2_SCU414);
+
+	reg_val = sys_read32(AST10X0_G2_SCU418);
+	reg_val &= ~(BIT_MASK(3) << 0 | BIT_MASK(3) << 4 | BIT_MASK(3) << 8);
+	reg_val |= (2 << 0) | (2 << 4) | (2 << 8);
+	sys_write32(reg_val, AST10X0_G2_SCU418);
+}
+
+/*
+ * Select the CS0/CS1 or CS2/CS3 analog mux group ahead of a SPI0
+ * transaction on the given cs. SCU0D0 is the analog mux mode register
+ * (7 bits per group) and SCU0D4 is the SPI mode register (1 bit per
+ * group). The two groups are mutually exclusive, so the inactive
+ * group's bits are always cleared.
+ */
+void ast10x0_g2_spi_cs_group_select(const struct device *dev, uint32_t cs)
+{
+	const struct aspeed_spi_config *config = dev->config;
+	uint32_t group = cs >> 1;
+	uint32_t analog_mux_bits = BIT_MASK(7) << (group * 7);
+	uint32_t reg_val;
+
+	if (!config->cs_group_analog_mux_enable) {
+		return;
+	}
+
+	reg_val = sys_read32(AST10X0_G2_SCU0D0);
+	reg_val &= ~(BIT_MASK(7) << 0 | BIT_MASK(7) << 7);
+	reg_val |= analog_mux_bits;
+	sys_write32(reg_val, AST10X0_G2_SCU0D0);
+
+	reg_val = sys_read32(AST10X0_G2_SCU0D4);
+	reg_val &= ~(BIT(0) | BIT(1));
+	reg_val |= BIT(group);
+	sys_write32(reg_val, AST10X0_G2_SCU0D4);
+}

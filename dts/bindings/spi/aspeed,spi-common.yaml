@@ -105,3 +105,12 @@ properties:
     description: |
       Use FIFO register in the controller to access
       SPI flash directly instead of memory map.
+
+  cs-group-analog-mux-enable:
+    type: boolean
+    required: false
+    description: |
+      This controller's CS0/CS1 and CS2/CS3 chip selects share pins
+      through an analog mux, so only one of the two groups can be
+      routed out at a time. When set, the driver switches the mux to
+      the group of the CS being accessed ahead of every transaction.

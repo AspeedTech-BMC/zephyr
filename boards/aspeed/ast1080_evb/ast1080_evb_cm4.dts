@@ -325,3 +325,36 @@
 &fmc {
 	status = "okay";
 };
+
+&spi0 {
+	status = "okay";
+	cs-group-analog-mux-enable;
+};
+
+&spi0_cs0 {
+	status = "okay";
+};
+
+&spi0_cs1 {
+	status = "okay";
+};
+
+&spi0_cs2 {
+	status = "okay";
+};
+
+&spi0_cs3 {
+	status = "okay";
+};
+
+&spi1 {
+	status = "okay";
+};
+
+&spi1_cs0 {
+	status = "okay";
+};
+
+&spi1_cs1 {
+	status = "okay";
+};

@@ -63,6 +63,8 @@ struct aspeed_spi_ops {
 
 	void (*enable_4byte_mode)(const struct device *dev, uint32_t cs);
 
+	void (*cs_group_select)(const struct device *dev, uint32_t cs);
+
 	void (*safs_read_config)(const struct device *dev,
 				 const struct spi_nor_op_info *op_info);
 	void (*safs_write_config)(const struct device *dev,
@@ -92,6 +94,7 @@ struct aspeed_spi_config {
 	bool aspeed_spim_proprietary_config_enable;
 	bool pure_spi_mode_only;
 	bool spi_ctrl_fifo_enabled;
+	bool cs_group_analog_mux_enable;
 	const struct pinctrl_dev_config *pcfg;
 };
 
@@ -121,5 +124,8 @@ void ast2700_spi_lite_pinctrl_post_init(const struct device *dev,
 					 uint32_t max_bus_width);
 void ast1060_spi_proprietary_config_init(const struct aspeed_spi_config *config,
 					 struct aspeed_spi_data *data);
+void ast10x0_g2_spi_proprietary_config_init(const struct aspeed_spi_config *config,
+					 struct aspeed_spi_data *data);
+void ast10x0_g2_spi_cs_group_select(const struct device *dev, uint32_t cs);
 
 #endif /* ZEPHYR_DRIVERS_SPI_SPI_ASPEED_H_ */

@@ -86,9 +86,11 @@ LOG_MODULE_REGISTER(spi_aspeed, CONFIG_SPI_LOG_LEVEL);
 #define ASPEED_SPI_SZ_16M           0x1000000
 #define ASPEED_SPI_SZ_64M           0x4000000
 #define ASPEED_SPI_SZ_256M          0x10000000
+#define ASPEED_SPI_SZ_512M          0x20000000
 #define ASPEED_SPI_SZ_768M          0x30000000
 
 #define ASPEED_DRAM_PHY_BASE        0x400000000
+#define ASPEED_HPRAM_PHY_BASE		0xF0000000
 #define ASPEED_IO_SRAM_PHY_BASE     0x14b80000
 #define ASPEED_IO_SRAM_SIZE         0x40000
 
@@ -356,6 +358,9 @@ static void aspeed_spi_nor_transceive_user(const struct device *dev,
 	uint32_t hspi_ctrl;
 
 	ARG_UNUSED(spi_cfg);
+
+	if (config->ops->cs_group_select)
+		config->ops->cs_group_select(dev, cs);
 
 #ifdef CONFIG_SPI_MONITOR_ASPEED
 	/* change internal MUX */
@@ -686,6 +691,9 @@ void ast2700_aspeed_spi_read_dma(const struct device *dev,
 
 	ARG_UNUSED(spi_cfg);
 
+	if (config->ops->cs_group_select)
+		config->ops->cs_group_select(dev, cs);
+
 	if (op_info.data_len > data->decode_addr[cs].len) {
 		LOG_WRN("Invalid read len(0x%08x, 0x%08x)",
 			op_info.data_len, data->decode_addr[cs].len);
@@ -762,6 +770,9 @@ void ast2700_aspeed_spi_write_dma(const struct device *dev,
 	uint32_t flash_dma_addr;
 
 	ARG_UNUSED(spi_cfg);
+
+	if (config->ops->cs_group_select)
+		config->ops->cs_group_select(dev, cs);
 
 	if (op_info.data_len > data->decode_addr[cs].len) {
 		LOG_WRN("Invalid write len(0x%08x, 0x%08x)",
@@ -859,6 +870,22 @@ static bool ast2700_spi_dma_xfer_eligible(const struct device *dev,
 		return false;
 
 	return ast2700_aspeed_spi_dram_region((uintptr_t)op_info->buf);
+}
+
+static bool ast10x0_g2_aspeed_spi_dram_region(uintptr_t virt_addr)
+{
+	uint64_t phy_addr = TO_PHY_ADDR(virt_addr);
+
+	return phy_addr >= ASPEED_HPRAM_PHY_BASE;
+}
+
+static bool ast10x0_g2_spi_dma_xfer_eligible(const struct device *dev,
+				const struct spi_nor_op_info *op_info)
+{
+	if (!aspeed_spi_dma_xfer_eligible(dev, op_info))
+		return false;
+
+	return ast10x0_g2_aspeed_spi_dram_region((uintptr_t)op_info->buf);
 }
 #endif
 
@@ -1553,6 +1580,22 @@ static void aspeed_spi_init_data(const struct aspeed_spi_config *config,
 	}
 }
 
+static void ast10x0_g2_spi_init_data(const struct aspeed_spi_config *config,
+				  struct aspeed_spi_data *data)
+{
+	ARG_UNUSED(config);
+
+	data->decode_base = 0;
+	data->decode_unit_sz = ASPEED_SPI_SZ_64M;
+	data->max_decode_sz = ASPEED_SPI_SZ_512M;
+	data->decode_range_pre_init = ast2700_aspeed_decode_range_pre_init;
+	data->decode_range_reinit = ast2700_aspeed_spi_decode_range_reinit;
+
+	data->segment_start = ast2700_segment_addr_start;
+	data->segment_end = ast2700_segment_addr_end;
+	data->segment_value = ast2700_segment_addr_val;
+}
+
 static void ast2600_spi_init_data(const struct aspeed_spi_config *config,
 				  struct aspeed_spi_data *data)
 {
@@ -1658,6 +1701,7 @@ static const __maybe_unused struct aspeed_spi_ops aspeed_common_spi_ops = {
 	.pinctrl_post_init = NULL,
 	.proprietary_config_init = ast1060_spi_proprietary_config_init,
 	.enable_4byte_mode = aspeed_spi_enable_4byte_mode,
+	.cs_group_select = NULL,
 	.safs_read_config = aspeed_spi_safs_read_config,
 	.safs_write_config = aspeed_spi_safs_write_config,
 #ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
@@ -1673,6 +1717,7 @@ static const __maybe_unused struct aspeed_spi_ops ast1030_spi_ops = {
 	.pinctrl_post_init = NULL,
 	.proprietary_config_init = NULL,
 	.enable_4byte_mode = aspeed_spi_enable_4byte_mode,
+	.cs_group_select = NULL,
 	.safs_read_config = aspeed_spi_safs_read_config,
 	.safs_write_config = aspeed_spi_safs_write_config,
 #ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
@@ -1688,6 +1733,7 @@ static const __maybe_unused struct aspeed_spi_ops ast1060_spi_ops = {
 	.pinctrl_post_init = NULL,
 	.proprietary_config_init = ast1060_spi_proprietary_config_init,
 	.enable_4byte_mode = aspeed_spi_enable_4byte_mode,
+	.cs_group_select = NULL,
 	.safs_read_config = NULL,
 	.safs_write_config = NULL,
 #ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
@@ -1703,6 +1749,7 @@ static const __maybe_unused struct aspeed_spi_ops ast2600_spi_ops = {
 	.pinctrl_post_init = NULL,
 	.proprietary_config_init = NULL,
 	.enable_4byte_mode = aspeed_spi_enable_4byte_mode,
+	.cs_group_select = NULL,
 	.safs_read_config = aspeed_spi_safs_read_config,
 	.safs_write_config = aspeed_spi_safs_write_config,
 #ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
@@ -1718,6 +1765,7 @@ static const __maybe_unused struct aspeed_spi_ops ast2700_spi_ops = {
 	.pinctrl_post_init = NULL,
 	.proprietary_config_init = NULL,
 	.enable_4byte_mode = ast2700_spi_enable_4byte_mode,
+	.cs_group_select = NULL,
 	.safs_read_config = NULL,
 	.safs_write_config = NULL,
 #ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
@@ -1739,6 +1787,7 @@ static const __maybe_unused struct aspeed_spi_ops ast2700_spi_lite_ops = {
 	.pinctrl_post_init = ast2700_spi_lite_pinctrl_post_init,
 	.proprietary_config_init = NULL,
 	.enable_4byte_mode = ast2700_spi_enable_4byte_mode,
+	.cs_group_select = NULL,
 	.safs_read_config = NULL,
 	.safs_write_config = NULL,
 #ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
@@ -1754,15 +1803,16 @@ static const __maybe_unused struct aspeed_spi_ops ast2700_spi_lite_ops = {
  * SPI controller architecture.
  */
 static const __maybe_unused struct aspeed_spi_ops ast10x0_g2_spi_ops = {
-	.init_data = ast2700_spi_init_data,
+	.init_data = ast10x0_g2_spi_init_data,
 	.pinctrl_init = aspeed_spi_pinctrl_init,
 	.pinctrl_post_init = NULL,
-	.proprietary_config_init = NULL,
+	.proprietary_config_init = ast10x0_g2_spi_proprietary_config_init,
 	.enable_4byte_mode = ast2700_spi_enable_4byte_mode,
+	.cs_group_select = ast10x0_g2_spi_cs_group_select,
 	.safs_read_config = NULL,
 	.safs_write_config = NULL,
 #ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
-	.dma_xfer_eligible = ast2700_spi_dma_xfer_eligible,
+	.dma_xfer_eligible = ast10x0_g2_spi_dma_xfer_eligible,
 	.read_dma = ast2700_aspeed_spi_read_dma,
 	.write_dma = ast2700_aspeed_spi_write_dma,
 #endif
@@ -1773,15 +1823,16 @@ static const __maybe_unused struct aspeed_spi_ops ast10x0_g2_spi_ops = {
  * Falls back to polling and uses lite pinctrl helpers.
  */
 static const __maybe_unused struct aspeed_spi_ops ast10x0_g2_spi_lite_ops = {
-	.init_data = ast2700_spi_init_data,
+	.init_data = ast10x0_g2_spi_init_data,
 	.pinctrl_init = ast2700_spi_lite_pinctrl_init,
 	.pinctrl_post_init = ast2700_spi_lite_pinctrl_post_init,
-	.proprietary_config_init = NULL,
+	.proprietary_config_init = ast10x0_g2_spi_proprietary_config_init,
 	.enable_4byte_mode = ast2700_spi_enable_4byte_mode,
+	.cs_group_select = ast10x0_g2_spi_cs_group_select,
 	.safs_read_config = NULL,
 	.safs_write_config = NULL,
 #ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
-	.dma_xfer_eligible = ast2700_spi_dma_xfer_eligible,
+	.dma_xfer_eligible = ast10x0_g2_spi_dma_xfer_eligible,
 	.read_dma = ast2700_aspeed_spi_read_dma,
 	.write_dma = ast2700_aspeed_spi_write_dma,
 #endif
@@ -1842,7 +1893,9 @@ static const __maybe_unused struct aspeed_spi_ops ast10x0_g2_spi_lite_ops = {
 		.pure_spi_mode_only =                                       \
 			DT_PROP(DT_DRV_INST(n), pure_spi_mode_only),        \
 		.spi_ctrl_fifo_enabled =                                    \
-			DT_PROP(DT_DRV_INST(n), spi_ctrl_fifo_enabled),
+			DT_PROP(DT_DRV_INST(n), spi_ctrl_fifo_enabled),     \
+		.cs_group_analog_mux_enable =                               \
+			DT_PROP(DT_DRV_INST(n), cs_group_analog_mux_enable),
 
 #define ASPEED_SPI_DEFINE(soc, n)                                           \
 	static struct aspeed_spi_data aspeed_spi_data_##soc##_##n = {       \
