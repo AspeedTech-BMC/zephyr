@@ -322,18 +322,14 @@
 	status = "okay";
 };
 
+#if 1
 zephyr_udc0: &udc0 {
 	status = "okay";
-	cdc_acm_uart0: cdc_acm_uart0 {
-		compatible = "zephyr,cdc-acm-uart";
-	};
 };
+#endif
 
 #if 0
-zephyr_udc1: &udc1 {
+zephyr_udc0: &udc1 {
 	status = "okay";
-	cdc_acm_uart1: cdc_acm_uart1 {
-		compatible = "zephyr,cdc-acm-uart";
-	};
 };
 #endif
