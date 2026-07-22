@@ -40,7 +40,7 @@ LOG_MODULE_REGISTER(otp_ast2700, CONFIG_LOG_DEFAULT_LEVEL);
 #define OTP_MASTER			OTP_M3
 #else
 /* bootmcu */
-#define OTP_MASTER			OTP_M1
+#define OTP_MASTER			OTP_M0
 #endif
 
 
