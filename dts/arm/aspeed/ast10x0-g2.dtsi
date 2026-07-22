@@ -1127,6 +1127,12 @@
 				status = "disabled";
 			};
 
+			mbox: mbox {
+				compatible = "aspeed,mbox";
+				interrupts = <INTR_LPC_MAILBOX AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+				status = "disabled";
+			};
+
 			uart_routing: uart-routing {
 				compatible = "aspeed,ast1040-uart-routing", "aspeed,uart-routing";
 				status = "disabled";
