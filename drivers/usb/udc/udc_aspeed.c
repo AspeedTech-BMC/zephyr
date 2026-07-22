@@ -83,6 +83,8 @@ LOG_MODULE_REGISTER(udc_aspeed, CONFIG_UDC_DRIVER_LOG_LEVEL);
 #define EP_TX_LEN(x)			(((x) & 0x7ff) << 16)
 
 #define PHY_CTRL0_8_BITS_UTMI		BIT(8)
+#define PHY_CTRL0_VHUB_SRAM_ACCESS	BIT(10)
+#define PHY_CTRL0_VHUB_AHBM_ADDR34	BIT(5)
 
 #define RX_DMA_BUFF_SIZE		1024
 #define ASPEED_UDC_MAX_HW_EP		22
@@ -907,6 +909,13 @@ static int aspeed_udc_init(const struct device *dev)
 
 	sys_write32(sys_read32(base + ASPEED_USB_PHY_CTRL0) | PHY_CTRL0_8_BITS_UTMI,
 		    base + ASPEED_USB_PHY_CTRL0);
+
+	if (IS_ENABLED(CONFIG_SOC_AST1040_CM4) || IS_ENABLED(CONFIG_SOC_AST1080_CM4)) {
+		/* BIT10 for SRAM access, BIT5 for AHBM Addr 34 */
+		sys_write32(sys_read32(base + ASPEED_USB_PHY_CTRL0) |
+			PHY_CTRL0_VHUB_SRAM_ACCESS | PHY_CTRL0_VHUB_AHBM_ADDR34,
+			base + ASPEED_USB_PHY_CTRL0);
+	}
 
 	sys_write32(ISR_EP_ACK_STALL |
 		    ISR_SUSPEND_RESUME |
