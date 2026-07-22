@@ -15,24 +15,19 @@
 		zephyr,console = &uart12;
 		zephyr,shell-uart = &uart12;
 		zephyr,flash = &dram_ro_region;
-		zephyr,sram = &sram;
+		zephyr,sram = &dram_rw_region;
 	};
 
-	dram_rw_region: memory@20000 {
+	dram_rw_region: memory@40000 {
 		device_type = "memory";
-		reg = <0x20000 DT_SIZE_K(128)>;
+		reg = <0x40000 DT_SIZE_K(14336 - 256 - 512)>;
 	};
 
-	sram1: memory@60000 {
+	sram1: memory@d80000 {
 		compatible = "zephyr,memory-region", "mmio-sram";
 		device_type = "memory";
-		reg = <0x60000 DT_SIZE_K(128)>;
+		reg = <0xd80000 DT_SIZE_K(512)>;
 		zephyr,memory-region = "RAM_NC";
-	};
-
-	sram: memory@40000 {
-		device_type = "memory";
-		reg = <0x40000 DT_SIZE_K(128)>;
 	};
 };
 
@@ -43,7 +38,7 @@
 };
 
 &dram_ro_region {
-	reg = <0x0 DT_SIZE_K(128)>;
+	reg = <0x0 DT_SIZE_K(256)>;
 };
 
 &nvic {
