@@ -1,0 +1,7 @@
+&espi0 {
+	status = "okay";
+};
+
+&mbox {
+	status = "okay";
+};
