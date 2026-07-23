@@ -76,6 +76,8 @@ struct aspeed_spi_ops {
 		struct spi_nor_op_info op_info);
 	void (*write_dma)(const struct device *dev, const struct spi_config *spi_cfg,
 		struct spi_nor_op_info op_info);
+	void (*cache_flush)(const void *buf, size_t len);
+	void (*cache_invd)(const void *buf, size_t len);
 #endif
 };
 
@@ -117,6 +119,12 @@ struct aspeed_spi_data {
 
 	void (*aspeed_spim_proprietary_pre_config)(void);
 	void (*aspeed_spim_proprietary_post_config)(const struct device *dev, uint32_t cs);
+
+#ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
+	/* Buffer pending a post-completion cache invalidate in the DMA ISR. */
+	void *dma_pending_buf;
+	size_t dma_pending_len;
+#endif
 };
 
 int ast2700_spi_lite_pinctrl_init(const struct device *dev);

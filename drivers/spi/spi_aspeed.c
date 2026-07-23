@@ -10,6 +10,7 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(spi_aspeed, CONFIG_SPI_LOG_LEVEL);
 #include "spi_aspeed.h"
+#include <zephyr/cache.h>
 #include <zephyr/drivers/misc/aspeed/pfr_aspeed.h>
 #include <zephyr/drivers/pinctrl.h>
 #include <zephyr/sys/sys_io.h>
@@ -450,6 +451,32 @@ static void aspeed_spi_nor_transceive_user(const struct device *dev,
 }
 
 #ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
+/*
+ * DMA buffers are no longer placed in a non-cached memory region, so the
+ * driver has to maintain coherency itself: flush CPU-written data out to
+ * RAM before the DMA engine reads it, and invalidate stale cache lines
+ * after the DMA engine writes to RAM and before the CPU reads it back.
+ */
+static void aspeed_spi_dma_cache_flush(const void *buf, size_t len)
+{
+	sys_cache_data_flush_range((void *)buf, len);
+}
+
+static void aspeed_spi_dma_cache_invd(const void *buf, size_t len)
+{
+	size_t align = sys_cache_data_line_size_get();
+	uintptr_t start;
+	uintptr_t end;
+
+	if (align == 0)
+		align = sizeof(uintptr_t);
+
+	start = ROUND_DOWN((uintptr_t)buf, align);
+	end = ROUND_UP((uintptr_t)buf + len, align);
+
+	sys_cache_data_invd_range((void *)start, end - start);
+}
+
 void aspeed_spi_dma_isr(const void *param)
 {
 	const struct device *dev = param;
@@ -668,6 +695,14 @@ void ast2700_aspeed_spi_dma_isr(const void *param)
 	reg_val |= SPI_DMA_IRQ_STS;
 	sys_write32(reg_val, config->ctrl_base + SPI08_INTR_CTRL);
 
+	/* A read leaves fresh DMA'd data in RAM that the CPU hasn't seen yet. */
+	if (!(sys_read32(config->ctrl_base + SPI80_DMA_CTRL) & SPI_DMA_WRITE) &&
+	    data->dma_pending_len != 0) {
+		if (config->ops->cache_invd)
+			config->ops->cache_invd(data->dma_pending_buf, data->dma_pending_len);
+		data->dma_pending_len = 0;
+	}
+
 	sys_write32(0x0, config->ctrl_base + SPI80_DMA_CTRL);
 
 	sys_write32(data->cmd_mode[cs].normal_read,
@@ -734,7 +769,13 @@ void ast2700_aspeed_spi_read_dma(const struct device *dev,
 	sys_write32(dram_phy_addr, config->ctrl_base + SPI88_DMA_RAM_ADDR);
 	sys_write32(op_info.data_len - 1, config->ctrl_base + SPI8C_DMA_LEN);
 
+	if (config->ops->cache_invd)
+		config->ops->cache_invd(op_info.buf, op_info.data_len);
+
 #ifndef CONFIG_SPI_ASPEED_DMA_POLLING_MODE
+	data->dma_pending_buf = op_info.buf;
+	data->dma_pending_len = op_info.data_len;
+
 	/* enable DMA completion interrupt */
 	aspeed_dma_irq_enable(dev);
 	sys_write32(SPI_DMA_ENABLE, config->ctrl_base + SPI80_DMA_CTRL);
@@ -752,6 +793,8 @@ void ast2700_aspeed_spi_read_dma(const struct device *dev,
 	} while (dma_busy == 0);
 
 	sys_write32(0x0, config->ctrl_base + SPI80_DMA_CTRL);
+	if (config->ops->cache_invd)
+		config->ops->cache_invd(op_info.buf, op_info.data_len);
 	spi_context_complete(ctx, dev, 0);
 #endif
 }
@@ -814,6 +857,10 @@ void ast2700_aspeed_spi_write_dma(const struct device *dev,
 	sys_write32(dram_phy_addr, config->ctrl_base + SPI88_DMA_RAM_ADDR);
 	sys_write32(op_info.data_len - 1, config->ctrl_base + SPI8C_DMA_LEN);
 
+	data->dma_pending_len = 0;
+	if (config->ops->cache_flush)
+		config->ops->cache_flush(op_info.buf, op_info.data_len);
+
 #ifndef CONFIG_SPI_ASPEED_DMA_POLLING_MODE
 	/* enable DMA completion interrupt */
 	aspeed_dma_irq_enable(dev);
@@ -852,6 +899,26 @@ static bool aspeed_spi_dma_xfer_eligible(const struct device *dev,
 
 	if (((uintptr_t)op_info->buf % 4) != 0)
 		return false;
+
+	/*
+	 * A DMA read invalidates the buffer's cache lines on completion.
+	 * That invalidate is destructive, so unless the buffer starts and
+	 * ends on cache line boundaries, it would also drop dirty data in
+	 * whatever else shares those lines. Buffers that don't satisfy this
+	 * fall back to the non-DMA transceive path instead.
+	 */
+	if (op_info->data_direct == SPI_NOR_DATA_DIRECT_IN) {
+		size_t cache_line = sys_cache_data_line_size_get();
+
+		if (cache_line == 0)
+			cache_line = sizeof(uintptr_t);
+
+		if (((uintptr_t)op_info->buf % cache_line) != 0)
+			return false;
+
+		if ((op_info->data_len % cache_line) != 0)
+			return false;
+	}
 
 	return true;
 }
@@ -1772,6 +1839,8 @@ static const __maybe_unused struct aspeed_spi_ops ast2700_spi_ops = {
 	.dma_xfer_eligible = ast2700_spi_dma_xfer_eligible,
 	.read_dma = ast2700_aspeed_spi_read_dma,
 	.write_dma = ast2700_aspeed_spi_write_dma,
+	.cache_flush = aspeed_spi_dma_cache_flush,
+	.cache_invd = aspeed_spi_dma_cache_invd,
 #endif
 };
 
@@ -1815,6 +1884,8 @@ static const __maybe_unused struct aspeed_spi_ops ast10x0_g2_spi_ops = {
 	.dma_xfer_eligible = ast10x0_g2_spi_dma_xfer_eligible,
 	.read_dma = ast2700_aspeed_spi_read_dma,
 	.write_dma = ast2700_aspeed_spi_write_dma,
+	.cache_flush = aspeed_spi_dma_cache_flush,
+	.cache_invd = aspeed_spi_dma_cache_invd,
 #endif
 };
 
@@ -1835,6 +1906,8 @@ static const __maybe_unused struct aspeed_spi_ops ast10x0_g2_spi_lite_ops = {
 	.dma_xfer_eligible = ast10x0_g2_spi_dma_xfer_eligible,
 	.read_dma = ast2700_aspeed_spi_read_dma,
 	.write_dma = ast2700_aspeed_spi_write_dma,
+	.cache_flush = aspeed_spi_dma_cache_flush,
+	.cache_invd = aspeed_spi_dma_cache_invd,
 #endif
 };
 

@@ -30,6 +30,12 @@ BUILD_ASSERT(BUF_ARRAY_CNT >= 1);
 static const struct device *const zephyr_flash_controller =
 	DEVICE_DT_GET_OR_NULL(DT_CHOSEN(zephyr_flash_controller));
 
+/*
+ * Aligned to the d-cache line size: the SPI DMA path invalidates these
+ * buffers after a read completes, and sys_cache_data_invd_range() requires
+ * both the address and size to be cache-line aligned or behavior is
+ * undefined (see include/zephyr/cache.h).
+ */
 static uint8_t test_arr[CONFIG_FLASH_SHELL_BUFFER_SIZE] NON_CACHED_BSS_ALIGN16;
 static uint8_t read_back_arr[CONFIG_FLASH_SHELL_BUFFER_SIZE] NON_CACHED_BSS_ALIGN16;
 static uint8_t op_arr[CONFIG_FLASH_SHELL_BUFFER_SIZE] NON_CACHED_BSS_ALIGN16;
