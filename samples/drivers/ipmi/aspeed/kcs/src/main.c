@@ -39,7 +39,7 @@ void main(void)
 	}
 
 	while (1) {
-		k_busy_wait(1000);
+		k_msleep(10);
 
 		rc = kcs_aspeed_read(kcs_dev, ibuf, sizeof(ibuf));
 		if (rc < 0) {
