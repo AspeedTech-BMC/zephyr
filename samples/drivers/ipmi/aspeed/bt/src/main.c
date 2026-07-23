@@ -43,7 +43,7 @@ void main(void)
 	}
 
 	while (1) {
-		k_busy_wait(1000);
+		k_msleep(10);
 
 		rc = bt_aspeed_read(bt_dev, ibuf, sizeof(ibuf));
 		if (rc < 0) {
