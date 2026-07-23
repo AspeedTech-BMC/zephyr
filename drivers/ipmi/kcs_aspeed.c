@@ -42,6 +42,8 @@ LOG_MODULE_REGISTER(kcs_aspeed);
 #define HICRB           0x100
 #define   HICRB_ENSNP1D         BIT(15)
 #define   HICRB_ENSNP0D         BIT(14)
+#define   HICRB_EN16LADR2       BIT(5)
+#define   HICRB_EN16LADR1       BIT(4)
 #define   HICRB_IBFIF4          BIT(1)
 #define   HICRB_LPC4E           BIT(0)
 #define LADR4           0x110
@@ -50,6 +52,11 @@ LOG_MODULE_REGISTER(kcs_aspeed);
 #define STR4            0x11C
 #define  STR4_STAT_MASK         GENMASK(7, 6)
 #define  STR4_STAT_SHIFT        6
+#define LSADR12         0x120
+#define   LSADR12_LSADR2_MASK   GENMASK(31, 16)
+#define   LSADR12_LSADR2_SHIFT  16
+#define   LSADR12_LSADR1_MASK   GENMASK(15, 0)
+#define   LSADR12_LSADR1_SHIFT  0
 
 /* misc. constant */
 #define KCS_DUMMY_ZERO  0x0
@@ -347,6 +354,12 @@ static int kcs_aspeed_config_addr(const struct device *dev)
 		LPC_WR(reg, HICR4);
 		LPC_WR(cfg->addr >> 8, LADR12H);
 		LPC_WR(cfg->addr & 0xff, LADR12L);
+		reg = LPC_RD(LSADR12);
+		reg &= ~(LSADR12_LSADR1_MASK);
+		reg |= ((cfg->addr + 1) << LSADR12_LSADR1_SHIFT) & LSADR12_LSADR1_MASK;
+		LPC_WR(reg, LSADR12);
+		reg = LPC_RD(HICRB) | HICRB_EN16LADR1;
+		LPC_WR(reg, HICRB);
 		break;
 	case KCS_CH2:
 		reg = LPC_RD(HICR4);
@@ -354,6 +367,12 @@ static int kcs_aspeed_config_addr(const struct device *dev)
 		LPC_WR(reg, HICR4);
 		LPC_WR(cfg->addr >> 8, LADR12H);
 		LPC_WR(cfg->addr & 0xff, LADR12L);
+		reg = LPC_RD(LSADR12);
+		reg &= ~(LSADR12_LSADR2_MASK);
+		reg |= ((cfg->addr + 1) << LSADR12_LSADR2_SHIFT) & LSADR12_LSADR2_MASK;
+		LPC_WR(reg, LSADR12);
+		reg = LPC_RD(HICRB) | HICRB_EN16LADR2;
+		LPC_WR(reg, HICRB);
 		break;
 	case KCS_CH3:
 		LPC_WR(cfg->addr >> 8, LADR3H);
