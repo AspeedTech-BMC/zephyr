@@ -13,6 +13,7 @@
 #include <zephyr/drivers/clock_control.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/gpio/gpio_utils.h>
+#include <zephyr/drivers/pinctrl.h>
 #include <zephyr/dt-bindings/gpio/aspeed-gpio.h>
 #include <zephyr/irq.h>
 #include <zephyr/kernel.h>
@@ -33,6 +34,8 @@ LOG_MODULE_REGISTER(gpio_aspeed_g7);
 #define ASPEED_G7_IRQ_STS_OFFSET(bank)		(ASPEED_G7_IRQ_STS_BASE + ((bank) * 0x4U))
 #define ASPEED_G7_CTRL_REG_BASE			0x180U
 #define ASPEED_G7_CTRL_REG_OFFSET(offset)	(ASPEED_G7_CTRL_REG_BASE + ((offset) * 0x4U))
+/* Verified for ast10x0-g2/ast27xx-soc1 ball-index == GPIO-index; not universal. */
+#define ASPEED_G7_PINMUX_SCU_BASE		0x400U
 
 #define ASPEED_G7_CTRL_OUT_DATA			BIT(0)
 #define ASPEED_G7_CTRL_DIR			BIT(1)
@@ -130,6 +133,25 @@ static mem_addr_t aspeed_g7_irq_sts_addr(const struct device *parent, uint32_t b
 static uint32_t aspeed_g7_global_offset(const struct device *dev, gpio_pin_t pin)
 {
 	return DEV_CFG(dev)->pin_offset + pin;
+}
+
+static int aspeed_g7_request_gpio_mux(uint32_t global_offset)
+{
+	uint32_t reg_offset = ASPEED_G7_PINMUX_SCU_BASE + 4U * (global_offset / 8U);
+	uint32_t bit_offset = 4U * (global_offset % 8U);
+	pinctrl_soc_pin_t pin_cfg = {
+		.ball = global_offset,
+#ifdef CONFIG_PINCTRL_ASPEED_STRING_NAME
+		.name = "gpio-automux",
+#endif
+		.sig_descs = reg_offset | (bit_offset << 20),
+	};
+
+	if (IS_ENABLED(CONFIG_PINCTRL)) {
+		return pinctrl_configure_pins(&pin_cfg, 1, PINCTRL_REG_NONE);
+	}
+
+	return 0;
 }
 
 static bool aspeed_g7_have_gpio(const struct device *dev, gpio_pin_t pin)
@@ -514,6 +536,12 @@ static int gpio_aspeed_g7_configure(const struct device *dev, gpio_pin_t pin,
 
 	if (!aspeed_g7_have_gpio(dev, pin)) {
 		return -EINVAL;
+	}
+
+	ret = aspeed_g7_request_gpio_mux(offset);
+	if (ret) {
+		LOG_ERR("Failed to mux GPIO offset %u: %d", offset, ret);
+		return ret;
 	}
 
 	if (io_flags == GPIO_DISCONNECTED || io_flags == (GPIO_INPUT | GPIO_OUTPUT)) {
