@@ -251,6 +251,8 @@ static int aspeed_udc_start_in(const struct device *dev,
 	tx_len = MIN(buf->len, ep_data->mps);
 	ep_data->tx_last = tx_len;
 
+	sys_cache_data_flush_range(buf->data, tx_len);
+
 	if (ep_data->hw_ep == 0) {
 		sys_write32(TO_PHY_ADDR((uintptr_t)buf->data),
 			    aspeed_udc_base(dev) + ASPEED_USB_EP0_DATA_BUFF);
@@ -471,6 +473,7 @@ static int aspeed_udc_handle_out(const struct device *dev, uint8_t ep)
 	}
 
 	if (data_len != 0) {
+		sys_cache_data_invd_range(ep_data->rx_dma, data_len);
 		net_buf_add_mem(buf, ep_data->rx_dma, data_len);
 	}
 
@@ -1078,7 +1081,7 @@ static int aspeed_udc_preinit(const struct device *dev)
 	ASPEED_UDC_PINCTRL_DT_INST_DEFINE(n);				       \
 	static uint8_t aspeed_udc_rx_dma_##n			       \
 		[DT_INST_PROP(n, num_bidir_endpoints)][RX_DMA_BUFF_SIZE]       \
-		NON_CACHED_BSS_ALIGN16;					       \
+		__aligned(16);						       \
 	static struct aspeed_udc_ep_data aspeed_udc_ep_data_##n		       \
 		[DT_INST_PROP(n, num_bidir_endpoints)];			       \
 	static uint8_t aspeed_udc_ep_map_##n[32];			       \

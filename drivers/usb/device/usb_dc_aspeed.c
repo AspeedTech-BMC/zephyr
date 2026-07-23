@@ -195,7 +195,7 @@ struct usb_device_ep_data {
 	usb_dc_ep_callback cb_out;
 };
 
-uint8_t rx_dma[AST_UDC_MAX_NUM_EP][RX_DMA_BUFF_SIZE] NON_CACHED_BSS_ALIGN16;
+uint8_t rx_dma[AST_UDC_MAX_NUM_EP][RX_DMA_BUFF_SIZE] __aligned(16);
 /*
  * Endpoint mapping table:
  * Each bidirectional endpoint address (e.g., 0x00, 0x80, 0x01, 0x81, 0x02, 0x82, ...)
@@ -1328,6 +1328,7 @@ int usb_dc_ep_write(const uint8_t ep, const uint8_t *const data,
 		LOG_DBG("trigger ep0 tx len: [%d/%d]", tx_len, data_len);
 		dev_data.ep_data[0].tx_last = tx_len;
 
+		sys_cache_data_flush_range(dev_data.ep_data[0].tx_dma, tx_len);
 		sys_write32(TO_PHY_ADDR((uintptr_t)dev_data.ep_data[0].tx_dma),
 			    dev_data.base + ASPEED_USB_EP0_DATA_BUFF);
 		aspeed_udc_ep0_tx(tx_len);
@@ -1349,6 +1350,7 @@ int usb_dc_ep_write(const uint8_t ep, const uint8_t *const data,
 		if (ret_bytes)
 			*ret_bytes = tx_len;
 
+		sys_cache_data_flush_range((void *)data, tx_len);
 		sys_write32(TO_PHY_ADDR((uintptr_t)data), ep_reg + ASPEED_EP_DMA_BUFF);
 		sys_write32(EP_TX_LEN(tx_len), ep_reg + ASPEED_EP_DMA_STS);
 		sys_write32(EP_TX_LEN(tx_len) | 0x1,
@@ -1517,6 +1519,7 @@ int usb_dc_ep_read_wait(uint8_t ep, uint8_t *data, uint32_t max_data_len,
 			LOG_DBG("Copy data from rx_dma, %s:0x%x",
 				"data_len", data_len);
 
+			sys_cache_data_invd_range(dev_data.ep_data[0].rx_dma, data_len);
 			memcpy(data, dev_data.ep_data[0].rx_dma, data_len);
 			*read_bytes = data_len;
 
@@ -1539,6 +1542,8 @@ int usb_dc_ep_read_wait(uint8_t ep, uint8_t *data, uint32_t max_data_len,
 		}
 
 		if (byte_to_copy <= RX_DMA_BUFF_SIZE) {
+			sys_cache_data_invd_range(dev_data.ep_data[ep_num].rx_dma,
+				byte_to_copy);
 			memcpy(data, dev_data.ep_data[ep_num].rx_dma,
 				byte_to_copy);
 		} else {
