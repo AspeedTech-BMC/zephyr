@@ -1133,6 +1133,34 @@
 				status = "disabled";
 			};
 
+			kcs1: kcs1 {
+				compatible = "aspeed,kcs";
+				interrupts = <INTR_KCS_1 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+				chan = <1>;
+				status = "disabled";
+			};
+
+			kcs2: kcs2 {
+				compatible = "aspeed,kcs";
+				interrupts = <INTR_KCS_2 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+				chan = <2>;
+				status = "disabled";
+			};
+
+			kcs3: kcs3 {
+				compatible = "aspeed,kcs";
+				interrupts = <INTR_KCS_3 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+				chan = <3>;
+				status = "disabled";
+			};
+
+			kcs4: kcs4 {
+				compatible = "aspeed,kcs";
+				interrupts = <INTR_KCS_4 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+				chan = <4>;
+				status = "disabled";
+			};
+
 			uart_routing: uart-routing {
 				compatible = "aspeed,ast1040-uart-routing", "aspeed,uart-routing";
 				status = "disabled";
