@@ -587,7 +587,7 @@
 			reg = <0x74c0b000 0x1000>;
 			interrupts = <INTR_GPIO AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk SCU1_CLK_AHB>;
-			ngpios = <216>;
+			ngpios = <194>;
 			status = "disabled";
 
 			gpio0_0_31: gpio0_0_31 {
@@ -621,10 +621,10 @@
 				gpio-controller;
 				pin-offset = <160>;
 			};
-			gpio0_192_215: gpio0_192_215 {
+			gpio0_192_193: gpio0_192_193 {
 				#gpio-cells = <2>;
 				gpio-controller;
-				ngpios = <24>;
+				ngpios = <2>;
 				pin-offset = <192>;
 			};
 		};
