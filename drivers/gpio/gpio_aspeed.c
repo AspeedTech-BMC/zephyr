@@ -98,6 +98,30 @@ uint16_t gpio_offset_int_status[] = {
 	[6] = offsetof(gpio_register_t, group6_int_status),
 };
 
+uint16_t gpio_offset_int_en[] = {
+	[0] = offsetof(gpio_register_t, group0_int_en),
+	[1] = offsetof(gpio_register_t, group1_int_en),
+	[2] = offsetof(gpio_register_t, group2_int_en),
+	[3] = offsetof(gpio_register_t, group3_int_en),
+	[4] = offsetof(gpio_register_t, group4_int_en),
+	[5] = offsetof(gpio_register_t, group5_int_en),
+	[6] = offsetof(gpio_register_t, group6_int_en),
+};
+
+/* int_sens_type[1] alone tells level (bit set) vs edge (bit clear), matching
+ * aspeed_gpio_int_type_t: FALLING_EDGE=0b000, RISING_EDGE=0b001,
+ * LEVEL_LOW=0b010, LEVEL_HIGH=0b011, DUAL_EDGE=0b100.
+ */
+uint16_t gpio_offset_int_sens_type1[] = {
+	[0] = offsetof(gpio_register_t, group0_int_sens_type[1]),
+	[1] = offsetof(gpio_register_t, group1_int_sens_type[1]),
+	[2] = offsetof(gpio_register_t, group2_int_sens_type[1]),
+	[3] = offsetof(gpio_register_t, group3_int_sens_type[1]),
+	[4] = offsetof(gpio_register_t, group4_int_sens_type[1]),
+	[5] = offsetof(gpio_register_t, group5_int_sens_type[1]),
+	[6] = offsetof(gpio_register_t, group6_int_sens_type[1]),
+};
+
 uint16_t gpio_offset_wr_permit[] = {
 	[0] = offsetof(gpio_register_t, group0_write_cmd_src),
 	[1] = offsetof(gpio_register_t, group1_write_cmd_src),
@@ -215,6 +239,8 @@ static void gpio_aspeed_isr(const void *arg)
 	uint32_t index, group_idx;
 	uint32_t gpio_pin, int_pendding;
 	gpio_int_status_register_t *int_reg;
+	gpio_int_en_register_t *int_en_reg;
+	gpio_int_sens_type_register_t *sens_type1_reg;
 
 	cfg = DEV_PARENT_CFG(parent);
 	for (index = 0; index < cfg->child_num; index++) {
@@ -223,13 +249,35 @@ static void gpio_aspeed_isr(const void *arg)
 		group_idx = DEV_CFG(dev)->pin_offset >> 5;
 		int_reg = (gpio_int_status_register_t *)((uint32_t)DEV_CFG(dev)->base +
 							 gpio_offset_int_status[group_idx]);
+		int_en_reg = (gpio_int_en_register_t *)((uint32_t)DEV_CFG(dev)->base +
+							gpio_offset_int_en[group_idx]);
+		sens_type1_reg = (gpio_int_sens_type_register_t *)((uint32_t)DEV_CFG(dev)->base +
+							gpio_offset_int_sens_type1[group_idx]);
 		int_pendding = int_reg->value;
 		gpio_pin = 0;
 		while (int_pendding) {
 			if (int_pendding & 0x1) {
-				gpio_fire_callbacks(&data->cb,
-						    dev, BIT(gpio_pin));
-				int_reg->value = BIT(gpio_pin);
+				uint32_t bit = BIT(gpio_pin);
+				bool level = (sens_type1_reg->value & bit) != 0;
+
+				if (level) {
+					/* level-triggered: mask so a still-active level
+					 * can't re-fire until the callback has had a
+					 * chance to clear its source, then clear,
+					 * service, unmask.
+					 */
+					int_en_reg->value &= ~bit;
+					int_reg->value = bit;
+					gpio_fire_callbacks(&data->cb, dev, bit);
+					int_en_reg->value |= bit;
+				} else {
+					/* edge-triggered: clear first so an edge
+					 * produced synchronously by the callback gets
+					 * freshly latched.
+					 */
+					int_reg->value = bit;
+					gpio_fire_callbacks(&data->cb, dev, bit);
+				}
 			}
 			gpio_pin++;
 			int_pendding >>= 1;

@@ -664,13 +664,32 @@ static void gpio_aspeed_g7_isr(const void *arg)
 			  DEV_CFG(dev)->common.port_pin_mask;
 
 		for (uint32_t pin = 0U; pin < ASPEED_G7_GPIOS_PER_BANK; pin++) {
+			uint32_t offset;
+			bool level;
+
 			if ((pending & BIT(pin)) == 0U) {
 				continue;
 			}
 
-			gpio_fire_callbacks(&data->cb, dev, BIT(pin));
-			aspeed_g7_reg_bit_set(parent, aspeed_g7_global_offset(dev, pin),
-					      ASPEED_G7_CTRL_IRQ_STS, true);
+			offset = aspeed_g7_global_offset(dev, pin);
+			level = aspeed_g7_reg_bit_get(parent, offset, ASPEED_G7_CTRL_IRQ_TYPE1);
+
+			if (level) {
+				/* level-triggered: mask so a still-active level can't
+				 * re-fire until the callback has had a chance to clear
+				 * its source, then clear, service, unmask.
+				 */
+				aspeed_g7_reg_bit_set(parent, offset, ASPEED_G7_CTRL_IRQ_EN, false);
+				aspeed_g7_reg_bit_set(parent, offset, ASPEED_G7_CTRL_IRQ_STS, true);
+				gpio_fire_callbacks(&data->cb, dev, BIT(pin));
+				aspeed_g7_reg_bit_set(parent, offset, ASPEED_G7_CTRL_IRQ_EN, true);
+			} else {
+				/* edge-triggered: clear first so an edge produced
+				 * synchronously by the callback gets freshly latched.
+				 */
+				aspeed_g7_reg_bit_set(parent, offset, ASPEED_G7_CTRL_IRQ_STS, true);
+				gpio_fire_callbacks(&data->cb, dev, BIT(pin));
+			}
 		}
 	}
 }

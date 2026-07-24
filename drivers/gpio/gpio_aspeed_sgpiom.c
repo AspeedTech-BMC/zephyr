@@ -92,8 +92,27 @@ static void sgpiom_aspeed_isr(const void *arg)
 		gpio_pin = 0;
 		while (int_pendding) {
 			if (int_pendding & 0x1) {
-				gpio_fire_callbacks(&data->cb, dev, BIT(gpio_pin));
-				int_sts->value = BIT(gpio_pin);
+				uint32_t bit = BIT(gpio_pin);
+				bool level = (gather_reg->int_sens_type[1].value & bit) != 0;
+
+				if (level) {
+					/* level-triggered: mask so a still-active level
+					 * can't re-fire until the callback has had a
+					 * chance to clear its source, then clear,
+					 * service, unmask.
+					 */
+					gather_reg->int_en.value &= ~bit;
+					int_sts->value = bit;
+					gpio_fire_callbacks(&data->cb, dev, bit);
+					gather_reg->int_en.value |= bit;
+				} else {
+					/* edge-triggered: clear first so an edge
+					 * produced synchronously by the callback gets
+					 * freshly latched.
+					 */
+					int_sts->value = bit;
+					gpio_fire_callbacks(&data->cb, dev, bit);
+				}
 			}
 			gpio_pin++;
 			int_pendding >>= 1;

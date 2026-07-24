@@ -483,14 +483,43 @@ static void aspeed_g7_sgpiom_isr(const void *arg)
 		while (pending != 0U) {
 			gpio_port_pins_t bit = pending & -pending;
 			uint32_t pin = find_lsb_set(bit) - 1U;
+			uint32_t offset = cfg->pin_offset + pin;
 			k_spinlock_key_t key;
-
-			gpio_fire_callbacks(&data->cb, dev, bit);
+			bool level;
 
 			key = k_spin_lock(&parent_data->lock);
-			aspeed_g7_sgpiom_reg_bit_set_raw(parent, cfg->pin_offset + pin,
-							 reg_irq_status, true);
+			level = aspeed_g7_sgpiom_reg_bit_get_raw(parent, offset, reg_irq_type1);
 			k_spin_unlock(&parent_data->lock, key);
+
+			if (level) {
+				/* level-triggered: mask so a still-active level can't
+				 * re-fire until the callback has had a chance to clear
+				 * its source, then clear, service, unmask.
+				 */
+				key = k_spin_lock(&parent_data->lock);
+				aspeed_g7_sgpiom_reg_bit_set_raw(parent, offset,
+								 reg_irq_enable, false);
+				aspeed_g7_sgpiom_reg_bit_set_raw(parent, offset,
+								 reg_irq_status, true);
+				k_spin_unlock(&parent_data->lock, key);
+
+				gpio_fire_callbacks(&data->cb, dev, bit);
+
+				key = k_spin_lock(&parent_data->lock);
+				aspeed_g7_sgpiom_reg_bit_set_raw(parent, offset,
+								 reg_irq_enable, true);
+				k_spin_unlock(&parent_data->lock, key);
+			} else {
+				/* edge-triggered: clear first so an edge produced
+				 * synchronously by the callback gets freshly latched.
+				 */
+				key = k_spin_lock(&parent_data->lock);
+				aspeed_g7_sgpiom_reg_bit_set_raw(parent, offset,
+								 reg_irq_status, true);
+				k_spin_unlock(&parent_data->lock, key);
+
+				gpio_fire_callbacks(&data->cb, dev, bit);
+			}
 
 			pending &= ~bit;
 		}
