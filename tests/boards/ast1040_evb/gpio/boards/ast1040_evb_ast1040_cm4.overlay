@@ -1,0 +1,18 @@
+/*
+ * Copyright (c) 2026 Aspeed Technology Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * gpio0's global pins 108 (out) / 109 (in) are loopback-wired on the real
+ * AST1040 EVB. Both fall in the gpio0_96_127 bank (pin-offset 96), so the
+ * bank-local pin numbers the driver actually takes are 12 (108-96) and 13
+ * (109-96) - see drivers/gpio/gpio_aspeed_g7.c, which adds the bank's own
+ * pin_offset internally (DEV_CFG(dev)->pin_offset + pin).
+ */
+&gpio0 {
+	status = "okay";
+};
+
+&gpio0_96_127 {
+	status = "okay";
+};
