@@ -1,0 +1,11 @@
+common:
+  tags:
+    - boards
+    - ast1040_evb
+  harness: ztest
+  harness_config:
+    fixture: gpio_loopback
+
+tests:
+  boards.ast1040_evb.all:
+    platform_allow: ast1040_evb/ast1040/cm4

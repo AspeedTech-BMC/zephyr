@@ -1,0 +1,21 @@
+/*
+ * Copyright (c) 2026 Aspeed Technology Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Combined overlay: union of every peripheral test's own overlay under
+ * tests/boards/ast1040_evb/<peripheral>/boards/ast1040_evb.overlay. Only
+ * gpio is in scope so far - this becomes a real union once more
+ * peripherals are added (see tests/boards/ast1030_evb/all/boards/
+ * ast1040_evb.overlay for what that looks like at full scale).
+ */
+
+/* --- from gpio --- */
+
+&gpio0 {
+	status = "okay";
+};
+
+&gpio0_96_127 {
+	status = "okay";
+};
