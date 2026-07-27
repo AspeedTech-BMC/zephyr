@@ -634,6 +634,8 @@
 			reg = <0x74c0c000 0x100>;
 			interrupts = <INTR_SGPIO0 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk SCU1_CLK_APB>;
+			pinctrl-0 = <pinctrl_sgpm0_default>;
+			pinctrl-names = "default";
 			aspeed,bus-freq = <12000000>;
 			ngpios = <256>;
 			status = "disabled";
@@ -757,6 +759,8 @@
 			reg = <0x74c0d000 0x100>;
 			interrupts = <INTR_SGPIO1 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk SCU1_CLK_APB>;
+			pinctrl-0 = <pinctrl_sgpm1_default>;
+			pinctrl-names = "default";
 			aspeed,bus-freq = <12000000>;
 			ngpios = <256>;
 			status = "disabled";
