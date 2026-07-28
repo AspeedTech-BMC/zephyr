@@ -9,7 +9,8 @@
 #include <zephyr/sys/barrier.h>
 #include <zephyr/devicetree.h>
 
-#if defined(CONFIG_SOC_AST2700_SSP) || defined(CONFIG_SOC_AST2700_TSP)
+#if defined(CONFIG_SOC_AST2700_SSP) || defined(CONFIG_SOC_AST2700_TSP) || \
+	defined(CONFIG_SOC_AST2705_SSP) || defined(CONFIG_SOC_AST2705_TSP)
 /*
  * cache area control: each bit controls 16MB cache area
  *	1: cacheable
