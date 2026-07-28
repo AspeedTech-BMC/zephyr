@@ -2458,6 +2458,7 @@ static int i2c_aspeed_init(const struct device *dev)
 
 #if defined(CONFIG_SOC_AST2700_SSP) || \
 	defined(CONFIG_SOC_AST2700_A1_SSP) || \
+	defined(CONFIG_SOC_AST2705_SSP) || \
 	defined(CONFIG_SOC_AST1040_CM4) || \
 	defined(CONFIG_SOC_AST1080_CM4)
 	uint32_t reg;
