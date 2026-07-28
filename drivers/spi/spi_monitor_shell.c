@@ -11,7 +11,7 @@
 #include <string.h>
 #if defined(CONFIG_SOC_AST1060)
 #include <zephyr/drivers/misc/aspeed/pfr_aspeed.h>
-#elif defined(CONFIG_SOC_AST2700)
+#elif defined(CONFIG_SOC_AST2700) || defined(CONFIG_SOC_AST2705)
 #include <zephyr/drivers/misc/aspeed/ast2700_spim.h>
 #endif
 #include <soc.h>
@@ -244,7 +244,7 @@ end:
 }
 #endif
 
-#if defined(CONFIG_SOC_AST2700)
+#if defined(CONFIG_SOC_AST2700) || defined(CONFIG_SOC_AST2705)
 static int ast2700_addr_priv_config(const struct shell *shell, size_t argc, char *argv[])
 {
 	int ret;
@@ -365,7 +365,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_spim_addr,
 		read_addr_priv_table_config, 4, 0),
 	SHELL_CMD_ARG(write, NULL, "<enable/disable> <addr> <len>",
 		write_addr_priv_table_config, 4, 0),
-#elif defined(CONFIG_SOC_AST2700)
+#elif defined(CONFIG_SOC_AST2700) || defined(CONFIG_SOC_AST2705)
 	SHELL_CMD_ARG(config, NULL, "<addr> <len> <attr>",
 		ast2700_addr_priv_config, 4, 0),
 #endif
@@ -393,4 +393,3 @@ SHELL_STATIC_SUBCMD_SET_CREATE(spim_cmds,
 );
 
 SHELL_CMD_REGISTER(spim, &spim_cmds, "SPI monitor shell commands", NULL);
-
