@@ -2,7 +2,7 @@
 #
 # Copyright (c) 2024 ASPEED Technology Inc.
 
-if SOC_AST2700_BOOTMCU || SOC_AST2700_A1_BOOTMCU
+if SOC_AST2700_BOOTMCU || SOC_AST2700_A1_BOOTMCU || SOC_AST2705_BOOTMCU
 
 config SYS_CLOCK_HW_CYCLES_PER_SEC
 	default 1000000
@@ -36,4 +36,4 @@ config SCU_POLICY_CTRL
 	  If enabled, the SCU Policy Control driver will be initialized
 	  during system boot.
 
-endif # SOC_AST2700_BOOTMCU || SOC_AST2700_A1_BOOTMCU
+endif # SOC_AST2700_BOOTMCU || SOC_AST2700_A1_BOOTMCU || SOC_AST2705_BOOTMCU

@@ -45,7 +45,7 @@ void sys_arch_reboot(int type)
 #endif
 
 /* DMA address translation */
-#if defined(CONFIG_SOC_AST2700_BOOTMCU)
+#if defined(CONFIG_SOC_AST2700_BOOTMCU) || defined(CONFIG_SOC_AST2705_BOOTMCU)
 uint64_t ast27xx_soc_virt_addr_to_phy_addr(uintptr_t addr)
 {
 	if (addr < 0x80000000) {
@@ -65,7 +65,8 @@ uintptr_t ast27xx_soc_phy_addr_to_virt_addr(uint64_t addr)
 }
 #endif
 
-#if defined(CONFIG_SOC_AST2700_TSP) || defined(CONFIG_SOC_AST2700_A1_TSP)
+#if defined(CONFIG_SOC_AST2700_TSP) || defined(CONFIG_SOC_AST2700_A1_TSP) || \
+	defined(CONFIG_SOC_AST2705_TSP)
 uint64_t ast27xx_soc_virt_addr_to_phy_addr(uintptr_t addr)
 {
 	if (AST27XX_IS_SSP_TSP_AHB_MATRIX_VIRT_ADDR(addr))
@@ -83,7 +84,8 @@ uintptr_t ast27xx_soc_phy_addr_to_virt_addr(uint64_t addr)
 }
 #endif
 
-#if defined(CONFIG_SOC_AST2700_SSP) || defined(CONFIG_SOC_AST2700_A1_SSP)
+#if defined(CONFIG_SOC_AST2700_SSP) || defined(CONFIG_SOC_AST2700_A1_SSP) || \
+	defined(CONFIG_SOC_AST2705_SSP)
 uint64_t ast27xx_soc_virt_addr_to_phy_addr(uintptr_t addr)
 {
 	uintptr_t base;

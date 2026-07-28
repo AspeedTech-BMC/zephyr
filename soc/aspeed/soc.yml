@@ -28,3 +28,9 @@ family:
             - name: ssp_tsp
             - name: tsp
             - name: bootmcu
+          - name: ast2705
+            cpuclusters:
+            - name: ssp
+            - name: ssp_tsp
+            - name: tsp
+            - name: bootmcu
