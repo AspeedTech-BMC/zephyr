@@ -6,7 +6,8 @@
 config AST27XX_INTC
 	bool "Aspeed AST27XX interrupt controller driver"
 	depends on MULTI_LEVEL_INTERRUPTS
-	depends on SOC_AST2700_SSP || SOC_AST2700_TSP || SOC_AST2700_A1_SSP || SOC_AST2700_A1_TSP
+	depends on SOC_AST2700_SSP || SOC_AST2700_TSP || SOC_AST2700_A1_SSP || \
+		   SOC_AST2700_A1_TSP || SOC_AST2705_SSP || SOC_AST2705_TSP
 	default DT_HAS_ASPEED_AST2700_INTC_IC_ENABLED
 	help
 	  This option enables the AST27XX interrupt controller
