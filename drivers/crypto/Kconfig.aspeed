@@ -24,19 +24,19 @@ config ECDSA_ASPEED
 
 config CPTRA_ECDSA
 	bool "ASPEED CPTRA ECDSA engine driver"
-	depends on SOC_AST2700_BOOTMCU
+	depends on SOC_AST2700_BOOTMCU || SOC_AST2705_BOOTMCU
 	help
 	  This option enables the Caliptra ECDSA driver for ASPEED SoCs.
 
 config CPTRA_SHA
 	bool "ASPEED CPTRA SHA engine driver"
-	depends on SOC_AST2700_BOOTMCU
+	depends on SOC_AST2700_BOOTMCU || SOC_AST2705_BOOTMCU
 	help
 	  This option enables the Caliptra SHA driver for ASPEED SoCs.
 
 config CPTRA_LMS
 	bool "ASPEED CPTRA LMS engine driver"
-	depends on SOC_AST2700_BOOTMCU
+	depends on SOC_AST2700_BOOTMCU || SOC_AST2705_BOOTMCU
 	help
 	  This option enables the Caliptra LMS driver for ASPEED SoCs.
 
@@ -68,4 +68,3 @@ config ECDSA_SHELL
 	depends on SHELL
 	help
 	  Enable ECDSA Shell for testing.
-

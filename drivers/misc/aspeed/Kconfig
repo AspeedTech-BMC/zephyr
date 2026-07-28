@@ -73,49 +73,49 @@ config OTP_AST27XX
 
 config CPTRA_UPDATE
 	bool "ASPEED CPTRA Update driver"
-	depends on SOC_AST2700_BOOTMCU
+	depends on SOC_AST2700_BOOTMCU || SOC_AST2705_BOOTMCU
 	help
 	  This option enables the Caliptra update driver for ASPEED SoCs.
 
 config CPTRA_IFC
 	bool "ASPEED CPTRA IFC driver"
-	depends on SOC_AST2700_BOOTMCU
+	depends on SOC_AST2700_BOOTMCU || SOC_AST2705_BOOTMCU
 	help
 	  This option enables the Caliptra ifc driver for ASPEED SoCs.
 
 config CPTRA_MBOX
 	bool "ASPEED CPTRA MBOX driver"
-	depends on SOC_AST2700_BOOTMCU
+	depends on SOC_AST2700_BOOTMCU || SOC_AST2705_BOOTMCU
 	help
 	  This option enables the Caliptra mbox driver for ASPEED SoCs.
 
 config CPTRA_DICE
 	bool "ASPEED CPTRA DICE driver"
-	depends on SOC_AST2700_BOOTMCU
+	depends on SOC_AST2700_BOOTMCU || SOC_AST2705_BOOTMCU
 	help
 	  This option enables the Caliptra dice driver for ASPEED SoCs.
 
 config CPTRA_MISC
 	bool "ASPEED CPTRA MISC driver"
-	depends on SOC_AST2700_BOOTMCU
+	depends on SOC_AST2700_BOOTMCU || SOC_AST2705_BOOTMCU
 	help
 	  This option enables the Caliptra misc driver for ASPEED SoCs.
 
 config CPTRA_IPC
 	bool "ASPEED CPTRA IPC driver"
-	depends on SOC_AST2700_BOOTMCU
+	depends on SOC_AST2700_BOOTMCU || SOC_AST2705_BOOTMCU
 	help
 	  This option enables the Caliptra ipc driver for ASPEED SoCs.
 
 config LTPI_IPC
 	bool "ASPEED LTPI IPC driver"
-	depends on SOC_AST2700_BOOTMCU
+	depends on SOC_AST2700_BOOTMCU || SOC_AST2705_BOOTMCU
 	help
 	  This option enables the ltpi read / write ipc driver for ASPEED SoCs.
 
 config CPTRA_IPC_SSP
 	bool "ASPEED CPTRA IPC driver in SSP"
-	depends on SOC_AST2700_SSP || SOC_AST2700_A1_SSP
+	depends on SOC_AST2700_SSP || SOC_AST2700_A1_SSP || SOC_AST2705_SSP
 	help
 	  This option enables the Caliptra ipc driver in SSP for ASPEED SoCs.
 
@@ -130,7 +130,7 @@ config PRIVILEGE_CTRL
 config EDAF_BRIDGE_ASPEED
 	bool "Enable ASPEED eDAF bridge controller"
 	default y
-	depends on SOC_AST2700_BOOTMCU
+	depends on SOC_AST2700_BOOTMCU || SOC_AST2705_BOOTMCU
 	help
 	  This option enables the eDAF bridge controller
 	  for ASPEED SoCs.
