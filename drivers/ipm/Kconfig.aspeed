@@ -18,7 +18,7 @@ config IPM_AST2700
 config IPM_BOOTMCU
 	bool "ASPEED IPC driver"
 	default y
-	depends on SOC_AST2700_BOOTMCU
+	depends on SOC_AST2700_BOOTMCU || SOC_AST2705_BOOTMCU
 	help
 	  This option enables the IPC driver for ASPEED SoCs.
 
