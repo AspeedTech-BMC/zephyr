@@ -6,11 +6,11 @@
 
 /dts-v1/;
 
-#include <aspeed/ast27xx.dtsi>
+#include <aspeed/ast2705.dtsi>
 
 / {
-	model = "AST2705-EVB AST2700-BOOTMCU";
-	compatible = "aspeed,ast2705-evb-ast2700-bootmcu";
+	model = "AST2705-EVB AST2705-BOOTMCU";
+	compatible = "aspeed,ast2705-evb-ast2705-bootmcu";
 
 	chosen {
 		zephyr,sram = &sram;

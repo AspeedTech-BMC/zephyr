@@ -1,7 +1,7 @@
 # Copyright (c) 2024 Aspeed Technology Inc.
 # SPDX-License-Identifier: Apache-2.0
 
-identifier: ast2705_evb/ast2700/bootmcu
+identifier: ast2705_evb/ast2705/bootmcu
 name: Aspeed AST2705 BootMCU EVB
 type: mcu
 arch: riscv32

@@ -5,11 +5,11 @@
  */
 
 /dts-v1/;
-#include <aspeed/ast27xx_tsp.dtsi>
+#include <aspeed/ast2705_tsp.dtsi>
 
 / {
 	model = "Aspeed AST2705-TSP EVB board";
-	compatible = "aspeed,ast2705-evb-ast2700-tsp";
+	compatible = "aspeed,ast2705-evb-ast2705-tsp";
 
 	chosen {
 		zephyr,console = &uart7;

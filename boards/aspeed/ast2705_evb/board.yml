@@ -2,7 +2,7 @@ board:
   name: ast2705_evb
   vendor: aspeed
   socs:
-  - name: ast2700
+  - name: ast2705
     variants:
     - name: ddr
       cpucluster: ssp

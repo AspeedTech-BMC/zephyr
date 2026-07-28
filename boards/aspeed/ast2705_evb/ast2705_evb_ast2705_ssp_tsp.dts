@@ -5,7 +5,7 @@
  */
 
 /dts-v1/;
-#include "ast2705_evb_ast2700_ssp.dts"
+#include "ast2705_evb_ast2705_ssp.dts"
 
 / {
 	sram: memory@70006000 {

@@ -4,15 +4,20 @@
 #
 # Copyright (c) 2026 Aspeed Technology Inc.
 
-if BOARD_AST2705_EVB_AST2700_SSP
+if BOARD_AST2705_EVB_AST2705_SSP
 config BOARD
-	default "ast2705_evb_ast2700_ssp"
-endif # BOARD_AST2705_EVB_AST2700_SSP
+	default "ast2705_evb_ast2705_ssp"
+endif # BOARD_AST2705_EVB_AST2705_SSP
 
-if BOARD_AST2705_EVB_AST2700_TSP
+if BOARD_AST2705_EVB_AST2705_SSP_TSP
 config BOARD
-	default "ast2705_evb_ast2700_tsp"
-endif # BOARD_AST2705_EVB_AST2700_TSP
+	default "ast2705_evb_ast2705_ssp_tsp"
+endif # BOARD_AST2705_EVB_AST2705_SSP_TSP
+
+if BOARD_AST2705_EVB_AST2705_TSP
+config BOARD
+	default "ast2705_evb_ast2705_tsp"
+endif # BOARD_AST2705_EVB_AST2705_TSP
 
 if BOARD_AST2705_EVB_AST2705_BOOTMCU
 config BOARD

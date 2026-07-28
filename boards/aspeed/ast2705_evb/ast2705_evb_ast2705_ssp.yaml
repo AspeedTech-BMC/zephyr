@@ -1,7 +1,7 @@
 # Copyright (c) 2023 Aspeed Technology Inc.
 # SPDX-License-Identifier: Apache-2.0
-identifier: ast2705_evb/ast2700/tsp
-name: Aspeed AST2705 TSP on Evaluation Board
+identifier: ast2705_evb/ast2705/ssp
+name: Aspeed AST2705 SSP on Evaluation Board
 type: mcu
 arch: arm
 toolchain:
