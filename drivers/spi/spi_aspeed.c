@@ -437,7 +437,7 @@ static void aspeed_spi_nor_transceive_user(const struct device *dev,
 
 #ifdef CONFIG_SPI_MONITOR_ASPEED
 	if (data->aspeed_spim_proprietary_post_config)
-		data->aspeed_spim_proprietary_post_config();
+		data->aspeed_spim_proprietary_post_config(dev, cs);
 
 	if (config->mux_ctrl.master_idx != 0)
 		spim_scu_ctrl_clear(config->mux_ctrl.spi_monitor_common_ctrl, 0xf);
@@ -479,7 +479,7 @@ void aspeed_spi_dma_isr(const void *param)
 
 #ifdef CONFIG_SPI_MONITOR_ASPEED
 	if (data->aspeed_spim_proprietary_post_config)
-		data->aspeed_spim_proprietary_post_config();
+		data->aspeed_spim_proprietary_post_config(dev, cs);
 
 	if (config->mux_ctrl.master_idx != 0)
 		spim_scu_ctrl_clear(config->mux_ctrl.spi_monitor_common_ctrl, 0xf);
@@ -1161,7 +1161,7 @@ no_calib:
 
 #ifdef CONFIG_SPI_MONITOR_ASPEED
 	if (data->aspeed_spim_proprietary_post_config)
-		data->aspeed_spim_proprietary_post_config();
+		data->aspeed_spim_proprietary_post_config(dev, cs);
 
 	if (config->mux_ctrl.master_idx != 0)
 		spim_scu_ctrl_clear(config->mux_ctrl.spi_monitor_common_ctrl, 0xf);
@@ -1665,12 +1665,12 @@ static int aspeed_spi_init(const struct device *dev)
 		return -EINVAL;
 	}
 
-	if (config->ops->proprietary_config_init)
-		config->ops->proprietary_config_init(config, data);
-
 	ret = config->ops->pinctrl_init(dev);
 	if (ret != 0)
 		return ret;
+
+	if (config->ops->proprietary_config_init)
+		config->ops->proprietary_config_init(config, data);
 
 	return 0;
 }

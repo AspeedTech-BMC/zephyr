@@ -353,18 +353,22 @@
 
 &spi0_cs0 {
 	status = "okay";
+	spi-monitor-ctrl = <&spim1>;
 };
 
 &spi0_cs1 {
 	status = "okay";
+	spi-monitor-ctrl = <&spim1>;
 };
 
 &spi0_cs2 {
 	status = "okay";
+	spi-monitor-ctrl = <&spim2>;
 };
 
 &spi0_cs3 {
 	status = "okay";
+	spi-monitor-ctrl = <&spim2>;
 };
 
 &spi1 {
@@ -373,8 +377,35 @@
 
 &spi1_cs0 {
 	status = "okay";
+	spi-monitor-ctrl = <&spim3>;
 };
 
 &spi1_cs1 {
+	status = "okay";
+	spi-monitor-ctrl = <&spim3>;
+};
+
+&spim0 {
+	status = "okay";
+};
+
+&spim1 {
+	allow-cmds = [03 13 0b 0c 6b 6c 01 05 35 06 04 20 21 9f 5a b7 e9 32 34 d8 dc 02 12 3b 3c
+				  70 50 eb ec c2];
+
+	status = "okay";
+};
+
+&spim2 {
+	allow-cmds = [03 13 0b 0c 6b 6c 01 05 35 06 04 20 21 9f 5a b7 e9 32 34 d8 dc 02 12 3b 3c
+				  70 50 eb ec c2];
+
+	status = "okay";
+};
+
+&spim3 {
+	allow-cmds = [03 13 0b 0c 6b 6c 01 05 35 06 04 20 21 9f 5a b7 e9 32 34 d8 dc 02 12 3b 3c
+				  70 50 eb ec c2];
+
 	status = "okay";
 };

@@ -11,6 +11,14 @@
 #include <string.h>
 #if defined(CONFIG_SOC_AST1060)
 #include <zephyr/drivers/misc/aspeed/pfr_aspeed.h>
+#elif defined(CONFIG_SOC_AST1040_CM4) || defined(CONFIG_SOC_AST1080_CM4)
+/*
+ * AST1080's addr-priv table follows the AST2700 layout (see
+ * ast1080_spim_ops in spi_monitor_aspeed.c), but it still has the
+ * ext-mux control that AST2700 lacks, so pull in both headers.
+ */
+#include <zephyr/drivers/misc/aspeed/pfr_aspeed.h>
+#include <zephyr/drivers/misc/aspeed/ast2700_spim.h>
 #elif defined(CONFIG_SOC_AST2700) || defined(CONFIG_SOC_AST2705)
 #include <zephyr/drivers/misc/aspeed/ast2700_spim.h>
 #endif
@@ -35,13 +43,21 @@ static int cmd_parse_helper(const struct shell *shell, size_t *argc,
 		char **argv[], uint8_t *cmd)
 {
 	char *endptr;
+	unsigned long val;
 
 	if (*argc < 2) {
 		shell_error(shell, "Missing command.");
 		return -EINVAL;
 	}
 
-	*cmd = strtoul((*argv)[1], &endptr, 16);
+	val = strtoul((*argv)[1], &endptr, 16);
+	if (endptr == (*argv)[1] || *endptr != '\0' || val > 0xff) {
+		shell_error(shell, "Invalid command \"%s\", expected a 2-digit hex byte.",
+			(*argv)[1]);
+		return -EINVAL;
+	}
+
+	*cmd = val;
 
 	return 0;
 }
@@ -244,13 +260,15 @@ end:
 }
 #endif
 
-#if defined(CONFIG_SOC_AST2700) || defined(CONFIG_SOC_AST2705)
+#if defined(CONFIG_SOC_AST2700) || defined(CONFIG_SOC_AST2705) || \
+	defined(CONFIG_SOC_AST1040_CM4) || defined(CONFIG_SOC_AST1080_CM4)
 static int ast2700_addr_priv_config(const struct shell *shell, size_t argc, char *argv[])
 {
 	int ret;
 	mm_reg_t addr = 0;
 	uint32_t len = 0;
 	uint32_t attr = 0;
+	char *endptr;
 
 	if (!spim_device) {
 		shell_error(shell, "Please set the device first.");
@@ -262,8 +280,17 @@ static int ast2700_addr_priv_config(const struct shell *shell, size_t argc, char
 		return -EINVAL;
 	}
 
-	addr = strtoul(argv[1], NULL, 16);
-	len = strtoul(argv[2], NULL, 16);
+	addr = strtoul(argv[1], &endptr, 16);
+	if (endptr == argv[1] || *endptr != '\0') {
+		shell_error(shell, "Invalid addr \"%s\".", argv[1]);
+		return -EINVAL;
+	}
+
+	len = strtoul(argv[2], &endptr, 16);
+	if (endptr == argv[2] || *endptr != '\0') {
+		shell_error(shell, "Invalid len \"%s\".", argv[2]);
+		return -EINVAL;
+	}
 
 	if (strncmp(argv[3], "remove", 6) == 0) {
 		ret = ast2700_address_privilege_remove(spim_device, addr, len);
@@ -327,7 +354,8 @@ static int spi_monitor_disabled(const struct shell *shell, size_t argc, char *ar
 	return 0;
 }
 
-#if defined(CONFIG_SOC_AST1060)
+#if defined(CONFIG_SOC_AST1060) || defined(CONFIG_SOC_AST1040_CM4) || \
+	defined(CONFIG_SOC_AST1080_CM4)
 static int ext_mux_config(const struct shell *shell, size_t argc, char *argv[])
 {
 	uint32_t flag;
@@ -365,7 +393,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_spim_addr,
 		read_addr_priv_table_config, 4, 0),
 	SHELL_CMD_ARG(write, NULL, "<enable/disable> <addr> <len>",
 		write_addr_priv_table_config, 4, 0),
-#elif defined(CONFIG_SOC_AST2700) || defined(CONFIG_SOC_AST2705)
+#elif defined(CONFIG_SOC_AST2700) || defined(CONFIG_SOC_AST2705) || \
+	defined(CONFIG_SOC_AST1040_CM4) || defined(CONFIG_SOC_AST1080_CM4)
 	SHELL_CMD_ARG(config, NULL, "<addr> <len> <attr>",
 		ast2700_addr_priv_config, 4, 0),
 #endif
@@ -376,7 +405,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_spim_addr,
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_spim_config,
 	SHELL_CMD_ARG(enable, NULL, "\"enable\"", spi_monitor_enabled, 1, 0),
 	SHELL_CMD_ARG(disable, NULL, "\"disable\"", spi_monitor_disabled, 1, 0),
-#if defined(CONFIG_SOC_AST1060)
+#if defined(CONFIG_SOC_AST1060) || defined(CONFIG_SOC_AST1040_CM4) || \
+	defined(CONFIG_SOC_AST1080_CM4)
 	SHELL_CMD_ARG(extmux, NULL, "<0/1> for clear/set", ext_mux_config, 2, 0),
 #endif
 	SHELL_SUBCMD_SET_END

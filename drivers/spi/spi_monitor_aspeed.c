@@ -1134,6 +1134,150 @@ static void ast2700_spi_decoding_win_config(const struct device *dev)
 	release_spim_device(dev);
 }
 
+/*
+ * On AST1080, unlike AST2700, the FMC/SPI0/SPI1 controller register
+ * blocks are NOT adjacent to the SPI monitor channel's own MMIO
+ * window, so "ctrl_base - SPIM_SPIC_CONCAT_OFFSET" does not resolve
+ * to the real controller and must not be reused here.
+ *
+ * Each SPI monitor channel only snoops a 2-CS slice of one real
+ * controller (HW-verified mapping):
+ *   ctrl_idx 1 (spim1) -> SPI0 CS0/CS1  (spi0 window index 0,1)
+ *   ctrl_idx 2 (spim2) -> SPI0 CS2/CS3  (spi0 window index 2,3)
+ *   ctrl_idx 3 (spim3) -> SPI1 CS0/CS1  (spi1 window index 0,1)
+ */
+struct ast1080_spim_bus_map {
+	uint32_t ctrl_base; /* real SPI0/SPI1 controller ctrl_reg base */
+	uint32_t cs_start;  /* first CS window index owned by this channel */
+};
+
+static const struct ast1080_spim_bus_map ast1080_spim_bus_map[] = {
+	{ .ctrl_base = 0x74010000, .cs_start = 0 }, /* ctrl_idx 1: spi0 CS0/CS1 */
+	{ .ctrl_base = 0x74010000, .cs_start = 2 }, /* ctrl_idx 2: spi0 CS2/CS3 */
+	{ .ctrl_base = 0x74020000, .cs_start = 0 }, /* ctrl_idx 3: spi1 CS0/CS1 */
+};
+
+static void ast1080_spi_decoding_win_config(const struct device *dev)
+{
+	const struct aspeed_spim_config *config = dev->config;
+	const struct ast1080_spim_bus_map *map =
+		&ast1080_spim_bus_map[config->ctrl_idx - 1];
+	uint32_t spic_base = map->ctrl_base;
+	uint32_t spim_base = config->ctrl_base;
+	uint32_t spic_win;
+	uint32_t spim_win;
+	uint32_t base_offset = 0;
+	uint32_t i;
+
+	acquire_spim_device(dev);
+
+	if (map->cs_start > 0) {
+		base_offset = sys_read32(spic_base + SPI_CTRL_WIN +
+					  (map->cs_start - 1) * 4) & 0xffff0000;
+	}
+
+	for (i = 0; i < 2; i++) {
+		spic_win = sys_read32(spic_base + SPI_CTRL_WIN +
+				       (map->cs_start + i) * 4);
+		spim_win = (((spic_win & 0xffff) - (base_offset >> 16)) & 0xffff) |
+			   ((((spic_win & 0xffff0000) - base_offset) - 1) &
+			    0xffff0000);
+
+		sys_write32(spim_win, spim_base + SPIM_CS0_BASE + i * 4);
+	}
+	release_spim_device(dev);
+}
+
+struct ast1080_spif_gpio_reg {
+	uint32_t addr;
+	uint32_t mask;
+	uint32_t val;
+};
+
+/*
+ * These SCU2xx pinmux registers are shared across SPIF0/1/2 (spim1/2/3) —
+ * e.g. 0x74c0244c carries SPIF0 in its top byte and SPIF2 in the bottom
+ * three bytes. Only the bits that were "2" in the old hardcoded writes
+ * belong to that SPIF instance; everything else must be preserved via
+ * read-modify-write instead of being zeroed out.
+ */
+static const struct ast1080_spif_gpio_reg ast1080_spif_gpio_cfg[][2] = {
+	/* ctrl_idx 1: SPIF0 */
+	{
+		{ .addr = 0x74c0244c, .mask = 0xFF000000, .val = 0x22000000 },
+		{ .addr = 0x74c02450, .mask = 0x000FFFFF, .val = 0x00022222 },
+	},
+	/* ctrl_idx 2: SPIF1 */
+	{
+		{ .addr = 0x74c02418, .mask = 0xFFFFF000, .val = 0x22222000 },
+		{ .addr = 0x74c0241c, .mask = 0xFF0000FF, .val = 0x22000022 },
+	},
+	/* ctrl_idx 3: SPIF2 */
+	{
+		{ .addr = 0x74c02448, .mask = 0xF0000000, .val = 0x20000000 },
+		{ .addr = 0x74c0244c, .mask = 0x00FFFFFF, .val = 0x00222222 },
+	},
+};
+
+static void ast1080_spif_gpio_mode_config(const struct device *dev)
+{
+	const struct aspeed_spim_config *config = dev->config;
+	const struct ast1080_spif_gpio_reg *cfg;
+	uint32_t reg;
+	uint32_t i;
+
+	if (config->ctrl_idx < 1 || config->ctrl_idx > ARRAY_SIZE(ast1080_spif_gpio_cfg)) {
+		LOG_ERR("[%s] unexpected ctrl_idx %u for SPIF gpio mode config",
+			dev->name, config->ctrl_idx);
+		return;
+	}
+	cfg = ast1080_spif_gpio_cfg[config->ctrl_idx - 1];
+
+	acquire_spim_device(dev);
+
+	for (i = 0; i < 2; i++) {
+		reg = sys_read32(cfg[i].addr);
+		reg = (reg & ~cfg[i].mask) | cfg[i].val;
+		sys_write32(reg, cfg[i].addr);
+	}
+
+	release_spim_device(dev);
+}
+
+static void ast1080_push_pull_mode_config(const struct device *dev)
+{
+	const struct aspeed_spim_config *config = dev->config;
+
+	acquire_spim_device(dev);
+
+	switch (config->ctrl_idx) {
+	case 1: /* SPIF0 */
+		sys_write32(0x02050205, 0x74c025bc);
+		sys_write32(0x02050205, 0x74c025c0);
+		sys_write32(0x02050205, 0x74c025c4);
+		sys_write32(0x02040205, 0x74c025c8);
+		break;
+	case 2: /* SPIF1 */
+		sys_write32(0x02050204, 0x74c024e4);
+		sys_write32(0x02050205, 0x74c024e8);
+		sys_write32(0x02050205, 0x74c024ec);
+		sys_write32(0x02050205, 0x74c024f0);
+		break;
+	case 3: /* SPIF2 */
+		sys_write32(0x02050205, 0x74c025AC);
+		sys_write32(0x02050205, 0x74c025B0);
+		sys_write32(0x02050205, 0x74c025B4);
+		sys_write32(0x02050205, 0x74c025B8);
+		break;
+	default:
+		LOG_ERR("[%s] unexpected ctrl_idx %u for push-pull mode config",
+			dev->name, config->ctrl_idx);
+		break;
+	}
+
+	release_spim_device(dev);
+}
+
 static void ast2700_push_pull_mode_config(const struct device *dev)
 {
 	const struct aspeed_spim_config *config = dev->config;
@@ -1226,16 +1370,12 @@ static void ast2700_elec_char_init(const struct device *dev)
 
 static void ast1080_elec_char_init(const struct device *dev)
 {
-	const struct aspeed_spim_config *config = dev->config;
-
 	spim_sw_rst(dev);
-	ast2700_push_pull_mode_config(dev);
-	ast2700_spi_decoding_win_config(dev);
+	ast1080_push_pull_mode_config(dev);
+	ast1080_spi_decoding_win_config(dev);
 	ast2700_blocked_cs_config(dev);
 	ast2700_blocked_fifo_init(dev);
-	ast2700_spim_access_prot_init(dev);
-	/* always keep at master mode during booting up stage */
-	spim_ext_mux_config(dev, config->ext_mux_sel_default);
+	ast1080_spif_gpio_mode_config(dev);
 }
 
 #define ADDR_CTRL_REG0(base, idx) ((base) + (idx) * 8)
@@ -1610,6 +1750,22 @@ static void ast2700_monitor_enable(const struct device *dev, bool enable)
 	sys_write32(reg, config->ctrl_base + SPIM_CTRL);
 
 	release_spim_device(dev);
+}
+
+/*
+ * On AST1080, elec_char_init() runs at a driver init priority that
+ * precedes the flash controller's own probing, so the decoding window
+ * it captures from SPI0/SPI1's SPI_CTRL_WIN may still be the
+ * power-on-reset default rather than the real per-CS flash size. Redo
+ * the decode window snapshot whenever monitoring is (re-)enabled, so a
+ * post-boot "spim config enable" picks up the finalized ranges.
+ */
+static void ast1080_monitor_enable(const struct device *dev, bool enable)
+{
+	if (enable)
+		ast1080_spi_decoding_win_config(dev);
+
+	ast2700_monitor_enable(dev, enable);
 }
 
 void spim_dump_addr_priv_table(const struct device *dev)
@@ -2145,6 +2301,16 @@ static int spi_monitor_init(const struct device *dev)
 		ret = config->ops->blocked_log_init(dev);
 		if (ret != 0)
 			return ret;
+	} else {
+		/*
+		 * SoCs without the AST1060-style RAM log (AST1080/AST2700)
+		 * surface blocked transactions through a small HW FIFO
+		 * instead. Install the default FIFO drain/print handler so
+		 * blocked commands are visible on the ISR path even if the
+		 * application never calls spim_isr_callback_install() itself.
+		 * The application can still override this later.
+		 */
+		data->isr_callback = ast2700_spim_blocked_log_parser;
 	}
 
 	/* irq init */
@@ -2191,7 +2357,7 @@ static const __maybe_unused struct aspeed_spim_soc_ops ast1080_spim_ops = {
 	.addr_priv_init    = ast2700_addr_priv_init,
 	.elec_char_init    = ast1080_elec_char_init,
 	.allow_cmd_table_init = spim_allow_cmd_table_init,
-	.monitor_enable    = ast2700_monitor_enable,
+	.monitor_enable    = ast1080_monitor_enable,
 	.ctrl_sw_rst       = spim_sw_rst,
 	.blocked_log_init  = NULL,
 	.flash_rst_release = NULL,
@@ -2376,12 +2542,12 @@ DT_INST_FOREACH_STATUS_OKAY(ASPEED_AST1060_SPIM_INIT)
 },
 
 #define ASPEED_AST1080_SPIM_DT_DEFINE(node_id) \
-	ASPEED_SPIM_DT_DEFINE_BASE(node_id, 81)
+	ASPEED_SPIM_DT_DEFINE_BASE(node_id, 79)
 
 #define ASPEED_AST1080_SPIM_INIT(n)					\
 	ASPEED_SPIM_COMMON_INIT(n, ASPEED_AST1080_SPIM_DEV_CFG,	\
 				ASPEED_AST1080_SPIM_DEV_DATA,		\
-				ASPEED_AST1080_SPIM_DT_DEFINE, 80,	\
+				ASPEED_AST1080_SPIM_DT_DEFINE, 78,	\
 				AST1080_SCU_ANALOG_MUX_MODE)
 #undef DT_DRV_COMPAT
 #define DT_DRV_COMPAT aspeed_ast1080_spi_monitor_controller
@@ -2402,14 +2568,15 @@ DT_INST_FOREACH_STATUS_OKAY(ASPEED_AST1080_SPIM_INIT)
 	.dev                  = DEVICE_DT_GET(node_id),			\
 },
 
+/* Same spi-monitor-ctrl dependency as AST1080 above; must precede SPI_NOR_INIT_PRIORITY (80). */
 #define ASPEED_AST2700_SPIM_DT_DEFINE(node_id) \
-	ASPEED_SPIM_DT_DEFINE_BASE(node_id, 81)
+	ASPEED_SPIM_DT_DEFINE_BASE(node_id, 79)
 
 /* AST2700 never calls spim_scu_ctrl_set/clear(); offset unused. */
 #define ASPEED_AST2700_SPIM_INIT(n)					\
 	ASPEED_SPIM_COMMON_INIT(n, ASPEED_AST2700_SPIM_DEV_CFG,	\
 				ASPEED_AST2700_SPIM_DEV_DATA,		\
-				ASPEED_AST2700_SPIM_DT_DEFINE, 80,	\
+				ASPEED_AST2700_SPIM_DT_DEFINE, 78,	\
 				AST1060_SPIM_MODE_SCU_CTRL)
 #undef DT_DRV_COMPAT
 #define DT_DRV_COMPAT aspeed_ast2700_spi_monitor_controller

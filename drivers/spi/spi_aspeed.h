@@ -116,7 +116,7 @@ struct aspeed_spi_data {
 	int (*decode_range_reinit)(const struct device *dev, uint32_t flash_sz);
 
 	void (*aspeed_spim_proprietary_pre_config)(void);
-	void (*aspeed_spim_proprietary_post_config)(void);
+	void (*aspeed_spim_proprietary_post_config)(const struct device *dev, uint32_t cs);
 };
 
 int ast2700_spi_lite_pinctrl_init(const struct device *dev);
