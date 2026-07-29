@@ -771,41 +771,49 @@
 				#gpio-cells = <2>;
 				gpio-controller;
 				pin-offset = <0>;
+				status = "disabled";
 			};
 			sgpiom0_32_63: sgpiom0_32_63 {
 				#gpio-cells = <2>;
 				gpio-controller;
 				pin-offset = <32>;
+				status = "disabled";
 			};
 			sgpiom0_64_95: sgpiom0_64_95 {
 				#gpio-cells = <2>;
 				gpio-controller;
 				pin-offset = <64>;
+				status = "disabled";
 			};
 			sgpiom0_96_127: sgpiom0_96_127 {
 				#gpio-cells = <2>;
 				gpio-controller;
 				pin-offset = <96>;
+				status = "disabled";
 			};
 			sgpiom0_128_159: sgpiom0_128_159 {
 				#gpio-cells = <2>;
 				gpio-controller;
 				pin-offset = <128>;
+				status = "disabled";
 			};
 			sgpiom0_160_191: sgpiom0_160_191 {
 				#gpio-cells = <2>;
 				gpio-controller;
 				pin-offset = <160>;
+				status = "disabled";
 			};
 			sgpiom0_192_223: sgpiom0_192_223 {
 				#gpio-cells = <2>;
 				gpio-controller;
 				pin-offset = <192>;
+				status = "disabled";
 			};
 			sgpiom0_224_255: sgpiom0_224_255 {
 				#gpio-cells = <2>;
 				gpio-controller;
 				pin-offset = <224>;
+				status = "disabled";
 			};
 		};
 
@@ -896,41 +904,49 @@
 				#gpio-cells = <2>;
 				gpio-controller;
 				pin-offset = <0>;
+				status = "disabled";
 			};
 			sgpiom1_32_63: sgpiom1_32_63 {
 				#gpio-cells = <2>;
 				gpio-controller;
 				pin-offset = <32>;
+				status = "disabled";
 			};
 			sgpiom1_64_95: sgpiom1_64_95 {
 				#gpio-cells = <2>;
 				gpio-controller;
 				pin-offset = <64>;
+				status = "disabled";
 			};
 			sgpiom1_96_127: sgpiom1_96_127 {
 				#gpio-cells = <2>;
 				gpio-controller;
 				pin-offset = <96>;
+				status = "disabled";
 			};
 			sgpiom1_128_159: sgpiom1_128_159 {
 				#gpio-cells = <2>;
 				gpio-controller;
 				pin-offset = <128>;
+				status = "disabled";
 			};
 			sgpiom1_160_191: sgpiom1_160_191 {
 				#gpio-cells = <2>;
 				gpio-controller;
 				pin-offset = <160>;
+				status = "disabled";
 			};
 			sgpiom1_192_223: sgpiom1_192_223 {
 				#gpio-cells = <2>;
 				gpio-controller;
 				pin-offset = <192>;
+				status = "disabled";
 			};
 			sgpiom1_224_255: sgpiom1_224_255 {
 				#gpio-cells = <2>;
 				gpio-controller;
 				pin-offset = <224>;
+				status = "disabled";
 			};
 		};
 

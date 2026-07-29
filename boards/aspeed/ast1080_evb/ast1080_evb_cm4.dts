@@ -316,10 +316,30 @@
 
 &sgpiom0 {
 	status = "okay";
-};
-
-&sgpiom1 {
-	status = "okay";
+	sgpiom0_0_31 {
+		status = "okay";
+	};
+	sgpiom0_32_63 {
+		status = "okay";
+	};
+	sgpiom0_64_95 {
+		status = "okay";
+	};
+	sgpiom0_96_127 {
+		status = "okay";
+	};
+	sgpiom0_128_159 {
+		status = "okay";
+	};
+	sgpiom0_160_191 {
+		status = "okay";
+	};
+	sgpiom0_192_223 {
+		status = "okay";
+	};
+	sgpiom0_224_255 {
+		status = "okay";
+	};
 };
 
 &fmc {
