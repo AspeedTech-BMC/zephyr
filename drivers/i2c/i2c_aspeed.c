@@ -21,6 +21,13 @@ LOG_MODULE_REGISTER(i2c_aspeed);
 
 #include "i2c-priv.h"
 
+#if defined(CONFIG_SOC_AST1040_CM4) || \
+	defined(CONFIG_SOC_AST1080_CM4)
+#define SLAVE_ADDR_SHIFT		9
+#else
+#define SLAVE_ADDR_SHIFT		8
+#endif
+
 #define K_CACHE_INVD	BIT(1)
 
 #define I2C_SLAVE_COUNT			3
@@ -258,7 +265,6 @@ LOG_MODULE_REGISTER(i2c_aspeed);
 
 /* 0x8c : Slave sirq log */
 #define AST2700_I2CC_SIRQ_LOG		0x8c
-#define SLAVE_ADDR_SHIFT		8
 #define SLAVE_ADDR_MASK		(0xff << 8)
 #define SADDR_NACK				BIT(5)
 #define SLAVE_PKT_DONE			BIT(4)
