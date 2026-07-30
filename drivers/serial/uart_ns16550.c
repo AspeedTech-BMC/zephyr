@@ -1918,7 +1918,9 @@ static const struct uart_driver_api uart_ns16550_driver_api = {
 			), (                                                         \
 				.sys_clk_freq = 0,                                   \
 				.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(n)),  \
-				COND_CODE_1(IS_ENABLED(CONFIG_CLOCK_CONTROL_AST27XX),\
+				COND_CODE_1(UTIL_OR(IS_ENABLED(CONFIG_CLOCK_CONTROL_AST27XX), \
+					UTIL_OR(IS_ENABLED(CONFIG_CLOCK_CONTROL_AST1040),    \
+						IS_ENABLED(CONFIG_CLOCK_CONTROL_AST26XX))),  \
 					(.clock_subsys = (clock_control_subsys_t)    \
 						DT_INST_PHA(0, clocks, clk_id),),    \
 					(.clock_subsys = (clock_control_subsys_t)    \
