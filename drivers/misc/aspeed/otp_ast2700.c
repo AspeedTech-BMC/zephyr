@@ -167,11 +167,15 @@ static int wait_complete(const struct device *dev)
 {
 	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
 	uint32_t val;
+	bool done;
 
-	do {
-		val = sys_read32(cfg->base + OTP_STATUS);
-		k_busy_wait(10);
-	} while (val != 0x0);
+	done = WAIT_FOR((val = sys_read32(cfg->base + OTP_STATUS)) == 0x0, OTP_TIMEOUT_US,
+			k_busy_wait(1));
+
+	if (!done) {
+		LOG_WRN("timeout. sts:0x%x", val);
+		return -ETIMEDOUT;
+	}
 
 	return 0;
 }
