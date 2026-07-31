@@ -85,6 +85,9 @@ enum UART_IIR_ACTIVE_INT {
 #define VUART_GCRB_HOST_SIRQ_MASK               GENMASK(7, 4)
 #define VUART_GCRB_HOST_SIRQ_SHIFT              4
 
+/* LSC registers */
+#define LSC_HICR9       0x98
+
 /* UDMA registers */
 #define UDMA_TX_DMA_EN          0x00
 #define UDMA_RX_DMA_EN          0x04
@@ -158,6 +161,11 @@ struct uart_aspeed_config {
 	const struct device *clock_dev;
 	const clock_control_subsys_t clk_id;
 	const struct pinctrl_dev_config *pcfg;
+
+	uintptr_t lsc_base;
+	bool reset_source_set;
+	uint32_t reset_source_bit;
+	uint32_t reset_source_val;
 
 	bool virt;
 	uint32_t virt_port;
@@ -825,7 +833,16 @@ static int uart_aspeed_init(const struct device *dev)
 	data->cb = NULL;
 	data->cb_data = NULL;
 
-	clock_control_on(dev_cfg->clock_dev, dev_cfg->clk_id);
+	if (dev_cfg->reset_source_set) {
+		reg = sys_read32(dev_cfg->lsc_base + LSC_HICR9);
+		reg &= ~BIT(dev_cfg->reset_source_bit);
+		reg |= (dev_cfg->reset_source_val ? BIT(dev_cfg->reset_source_bit) : 0);
+		sys_write32(reg, dev_cfg->lsc_base + LSC_HICR9);
+	}
+
+	if (dev_cfg->clock_dev) {
+		clock_control_on(dev_cfg->clock_dev, dev_cfg->clk_id);
+	}
 	pinctrl_apply_state(dev_cfg->pcfg, PINCTRL_STATE_DEFAULT);
 
 	if (dev_cfg->dma) {
@@ -940,6 +957,14 @@ static const struct uart_driver_api uart_aspeed_driver_api = {
 		.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(n)),				\
 		.clk_id = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(n, clk_id),		\
 		.pcfg = PINCTRL_DT_INST_DEV_CONFIG_GET(n),                                      \
+		.lsc_base = COND_CODE_1(DT_INST_NODE_HAS_PROP(n, aspeed_lsc),			\
+					 (DT_REG_ADDR(DT_INST_PHANDLE(n, aspeed_lsc))), (0)),	\
+		.reset_source_set = DT_INST_NODE_HAS_PROP(n, aspeed_reset_source) &&		\
+					    DT_INST_NODE_HAS_PROP(n, aspeed_lsc),		\
+		.reset_source_bit = COND_CODE_1(DT_INST_NODE_HAS_PROP(n, aspeed_reset_source),	\
+					 (DT_INST_PROP_BY_IDX(n, aspeed_reset_source, 0)), (0)),\
+		.reset_source_val = COND_CODE_1(DT_INST_NODE_HAS_PROP(n, aspeed_reset_source),	\
+					 (DT_INST_PROP_BY_IDX(n, aspeed_reset_source, 1)), (0)),\
 		.virt = DT_INST_PROP_OR(n, virtual, 0),						\
 		.virt_port = DT_INST_PROP_OR(n, virtual_port, 0),				\
 		.virt_sirq = DT_INST_PROP_OR(n, virtual_sirq, 0),				\
