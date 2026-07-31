@@ -91,6 +91,14 @@ static int entropy_aspeed_trng_init(const struct device *dev)
 	ctrl |= RNG_SET_MODE(RNG_MODE);
 
 	sys_write32(ctrl, config->base + AST_RNG_CTRL);
+
+	/* Workaround: discard the first 32 reads to flush stale entropy */
+	for (int i = 0; i < 32; i++) {
+		while (!(sys_read32(config->base + AST_RNG_CTRL) & RNG_READY))
+			;
+		sys_read32(config->base + AST_RNG_DATA);
+	}
+
 	data->rng_init = true;
 
 	return 0;
