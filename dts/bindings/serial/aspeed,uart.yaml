@@ -41,3 +41,17 @@ properties:
       type: int
       required: false
       description: UART DMA channel to use
+
+    aspeed,lsc:
+      type: phandle
+      required: false
+      description: phandle to the LSC (LPC controller) device tree node
+
+    aspeed,reset-source:
+      type: array
+      required: false
+      description: |
+        HICR9 reset source bit and value to program before the UART is
+        initialized, as <bit value>. "bit" is the bit position within the
+        LSC HICR9 register (base + 0x98) and "value" is 0 or 1, the value
+        to write into that bit. Requires aspeed,lsc to be set.
