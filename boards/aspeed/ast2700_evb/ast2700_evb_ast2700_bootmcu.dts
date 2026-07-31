@@ -15,7 +15,7 @@
 
 	chosen {
 		zephyr,sram = &sram;
-		zephyr,entropy = &nisttrng;
+		zephyr,entropy = &rng;
 	};
 
 	aliases {
