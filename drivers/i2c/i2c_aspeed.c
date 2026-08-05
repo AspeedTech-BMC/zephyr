@@ -24,9 +24,12 @@ LOG_MODULE_REGISTER(i2c_aspeed);
 #if defined(CONFIG_SOC_AST1040_CM4) || \
 	defined(CONFIG_SOC_AST1080_CM4)
 #define SLAVE_ADDR_SHIFT		9
+#define DMA_L_ADDR_MASK		0x0FFFFFFF
 #else
 #define SLAVE_ADDR_SHIFT		8
+#define DMA_L_ADDR_MASK		0xFFFFFFFF
 #endif
+#define DMA_H_ADDR_MASK		0xFFFFFFFF
 
 #define K_CACHE_INVD	BIT(1)
 
@@ -735,8 +738,8 @@ static uint32_t ast2600_i2c_setup_dma_tx(uint32_t cmd, const struct device *dev)
 	struct i2c_msg *msg = &data->msgs[data->msgs_index];
 	int xfer_len = msg->len - data->master_xfer_cnt;
 	uint64_t DMA_Addr = TO_PHY_ADDR((uintptr_t)msg->buf);
-	uint32_t DMA_Addr_L = (uint32_t)(DMA_Addr & 0xFFFFFFFF);
-	uint32_t DMA_Addr_H = (uint32_t)(((DMA_Addr >> 32) & 0xFFFFFFFF));
+	uint32_t DMA_Addr_L = (uint32_t)(DMA_Addr & DMA_L_ADDR_MASK);
+	uint32_t DMA_Addr_H = (uint32_t)(((DMA_Addr >> 32) & DMA_H_ADDR_MASK));
 
 	cmd |= AST_I2CM_PKT_EN;
 
@@ -775,8 +778,8 @@ static uint32_t ast2600_i2c_setup_dma_rx(uint32_t cmd, const struct device *dev)
 	struct i2c_msg *msg = &data->msgs[data->msgs_index];
 	int xfer_len = msg->len - data->master_xfer_cnt;
 	uint64_t DMA_Addr = TO_PHY_ADDR((uintptr_t)msg->buf);
-	uint32_t DMA_Addr_L = (uint32_t)(DMA_Addr & 0xFFFFFFFF);
-	uint32_t DMA_Addr_H = (uint32_t)(((DMA_Addr >> 32) & 0xFFFFFFFF));
+	uint32_t DMA_Addr_L = (uint32_t)(DMA_Addr & DMA_L_ADDR_MASK);
+	uint32_t DMA_Addr_H = (uint32_t)(((DMA_Addr >> 32) & DMA_H_ADDR_MASK));
 
 	cmd |= AST_I2CM_PKT_EN;
 
@@ -1036,9 +1039,9 @@ static int i2c_aspeed_transfer(const struct device *dev, struct i2c_msg *msgs,
 					uint64_t DMA_Addr =
 					TO_PHY_ADDR((uintptr_t)data->slave_dma_buf);
 					uint32_t DMA_Addr_L =
-					(uint32_t)(DMA_Addr & 0xFFFFFFFF);
+					(uint32_t)(DMA_Addr & DMA_L_ADDR_MASK);
 					uint32_t DMA_Addr_H =
-					(uint32_t)(((DMA_Addr >> 32) & 0xFFFFFFFF));
+					(uint32_t)(((DMA_Addr >> 32) & DMA_H_ADDR_MASK));
 
 					cmd |= AST_I2CS_RX_DMA_EN;
 					sys_write32(DMA_Addr_L, i2c_base + AST_I2CS_RX_DMA);
@@ -2530,8 +2533,8 @@ static int i2c_aspeed_slave_register(const struct device *dev,
 	uint8_t i = 0;
 	uint32_t i2c_base = DEV_BASE(dev);
 	uint64_t DMA_Addr = TO_PHY_ADDR((uintptr_t)data->slave_dma_buf);
-	uint32_t DMA_Addr_L = (uint32_t)(DMA_Addr & 0xFFFFFFFF);
-	uint32_t DMA_Addr_H = (uint32_t)(((DMA_Addr >> 32) & 0xFFFFFFFF));
+	uint32_t DMA_Addr_L = (uint32_t)(DMA_Addr & DMA_L_ADDR_MASK);
+	uint32_t DMA_Addr_H = (uint32_t)(((DMA_Addr >> 32) & DMA_H_ADDR_MASK));
 	uint32_t cmd = AST_I2CS_ACTIVE_ALL | AST_I2CS_PKT_MODE_EN;
 	uint32_t slave_addr = sys_read32(i2c_base + AST_I2CS_ADDR_CTRL);
 
