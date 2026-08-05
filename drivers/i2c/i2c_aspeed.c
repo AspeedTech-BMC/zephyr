@@ -405,18 +405,36 @@ static uint32_t i2c_aspeed_ast2700_select_clock(const struct device *dev)
 	unsigned long base_clk;
 	int baseclk_idx = 0;
 	int divisor = 0;
+	uint8_t divid_term = 0;
+	uint32_t clk_div_reg;
 	uint32_t scl_low;
 	uint32_t scl_high;
 	uint32_t ac_timing;
 
-	for (int i = 0; i < 0x100; i++) {
-		base_clk = (config->clk_src) / (i + 1);
+	clk_div_reg = sys_read32(config->global_reg + ASPEED_I2CG_CLK_DIV);
+
+	/* Find the most used ac-timing */
+	for (int i = 0; i < 3; i++) {
+		divid_term = ((clk_div_reg >> (i << 3)) & GENMASK(7, 0));
+		base_clk = (config->clk_src) / (divid_term + 1);
 		if ((base_clk / data->bus_frequency) <= 32) {
-			baseclk_idx = i;
-			divisor = (base_clk / (unsigned long)(data->bus_frequency));
-			if ((base_clk / divisor) > (unsigned long)data->bus_frequency)
-				divisor++;
+			baseclk_idx = divid_term;
+			divisor = DIV_ROUND_UP(base_clk, data->bus_frequency);
 			break;
+		}
+	}
+
+	/* can't find suitable divider */
+	if (baseclk_idx == 0) {
+		for (int i = 0; i < 0x100; i++) {
+			base_clk = (config->clk_src) / (i + 1);
+			if ((base_clk / data->bus_frequency) <= 32) {
+				baseclk_idx = i;
+				divisor = (base_clk / (unsigned long)(data->bus_frequency));
+				if ((base_clk / divisor) > (unsigned long)data->bus_frequency)
+					divisor++;
+				break;
+			}
 		}
 	}
 
