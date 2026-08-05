@@ -115,7 +115,7 @@ static int cmd_i2c_recover(const struct shell *shell,
 /* i2c write <device> <dev_addr> [<byte1>, ...] */
 static int cmd_i2c_write(const struct shell *shell, size_t argc, char **argv)
 {
-	uint8_t buf[MAX_I2C_BYTES];
+	uint8_t *buf = NULL;
 	const struct device *dev;
 	int num_bytes;
 	int reg_addr;
@@ -128,24 +128,39 @@ static int cmd_i2c_write(const struct shell *shell, size_t argc, char **argv)
 		return -ENODEV;
 	}
 
+	buf = k_malloc(sizeof(uint8_t) * MAX_I2C_BYTES);
+	if (!buf) {
+		shell_error(shell, "I2C: Can't malloc memory.");
+		return -EIO;
+	}
+
 	dev_addr = strtol(argv[2], NULL, 16);
 	reg_addr = strtol(argv[3], NULL, 16);
+
 	num_bytes = argc - 4;
 	if (num_bytes < 0) {
+		k_free(buf);
+		buf = NULL;
 		return 0;
 	}
+
 	if (num_bytes > MAX_I2C_BYTES) {
 		num_bytes = MAX_I2C_BYTES;
 	}
+
 	for (i = 0; i < num_bytes; i++) {
 		buf[i] = (uint8_t)strtol(argv[4 + i], NULL, 16);
 	}
 
 	if (i2c_burst_write(dev, dev_addr, reg_addr, buf, num_bytes) < 0) {
 		shell_error(shell, "Failed to write to device: %s", argv[1]);
+		k_free(buf);
+		buf = NULL;
 		return -EIO;
 	}
 
+	k_free(buf);
+	buf = NULL;
 	return 0;
 }
 
@@ -157,12 +172,18 @@ static int cmd_i2c_write_multi_bytes(const struct shell *shell, size_t argc, cha
 	int reg_addr;
 	int dev_addr;
 	int i;
-	uint8_t tx_buf[2];
+	uint8_t *tx_buf = NULL;
 
 	dev = device_get_binding(argv[1]);
 	if (!dev) {
 		shell_error(shell, "I2C: Device driver %s not found.", argv[1]);
 		return -ENODEV;
+	}
+
+	tx_buf = k_malloc(sizeof(uint8_t) * 2);
+	if (!tx_buf) {
+		shell_error(shell, "I2C: Can't malloc memory.");
+		return -EIO;
 	}
 
 	dev_addr = strtol(argv[2], NULL, 16);
@@ -171,6 +192,8 @@ static int cmd_i2c_write_multi_bytes(const struct shell *shell, size_t argc, cha
 	num_bytes = argc - 4;
 
 	if (num_bytes < 0) {
+		k_free(tx_buf);
+		tx_buf = NULL;
 		return 0;
 	}
 
@@ -182,12 +205,16 @@ static int cmd_i2c_write_multi_bytes(const struct shell *shell, size_t argc, cha
 		tx_buf[1] = (uint8_t)strtol(argv[4 + i], NULL, 16);
 		if (i2c_write(dev, tx_buf, 2, dev_addr) < 0) {
 			shell_error(shell, "Failed to mb write from device: %s", argv[1]);
+			k_free(tx_buf);
+			tx_buf = NULL;
 			return -EIO;
 		}
 		tx_buf[0]++;
 		k_msleep(8);
 	}
 
+	k_free(tx_buf);
+	tx_buf = NULL;
 	return 0;
 }
 
@@ -222,7 +249,7 @@ static int cmd_i2c_write_bytes(const struct shell *shell,
 			      size_t argc, char **argv)
 {
 	const struct device *dev;
-	uint8_t buf[MAX_I2C_BYTES];
+	uint8_t *buf = NULL;
 	int num_bytes;
 	int dev_addr;
 	int i;
@@ -234,9 +261,17 @@ static int cmd_i2c_write_bytes(const struct shell *shell,
 		return -ENODEV;
 	}
 
+	buf = k_malloc(sizeof(uint8_t) * MAX_I2C_BYTES);
+	if (!buf) {
+		shell_error(shell, "I2C: Can't malloc memory.");
+		return -EIO;
+	}
+
 	dev_addr = strtol(argv[2], NULL, 16);
 	num_bytes = argc - 3;
 	if (num_bytes < 0) {
+		k_free(buf);
+		buf = NULL;
 		return 0;
 	}
 	if (num_bytes > MAX_I2C_BYTES) {
@@ -248,9 +283,13 @@ static int cmd_i2c_write_bytes(const struct shell *shell,
 
 	if (i2c_write(dev, buf, num_bytes, dev_addr) < 0) {
 		shell_error(shell, "Failed to write to device: %s", argv[1]);
+		k_free(buf);
+		buf = NULL;
 		return -EIO;
 	}
 
+	k_free(buf);
+	buf = NULL;
 	return 0;
 }
 
@@ -285,7 +324,7 @@ static int cmd_i2c_read_byte(const struct shell *shell,
 /* i2c read_bytes <device> <dev_addr> [<numbytes>] */
 static int cmd_i2c_read_multi_bytes(const struct shell *shell, size_t argc, char **argv)
 {
-	uint8_t buf[MAX_I2C_BYTES];
+	uint8_t *buf = NULL;
 	const struct device *dev;
 	int num_bytes;
 	int reg_addr;
@@ -297,6 +336,12 @@ static int cmd_i2c_read_multi_bytes(const struct shell *shell, size_t argc, char
 	if (!dev) {
 		shell_error(shell, "I2C: Device driver %s not found.", argv[1]);
 		return -ENODEV;
+	}
+
+	buf = k_malloc(sizeof(uint8_t) * MAX_I2C_BYTES);
+	if (!buf) {
+		shell_error(shell, "I2C: Can't malloc memory.");
+		return -EIO;
 	}
 
 	dev_addr = strtol(argv[2], NULL, 16);
@@ -314,11 +359,15 @@ static int cmd_i2c_read_multi_bytes(const struct shell *shell, size_t argc, char
 	for (i = 0; i < num_bytes; i++) {
 		if (i2c_write(dev, &tx_buf, 1, dev_addr) < 0) {
 			shell_error(shell, "Failed to mb write from device: %s", argv[1]);
+			k_free(buf);
+			buf = NULL;
 			return -EIO;
 		}
 
 		if (i2c_read(dev, &buf[i], 1, dev_addr) < 0) {
 			shell_error(shell, "Failed to mb read from device: %s", argv[1]);
+			k_free(buf);
+			buf = NULL;
 			return -EIO;
 		}
 		tx_buf++;
@@ -326,13 +375,15 @@ static int cmd_i2c_read_multi_bytes(const struct shell *shell, size_t argc, char
 
 	shell_hexdump(shell, buf, num_bytes);
 
+	k_free(buf);
+	buf = NULL;
 	return 0;
 }
 
 /* i2c read <device> <dev_addr> [<numbytes>] */
 static int cmd_i2c_read(const struct shell *shell, size_t argc, char **argv)
 {
-	uint8_t buf[MAX_I2C_BYTES];
+	uint8_t *buf = NULL;
 	const struct device *dev;
 	int num_bytes;
 	int reg_addr;
@@ -342,6 +393,12 @@ static int cmd_i2c_read(const struct shell *shell, size_t argc, char **argv)
 	if (!dev) {
 		shell_error(shell, "I2C: Device driver %s not found.", argv[1]);
 		return -ENODEV;
+	}
+
+	buf = k_malloc(sizeof(uint8_t) * MAX_I2C_BYTES);
+	if (!buf) {
+		shell_error(shell, "I2C: Can't malloc memory.");
+		return -EIO;
 	}
 
 	dev_addr = strtol(argv[2], NULL, 16);
@@ -356,11 +413,15 @@ static int cmd_i2c_read(const struct shell *shell, size_t argc, char **argv)
 
 	if (i2c_burst_read(dev, dev_addr, reg_addr, buf, num_bytes) < 0) {
 		shell_error(shell, "Failed to read from device: %s", argv[1]);
+		k_free(buf);
+		buf = NULL;
 		return -EIO;
 	}
 
 	shell_hexdump(shell, buf, num_bytes);
 
+	k_free(buf);
+	buf = NULL;
 	return 0;
 }
 
