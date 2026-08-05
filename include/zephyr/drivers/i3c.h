@@ -817,6 +817,36 @@ __subsystem struct i3c_driver_api {
 			   struct i3c_device_desc *target);
 
 	/**
+	 * Enable the controller hardware to accept Hot-Join requests.
+	 *
+	 * Controller only API. Optional - if not implemented, the
+	 * controller hardware is assumed to always accept Hot-Join
+	 * requests and only the broadcast CCC performed by
+	 * @ref i3c_hotjoin_enable takes effect.
+	 *
+	 * @see i3c_hotjoin_enable
+	 *
+	 * @param dev Pointer to controller device driver instance.
+	 *
+	 * @return @see i3c_hotjoin_enable
+	 */
+	int (*hotjoin_enable)(const struct device *dev);
+
+	/**
+	 * Disable the controller hardware from accepting Hot-Join requests.
+	 *
+	 * Controller only API. Optional - if not implemented, only the
+	 * broadcast CCC performed by @ref i3c_hotjoin_disable takes effect.
+	 *
+	 * @see i3c_hotjoin_disable
+	 *
+	 * @param dev Pointer to controller device driver instance.
+	 *
+	 * @return @see i3c_hotjoin_disable
+	 */
+	int (*hotjoin_disable)(const struct device *dev);
+
+	/**
 	 * Register config as target device of a controller.
 	 *
 	 * This tells the controller to act as a target device
@@ -2121,6 +2151,42 @@ void i3c_dump_msgs(const char *name, const struct i3c_msg *msgs,
  */
 int i3c_bus_init(const struct device *dev,
 		 const struct i3c_dev_list *i3c_dev_list);
+
+/**
+ * @brief Enable Hot-Join on the I3C bus.
+ *
+ * This broadcasts ENEC(HJ) to let already attached targets know they may
+ * raise Hot-Join requests again, then calls into the controller driver's
+ * optional @ref i3c_driver_api.hotjoin_enable hook so its hardware also
+ * accepts Hot-Join requests (e.g. from targets attached later).
+ *
+ * The broadcast CCC being NACKed is not treated as an error since there
+ * may be no attached targets listening for it.
+ *
+ * @param dev Pointer to controller device driver instance.
+ *
+ * @retval 0 If successful.
+ * @retval -EIO General input / output error from the controller hook.
+ */
+int i3c_hotjoin_enable(const struct device *dev);
+
+/**
+ * @brief Disable Hot-Join on the I3C bus.
+ *
+ * This broadcasts DISEC(HJ) to tell already attached targets to stop
+ * raising Hot-Join requests, then calls into the controller driver's
+ * optional @ref i3c_driver_api.hotjoin_disable hook so its hardware also
+ * rejects Hot-Join requests (e.g. from targets that ignore the CCC).
+ *
+ * The broadcast CCC being NACKed is not treated as an error since there
+ * may be no attached targets listening for it.
+ *
+ * @param dev Pointer to controller device driver instance.
+ *
+ * @retval 0 If successful.
+ * @retval -EIO General input / output error from the controller hook.
+ */
+int i3c_hotjoin_disable(const struct device *dev);
 
 /**
  * @brief Get basic information from device and update device descriptor.

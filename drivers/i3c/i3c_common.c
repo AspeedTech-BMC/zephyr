@@ -751,3 +751,35 @@ int i3c_bus_init(const struct device *dev, const struct i3c_dev_list *dev_list)
 err_out:
 	return ret;
 }
+
+int i3c_hotjoin_enable(const struct device *dev)
+{
+	const struct i3c_driver_api *api = (const struct i3c_driver_api *)dev->api;
+	struct i3c_ccc_events events = { .events = I3C_CCC_EVT_HJ };
+
+	if (i3c_ccc_do_events_all_set(dev, true, &events) != 0) {
+		LOG_DBG("Broadcast ENEC(HJ) was NACK.");
+	}
+
+	if (api->hotjoin_enable != NULL) {
+		return api->hotjoin_enable(dev);
+	}
+
+	return 0;
+}
+
+int i3c_hotjoin_disable(const struct device *dev)
+{
+	const struct i3c_driver_api *api = (const struct i3c_driver_api *)dev->api;
+	struct i3c_ccc_events events = { .events = I3C_CCC_EVT_HJ };
+
+	if (i3c_ccc_do_events_all_set(dev, false, &events) != 0) {
+		LOG_DBG("Broadcast DISEC(HJ) was NACK.");
+	}
+
+	if (api->hotjoin_disable != NULL) {
+		return api->hotjoin_disable(dev);
+	}
+
+	return 0;
+}

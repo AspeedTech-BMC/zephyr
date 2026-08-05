@@ -1113,6 +1113,45 @@ static int mipi_i3c_hci_ibi_disable(const struct device *dev, struct i3c_device_
 	return mipi_i3c_hci_target_ibi_disable(dev, target);
 }
 
+static int mipi_i3c_hci_hotjoin_enable(const struct device *dev)
+{
+	struct i3c_hci *hci = dev->data;
+	int ret;
+
+	if (hci->is_target) {
+		return -ENOTSUP;
+	}
+
+	if (!hci->io || !hci->io->request_hj) {
+		return -ENOSYS;
+	}
+
+	k_mutex_lock(&hci->control_mutex, K_FOREVER);
+	ret = hci->io->request_hj(hci);
+	k_mutex_unlock(&hci->control_mutex);
+
+	return ret;
+}
+
+static int mipi_i3c_hci_hotjoin_disable(const struct device *dev)
+{
+	struct i3c_hci *hci = dev->data;
+
+	if (hci->is_target) {
+		return -ENOTSUP;
+	}
+
+	if (!hci->io || !hci->io->free_hj) {
+		return -ENOSYS;
+	}
+
+	k_mutex_lock(&hci->control_mutex, K_FOREVER);
+	hci->io->free_hj(hci);
+	k_mutex_unlock(&hci->control_mutex);
+
+	return 0;
+}
+
 static int mipi_i3c_hci_target_register_api(const struct device *dev,
 					    struct i3c_target_config *cfg)
 {
@@ -1399,7 +1438,11 @@ static int mipi_i3c_hci_init(const struct device *dev)
 	}
 
 	mipi_i3c_hci_iba_ctrl(hci, true);
-	mipi_i3c_hci_hj_ctrl(hci, true);
+	if (hci->io && hci->io->request_hj) {
+		(void)hci->io->request_hj(hci);
+	} else {
+		mipi_i3c_hci_hj_ctrl(hci, true);
+	}
 
 	LOG_DBG("%s initialized as a MIPI I3C HCI controller", dev->name);
 
@@ -1427,6 +1470,8 @@ static const struct i3c_driver_api mipi_i3c_hci_driver_api = {
 	.ibi_raise = mipi_i3c_hci_ibi_raise,
 	.ibi_enable = mipi_i3c_hci_ibi_enable,
 	.ibi_disable = mipi_i3c_hci_ibi_disable,
+	.hotjoin_enable = mipi_i3c_hci_hotjoin_enable,
+	.hotjoin_disable = mipi_i3c_hci_hotjoin_disable,
 	.target_register = mipi_i3c_hci_target_register_api,
 	.target_unregister = mipi_i3c_hci_target_unregister_api,
 	.target_tx_write = mipi_i3c_hci_target_tx_write_api,

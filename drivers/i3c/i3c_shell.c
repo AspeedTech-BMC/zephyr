@@ -1379,6 +1379,46 @@ static int cmd_i3c_hj_request(const struct shell *shell_ctx, size_t argc, char *
 	return ret;
 }
 
+/* i3c hj_enable <device> */
+static int cmd_i3c_hj_enable(const struct shell *shell_ctx, size_t argc, char **argv)
+{
+	const struct device *dev;
+	int ret;
+
+	dev = device_get_binding(argv[ARGV_DEV]);
+	if (!dev) {
+		shell_error(shell_ctx, "I3C: Device driver %s not found.", argv[ARGV_DEV]);
+		return -ENODEV;
+	}
+
+	ret = i3c_hotjoin_enable(dev);
+	if (ret != 0) {
+		shell_error(shell_ctx, "I3C: Failed to enable Hot-Join (err %d)", ret);
+	}
+
+	return ret;
+}
+
+/* i3c hj_disable <device> */
+static int cmd_i3c_hj_disable(const struct shell *shell_ctx, size_t argc, char **argv)
+{
+	const struct device *dev;
+	int ret;
+
+	dev = device_get_binding(argv[ARGV_DEV]);
+	if (!dev) {
+		shell_error(shell_ctx, "I3C: Device driver %s not found.", argv[ARGV_DEV]);
+		return -ENODEV;
+	}
+
+	ret = i3c_hotjoin_disable(dev);
+	if (ret != 0) {
+		shell_error(shell_ctx, "I3C: Failed to disable Hot-Join (err %d)", ret);
+	}
+
+	return ret;
+}
+
 static uint32_t args_to_wdata(char *arg, uint8_t *buf)
 {
 	char *data_ptrs[MAX_I3C_BYTES];
@@ -1654,6 +1694,14 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 		      "Send I3C Hot-Join request\n"
 		      "Usage: hj_req <device>",
 		      cmd_i3c_hj_request, 2, 0),
+	SHELL_CMD_ARG(hj_enable, &dsub_i3c_device_name,
+		      "Enable Hot-Join on the I3C bus\n"
+		      "Usage: hj_enable <device>",
+		      cmd_i3c_hj_enable, 2, 0),
+	SHELL_CMD_ARG(hj_disable, &dsub_i3c_device_name,
+		      "Disable Hot-Join on the I3C bus\n"
+		      "Usage: hj_disable <device>",
+		      cmd_i3c_hj_disable, 2, 0),
 #ifdef CONFIG_I3C_TARGET_MQUEUE
 	SHELL_CMD_ARG(tmq, &dsub_i3c_target_device_name,
 		      "I3C target mqueue\n"
