@@ -1164,6 +1164,15 @@ static void hci_dma_deliver_controller_role_request(struct i3c_hci *hci, int ibi
 #endif
 }
 
+static bool hci_dma_submit_hotjoin(struct i3c_hci *hci)
+{
+#if defined(CONFIG_I3C_IBI_WORKQUEUE)
+	return i3c_ibi_work_enqueue_hotjoin(hci->dev) == 0;
+#else
+	return k_work_submit(&hci->hj_work) >= 0;
+#endif
+}
+
 static void hci_dma_process_target_rx(struct i3c_hci *hci, struct i3c_hci_dma_ring *rh,
 				      unsigned int start_chunk, uint32_t status,
 				      unsigned int ibi_size)
@@ -1290,7 +1299,9 @@ static void hci_dma_process_ibi(struct i3c_hci *hci, struct i3c_hci_dma_ring *rh
 	} else if (ibi_status_error != 0U) {
 		LOG_ERR("IBI error from %#x: %#x", ibi_addr, ibi_status_error);
 	} else if (IBI_TYPE_HJ(ibi_addr, ibi_rnw)) {
-		(void)k_work_submit(&hci->hj_work);
+		if (!hci_dma_submit_hotjoin(hci)) {
+			LOG_ERR("failed to enqueue hot-join work");
+		}
 	} else if (IBI_TYPE_CR(ibi_addr, ibi_rnw)) {
 		hci_dma_deliver_controller_role_request(hci, ibi_addr);
 	} else {
