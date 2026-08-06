@@ -4,8 +4,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#define DT_DRV_COMPAT aspeed_adc
-
 #include <errno.h>
 
 #include <zephyr/drivers/adc.h>
@@ -65,6 +63,7 @@ struct adc_aspeed_cfg {
 	const struct reset_dt_spec reset;
 	const struct pinctrl_dev_config *pcfg;
 	const uint16_t ref_voltage_mv;
+	const bool is_gen2;
 };
 
 #define DEV_CFG(dev) ((const struct adc_aspeed_cfg *const)(dev)->config)
@@ -236,24 +235,35 @@ static int adc_aspeed_set_ref_voltage(const struct device *dev)
 	uint32_t ref_voltage_cfg;
 	union adc_engine_control_s engine_ctrl;
 
-	/*
-	 * Set ref_voltage:
-	 * If reference voltage is between 1550~1650mv, we can set
-	 * fields either REF_VOLTAGE_EXT_HIGH or REF_VOLTAGE_EXT_LOW.
-	 * In this place, we select REF_VOLTAGE_EXT_HIGH as higher priority.
-	 */
-	if (config->ref_voltage_mv == 2500) {
-		ref_voltage_cfg = REF_VOLTAGE_2500mV;
-	} else if (config->ref_voltage_mv == 1200) {
-		ref_voltage_cfg = REF_VOLTAGE_1200mV;
-	} else if ((config->ref_voltage_mv >= 1550) &&
-		   (config->ref_voltage_mv <= 2700)) {
-		ref_voltage_cfg = REF_VOLTAGE_EXT_HIGH;
-	} else if ((config->ref_voltage_mv >= 900) &&
-		   (config->ref_voltage_mv <= 1650)) {
-		ref_voltage_cfg = REF_VOLTAGE_EXT_LOW;
+	if (config->is_gen2) {
+		if (config->ref_voltage_mv == 1200) {
+			ref_voltage_cfg = REF_VOLTAGE_G2_INTERNAL_1200mV;
+		} else if ((config->ref_voltage_mv >= REF_VOLTAGE_G2_EXTERNAL_MIN_MV) &&
+			   (config->ref_voltage_mv <= REF_VOLTAGE_G2_EXTERNAL_MAX_MV)) {
+			ref_voltage_cfg = REF_VOLTAGE_G2_EXTERNAL;
+		} else {
+			return -ERANGE;
+		}
 	} else {
-		return -ERANGE;
+		/*
+		 * Set ref_voltage:
+		 * If reference voltage is between 1550~1650mv, we can set
+		 * fields either REF_VOLTAGE_EXT_HIGH or REF_VOLTAGE_EXT_LOW.
+		 * In this place, we select REF_VOLTAGE_EXT_HIGH as higher priority.
+		 */
+		if (config->ref_voltage_mv == 2500) {
+			ref_voltage_cfg = REF_VOLTAGE_2500mV;
+		} else if (config->ref_voltage_mv == 1200) {
+			ref_voltage_cfg = REF_VOLTAGE_1200mV;
+		} else if ((config->ref_voltage_mv >= 1550) &&
+			   (config->ref_voltage_mv <= 2700)) {
+			ref_voltage_cfg = REF_VOLTAGE_EXT_HIGH;
+		} else if ((config->ref_voltage_mv >= 900) &&
+			   (config->ref_voltage_mv <= 1650)) {
+			ref_voltage_cfg = REF_VOLTAGE_EXT_LOW;
+		} else {
+			return -ERANGE;
+		}
 	}
 	engine_ctrl.value = adc_register->engine_ctrl.value;
 	engine_ctrl.fields.reference_voltage_selection = ref_voltage_cfg;
@@ -456,7 +466,14 @@ static int adc_aspeed_engine_init(const struct device *dev,
 	const struct adc_aspeed_cfg *config = DEV_CFG(dev);
 	struct adc_register_s *adc_register = config->base;
 	union adc_engine_control_s engine_ctrl;
+	union adc_engine_control1_s engine_ctrl1;
 	int ret;
+
+	if (config->is_gen2) {
+		engine_ctrl1.value = adc_register->engine_ctrl1.value;
+		engine_ctrl1.fields.enable_input_buffer = 1;
+		adc_register->engine_ctrl1.value = engine_ctrl1.value;
+	}
 
 	engine_ctrl.value = adc_register->engine_ctrl.value;
 	engine_ctrl.fields.adc_operation_mode = ADC_NORMAL;
@@ -537,6 +554,9 @@ static struct adc_driver_api adc_aspeed_api = {
 #endif
 };
 
+#undef DT_DRV_COMPAT
+#define DT_DRV_COMPAT aspeed_adc
+
 #define ASPEED_ADC_INIT(n)                                                                         \
 	PINCTRL_DT_INST_DEFINE(n);                                                                 \
 	static struct adc_aspeed_data adc_aspeed_data_##n = {                                      \
@@ -555,8 +575,38 @@ static struct adc_driver_api adc_aspeed_api = {
 		.pcfg = PINCTRL_DT_INST_DEV_CONFIG_GET(n),                                         \
 		.reset = RESET_DT_SPEC_INST_GET(n),                                                \
 		.ref_voltage_mv = DT_INST_PROP_OR(n, ref_voltage_mv, 2500),                        \
+		.is_gen2 = false,                                                                  \
 	};                                                                                         \
 	DEVICE_DT_INST_DEFINE(n, adc_aspeed_init, NULL, &adc_aspeed_data_##n, &adc_aspeed_cfg_##n, \
 			      POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEVICE, &adc_aspeed_api);
 
 DT_INST_FOREACH_STATUS_OKAY(ASPEED_ADC_INIT)
+
+#undef DT_DRV_COMPAT
+#define DT_DRV_COMPAT aspeed_ast10x0_g2_adc
+
+#define ASPEED_AST10X0_G2_ADC_INIT(n)                                                         \
+	PINCTRL_DT_INST_DEFINE(n);                                                             \
+	static struct adc_aspeed_data adc_aspeed_g2_data_##n = {                               \
+		ADC_CONTEXT_INIT_TIMER(adc_aspeed_g2_data_##n, ctx),                            \
+		ADC_CONTEXT_INIT_LOCK(adc_aspeed_g2_data_##n, ctx),                             \
+		ADC_CONTEXT_INIT_SYNC(adc_aspeed_g2_data_##n, ctx),                             \
+	};                                                                                     \
+	static const struct adc_aspeed_cfg adc_aspeed_g2_cfg_##n = {                           \
+		.base = (struct adc_register_s *)DT_INST_REG_ADDR(n),                          \
+		.scu_base = DT_REG_ADDR_BY_IDX(DT_INST_PHANDLE(n, aspeed_scu), 0),             \
+		.trim_valid = DT_INST_PROP_OR(n, aspeed_trim_data_valid, false),               \
+		.channels_used = DT_INST_PROP_OR(n, aspeed_adc_channels_used, 0xff),           \
+		.trim_locate = {DT_INST_PROP_BY_IDX(n, aspeed_trim_data_locate, 0),            \
+				DT_INST_PROP_BY_IDX(n, aspeed_trim_data_locate, 1)},           \
+		.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(n)),                            \
+		.pcfg = PINCTRL_DT_INST_DEV_CONFIG_GET(n),                                     \
+		.reset = RESET_DT_SPEC_INST_GET(n),                                            \
+		.ref_voltage_mv = DT_INST_PROP_OR(n, ref_voltage_mv, 1200),                    \
+		.is_gen2 = true,                                                               \
+	};                                                                                     \
+	DEVICE_DT_INST_DEFINE(n, adc_aspeed_init, NULL, &adc_aspeed_g2_data_##n,               \
+			      &adc_aspeed_g2_cfg_##n, POST_KERNEL,                              \
+			      CONFIG_KERNEL_INIT_PRIORITY_DEVICE, &adc_aspeed_api);
+
+DT_INST_FOREACH_STATUS_OKAY(ASPEED_AST10X0_G2_ADC_INIT)

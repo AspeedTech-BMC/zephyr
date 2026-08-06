@@ -194,7 +194,7 @@
 		};
 
 		adc0: adc@74c00000 {
-			compatible = "aspeed,adc";
+			compatible = "aspeed,ast10x0-g2-adc";
 			reg = <0x74c00000 0x100>;
 			clocks = <&adc_clk>;
 			resets = <&sysrst SCU1_RESET_ADC>;
@@ -206,7 +206,7 @@
 		};
 
 		adc1: adc@74c00100 {
-			compatible = "aspeed,adc";
+			compatible = "aspeed,ast10x0-g2-adc";
 			reg = <0x74c00100 0x100>;
 			clocks = <&adc_clk>;
 			resets = <&sysrst SCU1_RESET_ADC>;

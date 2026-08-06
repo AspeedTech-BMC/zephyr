@@ -59,6 +59,15 @@ union adc_data_s {
 	} fields;
 }; /* 00000010~0000001c */
 
+union adc_engine_control1_s {
+	volatile uint32_t value;
+	struct {
+		volatile uint32_t enable_input_buffer : 1;       /*[0-0]*/
+		volatile uint32_t reserved0: 31;                         /*[1-31]*/
+
+	} fields;
+}; /* 00000028 */
+
 union adc_interrupt_bound_s {
 	volatile uint32_t value;
 	struct {
@@ -117,14 +126,16 @@ struct adc_register_s {
 	uint32_t reserved0[1];                          /* 00000008 */
 	union adc_clock_control_s adc_clk_ctrl;         /* 0000000c */
 	union adc_data_s adc_data[4];                   /* 00000010~0000001c */
-	uint32_t reserved1[4];                          /* 00000020~0000002c*/
+	uint32_t reserved1[2];                          /* 00000020~00000024 */
+	union adc_engine_control1_s engine_ctrl1;       /* 00000028 */
+	uint32_t reserved2[1];                          /* 0000002c */
 	union adc_interrupt_bound_s int_bound[8];       /* 00000030~0000004c */
-	uint32_t reserved2[8];                          /* 00000050~0000006c*/
+	uint32_t reserved3[8];                          /* 00000050~0000006c*/
 	union adc_hysteresis_control_s hys_ctrl[8];     /* 00000070~0000008c */
-	uint32_t reserved3[12];                         /* 00000090~000000bc*/
+	uint32_t reserved4[12];                         /* 00000090~000000bc*/
 	union adc_interrupt_source_sel_s int_src_sel;   /* 000000c0 */
 	union adc_compensating_trimming_s comp_trim;    /* 000000c4 */
-	uint32_t reserved4[1];                          /* 000000c8 */
+	uint32_t reserved5[1];                          /* 000000c8 */
 	union adc_global_interrupt_s g_int_status;      /* 000000cc */
 };
 
@@ -148,6 +159,12 @@ struct adc_register_s {
 #define REF_VOLTAGE_1200mV      1
 #define REF_VOLTAGE_EXT_HIGH    2
 #define REF_VOLTAGE_EXT_LOW     3
+
+/* AST10x0 G2 reference_voltage_selection */
+#define REF_VOLTAGE_G2_EXTERNAL          0
+#define REF_VOLTAGE_G2_INTERNAL_1200mV   2
+#define REF_VOLTAGE_G2_EXTERNAL_MIN_MV   1000
+#define REF_VOLTAGE_G2_EXTERNAL_MAX_MV   1800
 
 /* reference_voltage_selection & 1 */
 #define BATTERY_DIVIDE_2_3      0

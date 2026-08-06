@@ -5,6 +5,7 @@
 
 config ADC_ASPEED
 	bool "ASPEED ADC driver"
+	default DT_HAS_ASPEED_ADC_ENABLED || DT_HAS_ASPEED_AST10X0_G2_ADC_ENABLED
 	depends on SOC_FAMILY_ASPEED
 	help
 	  This option enables the ADC driver for ASPEED family of
