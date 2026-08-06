@@ -44,3 +44,12 @@ properties:
       Indicates that the EHCI/XHCI nodes should be relocated to the alternative PCIe controller.
       In this configuration, the VGA and BMC Device functions on PCIe1 are disabled.
       This property is valid only for the PCIe1 controller.
+
+  bridge-aliasing:
+    type: boolean
+    description: |
+      Enable request ID aliasing on the PCIe-to-PCI bridge (AST1150). When enabled,
+      all downstream endpoints (e.g. VGA, EHCI) share the bridge's own request ID
+      instead of using their individual ones. This works around an IOMMU
+      compatibility issue seen on Intel platforms, where the IOMMU does not
+      recognize request IDs from devices behind a PCIe-to-PCI bridge.
