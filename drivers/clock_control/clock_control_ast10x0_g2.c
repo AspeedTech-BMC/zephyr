@@ -223,6 +223,33 @@ static uint32_t ast10x0_g2_get_pll_rate(struct ast10x0_g2_scu *scu, int pll_idx)
 	return ((MHZ(25) * mul) / div);
 }
 
+#define SCU_CLKSEL2_I3CCLK_DIV_MASK		GENMASK(25, 23)
+#define SCU_CLKSEL2_I3CCLK_DIV_SHIFT		23
+
+static uint32_t ast10x0_g2_get_i3cclk_rate(struct ast10x0_g2_scu *scu)
+{
+	uint32_t rate = ast10x0_g2_get_pll_rate(scu, SCU1_CLK_HPLL);
+	uint32_t clk_sel2 = scu->clk_sel2;
+	uint32_t i3cclk_div = (clk_sel2 & SCU_CLKSEL2_I3CCLK_DIV_MASK) >>
+			      SCU_CLKSEL2_I3CCLK_DIV_SHIFT;
+
+	if (!i3cclk_div)
+		i3cclk_div = 2;
+	else
+		i3cclk_div++;
+
+	return (rate / i3cclk_div);
+}
+
+static void ast10x0_g2_configure_i3c_clk(struct ast10x0_g2_scu *scu)
+{
+	uint32_t clk_sel2 = scu->clk_sel2;
+
+	clk_sel2 &= ~SCU_CLKSEL2_I3CCLK_DIV_MASK;
+	clk_sel2 |= FIELD_PREP(SCU_CLKSEL2_I3CCLK_DIV_MASK, 7); /* divide by 8 */
+	scu->clk_sel2 = clk_sel2;
+}
+
 #define SCU_CLKSEL2_HCLK_DIV_MASK		GENMASK(22, 20)
 #define SCU_CLKSEL2_HCLK_DIV_SHIFT		20
 
@@ -426,10 +453,38 @@ static int ast10x0_g2_clock_control_get_rate(const struct device *dev,
 	case SCU1_CLK_HUXCLK:
 		*rate = ast10x0_g2_get_uart_huxclk_rate(scu);
 		break;
+	case SCU1_CLK_GATE_I3C0CLK:
+	case SCU1_CLK_GATE_I3C1CLK:
+	case SCU1_CLK_GATE_I3C2CLK:
+	case SCU1_CLK_GATE_I3C3CLK:
+	case SCU1_CLK_GATE_I3C4CLK:
+	case SCU1_CLK_GATE_I3C5CLK:
+	case SCU1_CLK_GATE_I3C6CLK:
+	case SCU1_CLK_GATE_I3C7CLK:
+	case SCU1_CLK_GATE_I3C8CLK:
+	case SCU1_CLK_GATE_I3C9CLK:
+	case SCU1_CLK_GATE_I3C10CLK:
+	case SCU1_CLK_GATE_I3C11CLK:
+	case SCU1_CLK_GATE_I3C12CLK:
+	case SCU1_CLK_GATE_I3C13CLK:
+	case SCU1_CLK_GATE_I3C14CLK:
+	case SCU1_CLK_GATE_I3C15CLK:
+		*rate = ast10x0_g2_get_i3cclk_rate(scu);
+		break;
 
 	default:
 		return -EINVAL;
 	}
+
+	return 0;
+}
+
+static int ast10x0_g2_clock_control_init(const struct device *dev)
+{
+	const struct clock_ast10x0_g2_config *config = dev->config;
+	struct ast10x0_g2_scu *scu = (struct ast10x0_g2_scu *)config->base;
+
+	ast10x0_g2_configure_i3c_clk(scu);
 
 	return 0;
 }
@@ -444,5 +499,5 @@ static const struct clock_ast10x0_g2_config clock_scu1_config = {
 	.base = DT_REG_ADDR(DT_INST_PARENT(0)),
 };
 
-DEVICE_DT_INST_DEFINE(0, NULL, NULL, NULL, &clock_scu1_config, PRE_KERNEL_1,
-		      CONFIG_CLOCK_CONTROL_INIT_PRIORITY, &aspeed_clk_scu1_api);
+DEVICE_DT_INST_DEFINE(0, ast10x0_g2_clock_control_init, NULL, NULL, &clock_scu1_config,
+		      PRE_KERNEL_1, CONFIG_CLOCK_CONTROL_INIT_PRIORITY, &aspeed_clk_scu1_api);
