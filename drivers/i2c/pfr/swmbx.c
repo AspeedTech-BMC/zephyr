@@ -46,6 +46,7 @@ struct swmbx_fifo_data {
 
 struct swmbx_ctrl_data {
 	uint32_t buffer_size;
+	uint8_t *info;
 	uint8_t *buffer;
 	uint8_t mbx_en;
 	struct swmbx_node node[SWMBX_DEV_COUNT][SWMBX_NODE_COUNT];
@@ -562,8 +563,33 @@ static int swmbx_ctrl_init(const struct device *dev)
 	const struct swmbx_ctrl_config *cfg = DEV_CFG(dev);
 	uint32_t i, j;
 
+#if defined(CONFIG_SOC_AST1040_CM4) || \
+		defined(CONFIG_SOC_AST1080_CM4)
+	/* malloc the buffer */
+	data->buffer = (uint8_t *)(k_malloc(sizeof(uint32_t) * SWMBX_SIZE));
+	if (!data->buffer) {
+		LOG_ERR("i2c could not alloc enough mailbox buffer");
+		return -EINVAL;
+	}
+
+	/* malloc the info buffer */
+	data->info = k_malloc(sizeof(uint32_t) * SWMBX_SIZE);
+	if (!data->info) {
+		LOG_ERR("i2c could not alloc enough mailbox info buffer");
+		if (data->buffer)
+			k_free(data->buffer);
+		return -EINVAL;
+	}
+
+	swmbx_info = data->info;
+#else
 	data->buffer = (uint8_t *)(SWMBX_BUF_BASE);
+#endif
 	data->buffer_size = cfg->buffer_size;
+
+	/* clear buffer value */
+	for (i = 0; i < SWMBX_NODE_COUNT ; i++)
+		data->buffer = 0x0;
 
 	/* clear data structure */
 	for (i = 0; i < SWMBX_DEV_COUNT; i++) {

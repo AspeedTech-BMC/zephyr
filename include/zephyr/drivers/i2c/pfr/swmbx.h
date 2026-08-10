@@ -19,6 +19,8 @@
 #define SWMBX_INFO_BASE	0x7e7b0f00
 #endif
 
+#define SWMBX_SIZE	0x40
+
 #define SWMBX_PROTECT_BITMAP	0x8
 #define SWMBX_NODE_COUNT	0x100
 #define SWMBX_FIFO_COUNT	0x4
