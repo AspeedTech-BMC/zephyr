@@ -588,8 +588,7 @@ static int swmbx_ctrl_init(const struct device *dev)
 	data->buffer_size = cfg->buffer_size;
 
 	/* clear buffer value */
-	for (i = 0; i < SWMBX_NODE_COUNT ; i++)
-		data->buffer = 0x0;
+	memset(data->buffer, 0, SWMBX_NODE_COUNT);
 
 	/* clear data structure */
 	for (i = 0; i < SWMBX_DEV_COUNT; i++) {
