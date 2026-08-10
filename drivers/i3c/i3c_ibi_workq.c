@@ -173,12 +173,31 @@ static void i3c_ibi_work_handler(struct k_work *work)
 		}
 		break;
 
-	case I3C_IBI_HOTJOIN:
+	case I3C_IBI_HOTJOIN: {
+		const struct i3c_driver_config *config =
+			(const struct i3c_driver_config *)ibi_node->controller->config;
+
 		ret = i3c_do_daa(ibi_node->controller);
 		if ((ret != 0) && (ret != -EBUSY)) {
 			LOG_ERR("i3c_do_daa returns %d", ret);
 		}
+
+		/*
+		 * Wait until ENTDAA is done polling for further joiners
+		 * before touching any target's deferred init, since a
+		 * target's driver may act on the bus (e.g. i3c_ibi_enable())
+		 * and bus events stay disabled until DAA fully completes
+		 * (see i3c_bus_init()).
+		 */
+		for (int i = 0; i < config->dev_list.num_i3c; i++) {
+			struct i3c_device_desc *desc = &config->dev_list.i3c[i];
+
+			if (desc->dynamic_addr != 0U) {
+				i3c_device_init_deferred(desc);
+			}
+		}
 		break;
+	}
 
 	case I3C_IBI_WORKQUEUE_CB:
 		if (ibi_node->work_cb != NULL) {

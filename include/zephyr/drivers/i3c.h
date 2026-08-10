@@ -1027,6 +1027,16 @@ struct i3c_device_desc {
 	 */
 	uint8_t dynamic_addr;
 
+	/**
+	 * Set by i3c_device_init_deferred() the first time it calls
+	 * device_init() on @ref dev, whatever the result. This is separate
+	 * from device_is_ready(): a device that failed initialization still
+	 * reports not-ready, and device_init() has no re-entry guard of its
+	 * own, so without this flag every future call to
+	 * i3c_device_init_deferred() would re-run the same failed init().
+	 */
+	bool deferred_init_done;
+
 #if defined(CONFIG_I3C_USE_GROUP_ADDR) || defined(__DOXYGEN__)
 	/**
 	 * Group address for this target device. Set during:
@@ -2208,6 +2218,33 @@ int i3c_hotjoin_disable(const struct device *dev);
  * @retval -EIO General Input/Output error.
  */
 int i3c_device_basic_info_get(struct i3c_device_desc *target);
+
+/**
+ * @brief Initialize a target's devicetree-declared driver once attached.
+ *
+ * A devicetree child of an I3C bus that can only be discovered via ENTDAA
+ * (no static address) has no dynamic address, and therefore nothing to
+ * talk to, until Dynamic Address Assignment actually happens - which may
+ * be long after boot for a Hot-Join target. If such a node's driver
+ * initializes eagerly at boot (the Zephyr default), any of its init-time
+ * calls that require a dynamic address (e.g. i3c_ibi_enable()) fail and
+ * the device is marked not ready permanently, since Zephyr only runs a
+ * device's init function once.
+ *
+ * Marking the devicetree node ``zephyr,deferred-init`` skips that
+ * eager boot-time init; this function is the other half - it should be
+ * called by controller drivers once @p target has a confirmed dynamic
+ * address (SETDASA or ENTDAA, at boot or via Hot-Join) so the device
+ * initializes at the right time instead. It is a no-op for targets
+ * whose driver already initialized successfully. If a target's driver
+ * never became ready and its node also was not declared with
+ * ``zephyr,deferred-init``, that is almost certainly a missing
+ * ``zephyr,deferred-init`` on the node - this function logs a warning
+ * for that case rather than silently leaving the device unusable.
+ *
+ * @param target I3C target device descriptor with a valid dynamic_addr.
+ */
+void i3c_device_init_deferred(struct i3c_device_desc *target);
 
 /*
  * This needs to be after declaration of struct i3c_driver_api,

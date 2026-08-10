@@ -583,6 +583,46 @@ out:
 	return ret;
 }
 
+void i3c_device_init_deferred(struct i3c_device_desc *target)
+{
+	int ret;
+
+	/*
+	 * device_is_ready() alone cannot gate this: it folds in the init
+	 * result, so a target whose driver failed to initialize once looks
+	 * identical to one never attempted, and device_init() has no
+	 * re-entry guard of its own - every Hot-Join rescans all attached
+	 * targets, so without deferred_init_done a once-failed target would
+	 * have its init() re-run on every unrelated Hot-Join thereafter.
+	 * device_is_ready() is still checked to skip a target whose driver
+	 * already initialized successfully (e.g. normal boot-time init for
+	 * a node without `zephyr,deferred-init`), so a healthy device does
+	 * not trip the -ENOENT warning below on its first sweep.
+	 */
+	if (target->dev == NULL || target->deferred_init_done ||
+	    device_is_ready(target->dev)) {
+		return;
+	}
+	target->deferred_init_done = true;
+
+	ret = device_init(target->dev);
+	if (ret == -ENOENT) {
+		/*
+		 * device_init() found no matching entry in the deferred-init
+		 * table. The near-certain cause is a devicetree node that
+		 * never got `zephyr,deferred-init;` - it initialized too
+		 * early, before this target had a dynamic address, and has
+		 * no way to retry.
+		 */
+		LOG_WRN("%s never became ready and is not zephyr,deferred-init; "
+			"add that property to its devicetree node so it "
+			"initializes now that it has a dynamic address",
+			target->dev->name);
+	} else if (ret != 0) {
+		LOG_ERR("Deferred init of %s failed (%d)", target->dev->name, ret);
+	}
+}
+
 /**
  * @brief Do SETDASA to set static address as dynamic address.
  *
@@ -723,6 +763,8 @@ int i3c_bus_init(const struct device *dev, const struct i3c_dev_list *dev_list)
 		if (desc->dynamic_addr == 0U) {
 			continue;
 		}
+
+		i3c_device_init_deferred(desc);
 
 		ret = i3c_device_basic_info_get(desc);
 		if (ret != 0) {

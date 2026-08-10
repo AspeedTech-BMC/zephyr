@@ -1180,11 +1180,26 @@ static int mipi_i3c_hci_target_pending_read_notify_api(const struct device *dev,
 static void mipi_i3c_hci_hj_work_handler(struct k_work *work)
 {
 	struct i3c_hci *hci = CONTAINER_OF(work, struct i3c_hci, hj_work);
+	const struct i3c_hci_config *config = hci->dev->config;
 	int ret;
 
 	ret = mipi_i3c_hci_do_daa(hci->dev);
 	if (ret != 0) {
 		LOG_DBG("hot-join DAA failed: %d", ret);
+	}
+
+	/*
+	 * Wait until ENTDAA is done polling for further joiners before
+	 * touching any target's deferred init, since a target's driver may
+	 * act on the bus (e.g. i3c_ibi_enable()) and bus events stay
+	 * disabled until DAA fully completes (see i3c_bus_init()).
+	 */
+	for (int i = 0; i < config->common.dev_list.num_i3c; i++) {
+		struct i3c_device_desc *desc = &config->common.dev_list.i3c[i];
+
+		if (desc->dynamic_addr != 0U) {
+			i3c_device_init_deferred(desc);
+		}
 	}
 }
 
