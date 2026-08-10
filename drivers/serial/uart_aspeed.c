@@ -10,6 +10,7 @@
 #include <zephyr/drivers/clock_control.h>
 #include <zephyr/drivers/pinctrl.h>
 #include <zephyr/kernel.h>
+#include <zephyr/cache.h>
 #include <zephyr/logging/log.h>
 
 LOG_MODULE_REGISTER(uart);
@@ -152,8 +153,8 @@ enum udma_buffer_size_code {
 static uintptr_t udma_base = DT_REG_ADDR_BY_IDX(DT_INST(0, aspeed_udma), 0);
 static bool udma_init;
 static const struct device *udma_udev[UDMA_MAX_CHANNEL];
-static uint8_t udma_tx_rb[UDMA_MAX_CHANNEL][UDMA_TX_RBSZ] NON_CACHED_BSS_ALIGN16;
-static uint8_t udma_rx_rb[UDMA_MAX_CHANNEL][UDMA_RX_RBSZ] NON_CACHED_BSS_ALIGN16;
+static uint8_t udma_tx_rb[UDMA_MAX_CHANNEL][UDMA_TX_RBSZ] __aligned(CONFIG_DCACHE_LINE_SIZE);
+static uint8_t udma_rx_rb[UDMA_MAX_CHANNEL][UDMA_RX_RBSZ] __aligned(CONFIG_DCACHE_LINE_SIZE);
 static struct k_spinlock udma_lock;
 
 struct uart_aspeed_config {
@@ -196,6 +197,57 @@ struct uart_aspeed_data {
 	uint32_t iir_cache;
 };
 
+static void uart_aspeed_udma_cache_range(void *addr, size_t len,
+					 int (*cache_op)(void *addr, size_t size))
+{
+	size_t line_size;
+	uintptr_t start, end;
+
+	if (!addr || !len)
+		return;
+
+	line_size = sys_cache_data_line_size_get();
+	if (!line_size) {
+		(void)cache_op(addr, len);
+		return;
+	}
+
+	start = ROUND_DOWN((uintptr_t)addr, line_size);
+	end = ROUND_UP((uintptr_t)addr + len, line_size);
+
+	(void)cache_op((void *)start, end - start);
+}
+
+static void uart_aspeed_udma_ring_cache_range(uint8_t *buf, size_t buf_size,
+					      uint32_t offset, size_t len,
+					      int (*cache_op)(void *addr, size_t size))
+{
+	size_t first_len;
+
+	if (!len)
+		return;
+
+	first_len = MIN(len, buf_size - offset);
+	uart_aspeed_udma_cache_range(&buf[offset], first_len, cache_op);
+
+	if (len > first_len)
+		uart_aspeed_udma_cache_range(buf, len - first_len, cache_op);
+}
+
+static void uart_aspeed_udma_tx_flush(struct uart_aspeed_data *data,
+				      uint32_t offset, size_t len)
+{
+	uart_aspeed_udma_ring_cache_range(data->tx_rb, UDMA_TX_RBSZ, offset,
+					  len, sys_cache_data_flush_range);
+}
+
+static void uart_aspeed_udma_rx_invd(struct uart_aspeed_data *data,
+				     uint32_t offset, size_t len)
+{
+	uart_aspeed_udma_ring_cache_range(data->rx_rb, UDMA_RX_RBSZ, offset,
+					  len, sys_cache_data_invd_range);
+}
+
 static int uart_aspeed_poll_in(const struct device *dev, unsigned char *c)
 {
 	int rc = -1;
@@ -209,6 +261,7 @@ static int uart_aspeed_poll_in(const struct device *dev, unsigned char *c)
 		wptr = sys_read32(udma_base + UDMA_CHX_RX_WR_PTR(dev_cfg->dma_ch));
 
 		if (rptr != wptr) {
+			uart_aspeed_udma_rx_invd(data, rptr, 1);
 			*c = data->rx_rb[rptr];
 			rc = 0;
 			sys_write32((rptr + 1) % UDMA_RX_RBSZ, udma_base + UDMA_CHX_RX_RD_PTR(dev_cfg->dma_ch));
@@ -241,6 +294,7 @@ static void uart_aspeed_poll_out(const struct device *dev,
 		} while (((wptr + 1) % UDMA_TX_RBSZ) == rptr);
 
 		data->tx_rb[wptr] = c;
+		uart_aspeed_udma_tx_flush(data, wptr, 1);
 		sys_write32((wptr + 1) % UDMA_TX_RBSZ, udma_base + UDMA_CHX_TX_WR_PTR(dev_cfg->dma_ch));
 	} else {
 		while (!(sys_read32(dev_cfg->base + UART_LSR) & UART_LSR_THRE))
@@ -374,6 +428,7 @@ static int uart_aspeed_fifo_fill(const struct device *dev,
 {
 	int i;
 	uint32_t rptr = 0, wptr = 0;
+	uint32_t flush_start;
 	struct uart_aspeed_data *data = (struct uart_aspeed_data *)dev->data;
 	struct uart_aspeed_config *dev_cfg = (struct uart_aspeed_config *)dev->config;
 	k_spinlock_key_t key;
@@ -383,6 +438,7 @@ static int uart_aspeed_fifo_fill(const struct device *dev,
 
 		rptr = sys_read32(udma_base + UDMA_CHX_TX_RD_PTR(dev_cfg->dma_ch));
 		wptr = sys_read32(udma_base + UDMA_CHX_TX_WR_PTR(dev_cfg->dma_ch));
+		flush_start = wptr;
 
 		for (i = 0; i < size; ++i) {
 			if (((wptr + 1) % UDMA_TX_RBSZ) == rptr)
@@ -392,8 +448,10 @@ static int uart_aspeed_fifo_fill(const struct device *dev,
 			wptr = (wptr + 1) % UDMA_TX_RBSZ;
 		}
 
-		if (i)
+		if (i) {
+			uart_aspeed_udma_tx_flush(data, flush_start, i);
 			sys_write32(wptr, udma_base + UDMA_CHX_TX_WR_PTR(dev_cfg->dma_ch));
+		}
 
 		k_spin_unlock(&udma_lock, key);
 	} else {
@@ -417,6 +475,7 @@ static int uart_aspeed_fifo_read(const struct device *dev, uint8_t *rx_data,
 {
 	int i;
 	uint32_t rptr = 0, wptr = 0;
+	size_t rx_len;
 	struct uart_aspeed_data *data = (struct uart_aspeed_data *)dev->data;
 	struct uart_aspeed_config *dev_cfg = (struct uart_aspeed_config *)dev->config;
 	k_spinlock_key_t key;
@@ -426,6 +485,11 @@ static int uart_aspeed_fifo_read(const struct device *dev, uint8_t *rx_data,
 
 		rptr = sys_read32(udma_base + UDMA_CHX_RX_RD_PTR(dev_cfg->dma_ch));
 		wptr = sys_read32(udma_base + UDMA_CHX_RX_WR_PTR(dev_cfg->dma_ch));
+
+		if (rptr != wptr) {
+			rx_len = (wptr >= rptr) ? (wptr - rptr) : (UDMA_RX_RBSZ - rptr + wptr);
+			uart_aspeed_udma_rx_invd(data, rptr, MIN(size, rx_len));
+		}
 
 		for (i = 0; i < size; ++i) {
 			if (rptr == wptr)
