@@ -1145,7 +1145,7 @@ static void aspeed_spi_timing_calibration(const struct device *dev,
 	aspeed_spi_nor_transceive_user(dev, NULL, op_info);
 
 	if (!aspeed_spi_calibration_enable(calib_buf, SPI_CALIB_LEN)) {
-		LOG_ERR("Flash data is monotonous, skip calibration.");
+		LOG_WRN("Flash data is monotonous, skip calibration.");
 		goto unlock_calib;
 	}
 
