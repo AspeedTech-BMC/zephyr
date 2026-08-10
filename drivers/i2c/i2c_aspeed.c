@@ -1715,6 +1715,9 @@ void ast2700_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, u
 		if (data->slave_get_cfg) {
 			data->slave_cb->read_requested(data->slave_get_cfg
 			, &data->slave_dma_buf[0]);
+			/* cache flush to DRAM */
+			cache_data_flush_range((&data->slave_dma_buf[0])
+			, 1);
 		}
 		LOG_DBG("tx [%02x]", data->slave_dma_buf[0]);
 		sys_write32(AST_I2CS_SET_TX_DMA_LEN(1)
@@ -1726,6 +1729,9 @@ void ast2700_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, u
 		if (data->slave_get_cfg) {
 			data->slave_cb->read_processed(data->slave_get_cfg
 			, &data->slave_dma_buf[0]);
+			/* cache flush to DRAM */
+			cache_data_flush_range((&data->slave_dma_buf[0])
+			, 1);
 		}
 		LOG_DBG("tx [%02x]", data->slave_dma_buf[0]);
 		sys_write32(AST_I2CS_SET_TX_DMA_LEN(1)
@@ -1760,6 +1766,9 @@ void ast2700_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, u
 		if (data->slave_get_cfg) {
 			data->slave_cb->read_requested(data->slave_get_cfg
 			, &data->slave_dma_buf[0]);
+			/* cache flush to DRAM */
+			cache_data_flush_range((&data->slave_dma_buf[0])
+			, 1);
 		}
 		LOG_DBG("tx [%02x]", data->slave_dma_buf[0]);
 		sys_write32(AST_I2CS_SET_TX_DMA_LEN(1)
@@ -1789,6 +1798,9 @@ void ast2700_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, u
 		if (data->slave_get_cfg) {
 			data->slave_cb->read_requested(data->slave_get_cfg
 			, &data->slave_dma_buf[0]);
+			/* cache flush to DRAM */
+			cache_data_flush_range((&data->slave_dma_buf[0])
+			, 1);
 		}
 		LOG_DBG("tx [%02x]", data->slave_dma_buf[0]);
 		sys_write32(AST_I2CS_SET_TX_DMA_LEN(1)
@@ -1828,6 +1840,9 @@ void ast2700_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, u
 		if (data->slave_get_cfg) {
 			data->slave_cb->read_requested(data->slave_get_cfg
 			, &data->slave_dma_buf[0]);
+			/* cache flush to DRAM */
+			cache_data_flush_range((&data->slave_dma_buf[0])
+			, 1);
 		}
 		LOG_DBG("tx [%02x]", data->slave_dma_buf[0]);
 		sys_write32(AST_I2CS_SET_TX_DMA_LEN(1)
@@ -1872,6 +1887,9 @@ void ast2700_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, u
 		if (data->slave_get_cfg) {
 			data->slave_cb->read_requested(data->slave_get_cfg
 			, &data->slave_dma_buf[0]);
+			/* cache flush to DRAM */
+			cache_data_flush_range((&data->slave_dma_buf[0])
+			, 1);
 		}
 		LOG_DBG("tx [%02x]", data->slave_dma_buf[0]);
 		sys_write32(AST_I2CS_SET_TX_DMA_LEN(1)
@@ -1886,6 +1904,9 @@ void ast2700_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, u
 		if (data->slave_get_cfg) {
 			data->slave_cb->read_requested(data->slave_get_cfg
 			, &data->slave_dma_buf[0]);
+			/* cache flush to DRAM */
+			cache_data_flush_range((&data->slave_dma_buf[0])
+			, 1);
 		}
 		LOG_DBG("tx [%02x]", data->slave_dma_buf[0]);
 		sys_write32(AST_I2CS_SET_TX_DMA_LEN(1)
