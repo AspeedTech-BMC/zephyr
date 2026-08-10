@@ -934,7 +934,7 @@ static int uart_aspeed_init(const struct device *dev)
 
 		/* TX DMA init */
 		data->tx_rb = udma_tx_rb[dev_cfg->dma_ch];
-		data->tx_rb_addr = TO_PHY_ADDR(data->tx_rb);
+		data->tx_rb_addr = TO_PHY_ADDR((uintptr_t)data->tx_rb);
 		sys_write32(data->tx_rb_addr, udma_base + UDMA_CHX_TX_BUF_BASE(dev_cfg->dma_ch));
 
 		reg = sys_read32(udma_base + UDMA_CHX_TX_CTRL(dev_cfg->dma_ch));
@@ -949,7 +949,7 @@ static int uart_aspeed_init(const struct device *dev)
 
 		/* RX DMA init */
 		data->rx_rb = udma_rx_rb[dev_cfg->dma_ch];
-		data->rx_rb_addr = TO_PHY_ADDR(data->rx_rb);
+		data->rx_rb_addr = TO_PHY_ADDR((uintptr_t)data->rx_rb);
 		sys_write32(data->rx_rb_addr, udma_base + UDMA_CHX_RX_BUF_BASE(dev_cfg->dma_ch));
 
 		reg = sys_read32(udma_base + UDMA_CHX_RX_CTRL(dev_cfg->dma_ch));
