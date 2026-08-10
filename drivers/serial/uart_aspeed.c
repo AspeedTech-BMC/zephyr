@@ -108,6 +108,8 @@ enum UART_IIR_ACTIVE_INT {
 #define UDMA_CHX_RX_WR_PTR(x)   (0x54 + UDMA_CHX_OFF(x))
 #define UDMA_CHX_RX_BUF_BASE(x) (0x58 + UDMA_CHX_OFF(x))
 #define UDMA_CHX_RX_CTRL(x)     (0x5c + UDMA_CHX_OFF(x))
+#define UDMA_CHX_HW_ADDR_H(x)	(0x240 + ((x) * 4))
+#define UDMA_CHX_HW_ADDR_L(x)	(0x280 + ((x) * 4))
 
 /* UDMA_MISC */
 #define UDMA_MISC_RX_BUFSZ_MASK         GENMASK(3, 2)
@@ -846,9 +848,25 @@ static int uart_aspeed_init(const struct device *dev)
 	pinctrl_apply_state(dev_cfg->pcfg, PINCTRL_STATE_DEFAULT);
 
 	if (dev_cfg->dma) {
+#if defined(CONFIG_SOC_SERIES_AST10x0_G2)
+		uint64_t uart_base_addr;
+#endif
+
 		udma_aspeed_init();
 
 		udma_udev[dev_cfg->dma_ch] = dev;
+
+#if defined(CONFIG_SOC_SERIES_AST10x0_G2)
+		/*
+		 * Only AST10x0-G2 UDMA channels are not hardwired to a fixed
+		 * UART and need the target UART bus address programmed.
+		 */
+		uart_base_addr = TO_PHY_ADDR(dev_cfg->base);
+		sys_write32((uint32_t)(uart_base_addr >> 32),
+				udma_base + UDMA_CHX_HW_ADDR_H(dev_cfg->dma_ch));
+		sys_write32((uint32_t)uart_base_addr,
+				udma_base + UDMA_CHX_HW_ADDR_L(dev_cfg->dma_ch));
+#endif
 
 		/* TX DMA init */
 		data->tx_rb = udma_tx_rb[dev_cfg->dma_ch];
