@@ -89,6 +89,7 @@ int spim_remove_allow_command(const struct device *dev, uint8_t cmd);
 int spim_lock_allow_command_table(const struct device *dev, uint8_t cmd, uint32_t flag);
 void spim_lock_common(const struct device *dev);
 void spim_dump_addr_priv_table(const struct device *dev);
+void spim_addr_priv_remove_all(const struct device *dev);
 void spim_monitor_enable(const struct device *dev, bool enable);
 
 struct spim_log_info {

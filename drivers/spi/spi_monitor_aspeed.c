@@ -252,6 +252,7 @@ struct aspeed_spim_soc_ops {
 	void (*mux_config)(const struct device *dev, enum spim_ext_mux_sel mux_sel);
 	void (*dump_addr_priv)(const struct device *dev);
 	void (*addr_priv_lock)(const struct device *dev);
+	void (*addr_priv_remove_all)(const struct device *dev);
 	void (*misc_lock)(const struct device *dev);
 };
 
@@ -917,6 +918,21 @@ end:
 	release_spim_device(dev);
 
 	return ret;
+}
+
+static void ast1060_addr_priv_remove_all(const struct device *dev)
+{
+	int ret;
+
+	ret = spim_address_privilege_config(dev, FLAG_ADDR_PRIV_READ_SELECT,
+					     FLAG_ADDR_PRIV_ENABLE, 0x0, MB(256));
+	if (ret)
+		LOG_WRN("read address privilege table is locked, not cleared.");
+
+	ret = spim_address_privilege_config(dev, FLAG_ADDR_PRIV_WRITE_SELECT,
+					     FLAG_ADDR_PRIV_ENABLE, 0x0, MB(256));
+	if (ret)
+		LOG_WRN("write address privilege table is locked, not cleared.");
 }
 
 static void ast1060_addr_priv_init(const struct device *dev)
@@ -1776,6 +1792,14 @@ void spim_dump_addr_priv_table(const struct device *dev)
 		config->ops->dump_addr_priv(dev);
 }
 
+void spim_addr_priv_remove_all(const struct device *dev)
+{
+	const struct aspeed_spim_config *config = dev->config;
+
+	if (config->ops->addr_priv_remove_all)
+		config->ops->addr_priv_remove_all(dev);
+}
+
 /* dump command information recored in allow command table */
 void spim_dump_allow_command_table(const struct device *dev)
 {
@@ -2350,6 +2374,7 @@ static const __maybe_unused struct aspeed_spim_soc_ops ast1060_spim_ops = {
 	.mux_config        = ast1060_ext_mux_config,
 	.dump_addr_priv    = ast1060_dump_addr_priv_table,
 	.addr_priv_lock    = ast1060_addr_priv_lock,
+	.addr_priv_remove_all = ast1060_addr_priv_remove_all,
 	.misc_lock         = ast1060_misc_lock,
 };
 
@@ -2364,6 +2389,7 @@ static const __maybe_unused struct aspeed_spim_soc_ops ast1080_spim_ops = {
 	.mux_config        = ast1080_ext_mux_config,
 	.dump_addr_priv    = ast2700_dump_addr_priv_table,
 	.addr_priv_lock    = ast2700_addr_priv_table_lock,
+	.addr_priv_remove_all = ast2700_addr_priv_remove_all,
 	.misc_lock         = NULL,
 };
 
@@ -2378,6 +2404,7 @@ static const __maybe_unused struct aspeed_spim_soc_ops ast2700_spim_ops = {
 	.mux_config        = NULL,
 	.dump_addr_priv    = ast2700_dump_addr_priv_table,
 	.addr_priv_lock    = ast2700_addr_priv_table_lock,
+	.addr_priv_remove_all = ast2700_addr_priv_remove_all,
 	.misc_lock         = NULL,
 };
 

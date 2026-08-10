@@ -117,6 +117,7 @@ int spim_add_allow_command(const struct device *dev, uint8_t cmd, uint32_t flag)
 int spim_remove_allow_command(const struct device *dev, uint8_t cmd);
 int spim_lock_allow_command_table(const struct device *dev, uint8_t cmd, uint32_t flag);
 void spim_dump_addr_priv_table(const struct device *dev);
+void spim_addr_priv_remove_all(const struct device *dev);
 int spim_address_privilege_config(const struct device *dev,
 	enum addr_priv_rw_select rw_select, enum addr_priv_op priv_op,
 	mm_reg_t addr, uint32_t len);

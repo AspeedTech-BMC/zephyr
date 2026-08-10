@@ -172,6 +172,18 @@ static int dump_addr_priv_table(const struct shell *shell, size_t argc, char *ar
 	return 0;
 }
 
+static int clear_addr_priv_table(const struct shell *shell, size_t argc, char *argv[])
+{
+	if (!spim_device) {
+		shell_error(shell, "Please set the device first.");
+		return -ENODEV;
+	}
+
+	spim_addr_priv_remove_all(spim_device);
+
+	return 0;
+}
+
 #if defined(CONFIG_SOC_AST1060)
 static int addr_parse_helper(const struct shell *shell, size_t *argc,
 		char **argv[], bool *enable, mm_reg_t *addr, uint32_t *len)
@@ -388,6 +400,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_spim_cmds,
 
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_spim_addr,
 	SHELL_CMD_ARG(dump, NULL, "\"dump\"", dump_addr_priv_table, 1, 0),
+	SHELL_CMD_ARG(clear, NULL, "\"clear\" remove all address privilege table entries",
+		clear_addr_priv_table, 1, 0),
 #if defined(CONFIG_SOC_AST1060)
 	SHELL_CMD_ARG(read, NULL, "<enable/disable> <addr> <len>",
 		read_addr_priv_table_config, 4, 0),
