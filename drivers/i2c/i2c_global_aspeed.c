@@ -21,15 +21,6 @@ LOG_MODULE_REGISTER(i2c_global);
 #define ASPEED_I2CG_CONTROL		0x0C
 #define ASPEED_I2CG_NEW_CLK_DIV	0x10
 
-#if defined(CONFIG_SOC_AST1040_CM4) || \
-	defined(CONFIG_SOC_AST1080_CM4)
-#define ASPEED_I2C_SRAM_BASE		0x74c19000
-#define ASPEED_I2C_SRAM_SIZE		0x40
-#else
-#define ASPEED_I2C_SRAM_BASE		0x7e7b0e00
-#define ASPEED_I2C_SRAM_SIZE		0x40
-#endif
-
 #define CLK_NEW_MODE		BIT(1)
 #define REG_NEW_MODE		BIT(2)
 #define ISSUE_NAK_EMPTY	BIT(4)
@@ -79,8 +70,6 @@ static int i2c_global_init(const struct device *dev)
 {
 	struct i2c_global_config *config = DEV_CFG(dev);
 	uint32_t i2c_global_base = config->base;
-	uint32_t *base = (uint32_t *)ASPEED_I2C_SRAM_BASE;
-	uint32_t chip_id = 0;
 
 	/* deassert scu for i2c controller */
 	reset_line_deassert_dt(&config->reset);
@@ -89,30 +78,6 @@ static int i2c_global_init(const struct device *dev)
 	/* divider parameter */
 	sys_write32(config->clk_divider, i2c_global_base + ASPEED_I2CG_NEW_CLK_DIV);
 	LOG_DBG("i2c divid %x\n", sys_read32(i2c_global_base + ASPEED_I2CG_NEW_CLK_DIV));
-
-#if defined(CONFIG_SOC_AST2700_SSP) || \
-	defined(CONFIG_SOC_AST2700_A1_SSP) || \
-	defined(CONFIG_SOC_AST2705_SSP) || \
-	defined(CONFIG_SOC_AST1040_CM4) || \
-	defined(CONFIG_SOC_AST1080_CM4)
-
-	chip_id = AST2700ID;
-
-#else
-	uint64_t rev_id = 0x0;
-	size_t len;
-
-	/* check chip id*/
-	len = hwinfo_get_device_id((uint8_t *)&rev_id, sizeof(rev_id));
-	chip_id = ((uint32_t)rev_id & 0xFF000000);
-#endif
-
-	/* skip i2c mailbox sram initial when the zephyr is running on co-processer */
-	if (chip_id != AST2600ID && chip_id != AST2700ID) {
-		/* initial i2c sram region */
-		for (int i = 0; i < ASPEED_I2C_SRAM_SIZE; i++)
-			*(base + i) = 0;
-	}
 
 	return 0;
 }
