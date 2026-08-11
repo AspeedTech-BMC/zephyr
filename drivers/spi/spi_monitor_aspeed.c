@@ -1431,8 +1431,6 @@ void ast2700_spim_blocked_log_parser(const struct device *dev)
 	uint32_t log;
 	uint32_t len;
 
-	acquire_spim_device(dev);
-
 	len = (sys_read32(config->ctrl_base + SPIM_CTRL) &
 	       SPIM_BLOCK_FIFO_LEN) >> 24;
 	if (len > 4)
@@ -1465,8 +1463,6 @@ void ast2700_spim_blocked_log_parser(const struct device *dev)
 
 		len--;
 	}
-
-	release_spim_device(dev);
 }
 
 static uint32_t ast2700_addr_priv_region_overlay(const struct device *dev,
