@@ -736,6 +736,52 @@ static int aspeed_i3c_ibi_disable(const struct device *dev,
 	return 0;
 }
 
+static int aspeed_i3c_hotjoin_enable(const struct device *dev)
+{
+	struct aspeed_i3c_data *data = dev->data;
+	uintptr_t base = data->config->base;
+	uint32_t reg;
+
+	/*
+	 * Hot-Join arrives as an IBI, and aspeed_i3c_ibi_enable() is the only
+	 * other place that turns INTR_IBI_THLD_STAT on - it only runs once
+	 * some target's own IBI gets enabled. A Hot-Join-only target (no
+	 * static address, not yet on the bus) never reaches that path on its
+	 * own, so this must be enabled independently here.
+	 */
+	reg = sys_read32(base + INTR_STATUS_EN);
+	reg |= INTR_IBI_THLD_STAT;
+	sys_write32(reg, base + INTR_STATUS_EN);
+
+	reg = sys_read32(base + INTR_SIGNAL_EN);
+	reg |= INTR_IBI_THLD_STAT;
+	sys_write32(reg, base + INTR_SIGNAL_EN);
+
+	sys_write32(sys_read32(base + DEVICE_CTRL) & ~DEV_CTRL_HOT_JOIN_NACK,
+		    base + DEVICE_CTRL);
+
+	return 0;
+}
+
+static int aspeed_i3c_hotjoin_disable(const struct device *dev)
+{
+	struct aspeed_i3c_data *data = dev->data;
+	uintptr_t base = data->config->base;
+
+	/*
+	 * Leave INTR_IBI_THLD_STAT enabled: it is shared with regular SIR
+	 * processing for any target that already has IBI enabled, and this
+	 * driver has no subscriber refcount to tell it is now safe to turn
+	 * off. Rejecting Hot-Join at the protocol level is enough on its
+	 * own - the IBI queue simply never gets a Hot-Join entry once this
+	 * bit is set.
+	 */
+	sys_write32(sys_read32(base + DEVICE_CTRL) | DEV_CTRL_HOT_JOIN_NACK,
+		    base + DEVICE_CTRL);
+
+	return 0;
+}
+
 static void aspeed_i3c_start_xfer(struct aspeed_i3c_data *data, struct aspeed_i3c_xfer *xfer)
 {
 	struct aspeed_i3c_cmd *cmd;
@@ -1723,8 +1769,7 @@ static int aspeed_i3c_init(const struct device *dev)
 
 	sys_write32(IBI_REQ_REJECT_ALL, config->base + IBI_MR_REQ_REJECT);
 	sys_write32(IBI_REQ_REJECT_ALL, config->base + IBI_SIR_REQ_REJECT);
-	sys_write32(sys_read32(config->base + DEVICE_CTRL) | DEV_CTRL_HOT_JOIN_NACK,
-		    config->base + DEVICE_CTRL);
+	aspeed_i3c_hotjoin_disable(dev);
 
 	ret = i3c_addr_slots_init(dev);
 	if (ret) {
@@ -1752,8 +1797,7 @@ static int aspeed_i3c_init(const struct device *dev)
 	}
 
 	/* Enable Hot-Join now */
-	sys_write32(sys_read32(config->base + DEVICE_CTRL) & ~DEV_CTRL_HOT_JOIN_NACK,
-		    config->base + DEVICE_CTRL);
+	aspeed_i3c_hotjoin_enable(dev);
 
 	return 0;
 }
@@ -1959,6 +2003,8 @@ static struct i3c_driver_api aspeed_i3c_driver_api = {
 	.i3c_xfers = aspeed_i3c_priv_xfer,
 	.ibi_enable = aspeed_i3c_ibi_enable,
 	.ibi_disable = aspeed_i3c_ibi_disable,
+	.hotjoin_enable = aspeed_i3c_hotjoin_enable,
+	.hotjoin_disable = aspeed_i3c_hotjoin_disable,
 #ifdef CONFIG_I3C_USE_IBI
 	.target_pending_read_notify = aspeed_i3c_target_pending_read_notify,
 	.ibi_raise = aspeed_i3c_target_ibi_raise,
