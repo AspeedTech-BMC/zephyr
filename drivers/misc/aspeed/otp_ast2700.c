@@ -127,9 +127,17 @@ LOG_MODULE_REGISTER(otp_ast2700, CONFIG_LOG_DEFAULT_LEVEL);
 
 enum otp_error_code {
 	OTP_SUCCESS,
-	OTP_READ_FAIL,
-	OTP_PROG_FAIL,
-	OTP_CMP_FAIL,
+
+	/*
+	 * Dedicated error codes for OTP_STATUS[7:4] command results, kept
+	 * out of the POSIX errno range so callers can tell them apart from
+	 * generic I/O errors.
+	 */
+	OTP_CMD_ERR_BASE = 200,
+	OTP_CMD_ERR_FAIL,           /* prog fail or soak limit exceeded */
+	OTP_CMD_ERR_CMP_FAIL,       /* compare mismatch */
+	OTP_CMD_ERR_REGION_FAIL,    /* region write/read protected */
+	OTP_CMD_ERR_MASTER_FAIL,    /* master protection error */
 };
 
 enum aspeed_otp_master_id {
@@ -167,17 +175,39 @@ static int wait_complete(const struct device *dev)
 {
 	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
 	uint32_t val;
+	uint32_t addr;
+	uint32_t cmd_sts;
 	bool done;
 
-	done = WAIT_FOR((val = sys_read32(cfg->base + OTP_STATUS)) == 0x0, OTP_TIMEOUT_US,
-			k_busy_wait(1));
-
+	done = WAIT_FOR(!((val = sys_read32(cfg->base + OTP_STATUS)) & OTP_STS_BUSY),
+			OTP_TIMEOUT_US, k_busy_wait(1));
 	if (!done) {
-		LOG_WRN("timeout. sts:0x%x", val);
+		LOG_WRN("%s: timeout. sts:0x%x", __func__, val);
 		return -ETIMEDOUT;
 	}
 
-	return 0;
+	addr = sys_read32(cfg->base + OTP_ADDR);
+
+	cmd_sts = OTP_GET_CMD_STS(val);
+	switch (cmd_sts) {
+	case OTP_STS_PASS:
+		return OTP_SUCCESS;
+	case OTP_STS_FAIL:
+		LOG_ERR("%s: prog fail or soak limit exceeded at addr 0x%x", __func__, addr);
+		return -OTP_CMD_ERR_FAIL;
+	case OTP_STS_CMP_FAIL:
+		LOG_ERR("%s: compare mismatch at addr 0x%x", __func__, addr);
+		return -OTP_CMD_ERR_CMP_FAIL;
+	case OTP_STS_REGION_FAIL:
+		LOG_ERR("%s: region write/read protected at addr 0x%x", __func__, addr);
+		return -OTP_CMD_ERR_REGION_FAIL;
+	case OTP_STS_MASTER_FAIL:
+		LOG_ERR("%s: master protection error at addr 0x%x", __func__, addr);
+		return -OTP_CMD_ERR_MASTER_FAIL;
+	default:
+		LOG_ERR("%s: unknown cmd sts:0x%x", __func__, cmd_sts);
+		return -EIO;
+	}
 }
 
 static int otp_read_data(const struct device *dev, uint32_t offset, uint16_t *data)
@@ -190,7 +220,7 @@ static int otp_read_data(const struct device *dev, uint32_t offset, uint16_t *da
 	sys_write32(OTP_CMD_READ, cfg->base + OTP_CMD);
 	ret = wait_complete(dev);
 	if (ret)
-		return OTP_READ_FAIL;
+		return ret;
 
 	data[0] = sys_read32(cfg->base + OTP_RDATA);
 
@@ -200,23 +230,18 @@ static int otp_read_data(const struct device *dev, uint32_t offset, uint16_t *da
 int otp_prog_data(const struct device *dev, uint32_t offset, uint16_t data)
 {
 	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
-	int ret;
 
 	sys_write32(cfg->gbl_ecc_en, cfg->base + OTP_ECC_EN);
 	sys_write32(offset, cfg->base + OTP_ADDR);
 	sys_write32(data, cfg->base + OTP_WDATA_0);
 	sys_write32(OTP_CMD_PROG, cfg->base + OTP_CMD);
-	ret = wait_complete(dev);
-	if (ret)
-		return OTP_PROG_FAIL;
 
-	return 0;
+	return wait_complete(dev);
 }
 
 int otp_prog_multi_data(const struct device *dev, uint32_t offset, uint32_t *data, int count)
 {
 	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
-	int ret;
 
 	sys_write32(cfg->gbl_ecc_en, cfg->base + OTP_ECC_EN);
 	sys_write32(offset, cfg->base + OTP_ADDR);
@@ -224,16 +249,13 @@ int otp_prog_multi_data(const struct device *dev, uint32_t offset, uint32_t *dat
 		sys_write32(data[i], cfg->base + OTP_WDATA_0 + 4 * i);
 
 	sys_write32(OTP_CMD_PROG_MULTI, cfg->base + OTP_CMD);
-	ret = wait_complete(dev);
-	if (ret)
-		return OTP_PROG_FAIL;
 
-	return 0;
+	return wait_complete(dev);
 }
 
 static int aspeed_otp_read(const struct device *dev, uint32_t offset, void *buf, int size)
 {
-	int ret;
+	int ret = 0;
 	uint16_t *data = (uint16_t *)buf;
 
 	for (int i = 0; i < size; i++) {
@@ -276,7 +298,7 @@ static int aspeed_otp_ecc_init(const struct device *dev)
 	sys_write32(OTP_CMD_READ, cfg->base + OTP_CMD);
 	ret = wait_complete(dev);
 	if (ret)
-		return OTP_READ_FAIL;
+		return ret;
 
 	val = sys_read32(cfg->base + OTP_RDATA);
 	if (val & 0x1)
@@ -362,7 +384,8 @@ static void aspeed_otp_dump_info(const struct device *dev)
 {
 	uint32_t offset = CAL_REGION_START_ADDR + CAL_VENDOR_KEY_HASH_OFFSET;
 	uint16_t hash[CAL_VENDOR_KEY_HASH_BYTES / sizeof(uint16_t)];
-	int ver, ret;
+	uint32_t ver;
+	int ret;
 
 	/* Dump ROM patch version */
 	aspeed_chip_version(dev, &ver);
