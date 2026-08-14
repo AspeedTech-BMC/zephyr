@@ -161,8 +161,86 @@ enum rom_patch_version_a1 {
 struct otp_ast27xx_config {
 	uintptr_t base;
 	uintptr_t scu_base;
+};
+
+struct otp_ast27xx_drv_state {
+	bool in_use;
 	int gbl_ecc_en;
 };
+
+enum otp_region_id {
+	OTP_REGION_ROM = 0,
+	OTP_REGION_RBP,
+	OTP_REGION_CFG,
+	OTP_REGION_STRAP,
+	OTP_REGION_STRAPEXT,
+	OTP_REGION_USR,
+	OTP_REGION_SEC,
+	OTP_REGION_CAL,
+	OTP_REGION_PUF,
+	OTP_REGION_MAX,
+};
+
+struct otp_region_ecc {
+	uint32_t start;
+	uint32_t end;
+	bool ecc_supported;
+	bool ecc_en;
+};
+
+/*
+ * Per-region ECC default, consulted when state->gbl_ecc_en (force ECC) is
+ * off. OTPRBP/OTPSTRAP don't support ECC in hardware, so ecc_supported is
+ * false and ECC stays off for them even under the global force.
+ */
+static const struct otp_region_ecc otp_region_ecc_tbl[OTP_REGION_MAX] = {
+	[OTP_REGION_ROM] = {
+		ROM_REGION_START_ADDR, ROM_REGION_END_ADDR, true, true
+	},
+	[OTP_REGION_RBP] = {
+		RBP_REGION_START_ADDR, RBP_REGION_END_ADDR, false, false
+	},
+	[OTP_REGION_CFG] = {
+		CONF_REGION_START_ADDR, CONF_REGION_END_ADDR, true, false
+	},
+	[OTP_REGION_STRAP] = {
+		STRAP_REGION_START_ADDR, STRAP_REGION_END_ADDR, false, false
+	},
+	[OTP_REGION_STRAPEXT] = {
+		STRAPEXT_REGION_START_ADDR, STRAPEXT_REGION_END_ADDR, true, false
+	},
+	[OTP_REGION_USR] = {
+		USER_REGION_START_ADDR, USER_REGION_END_ADDR, true, false
+	},
+	[OTP_REGION_SEC] = {
+		SEC_REGION_START_ADDR, SEC_REGION_END_ADDR, true, false
+	},
+	[OTP_REGION_CAL] = {
+		CAL_REGION_START_ADDR, CAL_REGION_END_ADDR, true, false
+	},
+	[OTP_REGION_PUF] = {
+		SW_PUF_REGION_START_ADDR, HW_PUF_REGION_END_ADDR, true, true
+	},
+};
+
+static bool otp_region_ecc_active(const struct device *dev, uint32_t offset)
+{
+	struct otp_ast27xx_drv_state *state = (struct otp_ast27xx_drv_state *)dev->data;
+
+	for (int i = 0; i < OTP_REGION_MAX; i++) {
+		const struct otp_region_ecc *region = &otp_region_ecc_tbl[i];
+
+		if (offset < region->start || offset >= region->end)
+			continue;
+
+		if (!region->ecc_supported)
+			return false;
+
+		return state->gbl_ecc_en || region->ecc_en;
+	}
+
+	return false;
+}
 
 static void otp_unlock(const struct device *dev)
 {
@@ -215,7 +293,7 @@ static int otp_read_data(const struct device *dev, uint32_t offset, uint16_t *da
 	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
 	int ret;
 
-	sys_write32(cfg->gbl_ecc_en, cfg->base + OTP_ECC_EN);
+	sys_write32(otp_region_ecc_active(dev, offset), cfg->base + OTP_ECC_EN);
 	sys_write32(offset, cfg->base + OTP_ADDR);
 	sys_write32(OTP_CMD_READ, cfg->base + OTP_CMD);
 	ret = wait_complete(dev);
@@ -231,7 +309,7 @@ int otp_prog_data(const struct device *dev, uint32_t offset, uint16_t data)
 {
 	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
 
-	sys_write32(cfg->gbl_ecc_en, cfg->base + OTP_ECC_EN);
+	sys_write32(otp_region_ecc_active(dev, offset), cfg->base + OTP_ECC_EN);
 	sys_write32(offset, cfg->base + OTP_ADDR);
 	sys_write32(data, cfg->base + OTP_WDATA_0);
 	sys_write32(OTP_CMD_PROG, cfg->base + OTP_CMD);
@@ -243,7 +321,7 @@ int otp_prog_multi_data(const struct device *dev, uint32_t offset, uint32_t *dat
 {
 	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
 
-	sys_write32(cfg->gbl_ecc_en, cfg->base + OTP_ECC_EN);
+	sys_write32(otp_region_ecc_active(dev, offset), cfg->base + OTP_ECC_EN);
 	sys_write32(offset, cfg->base + OTP_ADDR);
 	for (int i = 0; i < count; i++)
 		sys_write32(data[i], cfg->base + OTP_WDATA_0 + 4 * i);
@@ -289,6 +367,7 @@ static int aspeed_otp_write(const struct device *dev, uint32_t offset, void *buf
 static int aspeed_otp_ecc_init(const struct device *dev)
 {
 	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
+	struct otp_ast27xx_drv_state *state = (struct otp_ast27xx_drv_state *)dev->data;
 	int ret;
 	uint32_t val;
 
@@ -302,9 +381,9 @@ static int aspeed_otp_ecc_init(const struct device *dev)
 
 	val = sys_read32(cfg->base + OTP_RDATA);
 	if (val & 0x1)
-		cfg->gbl_ecc_en = 0x1;
+		state->gbl_ecc_en = 0x1;
 	else
-		cfg->gbl_ecc_en = 0x0;
+		state->gbl_ecc_en = 0x0;
 
 	return 0;
 }
@@ -432,10 +511,6 @@ static struct otp_driver_api otp_funcs = {
 	.otp_read_multi = aspeed_otp_read,
 	.otp_program_multi = aspeed_otp_write,
 	.get_chip_version = aspeed_chip_version,
-};
-
-struct otp_ast27xx_drv_state {
-	bool in_use;
 };
 
 static const struct otp_ast27xx_config otp_ast27xx_config = {
