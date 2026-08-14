@@ -6,7 +6,7 @@
 
 #include <mem.h>
 #include <aspeed/ast10x0-g2-irq.h>
-#include <zephyr/dt-bindings/clock/ast27xx_clock.h>
+#include <zephyr/dt-bindings/clock/ast10x0_g2_clock.h>
 #include <zephyr/dt-bindings/reset/ast27xx_reset.h>
 
 / {
