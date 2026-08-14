@@ -991,7 +991,7 @@
 			reg = <0x74010000 0x300>, <0xA0000000 0x10000000>;
 			reg-names = "ctrl_reg", "spi_mmap";
 			interrupts = <INTR_SPI0 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
-			clocks = <&sysclk SCU1_CLK_SPI0>;
+			clocks = <&sysclk SCU1_CLK_AHB>;
 			pinctrl-0 = <pinctrl_spim0_default pinctrl_spim0_quad_default
 				     pinctrl_spim0_cs1_default>;
 			pinctrl-names = "default";
@@ -1044,7 +1044,7 @@
 			reg = <0x74020000 0x300>, <0xC0000000 0x10000000>;
 			reg-names = "ctrl_reg", "spi_mmap";
 			interrupts = <INTR_SPI1 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
-			clocks = <&sysclk SCU1_CLK_SPI1>;
+			clocks = <&sysclk SCU1_CLK_AHB>;
 			pinctrl-0 = <pinctrl_spim1_default pinctrl_spim1_quad_default
 				     pinctrl_spim1_cs1_default>;
 			pinctrl-names = "default";
