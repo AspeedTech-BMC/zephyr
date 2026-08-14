@@ -517,7 +517,7 @@ struct cptra_manifest_ime {
 	uint32_t fw_id;
 	uint32_t flags;
 	uint8_t digest[48]; /* SHA384 */
-};
+} __attribute__((__packed__));
 #else
 struct cptra_manifest_ime {
 	uint32_t fw_id;
@@ -527,7 +527,7 @@ struct cptra_manifest_ime {
 	uint64_t image_load_address;
 	uint64_t image_staging_address;
 	uint8_t digest[48]; /* SHA384 */
-};
+} __attribute__((__packed__));
 #endif
 
 struct cptra_set_auth_manifest_ia {
