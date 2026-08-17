@@ -54,7 +54,11 @@ LOG_MODULE_REGISTER(otp_ast2700, CONFIG_LOG_DEFAULT_LEVEL);
 #define OTP_ADDR			(OTP_MASTER * OTP_CMD_OFFSET + 0x1c)
 #define OTP_RDATA			(OTP_MASTER * OTP_CMD_OFFSET + 0x20)
 
+#define OTP_DBG01			0x0C8
 #define OTP_ECC_EN			0x0D4
+#define OTP_PMC_CQ			0x0E4
+
+#define OTP_DAP_CFG_RQ			0x538
 
 /* OTP status: [0] */
 #define OTP_STS_IDLE			0x0
@@ -67,6 +71,15 @@ LOG_MODULE_REGISTER(otp_ast2700, CONFIG_LOG_DEFAULT_LEVEL);
 #define OTP_STS_CMP_FAIL		0x2
 #define OTP_STS_REGION_FAIL		0x3
 #define OTP_STS_MASTER_FAIL		0x4
+
+/*
+ * OTP_DBG01 ECC status: [5] single-bit error (corrected), [4:0] ECC syndrome
+ *   S[5]=0, S[4:0]=0    -> no error
+ *   S[5]=0, S[4:0]!=0   -> dual-bit error in Data or ECC[4:0] (uncorrectable)
+ *   S[5]=1, S[4:0]!=0   -> single-bit error in Data or ECC[4:0] (corrected)
+ */
+#define OTP_ECC_STS_SINGLE_ERR		BIT(5)
+#define OTP_ECC_STS_SYNDROME(x)		((x) & GENMASK(4, 0))
 
 /* OTP ECC EN */
 #define ECC_ENABLE			0x1
@@ -138,6 +151,7 @@ enum otp_error_code {
 	OTP_CMD_ERR_CMP_FAIL,       /* compare mismatch */
 	OTP_CMD_ERR_REGION_FAIL,    /* region write/read protected */
 	OTP_CMD_ERR_MASTER_FAIL,    /* master protection error */
+	OTP_ECC_ERR_DUAL,           /* uncorrectable dual-bit ECC error */
 };
 
 enum aspeed_otp_master_id {
@@ -288,21 +302,60 @@ static int wait_complete(const struct device *dev)
 	}
 }
 
+static int otp_check_ecc_status(const struct device *dev)
+{
+	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
+	uint32_t status, addr, syndrome;
+
+	status = sys_read32(cfg->base + OTP_DBG01);
+	syndrome = OTP_ECC_STS_SYNDROME(status);
+
+	if (!syndrome)
+		return 0;
+
+	addr = sys_read32(cfg->base + OTP_ADDR);
+
+	if (status & OTP_ECC_STS_SINGLE_ERR) {
+		LOG_DBG("%s: single-bit ECC error corrected, addr:0x%x, syndrome:0x%x",
+			__func__, addr, syndrome);
+		return 0;
+	}
+
+	LOG_ERR("%s: uncorrectable dual-bit ECC error, addr:0x%x, syndrome:0x%x",
+		__func__, addr, syndrome);
+	return -OTP_ECC_ERR_DUAL;
+}
+
+static void otp_ecc_cfg(const struct device *dev, bool ecc_en)
+{
+	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
+
+	sys_write32(ecc_en, cfg->base + OTP_ECC_EN);
+	/* Self config or auto config */
+	sys_write32(ecc_en ? 0x4 : 0x0, cfg->base + OTP_PMC_CQ);
+	/* Clearing OTP_PMC_CQ auto-reverts OTP_DAP_CFG_RQ, no explicit write needed to disable */
+	if (ecc_en)
+		sys_write32(0x40008, cfg->base + OTP_DAP_CFG_RQ);
+}
+
 static int otp_read_data(const struct device *dev, uint32_t offset, uint16_t *data)
 {
 	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
 	int ret;
+	bool ecc_en = otp_region_ecc_active(dev, offset);
 
-	sys_write32(otp_region_ecc_active(dev, offset), cfg->base + OTP_ECC_EN);
 	sys_write32(offset, cfg->base + OTP_ADDR);
+	otp_ecc_cfg(dev, ecc_en);
+
 	sys_write32(OTP_CMD_READ, cfg->base + OTP_CMD);
 	ret = wait_complete(dev);
-	if (ret)
-		return ret;
+	if (!ret)
+		data[0] = sys_read32(cfg->base + OTP_RDATA);
 
-	data[0] = sys_read32(cfg->base + OTP_RDATA);
+	if (!ret && ecc_en)
+		ret = otp_check_ecc_status(dev);
 
-	return 0;
+	return ret;
 }
 
 int otp_prog_data(const struct device *dev, uint32_t offset, uint16_t data)
@@ -310,6 +363,8 @@ int otp_prog_data(const struct device *dev, uint32_t offset, uint16_t data)
 	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
 
 	sys_write32(otp_region_ecc_active(dev, offset), cfg->base + OTP_ECC_EN);
+	sys_write32(0x0, cfg->base + OTP_PMC_CQ);
+
 	sys_write32(offset, cfg->base + OTP_ADDR);
 	sys_write32(data, cfg->base + OTP_WDATA_0);
 	sys_write32(OTP_CMD_PROG, cfg->base + OTP_CMD);
@@ -322,6 +377,8 @@ int otp_prog_multi_data(const struct device *dev, uint32_t offset, uint32_t *dat
 	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
 
 	sys_write32(otp_region_ecc_active(dev, offset), cfg->base + OTP_ECC_EN);
+	sys_write32(0x0, cfg->base + OTP_PMC_CQ);
+
 	sys_write32(offset, cfg->base + OTP_ADDR);
 	for (int i = 0; i < count; i++)
 		sys_write32(data[i], cfg->base + OTP_WDATA_0 + 4 * i);
