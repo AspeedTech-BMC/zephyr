@@ -1,0 +1,15 @@
+&dram_rw_region {
+	reg = <0x100000 DT_SIZE_K(14336 - 1024 - 512)>;
+};
+
+&dram_ro_region {
+	reg = <0x0 DT_SIZE_M(1)>;
+};
+
+&jtag0 {
+	status = "okay";
+};
+
+&jtag1 {
+	status = "okay";
+};
