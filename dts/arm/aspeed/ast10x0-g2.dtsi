@@ -219,6 +219,28 @@
 			status = "disabled";
 		};
 
+		jtag0: jtag@74c01000 {
+			compatible = "aspeed,jtag";
+			reg = <0x74c01000 0x100>;
+			clocks = <&sysclk SCU1_CLK_AHB>;
+			resets = <&sysrst SCU1_RESET_JTAG0>;
+			interrupts = <INTR_JTAGM0 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+			pinctrl-0 = <pinctrl_jtagm0_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+		};
+
+		jtag1: jtag@74c09000 {
+			compatible = "aspeed,jtag";
+			reg = <0x74c09000 0x100>;
+			clocks = <&sysclk SCU1_CLK_AHB>;
+			resets = <&sysrst SCU1_RESET_JTAG1>;
+			interrupts = <INTR_JTAGM1 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+			pinctrl-0 = <pinctrl_jtagm1_default>;
+			pinctrl-names = "default";
+			status = "disabled";
+		};
+
 		pwm_tach: pwm_tach@740c0000 {
 			reg = <0x740c0000 0x100>;
 			pwm: pwm {
