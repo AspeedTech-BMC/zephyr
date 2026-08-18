@@ -1104,6 +1104,57 @@
 			};
 		};
 
+		fmc_filter: spif_common@74000400 {
+			compatible = "aspeed,ast10x0-g2-spi-filter-controller";
+			reg = <0x74000400 0x1000>;
+			aspeed,scu = <&syscon>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "disabled";
+
+			fmc_spif: spif@1 {
+				label = "fmc_spif";
+				interrupts = <INTR_FMC_FILTER AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+				reg = <1>;
+				allow-cmds = [];
+				status = "disabled";
+			};
+		};
+
+		spi0_filter: spif_common@74010400 {
+			compatible = "aspeed,ast10x0-g2-spi-filter-controller";
+			reg = <0x74010400 0x1000>;
+			aspeed,scu = <&syscon>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "disabled";
+
+			spi0_spif: spif@1 {
+				label = "spi0_spif";
+				interrupts = <INTR_SPI0_FILTER AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+				reg = <1>;
+				allow-cmds = [];
+				status = "disabled";
+			};
+		};
+
+		spi1_filter: spif_common@74020400 {
+			compatible = "aspeed,ast10x0-g2-spi-filter-controller";
+			reg = <0x74020400 0x1000>;
+			aspeed,scu = <&syscon>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "disabled";
+
+			spi1_spif: spif@1 {
+				label = "spi1_spif";
+				interrupts = <INTR_SPI1_FILTER AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+				reg = <1>;
+				allow-cmds = [];
+				status = "disabled";
+			};
+		};
+
 		espi0: espi@74c05000 {
 			compatible = "aspeed,espi-ast1040", "aspeed,espi-v2";
 			reg = <0x74c05000 0x1000>;

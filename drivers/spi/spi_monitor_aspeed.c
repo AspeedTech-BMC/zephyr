@@ -637,7 +637,7 @@ static void ast1060_ext_mux_config(const struct device *dev,
 /*
  * SCU0D0 is the Analog Mux Mode Register (SCU_AM_MODE_x: 0=external signal,
  * 1=internal signal) and SCU0D4 is the SPI Mode Register (SCU_SPIxO_MODE:
- * 0=Filter Mode, 1=Master Mode).
+ * 0=Monitor Mode, 1=Master Mode).
  */
 struct ast1080_spim_pinmux_bits {
 	uint32_t analog_mux_bits;
@@ -1118,7 +1118,7 @@ static void ast1060_monitor_enable(const struct device *dev, bool enable)
 }
 
 /* Try to get the decoding window range for each CS */
-static void ast2700_spi_decoding_win_config(const struct device *dev)
+static void ast2700_spi_decoding_win_config_common(const struct device *dev, bool lock)
 {
 	const struct aspeed_spim_config *config = dev->config;
 	uint32_t spic_base = config->ctrl_base - SPIM_SPIC_CONCAT_OFFSET;
@@ -1130,7 +1130,7 @@ static void ast2700_spi_decoding_win_config(const struct device *dev)
 
 	acquire_spim_device(dev);
 
-	for (i = 0; i < 3; i++) {
+	for (i = 0; i < 4; i++) {
 		spic_win = sys_read32(spic_base + SPI_CTRL_WIN + i * 4);
 		spim_win = (spic_win & 0xffff) |
 			   (((spic_win & 0xffff0000) - 1) &
@@ -1143,11 +1143,23 @@ static void ast2700_spi_decoding_win_config(const struct device *dev)
 	 * Write-protected address decoding range registers
 	 * to avoid hacker modifing deliberately
 	 */
-	val = sys_read32(spic_base + SPI_CTRL_LOCK_SOC);
-	val |= GENMASK(22, 20);
-	sys_write32(val, spic_base + SPI_CTRL_LOCK_SOC);
+	if (lock) {
+		val = sys_read32(spic_base + SPI_CTRL_LOCK_SOC);
+		val |= GENMASK(22, 20);
+		sys_write32(val, spic_base + SPI_CTRL_LOCK_SOC);
+	}
 
 	release_spim_device(dev);
+}
+
+static void ast2700_spi_decoding_win_config(const struct device *dev)
+{
+	ast2700_spi_decoding_win_config_common(dev, true);
+}
+
+static void ast10x0_g2_spi_decoding_win_config(const struct device *dev)
+{
+	ast2700_spi_decoding_win_config_common(dev, false);
 }
 
 /*
@@ -1204,50 +1216,50 @@ static void ast1080_spi_decoding_win_config(const struct device *dev)
 	release_spim_device(dev);
 }
 
-struct ast1080_spif_gpio_reg {
+struct ast1080_spim_gpio_reg {
 	uint32_t addr;
 	uint32_t mask;
 	uint32_t val;
 };
 
 /*
- * These SCU2xx pinmux registers are shared across SPIF0/1/2 (spim1/2/3) —
- * e.g. 0x74c0244c carries SPIF0 in its top byte and SPIF2 in the bottom
+ * These SCU2xx pinmux registers are shared across SPIM0/1/2 (spim1/2/3) —
+ * e.g. 0x74c0244c carries SPIM0 in its top byte and SPIM2 in the bottom
  * three bytes. Only the bits that were "2" in the old hardcoded writes
- * belong to that SPIF instance; everything else must be preserved via
+ * belong to that SPIM instance; everything else must be preserved via
  * read-modify-write instead of being zeroed out.
  */
-static const struct ast1080_spif_gpio_reg ast1080_spif_gpio_cfg[][2] = {
-	/* ctrl_idx 1: SPIF0 */
+static const struct ast1080_spim_gpio_reg ast1080_spim_gpio_cfg[][2] = {
+	/* ctrl_idx 1: SPIM0 */
 	{
 		{ .addr = 0x74c0244c, .mask = 0xFF000000, .val = 0x22000000 },
 		{ .addr = 0x74c02450, .mask = 0x000FFFFF, .val = 0x00022222 },
 	},
-	/* ctrl_idx 2: SPIF1 */
+	/* ctrl_idx 2: SPIM1 */
 	{
 		{ .addr = 0x74c02418, .mask = 0xFFFFF000, .val = 0x22222000 },
 		{ .addr = 0x74c0241c, .mask = 0xFF0000FF, .val = 0x22000022 },
 	},
-	/* ctrl_idx 3: SPIF2 */
+	/* ctrl_idx 3: SPIM2 */
 	{
 		{ .addr = 0x74c02448, .mask = 0xF0000000, .val = 0x20000000 },
 		{ .addr = 0x74c0244c, .mask = 0x00FFFFFF, .val = 0x00222222 },
 	},
 };
 
-static void ast1080_spif_gpio_mode_config(const struct device *dev)
+static void ast1080_spim_gpio_mode_config(const struct device *dev)
 {
 	const struct aspeed_spim_config *config = dev->config;
-	const struct ast1080_spif_gpio_reg *cfg;
+	const struct ast1080_spim_gpio_reg *cfg;
 	uint32_t reg;
 	uint32_t i;
 
-	if (config->ctrl_idx < 1 || config->ctrl_idx > ARRAY_SIZE(ast1080_spif_gpio_cfg)) {
-		LOG_ERR("[%s] unexpected ctrl_idx %u for SPIF gpio mode config",
+	if (config->ctrl_idx < 1 || config->ctrl_idx > ARRAY_SIZE(ast1080_spim_gpio_cfg)) {
+		LOG_ERR("[%s] unexpected ctrl_idx %u for SPIM gpio mode config",
 			dev->name, config->ctrl_idx);
 		return;
 	}
-	cfg = ast1080_spif_gpio_cfg[config->ctrl_idx - 1];
+	cfg = ast1080_spim_gpio_cfg[config->ctrl_idx - 1];
 
 	acquire_spim_device(dev);
 
@@ -1267,19 +1279,19 @@ static void ast1080_push_pull_mode_config(const struct device *dev)
 	acquire_spim_device(dev);
 
 	switch (config->ctrl_idx) {
-	case 1: /* SPIF0 */
+	case 1: /* SPIM0 */
 		sys_write32(0x02050205, 0x74c025bc);
 		sys_write32(0x02050205, 0x74c025c0);
 		sys_write32(0x02050205, 0x74c025c4);
 		sys_write32(0x02040205, 0x74c025c8);
 		break;
-	case 2: /* SPIF1 */
+	case 2: /* SPIM1 */
 		sys_write32(0x02050204, 0x74c024e4);
 		sys_write32(0x02050205, 0x74c024e8);
 		sys_write32(0x02050205, 0x74c024ec);
 		sys_write32(0x02050205, 0x74c024f0);
 		break;
-	case 3: /* SPIF2 */
+	case 3: /* SPIM2 */
 		sys_write32(0x02050205, 0x74c025AC);
 		sys_write32(0x02050205, 0x74c025B0);
 		sys_write32(0x02050205, 0x74c025B4);
@@ -1384,14 +1396,22 @@ static void ast2700_elec_char_init(const struct device *dev)
 	ast2700_spim_access_prot_init(dev);
 }
 
-static void ast1080_elec_char_init(const struct device *dev)
+static void ast1080_monitor_elec_char_init(const struct device *dev)
 {
 	spim_sw_rst(dev);
 	ast1080_push_pull_mode_config(dev);
 	ast1080_spi_decoding_win_config(dev);
 	ast2700_blocked_cs_config(dev);
 	ast2700_blocked_fifo_init(dev);
-	ast1080_spif_gpio_mode_config(dev);
+	ast1080_spim_gpio_mode_config(dev);
+}
+
+static void ast10x0_g2_filter_elec_char_init(const struct device *dev)
+{
+	spim_sw_rst(dev);
+	ast10x0_g2_spi_decoding_win_config(dev);
+	ast2700_blocked_cs_config(dev);
+	ast2700_blocked_fifo_init(dev);
 }
 
 #define ADDR_CTRL_REG0(base, idx) ((base) + (idx) * 8)
@@ -1776,6 +1796,14 @@ static void ast1080_monitor_enable(const struct device *dev, bool enable)
 {
 	if (enable)
 		ast1080_spi_decoding_win_config(dev);
+
+	ast2700_monitor_enable(dev, enable);
+}
+
+static void ast10x0_g2_filter_monitor_enable(const struct device *dev, bool enable)
+{
+	if (enable)
+		ast10x0_g2_spi_decoding_win_config(dev);
 
 	ast2700_monitor_enable(dev, enable);
 }
@@ -2374,15 +2402,32 @@ static const __maybe_unused struct aspeed_spim_soc_ops ast1060_spim_ops = {
 	.misc_lock         = ast1060_misc_lock,
 };
 
+/* For AST1080 SPI Monitor */
 static const __maybe_unused struct aspeed_spim_soc_ops ast1080_spim_ops = {
 	.addr_priv_init    = ast2700_addr_priv_init,
-	.elec_char_init    = ast1080_elec_char_init,
+	.elec_char_init    = ast1080_monitor_elec_char_init,
 	.allow_cmd_table_init = spim_allow_cmd_table_init,
 	.monitor_enable    = ast1080_monitor_enable,
 	.ctrl_sw_rst       = spim_sw_rst,
 	.blocked_log_init  = NULL,
 	.flash_rst_release = NULL,
 	.mux_config        = ast1080_ext_mux_config,
+	.dump_addr_priv    = ast2700_dump_addr_priv_table,
+	.addr_priv_lock    = ast2700_addr_priv_table_lock,
+	.addr_priv_remove_all = ast2700_addr_priv_remove_all,
+	.misc_lock         = NULL,
+};
+
+/* For AST10X0_G2 SPI Filter */
+static const __maybe_unused struct aspeed_spim_soc_ops ast10x0_g2_spif_ops = {
+	.addr_priv_init    = ast2700_addr_priv_init,
+	.elec_char_init    = ast10x0_g2_filter_elec_char_init,
+	.allow_cmd_table_init = spim_allow_cmd_table_init,
+	.monitor_enable    = ast10x0_g2_filter_monitor_enable,
+	.ctrl_sw_rst       = spim_sw_rst,
+	.blocked_log_init  = NULL,
+	.flash_rst_release = NULL,
+	.mux_config        = NULL,
 	.dump_addr_priv    = ast2700_dump_addr_priv_table,
 	.addr_priv_lock    = ast2700_addr_priv_table_lock,
 	.addr_priv_remove_all = ast2700_addr_priv_remove_all,
@@ -2475,40 +2520,51 @@ static int aspeed_spi_monitor_common_init(const struct device *dev)
 	.ops             = soc_ops,					\
 },
 
-#define ASPEED_SPIM_DT_DEFINE_BASE(node_id, child_prio)		\
+/*
+ * tag+n together identify which ASPEED_SPIM_COMMON_INIT() expansion this
+ * child belongs to: n alone is only unique *within* one DT_DRV_COMPAT (it
+ * restarts at 0 for every compatible), so siblings from a different
+ * DT_DRV_COMPAT at the same index (e.g. AST1080's single spim_common
+ * instance 0 vs AST10X0-G2's fmc_filter/spi0_filter/spi1_filter instances
+ * 0/1/2) would otherwise collide on the same aspeed_spim_config_0/
+ * aspeed_spim_data_0 names. tag is a fixed per-family literal (ast1060,
+ * ast1080, ast2700, ast10x0_g2) supplied by each family's own macros below.
+ */
+#define ASPEED_SPIM_DT_DEFINE_BASE(node_id, child_prio, tag, n)	\
 	DEVICE_DT_DEFINE(node_id, spi_monitor_init, NULL,		\
-			 &aspeed_spim_data[node_id],			\
-			 &aspeed_spim_config[node_id],			\
+			 &aspeed_spim_data_##tag##_##n[node_id],	\
+			 &aspeed_spim_config_##tag##_##n[node_id],	\
 			 POST_KERNEL, child_prio, NULL);
 
 /* ===== Main orchestrator ===== */
-#define ASPEED_SPIM_COMMON_INIT(n, cfg_fn, data_fn, define_fn, common_prio, mode_ctrl_reg_off) \
+#define ASPEED_SPIM_COMMON_INIT(tag, n, cfg_fn, data_fn, define_fn,	\
+				 common_prio, mode_ctrl_reg_off)	\
 	DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n),			\
 				     ASPEED_PINCTRL_DT_NODE_DEFINE)	\
 	static struct aspeed_spim_common_config				\
-		aspeed_spim_common_config_##n = {			\
+		aspeed_spim_common_config_##tag##_##n = {		\
 		.scu_base = DT_REG_ADDR_BY_IDX(			\
 			DT_INST_PHANDLE_BY_IDX(n, aspeed_scu, 0), 0),	\
 		.mode_ctrl_off = (mode_ctrl_reg_off),			\
 	};								\
 	static struct aspeed_spim_common_data				\
-		aspeed_spim_common_data_##n;				\
+		aspeed_spim_common_data_##tag##_##n;			\
 	DEVICE_DT_INST_DEFINE(n, &aspeed_spi_monitor_common_init, NULL,	\
-			      &aspeed_spim_common_data_##n,		\
-			      &aspeed_spim_common_config_##n,		\
+			      &aspeed_spim_common_data_##tag##_##n,	\
+			      &aspeed_spim_common_config_##tag##_##n,	\
 			      POST_KERNEL, common_prio, NULL);		\
 	DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n),			\
 				     SPIM_EXT_MUX_SEL_GPIOS)		\
 	DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n),			\
 				     ASPEED_SPIM_IRQ_DEFINE)		\
-	static const struct aspeed_spim_config aspeed_spim_config[] = {	\
+	static const struct aspeed_spim_config aspeed_spim_config_##tag##_##n[] = {	\
 		DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n), cfg_fn) };\
-	static struct aspeed_spim_data aspeed_spim_data[] = {		\
+	static struct aspeed_spim_data aspeed_spim_data_##tag##_##n[] = {	\
 		DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n), data_fn) };\
 	enum {								\
 		DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n), SPIM_ENUM)\
 	};								\
-	DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n), define_fn)
+	DT_FOREACH_CHILD_STATUS_OKAY_VARGS(DT_DRV_INST(n), define_fn, tag, n)
 
 /* ===== AST1060 ===== */
 #define ASPEED_AST1060_SPIM_DEV_CFG(node_id) \
@@ -2534,15 +2590,15 @@ static int aspeed_spi_monitor_common_init(const struct device *dev)
 	.dev                        = DEVICE_DT_GET(node_id),		\
 },
 
-#define ASPEED_AST1060_SPIM_DT_DEFINE(node_id) \
-	ASPEED_SPIM_DT_DEFINE_BASE(node_id, 71)
+#define ASPEED_AST1060_SPIM_DT_DEFINE(node_id, tag, n) \
+	ASPEED_SPIM_DT_DEFINE_BASE(node_id, 71, tag, n)
 
 /*
  * Keep the legacy compatible string for backward compatibility
  * since many customers have adopted this naming.
  */
 #define ASPEED_AST1060_SPIM_INIT(n)					\
-	ASPEED_SPIM_COMMON_INIT(n, ASPEED_AST1060_SPIM_DEV_CFG,	\
+	ASPEED_SPIM_COMMON_INIT(ast1060, n, ASPEED_AST1060_SPIM_DEV_CFG,	\
 				ASPEED_AST1060_SPIM_DEV_DATA,		\
 				ASPEED_AST1060_SPIM_DT_DEFINE, 70,	\
 				AST1060_SPIM_MODE_SCU_CTRL)
@@ -2564,11 +2620,11 @@ DT_INST_FOREACH_STATUS_OKAY(ASPEED_AST1060_SPIM_INIT)
 	.dev                  = DEVICE_DT_GET(node_id),			\
 },
 
-#define ASPEED_AST1080_SPIM_DT_DEFINE(node_id) \
-	ASPEED_SPIM_DT_DEFINE_BASE(node_id, 79)
+#define ASPEED_AST1080_SPIM_DT_DEFINE(node_id, tag, n) \
+	ASPEED_SPIM_DT_DEFINE_BASE(node_id, 79, tag, n)
 
 #define ASPEED_AST1080_SPIM_INIT(n)					\
-	ASPEED_SPIM_COMMON_INIT(n, ASPEED_AST1080_SPIM_DEV_CFG,	\
+	ASPEED_SPIM_COMMON_INIT(ast1080, n, ASPEED_AST1080_SPIM_DEV_CFG,	\
 				ASPEED_AST1080_SPIM_DEV_DATA,		\
 				ASPEED_AST1080_SPIM_DT_DEFINE, 78,	\
 				AST1080_SCU_ANALOG_MUX_MODE)
@@ -2592,16 +2648,48 @@ DT_INST_FOREACH_STATUS_OKAY(ASPEED_AST1080_SPIM_INIT)
 },
 
 /* Same spi-monitor-ctrl dependency as AST1080 above; must precede SPI_NOR_INIT_PRIORITY (80). */
-#define ASPEED_AST2700_SPIM_DT_DEFINE(node_id) \
-	ASPEED_SPIM_DT_DEFINE_BASE(node_id, 79)
+#define ASPEED_AST2700_SPIM_DT_DEFINE(node_id, tag, n) \
+	ASPEED_SPIM_DT_DEFINE_BASE(node_id, 79, tag, n)
 
 /* AST2700 never calls spim_scu_ctrl_set/clear(); offset unused. */
 #define ASPEED_AST2700_SPIM_INIT(n)					\
-	ASPEED_SPIM_COMMON_INIT(n, ASPEED_AST2700_SPIM_DEV_CFG,	\
+	ASPEED_SPIM_COMMON_INIT(ast2700, n, ASPEED_AST2700_SPIM_DEV_CFG,	\
 				ASPEED_AST2700_SPIM_DEV_DATA,		\
 				ASPEED_AST2700_SPIM_DT_DEFINE, 78,	\
 				AST1060_SPIM_MODE_SCU_CTRL)
 #undef DT_DRV_COMPAT
 #define DT_DRV_COMPAT aspeed_ast2700_spi_monitor_controller
 DT_INST_FOREACH_STATUS_OKAY(ASPEED_AST2700_SPIM_INIT)
+#undef DT_DRV_COMPAT
+
+/* ===== AST10X0-G2 SPI Filter ===== */
+#define ASPEED_AST10X0_G2_SPIM_DEV_CFG(node_id) \
+	ASPEED_SPIM_DEV_CFG_BASE(node_id, &ast10x0_g2_spif_ops)
+
+#define ASPEED_AST10X0_G2_SPIM_DEV_DATA(node_id) {				\
+	.allow_cmd_list       = DT_PROP(node_id, allow_cmds),		\
+	.allow_cmd_num        = DT_PROP_LEN(node_id, allow_cmds),	\
+	COND_CODE_1(DT_NODE_HAS_PROP(node_id, addr_priv_configs), (	\
+	.addr_priv_config     = DT_PROP(node_id, addr_priv_configs),	\
+	.addr_priv_config_num = DT_PROP_LEN(node_id, addr_priv_configs),\
+	), ())								\
+	.dev                  = DEVICE_DT_GET(node_id),			\
+},
+
+/*
+ * Same spi-monitor-ctrl dependency as AST1080/AST2700 above; must
+ * precede SPI_NOR_INIT_PRIORITY (80).
+ */
+#define ASPEED_AST10X0_G2_SPIM_DT_DEFINE(node_id, tag, n) \
+	ASPEED_SPIM_DT_DEFINE_BASE(node_id, 79, tag, n)
+
+/* AST10X0-G2 never calls spim_scu_ctrl_set/clear(); offset unused. */
+#define ASPEED_AST10X0_G2_SPIM_INIT(n)					\
+	ASPEED_SPIM_COMMON_INIT(ast10x0_g2, n, ASPEED_AST10X0_G2_SPIM_DEV_CFG,	\
+				ASPEED_AST10X0_G2_SPIM_DEV_DATA,	\
+				ASPEED_AST10X0_G2_SPIM_DT_DEFINE, 78,	\
+				AST1060_SPIM_MODE_SCU_CTRL)
+#undef DT_DRV_COMPAT
+#define DT_DRV_COMPAT aspeed_ast10x0_g2_spi_filter_controller
+DT_INST_FOREACH_STATUS_OKAY(ASPEED_AST10X0_G2_SPIM_INIT)
 #undef DT_DRV_COMPAT

@@ -21,6 +21,13 @@ properties:
 child-binding:
   description: SPI monitor physical controller node
   properties:
+    label:
+      type: string
+      required: false
+      description: |
+        Human readable string used as the device_get_binding()/shell
+        "set_dev" argument for this SPI monitor/filter channel.
+
     reg:
       type: int
       required: true

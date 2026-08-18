@@ -1,0 +1,8 @@
+# Copyright (c) 2026 ASPEED Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+description: ASPEED AST10X0-G2 SPI filter controller node
+
+compatible: "aspeed,ast10x0-g2-spi-filter-controller"
+
+include: aspeed,spi-monitor-controller.yaml
