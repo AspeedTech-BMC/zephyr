@@ -34,6 +34,12 @@
 #define pinctrl_i3c6_default   &pin_i3cscl6 &pin_i3csda6
 #define pinctrl_i3c7_default   &pin_i3cscl7 &pin_i3csda7
 
+/*JTAG*/
+#define pinctrl_jtagm0trst_default &pin_mntrst0
+#define pinctrl_jtagm0_default &pin_mtck0 &pin_mtdi0 &pin_mtdo0 &pin_mtms0
+#define pinctrl_jtagm1trst_default &pin_mntrst1
+#define pinctrl_jtagm1_default &pin_mtck1 &pin_mtdi1 &pin_mtdo1 &pin_mtms1
+
 /* UART */
 #define pinctrl_uart0_default  &pin_txd0 &pin_rxd0
 #define pinctrl_uart1_default  &pin_txd1 &pin_rxd1
