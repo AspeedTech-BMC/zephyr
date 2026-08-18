@@ -116,7 +116,8 @@
 #define INTR_USB2C			156
 #define INTR_USB2D			157
 #define INTR_SCU			159
-#define INTR_JTAG			162
+#define INTR_JTAGM0			162
+#define INTR_JTAGM1			163
 #define INTR_PECI			164
 #define INTR_OTP			168
 #define INTR_SRAM			169
