@@ -115,7 +115,7 @@
 
 &ipc0_ns_ca35 {
 	status = "okay";
-	shmem_ch0 = <0x70001000 0x5480000 0x1000 0x200000>;
+	shmem_ch0 = <0x5580000 0x5480000 0x1000 0x800>;
 };
 
 &ipc0_tsp {

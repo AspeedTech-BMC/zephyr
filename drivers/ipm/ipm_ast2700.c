@@ -95,6 +95,7 @@ uint32_t offset, const void *buf, uint32_t size)
 			} else {
 				dst = data->shmem_info[channel].shmem_tx_base;
 				memcpy((void *)(dst + offset), buf, size);
+				sys_cache_data_flush_range((void *)(dst + offset), size);
 			}
 		} else
 			goto shmem_write_fail;
@@ -128,7 +129,7 @@ uint32_t offset, void **buf, uint32_t size)
 				LOG_DBG("Read out of rx range");
 				goto shmem_read_fail;
 			} else {
-				src = data->shmem_info[channel].shmem_rx_base;
+				src = data->shmem_info[channel].shmem_rx_base + offset;
 				*buf = (void *)src;
 			}
 		} else
@@ -155,8 +156,17 @@ static void ipm_ast2700_isr(const void *dev)
 		msg_base = base + IPCR_DATA0 + IPC_MAX_MSG_SIZE * i;
 		if ((status & BIT(i)) && data->callback[i]) {
 			if (data->shmem_info[i].shmem_rx_size) {
-				sys_cache_data_invd_range((void *)data->shmem_info[i].shmem_rx_base,
-					data->shmem_info[i].shmem_rx_size);
+				/*
+				 * The doorbell's first word carries the actual payload
+				 * length; invalidate only that much instead of the whole
+				 * configured shmem_rx_size on every interrupt.
+				 */
+				void *rx_base = (void *)data->shmem_info[i].shmem_rx_base;
+				uint32_t msg_len = sys_read32(msg_base);
+				uint32_t inv_len = MIN(msg_len, data->shmem_info[i].shmem_rx_size);
+
+				if (inv_len)
+					sys_cache_data_invd_range(rx_base, inv_len);
 			}
 			data->callback[i](dev, data->user_data[i], i, (volatile void *)msg_base);
 			sys_write32(BIT(i), base + IPCR_STATUS);
