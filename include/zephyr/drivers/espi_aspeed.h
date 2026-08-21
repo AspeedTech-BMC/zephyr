@@ -140,4 +140,30 @@ int espi_aspeed_oob_put_tx(const struct device *dev, struct espi_aspeed_ioc *ioc
 int espi_aspeed_flash_get_rx(const struct device *dev, struct espi_aspeed_ioc *ioc, bool blocking);
 int espi_aspeed_flash_put_tx(const struct device *dev, struct espi_aspeed_ioc *ioc);
 
+#ifdef CONFIG_ESPI_TAF
+/*
+ * eSPI TAF (Target Attached Flash) request notification
+ *
+ * The driver parses the host's flash read/write/erase request and hands it
+ * to the registered handler. The handler owns the flash backend: it is
+ * responsible for performing the access and, for ESPI_FLASH_READ, building
+ * and sending the completion packet itself via espi_aspeed_flash_put_tx().
+ */
+struct espi_taf_req {
+	uint8_t cyc;	/* ESPI_FLASH_READ / ESPI_FLASH_WRITE / ESPI_FLASH_ERASE */
+	uint8_t tag;
+	uint32_t addr;
+	uint16_t len;
+	uint8_t *data;	/* valid for ESPI_FLASH_WRITE only, NULL otherwise */
+};
+
+typedef void (*espi_taf_handler_t)(const struct device *dev,
+				       struct espi_taf_req *req,
+				       void *user_data);
+
+int espi_aspeed_taf_register(const struct device *dev,
+			      espi_taf_handler_t handler,
+			      void *user_data);
+#endif /* CONFIG_ESPI_TAF */
+
 #endif

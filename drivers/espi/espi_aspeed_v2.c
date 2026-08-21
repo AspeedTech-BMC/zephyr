@@ -34,6 +34,7 @@ LOG_MODULE_REGISTER(espi);
 #define ESPI_CAP_CH1			0x01c
 #define ESPI_CAP_CH2			0x020
 #define ESPI_CAP_CH3_0			0x024
+#define   ESPI_CAP_CH3_0_SHARE_MODE	BIT(11)
 #define ESPI_CAP_CH3_1			0x028
 #define ESPI_DEV_STS			0x030
 #define ESPI_DBG_CTRL			0x034
@@ -232,8 +233,10 @@ LOG_MODULE_REGISTER(espi);
 #define   ESPI_CH3_CTRL_SW_RDY		BIT(5)
 #define ESPI_CH3_STS			0x404
 #define ESPI_CH3_INT_STS		0x408
+#define   ESPI_CH3_INT_STS_TX_CMPLT	BIT(1)
 #define   ESPI_CH3_INT_STS_RX_CMPLT	BIT(0)
 #define ESPI_CH3_INT_EN			0x40c
+#define   ESPI_CH3_INT_EN_TX_CMPLT	BIT(1)
 #define   ESPI_CH3_INT_EN_RX_CMPLT	BIT(0)
 #define ESPI_CH3_RX_DMAL		0x410
 #define ESPI_CH3_RX_DMAH		0x414
@@ -259,6 +262,8 @@ LOG_MODULE_REGISTER(espi);
 #define ESPI_CH3_WPROT1			0x4fc
 
 #if DT_HAS_COMPAT_STATUS_OKAY(aspeed_espi_ast1040)
+#define SCU_OTP_STRAP_3		0x050
+#define   SCU_OTP_STRAP_TAF_EN	BIT(19)
 #define SCU_DBG_DIS_CFG		0x0c8
 #define   SCU_DIS_ESPI_AHB		BIT(0)
 #endif
@@ -731,6 +736,16 @@ static uint8_t flash_tx_buf[0];
 static uint8_t flash_rx_buf[0];
 #endif
 
+#ifdef CONFIG_ESPI_TAF
+struct espi_aspeed_taf_pckt {
+	uint32_t pkt_len;
+	uint8_t pkt[sizeof(struct espi_flash_rwe) + ESPI_PLD_LEN_MAX];
+};
+
+static struct espi_aspeed_taf_pckt espi_aspeed_taf_pckt;
+static void espi_taf_dispatch(struct espi_aspeed_taf_pckt *pckt);
+#endif
+
 static void espi_ast2700_flash_isr(struct espi_ast2700_data *data)
 {
 	struct espi_ast2700_flash *flash = &data->flash;
@@ -738,7 +753,51 @@ static void espi_ast2700_flash_isr(struct espi_ast2700_data *data)
 
 	sts = ESPI_RD(ESPI_CH3_INT_STS);
 
+	if (sts & ESPI_CH3_INT_STS_TX_CMPLT)
+		ESPI_WR(ESPI_CH3_INT_STS_TX_CMPLT, ESPI_CH3_INT_STS);
+
 	if (sts & ESPI_CH3_INT_STS_RX_CMPLT) {
+#ifdef CONFIG_ESPI_TAF
+		if (ESPI_RD(ESPI_CAP_CH3_0) & ESPI_CAP_CH3_0_SHARE_MODE) {
+			int i;
+			uint32_t reg, cyc, tag, len;
+			struct espi_flash_rwe *rwe;
+
+			reg = ESPI_RD(ESPI_CH3_RX_CTRL);
+			cyc = FIELD_GET(ESPI_CH3_RX_CTRL_CYC, reg);
+			tag = FIELD_GET(ESPI_CH3_RX_CTRL_TAG, reg);
+			len = FIELD_GET(ESPI_CH3_RX_CTRL_LEN, reg);
+
+			switch (cyc) {
+			case ESPI_FLASH_READ:
+			case ESPI_FLASH_WRITE:
+			case ESPI_FLASH_ERASE:
+				espi_aspeed_taf_pckt.pkt_len = ((len) ? len : ESPI_PLD_LEN_MAX) +
+								sizeof(struct espi_flash_rwe);
+
+				rwe = (struct espi_flash_rwe *)espi_aspeed_taf_pckt.pkt;
+				rwe->cyc   = cyc;
+				rwe->tag   = tag;
+				rwe->len_h = len >> 8;
+				rwe->len_l = len & 0xff;
+
+				/*
+				 * read addr_be + payload from HW FIFO, starting at
+				 * offset 3 (after hdr)
+				 */
+				for (i = offsetof(struct espi_flash_rwe, addr_be);
+				     i < espi_aspeed_taf_pckt.pkt_len; ++i)
+					espi_aspeed_taf_pckt.pkt[i] =
+						ESPI_RD(ESPI_CH3_RX_DATA) & 0xff;
+
+				espi_taf_dispatch(&espi_aspeed_taf_pckt);
+				ESPI_WR(ESPI_CH3_INT_STS_RX_CMPLT, ESPI_CH3_INT_STS);
+				return;
+			default:
+				break;
+			}
+		}
+#endif
 		ESPI_WR(ESPI_CH3_INT_STS_RX_CMPLT, ESPI_CH3_INT_STS);
 		k_sem_give(&flash->rx_ready);
 	}
@@ -787,7 +846,7 @@ static void espi_ast2700_flash_reset(struct espi_ast2700_flash *flash)
 		ESPI_WR(reg, ESPI_CH3_CTRL);
 	}
 
-	ESPI_WR(ESPI_CH3_INT_EN_RX_CMPLT, ESPI_CH3_INT_EN);
+	ESPI_WR((ESPI_CH3_INT_EN_RX_CMPLT | ESPI_CH3_INT_EN_TX_CMPLT), ESPI_CH3_INT_EN);
 
 	reg = ESPI_RD(ESPI_CH3_CTRL) | ESPI_CH3_CTRL_SW_RDY;
 	ESPI_WR(reg, ESPI_CH3_CTRL);
@@ -810,10 +869,106 @@ static void espi_ast2700_flash_init(struct espi_ast2700_flash *flash)
 	flash->dma.rx_virt = flash_rx_buf;
 	flash->dma.rx_addr = TO_PHY_ADDR((uintptr_t)flash->dma.rx_virt);
 
+#if DT_HAS_COMPAT_STATUS_OKAY(aspeed_espi_ast1040)
+#if defined(CONFIG_ESPI_FLASH_CHANNEL) && defined(CONFIG_ESPI_TAF)
+	{
+		uint32_t reg;
+
+		reg = sys_read32(scu_base + SCU_OTP_STRAP_3);
+		reg |= SCU_OTP_STRAP_TAF_EN;
+		sys_write32(reg, scu_base + SCU_OTP_STRAP_3);
+	}
+#endif
+#endif
+
 	k_sem_init(&flash->tx_lock, 1, 1);
 	k_sem_init(&flash->rx_lock, 1, 1);
 	k_sem_init(&flash->rx_ready, 0, 1);
 }
+
+#ifdef CONFIG_ESPI_TAF
+struct espi_taf_data {
+	const struct device *host_dev;
+	espi_taf_handler_t handler;
+	void *user_data;
+	struct k_work work;
+	struct espi_aspeed_taf_pckt pckt;
+};
+
+static struct espi_taf_data espi_taf_data;
+
+static void taf_send_unsuc_cmplt(const struct device *host_dev, uint8_t tag)
+{
+	struct espi_flash_cmplt cmplt = {
+		.cyc   = ESPI_FLASH_UNSUC_CMPLT,
+		.tag   = tag,
+		.len_h = 0,
+		.len_l = 0,
+	};
+	struct espi_aspeed_ioc ioc = {
+		.pkt     = (uint8_t *)&cmplt,
+		.pkt_len = sizeof(cmplt),
+	};
+	int ret = espi_aspeed_flash_put_tx(host_dev, &ioc);
+
+	if (ret)
+		LOG_ERR("UNSUC_CMPLT put_tx failed: %d", ret);
+}
+
+static void espi_aspeed_flash_release_rx(void)
+{
+	if (ESPI_RD(ESPI_CH3_RX_CTRL) & ESPI_CH3_RX_CTRL_SERV_PEND)
+		ESPI_WR(ESPI_CH3_RX_CTRL_SERV_PEND, ESPI_CH3_RX_CTRL);
+}
+
+static void espi_taf_work(struct k_work *item)
+{
+	struct espi_taf_data *data =
+		CONTAINER_OF(item, struct espi_taf_data, work);
+	struct espi_flash_rwe *rwe = (struct espi_flash_rwe *)data->pckt.pkt;
+	struct espi_taf_req req = {
+		.cyc  = rwe->cyc,
+		.tag  = rwe->tag,
+		.addr = sys_be32_to_cpu(rwe->addr_be),
+		.len  = ((uint16_t)rwe->len_h << 8) | rwe->len_l,
+		.data = (rwe->cyc == ESPI_FLASH_WRITE) ? rwe->data : NULL,
+	};
+
+	LOG_INF("TAF req: cyc=0x%02x tag=%d addr=0x%08x len=%d",
+		req.cyc, req.tag, req.addr, req.len);
+
+	if (data->handler)
+		data->handler(data->host_dev, &req, data->user_data);
+	else
+		taf_send_unsuc_cmplt(data->host_dev, rwe->tag);
+
+	espi_aspeed_flash_release_rx();
+}
+
+static void espi_taf_dispatch(struct espi_aspeed_taf_pckt *pckt)
+{
+	memcpy(&espi_taf_data.pckt, pckt, sizeof(*pckt));
+	k_work_submit(&espi_taf_data.work);
+}
+
+static void espi_taf_init(const struct device *dev)
+{
+	espi_taf_data.host_dev = dev;
+	k_work_init(&espi_taf_data.work, espi_taf_work);
+}
+
+int espi_aspeed_taf_register(const struct device *dev,
+			      espi_taf_handler_t handler,
+			      void *user_data)
+{
+	ARG_UNUSED(dev);
+
+	espi_taf_data.handler = handler;
+	espi_taf_data.user_data = user_data;
+
+	return 0;
+}
+#endif
 
 /* eSPI controller config. */
 struct espi_ast2700_config {
@@ -887,6 +1042,10 @@ static int espi_ast2700_init(const struct device *dev)
 	espi_ast2700_vw_reset(&data->vw);
 	espi_ast2700_oob_reset(&data->oob);
 	espi_ast2700_flash_reset(&data->flash);
+
+#ifdef CONFIG_ESPI_TAF
+	espi_taf_init(dev);
+#endif
 
 	/* install interrupt handler */
 	IRQ_CONNECT(DT_INST_IRQN(0),
