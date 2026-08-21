@@ -285,13 +285,6 @@ void ast1060_spi_proprietary_config_init(const struct aspeed_spi_config *config,
  */
 #define AST10X0_G2_SCU0D0              0x74C020D0
 #define AST10X0_G2_SCU0D4              0x74C020D4
-#define AST10X0_G2_SCU414              0x74C02414
-#define AST10X0_G2_SCU418              0x74C02418
-#define AST10X0_G2_SCU448              0x74C02448
-#define AST10X0_G2_SCU450              0x74C02450
-#define AST10X0_G2_SCU454              0x74C02454
-#define AST10X0_G2_SCU45C              0x74C0245C
-#define AST10X0_G2_SCU460              0x74C02460
 
 void ast10x0_g2_proprietary_post_config(const struct device *dev, uint32_t cs)
 {
@@ -308,100 +301,31 @@ void ast10x0_g2_proprietary_post_config(const struct device *dev, uint32_t cs)
 void ast10x0_g2_spi_proprietary_config_init(const struct aspeed_spi_config *config,
 					 struct aspeed_spi_data *data)
 {
-	uint32_t reg_val;
-
 	data->aspeed_spim_proprietary_post_config = ast10x0_g2_proprietary_post_config;
 
 	if (!config->cs_group_analog_mux_enable) {
 		return;
 	}
 
-	/*
-	 * SPIF0_CLK_OUT, SPIF0_DQ0_OUT
-	 * SPIF0_CSN0_OUT
-	 * SPIF0_CSN1_OUT
-	 * SPIF0_DQ1_OUT, SPIF0_DQ2_OUT, SPIF0_DQ3_OUT
-	 * SCU450[26:24]/[30:28] = 2
-	 * SCU45C[30:28] = 2
-	 * SCU460[2:0] = 2
-	 * SCU454[2:0]/[6:4]/[10:8] = 2
-	 */
-	reg_val = sys_read32(AST10X0_G2_SCU450);
-	reg_val &= ~(BIT_MASK(3) << 24 | BIT_MASK(3) << 28);
-	reg_val |= (2 << 24) | (2 << 28);
-	sys_write32(reg_val, AST10X0_G2_SCU450);
-
-	reg_val = sys_read32(AST10X0_G2_SCU45C);
-	reg_val &= ~(BIT_MASK(3) << 28);
-	reg_val |= (2 << 28);
-	sys_write32(reg_val, AST10X0_G2_SCU45C);
-
-	reg_val = sys_read32(AST10X0_G2_SCU460);
-	reg_val &= ~(BIT_MASK(3) << 0);
-	reg_val |= (2 << 0);
-	sys_write32(reg_val, AST10X0_G2_SCU460);
-
-	reg_val = sys_read32(AST10X0_G2_SCU454);
-	reg_val &= ~(BIT_MASK(3) << 0 | BIT_MASK(3) << 4 | BIT_MASK(3) << 8);
-	reg_val |= (2 << 0) | (2 << 4) | (2 << 8);
-	sys_write32(reg_val, AST10X0_G2_SCU454);
-
-	/*disable pull-up and pull-down*/
+	/* SPIF0 pins: disable pull-up and pull-down */
 	sys_write32(0x02050201, 0x74c025FC);
 	sys_write32(0x02040205, 0x74c02600);
 	sys_write32(0x02050205, 0x74c025CC);
 	sys_write32(0x02050205, 0x74c025D0);
 	sys_write32(0x02040205, 0x74c025D4);
 
-	/*
-	 * SPIF1_CSN0_OUT, SPIF1_CSN1_OUT, SPIF1_CLK_OUT, SPIF1_DQ0_OUT
-	 * SPIF1_DQ1_OUT, SPIF1_DQ2_OUT, SPIF1_DQ3_OUT
-	 * SCU414[18:16]/[22:20]/[26:24]/[30:28] = 2
-	 * SCU418[2:0]/[6:4]/[10:8] = 2
-	 */
-	reg_val = sys_read32(AST10X0_G2_SCU414);
-	reg_val &= ~(BIT_MASK(3) << 16 | BIT_MASK(3) << 20 |
-		     BIT_MASK(3) << 24 | BIT_MASK(3) << 28);
-	reg_val |= (2 << 16) | (2 << 20) | (2 << 24) | (2 << 28);
-	sys_write32(reg_val, AST10X0_G2_SCU414);
-
-	reg_val = sys_read32(AST10X0_G2_SCU418);
-	reg_val &= ~(BIT_MASK(3) << 0 | BIT_MASK(3) << 4 | BIT_MASK(3) << 8);
-	reg_val |= (2 << 0) | (2 << 4) | (2 << 8);
-	sys_write32(reg_val, AST10X0_G2_SCU418);
-
-	/*disable pull-up and pull-down*/
+	/* SPIF1 pins: disable pull-up and pull-down */
 	sys_write32(0x02050205, 0x74c024d8);
 	sys_write32(0x02050205, 0x74c024dc);
 	sys_write32(0x02050205, 0x74c024e0);
 	sys_write32(0x02040205, 0x74c024e4);
 
-	/*
-	 * SPIF2_CSN0_OUT, SPIF2_CSN1_OUT
-	 * SPIF2_CLK_OUT, SPIF2_DQ0_OUT
-	 * SPIF2_DQ1_OUT, SPIF2_DQ2_OUT, SPIF2_DQ3_OUT
-	 * SCU45C[22:20]/[26:24] = 2
-	 * SCU448[10:08]/[14:12] = 2
-	 * SCU448[18:16]/[22:20]/[26:24] = 2
-	 */
-	reg_val = sys_read32(AST10X0_G2_SCU45C);
-	reg_val &= ~(BIT_MASK(3) << 20 | BIT_MASK(3) << 24);
-	reg_val |= (2 << 20) | (2 << 24);
-	sys_write32(reg_val, AST10X0_G2_SCU45C);
-
-	reg_val = sys_read32(AST10X0_G2_SCU448);
-	reg_val &= ~(BIT_MASK(3) << 8 | BIT_MASK(3) << 12 | BIT_MASK(3) << 16 |
-		     BIT_MASK(3) << 20 | BIT_MASK(3) << 24);
-	reg_val |= (2 << 8) | (2 << 12) | (2 << 16) | (2 << 20) | (2 << 24);
-	sys_write32(reg_val, AST10X0_G2_SCU448);
-
-	/*disable pull-up and pull-down*/
+	/* SPIF2 pins: disable pull-up and pull-down */
 	sys_write32(0x02050201, 0x74c025F8);
 	sys_write32(0x02050205, 0x74c025FC);
 	sys_write32(0x02050205, 0x74c025A4);
 	sys_write32(0x02050205, 0x74c025A8);
 	sys_write32(0x02040205, 0x74c025AC);
-
 }
 
 /*
@@ -433,4 +357,3 @@ void ast10x0_g2_spi_cs_group_select(const struct device *dev, uint32_t cs)
 	reg_val |= BIT(group);
 	sys_write32(reg_val, AST10X0_G2_SCU0D4);
 }
-

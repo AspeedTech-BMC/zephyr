@@ -135,6 +135,18 @@
 /* FWSPI quad lanes */
 #define pinctrl_fwspi_quad_default &pin_fwspidq2 &pin_fwspidq3
 
+/* SPI Monitor */
+#define pinctrl_spif0_default      &pin_spif0ck &pin_spif0dq0 &pin_spif0dq1 \
+				   &pin_spif0dq2 &pin_spif0dq3 &pin_spif0cs0
+#define pinctrl_spif0_cs1_default  &pin_spif0cs1
+#define pinctrl_spif1_default      &pin_spif1cs0 &pin_spif1ck \
+				   &pin_spif1dq0 &pin_spif1dq1 \
+				   &pin_spif1dq2 &pin_spif1dq3
+#define pinctrl_spif1_cs1_default  &pin_spif1cs1
+#define pinctrl_spif2_default      &pin_spif2ck &pin_spif2dq0 &pin_spif2dq1 \
+				   &pin_spif2dq2 &pin_spif2dq3 &pin_spif2cs0
+#define pinctrl_spif2_cs1_default  &pin_spif2cs1
+
 /* eSPI */
 #define pinctrl_espi_default   &pin_espid0 &pin_espid1 &pin_espid2 &pin_espid3 \
 				&pin_espick &pin_espics &pin_espialt &pin_espirst
