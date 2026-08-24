@@ -575,7 +575,7 @@ static void espi_ast2700_vw_isr(struct espi_ast2700_data *data)
 
 	if (sts & ESPI_CH1_INT_STS_GPIO) {
 		vw->gpio.val0 = ESPI_RD(ESPI_CH1_GPIO_VAL0);
-		vw->gpio.val1 = ESPI_RD(ESPI_CH1_GPIO_VAL0);
+		vw->gpio.val1 = ESPI_RD(ESPI_CH1_GPIO_VAL1);
 		ESPI_WR(ESPI_CH1_INT_STS_GPIO, ESPI_CH1_INT_STS);
 	}
 }
