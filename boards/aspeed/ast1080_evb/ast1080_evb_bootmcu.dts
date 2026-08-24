@@ -81,8 +81,4 @@
 	status = "okay";
 };
 
-&fmc {
-	status = "okay";
-	timing-calibration-disabled;
-};
 #endif

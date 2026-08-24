@@ -1,8 +1,0 @@
-# Copyright (c) 2026 ASPEED Technology Inc.
-# SPDX-License-Identifier: Apache-2.0
-
-description: ASPEED AST10X0_G2 SPI Lite controller node
-
-compatible: "aspeed,ast10x0-g2-spi-lite-controller"
-
-include: aspeed,spi-common.yaml

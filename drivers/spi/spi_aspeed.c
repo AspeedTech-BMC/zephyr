@@ -1889,28 +1889,6 @@ static const __maybe_unused struct aspeed_spi_ops ast10x0_g2_spi_ops = {
 #endif
 };
 
-/*
- * AST10X0_G2 lite SPI controller ops (MCU core variant, no interrupt/pinctrl).
- * Falls back to polling and uses lite pinctrl helpers.
- */
-static const __maybe_unused struct aspeed_spi_ops ast10x0_g2_spi_lite_ops = {
-	.init_data = ast10x0_g2_spi_init_data,
-	.pinctrl_init = ast2700_spi_lite_pinctrl_init,
-	.pinctrl_post_init = ast2700_spi_lite_pinctrl_post_init,
-	.proprietary_config_init = ast10x0_g2_spi_proprietary_config_init,
-	.enable_4byte_mode = ast2700_spi_enable_4byte_mode,
-	.cs_group_select = ast10x0_g2_spi_cs_group_select,
-	.safs_read_config = NULL,
-	.safs_write_config = NULL,
-#ifdef CONFIG_SPI_DMA_SUPPORT_ASPEED
-	.dma_xfer_eligible = ast10x0_g2_spi_dma_xfer_eligible,
-	.read_dma = ast2700_aspeed_spi_read_dma,
-	.write_dma = ast2700_aspeed_spi_write_dma,
-	.cache_flush = aspeed_spi_dma_cache_flush,
-	.cache_invd = aspeed_spi_dma_cache_invd,
-#endif
-};
-
 #if defined(CONFIG_SPI_DMA_SUPPORT_ASPEED)
 #define ASPEED_SPI_IRQ_INIT(soc, n, isr)                                 \
 	static void aspeed_spi_irq_config_func_##soc##_##n(               \
@@ -2045,10 +2023,3 @@ DT_INST_FOREACH_STATUS_OKAY(ASPEED_AST2700_SPI_INIT)
 #undef DT_DRV_COMPAT
 #define DT_DRV_COMPAT aspeed_ast2700_spi_lite_controller
 DT_INST_FOREACH_STATUS_OKAY(ASPEED_AST2700_SPI_LITE_INIT)
-
-/* AST1040/AST1080 RISC-V MCU */
-#define ASPEED_AST10X0_G2_SPI_LITE_INIT(n)                                 \
-	ASPEED_SPI_LITE_INIT(ast10x0_g2_spi_lite, n, ast10x0_g2_spi_lite_ops)
-#undef DT_DRV_COMPAT
-#define DT_DRV_COMPAT aspeed_ast10x0_g2_spi_lite_controller
-DT_INST_FOREACH_STATUS_OKAY(ASPEED_AST10X0_G2_SPI_LITE_INIT)
