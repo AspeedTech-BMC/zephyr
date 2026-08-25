@@ -317,8 +317,13 @@
 &spi0 {
 	status = "okay";
 	cs-group-analog-mux-enable;
-	/* Pins shared with SPI monitor (spim1/spim2), so leave empty here. */
-	pinctrl-0 = <>;
+	/* Pins shared with SPI monitor (spim1/spim2). */
+	pinctrl-0 = <
+		pinctrl_spif0_default
+		pinctrl_spif0_cs1_default
+		pinctrl_spif1_default
+		pinctrl_spif1_cs1_default
+	>;
 };
 
 &spi0_cs0 {
@@ -343,8 +348,11 @@
 
 &spi1 {
 	status = "okay";
-	/* Pins shared with SPI monitor (spim3), so leave empty here. */
-	pinctrl-0 = <>;
+	/* Pins shared with SPI monitor (spim3).*/
+	pinctrl-0 = <
+		pinctrl_spif2_default
+		pinctrl_spif2_cs1_default
+	>;
 };
 
 &spi1_cs0 {

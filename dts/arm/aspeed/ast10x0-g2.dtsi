@@ -1115,8 +1115,6 @@
 			spim1: spim@1 {
 				interrupts = <INTR_SPI_F0 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
 				reg = <1>;
-				pinctrl-0 = <pinctrl_spif0_default pinctrl_spif0_cs1_default>;
-				pinctrl-names = "default";
 				allow-cmds = [];
 				status = "disabled";
 			};
@@ -1124,8 +1122,6 @@
 			spim2: spim@2 {
 				interrupts = <INTR_SPI_F1 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
 				reg = <2>;
-				pinctrl-0 = <pinctrl_spif1_default pinctrl_spif1_cs1_default>;
-				pinctrl-names = "default";
 				allow-cmds = [];
 				status = "disabled";
 			};
@@ -1133,8 +1129,6 @@
 			spim3: spim@3 {
 				interrupts = <INTR_SPI_F2 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
 				reg = <3>;
-				pinctrl-0 = <pinctrl_spif2_default pinctrl_spif2_cs1_default>;
-				pinctrl-names = "default";
 				allow-cmds = [];
 				status = "disabled";
 			};
