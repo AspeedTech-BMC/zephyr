@@ -54,9 +54,27 @@ LOG_MODULE_REGISTER(otp_ast2700, CONFIG_LOG_DEFAULT_LEVEL);
 #define OTP_ADDR			(OTP_MASTER * OTP_CMD_OFFSET + 0x1c)
 #define OTP_RDATA			(OTP_MASTER * OTP_CMD_OFFSET + 0x20)
 
-#define OTP_DBG01			0x0C8
-#define OTP_ECC_EN			0x0D4
-#define OTP_PMC_CQ			0x0E4
+#define OTP_DBG01                   0x0C8
+#define OTP_ECC_EN                  0x0D4
+#define OTP_PMC_CQ                  0x0E4
+
+#define OTP_MASTER_ID               0x1B0
+#define OTP_MASTER_ID_EXT           0x1B4
+#define OTP_R_MASTER_ID             0x1B8
+#define OTP_R_MASTER_ID_EXT         0x1BC
+#define OTP_MASTER_ID_LOCK          BIT(31)
+
+/* Table 4.3: Manager ID for OTP Security Access Control */
+#define OTP_MID_CA35_WRITE          0x00
+#define OTP_MID_CA35_READ           0x01
+#define OTP_MID_SSP_SBUS            0x04
+#define OTP_MID_UARTDBG_CPU_DIE	    0x08
+#define OTP_MID_TSP_SBUS            0x0B
+#define OTP_MID_BOOTMCU_DCHANNEL    0x21
+#define OTP_MID_UARTDBG_IO_DIE      0x30
+
+/* Not in Table 4.3: parks unused master-id ports on an id nothing presents */
+#define OTP_MID_NONE                0x3F
 
 #define OTP_DAP_CFG_RQ			0x538
 
@@ -326,15 +344,17 @@ static int otp_check_ecc_status(const struct device *dev)
 	return -OTP_ECC_ERR_DUAL;
 }
 
-static void otp_ecc_cfg(const struct device *dev, bool ecc_en)
+static void otp_ecc_cfg(const struct device *dev, bool ecc_en, bool auto_cfg)
 {
 	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
+	bool self_cfg = ecc_en && !auto_cfg;
 
 	sys_write32(ecc_en, cfg->base + OTP_ECC_EN);
+
 	/* Self config or auto config */
-	sys_write32(ecc_en ? 0x4 : 0x0, cfg->base + OTP_PMC_CQ);
+	sys_write32(self_cfg ? 0x4 : 0x0, cfg->base + OTP_PMC_CQ);
 	/* Clearing OTP_PMC_CQ auto-reverts OTP_DAP_CFG_RQ, no explicit write needed to disable */
-	if (ecc_en)
+	if (self_cfg)
 		sys_write32(0x40008, cfg->base + OTP_DAP_CFG_RQ);
 }
 
@@ -345,7 +365,7 @@ static int otp_read_data(const struct device *dev, uint32_t offset, uint16_t *da
 	bool ecc_en = otp_region_ecc_active(dev, offset);
 
 	sys_write32(offset, cfg->base + OTP_ADDR);
-	otp_ecc_cfg(dev, ecc_en);
+	otp_ecc_cfg(dev, ecc_en, false);
 
 	sys_write32(OTP_CMD_READ, cfg->base + OTP_CMD);
 	ret = wait_complete(dev);
@@ -354,6 +374,9 @@ static int otp_read_data(const struct device *dev, uint32_t offset, uint16_t *da
 
 	if (!ret && ecc_en)
 		ret = otp_check_ecc_status(dev);
+
+	/* Restore ECC config to default */
+	otp_ecc_cfg(dev, ecc_en, true);
 
 	return ret;
 }
@@ -543,6 +566,40 @@ static void aspeed_otp_dump_info(const struct device *dev)
 		sys_be16_to_cpu(hash[0]), sys_be16_to_cpu(hash[1]));
 }
 
+#if defined(CONFIG_SOC_AST2700_BOOTMCU)
+static uint32_t otp_master_id_pack(uint8_t id0, uint8_t id1, uint8_t id2, uint8_t id3)
+{
+	return id0 | ((uint32_t)id1 << 8) | ((uint32_t)id2 << 16) | ((uint32_t)id3 << 24);
+}
+
+static uint32_t otp_master_id_ext_pack(uint8_t id4, uint8_t id5, bool lock)
+{
+	return id4 | ((uint32_t)id5 << 8) | (lock ? OTP_MASTER_ID_LOCK : 0);
+}
+
+static void otp_lock_master_access(const struct device *dev)
+{
+	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
+
+	/*
+	 * Restrict which masters may access OTP before handing off to
+	 * SSP/TSP. REG_MASTER_LOCK/RLOCK covers master ids 0-5, so ports
+	 * 0-3 must be written before the _EXT write that also sets the
+	 * lock bit, or the lock would latch before ports 0-3 are set.
+	 */
+	sys_write32(otp_master_id_pack(OTP_MID_BOOTMCU_DCHANNEL, OTP_MID_CA35_WRITE,
+				       OTP_MID_SSP_SBUS, OTP_MID_TSP_SBUS),
+		    cfg->base + OTP_MASTER_ID);
+	sys_write32(otp_master_id_pack(OTP_MID_BOOTMCU_DCHANNEL, OTP_MID_CA35_READ,
+				       OTP_MID_SSP_SBUS, OTP_MID_TSP_SBUS),
+		    cfg->base + OTP_R_MASTER_ID);
+	sys_write32(otp_master_id_ext_pack(OTP_MID_NONE, OTP_MID_NONE, true),
+		    cfg->base + OTP_MASTER_ID_EXT);
+	sys_write32(otp_master_id_ext_pack(OTP_MID_NONE, OTP_MID_NONE, true),
+		    cfg->base + OTP_R_MASTER_ID_EXT);
+}
+#endif
+
 static int otp_ast27xx_init(const struct device *dev)
 {
 	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
@@ -559,7 +616,13 @@ static int otp_ast27xx_init(const struct device *dev)
 
 	aspeed_otp_dump_info(dev);
 
+#if defined(CONFIG_SOC_AST2700_BOOTMCU)
+	otp_lock_master_access(dev);
+	LOG_INF("\t0x%x: OTP driver initialized, MASTER: 0x%x, master access locked",
+		(uint32_t)cfg->base, OTP_MASTER);
+#else
 	LOG_INF("\t0x%x: OTP driver initialized, MASTER: 0x%x", (uint32_t)cfg->base, OTP_MASTER);
+#endif
 
 	return rc;
 }
