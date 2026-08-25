@@ -58,6 +58,18 @@
 			};
 		};
 
+		cptra_mci_mbox: cptra-mci-mbox@74200000 {
+			compatible = "aspeed,cptra-mci-mbox";
+			reg = <0x74200000 0x10000>;
+			aspeed,scu = <&syscon>;
+			status = "disabled";
+
+			cptra_mci_sha: cptra-mci-sha {
+				compatible = "aspeed,cptra-mci-sha";
+				status = "disabled";
+			};
+		};
+
 		uart0: serial@74c33000 {
 			compatible = "aspeed,uart";
 			reg = <0x74c33000 0x100>;

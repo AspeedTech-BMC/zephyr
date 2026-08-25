@@ -40,6 +40,13 @@ config CPTRA_LMS
 	help
 	  This option enables the Caliptra LMS driver for ASPEED SoCs.
 
+config CPTRA_MCI_SHA
+	bool "ASPEED CPTRA MCI mailbox SHA engine driver"
+	depends on CPTRA_MCI_MBOX
+	help
+	  This option enables the Caliptra-SS MCI mailbox SHA
+	  (MC_SHA_INIT/MC_SHA_UPDATE/MC_SHA_FINAL) driver for ASPEED SoCs.
+
 config HASH_SHELL
 	bool "Enable Hash Shell"
 	depends on CRYPTO_ASPEED || CPTRA_SHA

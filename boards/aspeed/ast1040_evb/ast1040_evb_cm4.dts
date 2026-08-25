@@ -435,3 +435,11 @@ zephyr_udc0: &udc1 {
 	status = "okay";
 };
 #endif
+
+&cptra_mci_mbox {
+	status = "okay";
+};
+
+&cptra_mci_sha {
+	status = "okay";
+};

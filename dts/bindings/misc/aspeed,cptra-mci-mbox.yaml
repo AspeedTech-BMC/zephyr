@@ -1,0 +1,22 @@
+# Copyright (c) 2025 ASPEED Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Caliptra-SS MCI (Manageability Controller Interface) mailbox node for
+  ASPEED platforms. The mailbox CSR block and its data SRAM are only
+  reachable through a shared 64KB paged window; aspeed,scu points at the
+  SCU1 node that owns the page-select register used to switch that window
+  between the two targets.
+
+compatible: "aspeed,cptra-mci-mbox"
+
+include: base.yaml
+
+properties:
+  reg:
+    required: true
+
+  aspeed,scu:
+    type: phandle
+    required: true
+    description: phandle to the SCU1 device tree node that owns the page-select register

@@ -125,6 +125,42 @@ config CPTRA_IPC_SSP
 	help
 	  This option enables the Caliptra ipc driver in SSP for ASPEED SoCs.
 
+config CPTRA_MCI_MBOX
+	bool "ASPEED CPTRA MCI mailbox driver"
+	depends on SOC_SERIES_AST10x0_G2_CM4
+	help
+	  This option enables the Caliptra-SS MCI (Manageability Controller
+	  Interface) mailbox driver for ASPEED SoCs.
+
+config CPTRA_MCI_MISC
+	bool "ASPEED CPTRA MCI mailbox commands"
+	depends on CPTRA_MCI_MBOX
+	help
+	  This option enables the Caliptra-SS MCI mailbox command helpers
+	  (firmware version, ...) for ASPEED SoCs.
+
+config CPTRA_MCI_CRYPTOGRAPHIC_MBOX
+	bool "ASPEED CPTRA MCI cryptographic mailbox (CM_*) commands"
+	depends on CPTRA_MCI_MBOX
+	help
+	  This option enables the Caliptra-SS MCI cryptographic mailbox (CM_*)
+	  commands operating on opaque Cmk key handles: MC_IMPORT, MC_CM_STATUS,
+	  MC_RANDOM_STIR/MC_RANDOM_GENERATE, MC_ECDH_GENERATE/MC_ECDH_FINISH,
+	  CMK-based ECDSA and ML-DSA-87 (sign/verify/public key), MC_HMAC,
+	  MC_HMAC_KDF_COUNTER, MC_HKDF_EXTRACT/MC_HKDF_EXPAND, and AES/AES-GCM
+	  encrypt/decrypt, for ASPEED SoCs.
+
+config CPTRA_MCI_SHELL
+	bool "ASPEED CPTRA MCI mailbox shell commands"
+	depends on CPTRA_MCI_MISC
+	depends on CPTRA_MCI_SHA
+	depends on CPTRA_MCI_CRYPTOGRAPHIC_MBOX
+	depends on SHELL
+	help
+	  This option enables shell commands to exercise the Caliptra-SS MCI
+	  mailbox commands (firmware version, SHA, cryptographic mailbox, ...)
+	  for testing.
+
 config PRIVILEGE_CTRL
 	bool "Enable ASPEED privilege control"
 	default y
