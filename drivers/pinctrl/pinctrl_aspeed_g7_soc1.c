@@ -25,6 +25,10 @@ LOG_MODULE_REGISTER(pinctrl_aspeed_g7_soc1, LOG_LEVEL_INF);
 #define PINCTRL_SIG_DESC_BIT_OFFSET	GENMASK(27, 20)
 #define PINCTRL_SIG_DESC_REG_OFFSET	GENMASK(19, 0)
 
+#define PINCTRL_PINCFG_DESC_WIDTH	GENMASK(31, 28)
+#define PINCTRL_PINCFG_DESC_BIT_OFFSET	GENMASK(27, 20)
+#define PINCTRL_PINCFG_DESC_REG_OFFSET	GENMASK(19, 0)
+
 static const struct device *syscon = DEVICE_DT_GET(DT_INST_PARENT(0));
 
 static struct {
@@ -63,6 +67,57 @@ static int pinctrl_request_ball(const pinctrl_soc_pin_t *pin)
 	return 0;
 }
 
+/*
+ * Apply one PINCFG_DESC()-located attribute (drive strength, bias/pull
+ * disable, ...): read-modify-write `val` into the described bitfield.
+ * A zero `desc` means the ball has no register wired up for this
+ * attribute yet, so it is silently skipped.
+ */
+static int pinctrl_apply_pincfg_desc(uint32_t desc, uint32_t val)
+{
+	uint32_t width, bit_offset, offset, mask, value;
+	int ret;
+
+	if (!desc) {
+		return 0;
+	}
+
+	width = FIELD_GET(PINCTRL_PINCFG_DESC_WIDTH, desc);
+	bit_offset = FIELD_GET(PINCTRL_PINCFG_DESC_BIT_OFFSET, desc);
+	offset = FIELD_GET(PINCTRL_PINCFG_DESC_REG_OFFSET, desc);
+	mask = GENMASK(width - 1, 0) << bit_offset;
+
+	ret = syscon_read_reg(syscon, offset, &value);
+	if (ret) {
+		return ret;
+	}
+
+	value = (value & ~mask) | ((val << bit_offset) & mask);
+
+	return syscon_write_reg(syscon, offset, value);
+}
+
+static int pinctrl_configure_pincfg(const pinctrl_soc_pin_t *pin)
+{
+	int ret;
+
+	if (pin->bias_disable) {
+		ret = pinctrl_apply_pincfg_desc(pin->bias_disable_desc, 1);
+		if (ret) {
+			return ret;
+		}
+	}
+
+	if (pin->drive_strength_desc && pin->drive_strength_valid) {
+		ret = pinctrl_apply_pincfg_desc(pin->drive_strength_desc, pin->drive_strength);
+		if (ret) {
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
 static int pinctrl_configure_pin(const pinctrl_soc_pin_t *pin)
 {
 	uint32_t func_index, bit_offset, offset, value;
@@ -88,8 +143,11 @@ static int pinctrl_configure_pin(const pinctrl_soc_pin_t *pin)
 	ret = syscon_read_reg(syscon, offset, &value);
 	value = (value & ~(mask)) | (func_index << bit_offset);
 	ret = syscon_write_reg(syscon, offset, value);
+	if (ret) {
+		return ret;
+	}
 
-	return ret;
+	return pinctrl_configure_pincfg(pin);
 }
 
 int pinctrl_configure_pins(const pinctrl_soc_pin_t *pins, uint8_t pin_cnt, uintptr_t reg)

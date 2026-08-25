@@ -13,6 +13,16 @@
  */
 #define SIG_DESC(reg, bit, func) ((reg) | ((bit) << 20) | ((func) << 28))
 
+/*
+ * PINCFG_DESC locates a single pin-configuration attribute (e.g. drive
+ * strength, bias/pull disable) in the SCU register map, using the same
+ * reg/bit-offset layout as SIG_DESC:
+ * bit[31:28] field width in bits
+ * bit[27:20] bit offset
+ * bit[19:0] SCU register offset
+ */
+#define PINCFG_DESC(reg, bit, width) ((reg) | ((bit) << 20) | ((width) << 28))
+
 /* The physical ball IDs */
 #define F14     0
 #define E15     1

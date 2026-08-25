@@ -19,3 +19,15 @@ child-binding:
     ball:
       required: true
       type: int
+    bias-disable-desc:
+      type: int
+      description: |
+        PINCFG_DESC() location of the bias/pull-disable control bit for
+        this ball. Combined with the generic "bias-disable" property
+        (from pincfg-node.yaml) to decide whether to write it.
+    drive-strength-desc:
+      type: int
+      description: |
+        PINCFG_DESC() location of the drive-strength field for this
+        ball. Combined with the generic "drive-strength" property (from
+        pincfg-node.yaml) for the value to write.
