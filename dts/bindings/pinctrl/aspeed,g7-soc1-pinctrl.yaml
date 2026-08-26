@@ -14,8 +14,10 @@ child-binding:
 
   properties:
     sig_descs:
-      required: true
       type: int
+      description: |
+        Omit for a pin that only carries pincfg (drive-strength /
+        bias-disable) and has no pinmux to select.
     ball:
       required: true
       type: int

@@ -135,16 +135,23 @@ static int pinctrl_configure_pin(const pinctrl_soc_pin_t *pin)
 		return ret;
 	}
 
-	func_index = FIELD_GET(PINCTRL_SIG_DESC_FUNC_IDX, pin->sig_descs);
-	bit_offset = FIELD_GET(PINCTRL_SIG_DESC_BIT_OFFSET, pin->sig_descs);
-	offset = FIELD_GET(PINCTRL_SIG_DESC_REG_OFFSET, pin->sig_descs);
-	mask = GENMASK(2, 0) << bit_offset;
+	/*
+	 * A pin with no sig_descs has no pinmux to select (e.g. a pin that
+	 * only carries drive-strength / bias-disable pincfg on a dedicated
+	 * ball), so skip the mux register write entirely.
+	 */
+	if (pin->sig_descs) {
+		func_index = FIELD_GET(PINCTRL_SIG_DESC_FUNC_IDX, pin->sig_descs);
+		bit_offset = FIELD_GET(PINCTRL_SIG_DESC_BIT_OFFSET, pin->sig_descs);
+		offset = FIELD_GET(PINCTRL_SIG_DESC_REG_OFFSET, pin->sig_descs);
+		mask = GENMASK(2, 0) << bit_offset;
 
-	ret = syscon_read_reg(syscon, offset, &value);
-	value = (value & ~(mask)) | (func_index << bit_offset);
-	ret = syscon_write_reg(syscon, offset, value);
-	if (ret) {
-		return ret;
+		ret = syscon_read_reg(syscon, offset, &value);
+		value = (value & ~(mask)) | (func_index << bit_offset);
+		ret = syscon_write_reg(syscon, offset, value);
+		if (ret) {
+			return ret;
+		}
 	}
 
 	return pinctrl_configure_pincfg(pin);

@@ -16,7 +16,7 @@
 #ifdef CONFIG_PINCTRL_ASPEED_STRING_NAME
 #define Z_PINCTRL_STATE_PIN_INIT(node_id, prop, idx)                                               \
 	{                                                                                          \
-		.sig_descs = DT_PROP(DT_PHANDLE_BY_IDX(node_id, prop, idx), sig_descs),            \
+		.sig_descs = DT_PROP_OR(DT_PHANDLE_BY_IDX(node_id, prop, idx), sig_descs, 0),      \
 		.ball = DT_PROP(DT_PHANDLE_BY_IDX(node_id, prop, idx), ball),                      \
 		Z_PINCTRL_STATE_PIN_PINCFG_INIT(node_id, prop, idx)                                \
 		.name = DT_NODE_FULL_NAME(DT_PHANDLE_BY_IDX(node_id, prop, idx)),                  \
@@ -24,7 +24,7 @@
 #else
 #define Z_PINCTRL_STATE_PIN_INIT(node_id, prop, idx)                                               \
 	{                                                                                          \
-		.sig_descs = DT_PROP(DT_PHANDLE_BY_IDX(node_id, prop, idx), sig_descs),            \
+		.sig_descs = DT_PROP_OR(DT_PHANDLE_BY_IDX(node_id, prop, idx), sig_descs, 0),      \
 		.ball = DT_PROP(DT_PHANDLE_BY_IDX(node_id, prop, idx), ball),                      \
 		Z_PINCTRL_STATE_PIN_PINCFG_INIT(node_id, prop, idx)                                \
 	},
