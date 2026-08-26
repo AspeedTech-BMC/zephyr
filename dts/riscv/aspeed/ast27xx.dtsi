@@ -438,4 +438,4 @@
 	};
 };
 
-#include "ast27xx-pinctrl.dtsi"
+#include <aspeed/ast27xx-pinctrl.dtsi>

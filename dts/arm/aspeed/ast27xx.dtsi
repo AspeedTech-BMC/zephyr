@@ -944,4 +944,4 @@
 	arm,num-irq-priority-bits = <3>;
 };
 
-#include "ast27xx-pinctrl.dtsi"
+#include <aspeed/ast27xx-pinctrl.dtsi>
