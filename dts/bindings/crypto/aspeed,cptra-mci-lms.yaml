@@ -1,0 +1,8 @@
+# Copyright (c) 2025 ASPEED Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+description: ASPEED Caliptra-SS MCI mailbox LMS signature verify (MC_LMS_SIG_VERIFY)
+
+compatible: "aspeed,cptra-mci-lms"
+
+include: base.yaml

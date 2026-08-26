@@ -68,6 +68,21 @@
 				compatible = "aspeed,cptra-mci-sha";
 				status = "disabled";
 			};
+
+			cptra_mci_ecdsa: cptra-mci-ecdsa {
+				compatible = "aspeed,cptra-mci-ecdsa";
+				status = "disabled";
+			};
+
+			cptra_mci_lms: cptra-mci-lms {
+				compatible = "aspeed,cptra-mci-lms";
+				status = "disabled";
+			};
+
+			cptra_mci_mldsa: cptra-mci-mldsa {
+				compatible = "aspeed,cptra-mci-mldsa";
+				status = "disabled";
+			};
 		};
 
 		uart0: serial@74c33000 {

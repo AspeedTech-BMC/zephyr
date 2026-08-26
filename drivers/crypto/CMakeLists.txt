@@ -24,5 +24,8 @@ zephyr_library_sources_ifdef(CONFIG_CPTRA_ECDSA			cptra_ecdsa.c)
 zephyr_library_sources_ifdef(CONFIG_CPTRA_SHA			cptra_sha.c)
 zephyr_library_sources_ifdef(CONFIG_CPTRA_LMS			cptra_lms.c)
 zephyr_library_sources_ifdef(CONFIG_CPTRA_MCI_SHA		cptra_mci_sha.c)
+zephyr_library_sources_ifdef(CONFIG_CPTRA_MCI_ECDSA		cptra_mci_ecdsa.c)
+zephyr_library_sources_ifdef(CONFIG_CPTRA_MCI_LMS		cptra_mci_lms.c)
+zephyr_library_sources_ifdef(CONFIG_CPTRA_MCI_MLDSA		cptra_mci_mldsa.c)
 
 zephyr_library_link_libraries_ifdef(CONFIG_MBEDTLS mbedTLS)

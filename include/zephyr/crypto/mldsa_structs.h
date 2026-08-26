@@ -1,53 +1,41 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
  *
- * Copyright (c) 2024 ASPEED Technology Inc.
+ * Copyright (c) 2025 ASPEED Technology Inc.
  */
 
 /**
  * @file
- * @brief Crypto LMS structure definitions
+ * @brief Crypto ML-DSA structure definitions
  *
- * This file contains the LMS Abstraction layer structures.
+ * This file contains the ML-DSA Abstraction layer structures.
  *
  * [Experimental] Users should note that the Structures can change
  * as a part of ongoing development.
  */
 
-#ifndef ZEPHYR_INCLUDE_CRYPTO_LMS_STRUCTS_H_
-#define ZEPHYR_INCLUDE_CRYPTO_LMS_STRUCTS_H_
+#ifndef ZEPHYR_INCLUDE_CRYPTO_MLDSA_STRUCTS_H_
+#define ZEPHYR_INCLUDE_CRYPTO_MLDSA_STRUCTS_H_
 
 /**
- * @addtogroup crypto_lms
+ * @addtogroup crypto_mldsa
  * @{
  */
 
 /* Forward declarations */
-struct lms_ctx;
-struct lms_pkt;
+struct mldsa_ctx;
+struct mldsa_pkt;
 
-#define LMS_PUB_KEY_ID_LEN		16
-#define LMS_PUB_KEY_DGST		24
-#define LMS_SIG_OTS_LEN			1252
-#define LMS_SIG_TREE_PATH		360
+#define MLDSA87_PUB_KEY_LEN		2592
+#define MLDSA87_SIG_LEN			4628
 
-struct lms_pub_key {
-	uint32_t pub_key_tree_type;
-	uint32_t pub_key_ots_type;
-	uint8_t pub_key_id[LMS_PUB_KEY_ID_LEN];
-	uint8_t pub_key_digest[LMS_PUB_KEY_DGST];
+struct mldsa_pub_key {
+	uint8_t key[MLDSA87_PUB_KEY_LEN];
 };
 
-struct lms_signature {
-	uint32_t q;
-	uint8_t ots[LMS_SIG_OTS_LEN];
-	uint32_t tree_type;
-	uint8_t tree_path[LMS_SIG_TREE_PATH];
-};
-
-struct lms_ops {
-	int (*sign)(struct lms_ctx *ctx, struct lms_pkt *pkt);
-	int (*verify)(struct lms_ctx *ctx, struct lms_pkt *pkt);
+struct mldsa_ops {
+	int (*sign)(struct mldsa_ctx *ctx, struct mldsa_pkt *pkt);
+	int (*verify)(struct mldsa_ctx *ctx, struct mldsa_pkt *pkt);
 };
 
 /**
@@ -56,13 +44,13 @@ struct lms_ops {
  * Refer to comments for individual fields to know the contract
  * in terms of who fills what and when w.r.t begin_session() call.
  */
-struct lms_ctx {
+struct mldsa_ctx {
 
 	/** Place for driver to return function pointers to be invoked per
 	 * cipher operation. To be populated by crypto driver on return from
 	 * begin_session() based on the algo/mode chosen by the app.
 	 */
-	struct lms_ops ops;
+	struct mldsa_ops ops;
 
 	/** The device driver instance this crypto context relates to. Will be
 	 * populated by the begin_session() API.
@@ -93,14 +81,14 @@ struct lms_ctx {
  * be filled up by the app before making the cipher_xxx_op()
  * call.
  */
-struct lms_pkt {
+struct mldsa_pkt {
 
-	struct lms_signature sig;
+	uint8_t sig[MLDSA87_SIG_LEN];
 
-	/** Pre-hashed digest of the message being verified (e.g. the
-	 * SHA-384 digest LMS verification is computed over). Must be filled
-	 * in by the app before calling lms_verify() -- LMS signature
-	 * verification needs this in addition to sig above.
+	/** Message being verified. Unlike ECDSA384/LMS raw verify, which
+	 * take a pre-hashed digest, MC_MLDSA87_SIG_VERIFY hashes the message
+	 * internally -- this is the raw message bytes, not a digest. Must be
+	 * filled in by the app before calling mldsa_verify().
 	 */
 	uint8_t *m;
 	int m_len;
@@ -109,10 +97,10 @@ struct lms_pkt {
 	 * session details, especially for async ops. Will be populated by the
 	 * cipher_xxx_op() API based on the ctx parameter.
 	 */
-	struct lms_ctx *ctx;
+	struct mldsa_ctx *ctx;
 };
 
 /**
  * @}
  */
-#endif /* ZEPHYR_INCLUDE_CRYPTO_LMS_STRUCTS_H_ */
+#endif /* ZEPHYR_INCLUDE_CRYPTO_MLDSA_STRUCTS_H_ */

@@ -422,3 +422,15 @@
 &cptra_mci_sha {
 	status = "okay";
 };
+
+&cptra_mci_ecdsa {
+	status = "okay";
+};
+
+&cptra_mci_lms {
+	status = "okay";
+};
+
+&cptra_mci_mldsa {
+	status = "okay";
+};

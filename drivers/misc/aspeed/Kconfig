@@ -154,6 +154,9 @@ config CPTRA_MCI_SHELL
 	bool "ASPEED CPTRA MCI mailbox shell commands"
 	depends on CPTRA_MCI_MISC
 	depends on CPTRA_MCI_SHA
+	depends on CPTRA_MCI_ECDSA
+	depends on CPTRA_MCI_LMS
+	depends on CPTRA_MCI_MLDSA
 	depends on CPTRA_MCI_CRYPTOGRAPHIC_MBOX
 	depends on SHELL
 	help

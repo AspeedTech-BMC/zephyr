@@ -47,6 +47,30 @@ config CPTRA_MCI_SHA
 	  This option enables the Caliptra-SS MCI mailbox SHA
 	  (MC_SHA_INIT/MC_SHA_UPDATE/MC_SHA_FINAL) driver for ASPEED SoCs.
 
+config CPTRA_MCI_ECDSA
+	bool "ASPEED CPTRA MCI mailbox raw-pubkey ECDSA-384 verify driver"
+	depends on CPTRA_MCI_MBOX
+	help
+	  This option enables the Caliptra-SS MCI mailbox raw-pubkey
+	  ECDSA-384 signature verify (MC_ECDSA384_SIG_VERIFY) driver, exposed
+	  through Zephyr's generic crypto/ecdsa.h API, for ASPEED SoCs.
+
+config CPTRA_MCI_LMS
+	bool "ASPEED CPTRA MCI mailbox LMS verify driver"
+	depends on CPTRA_MCI_MBOX
+	help
+	  This option enables the Caliptra-SS MCI mailbox LMS signature
+	  verify (MC_LMS_SIG_VERIFY) driver, exposed through Zephyr's
+	  generic crypto/lms.h API, for ASPEED SoCs.
+
+config CPTRA_MCI_MLDSA
+	bool "ASPEED CPTRA MCI mailbox raw-pubkey ML-DSA-87 verify driver"
+	depends on CPTRA_MCI_MBOX
+	help
+	  This option enables the Caliptra-SS MCI mailbox raw-pubkey
+	  ML-DSA-87 signature verify (MC_MLDSA87_SIG_VERIFY) driver, exposed
+	  through Zephyr's generic crypto/mldsa.h API, for ASPEED SoCs.
+
 config HASH_SHELL
 	bool "Enable Hash Shell"
 	depends on CRYPTO_ASPEED || CPTRA_SHA

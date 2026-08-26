@@ -110,6 +110,9 @@ enum cptra_mci_mbox_cmd {
 	CPTRA_MCI_MBCMD_MLDSA_CMK_PUBLIC_KEY             = 0x4D4D4C50, /* "MMLP" */
 	CPTRA_MCI_MBCMD_MLDSA_CMK_SIGN                   = 0x4D4D4C53, /* "MMLS" */
 	CPTRA_MCI_MBCMD_MLDSA_CMK_VERIFY                 = 0x4D4D4C56, /* "MMLV" */
+	CPTRA_MCI_MBCMD_ECDSA384_SIG_VERIFY               = 0x4D454356, /* "MECV" */
+	CPTRA_MCI_MBCMD_LMS_SIG_VERIFY                   = 0x4D4C4D56, /* "MLMV" */
+	CPTRA_MCI_MBCMD_MLDSA87_SIG_VERIFY               = 0x4D4D5356, /* "MMSV" */
 	CPTRA_MCI_MBCMD_PROD_DEBUG_UNLOCK_REQ            = 0x4D505552, /* "MPUR" */
 	CPTRA_MCI_MBCMD_PROD_DEBUG_UNLOCK_TOKEN          = 0x4D505554, /* "MPUT" */
 	CPTRA_MCI_MBCMD_FUSE_READ                        = 0x49465052, /* "IFPR" */
@@ -774,6 +777,87 @@ struct cptra_mci_mldsa_verify_hdr {
 };
 
 struct cptra_mci_mldsa_verify_resp {
+	struct cptra_mci_mbox_resp_hdr hdr;
+};
+
+/*
+ * MC_ECDSA384_SIG_VERIFY (EcdsaVerifyReq/Resp, pure passthrough to
+ * Caliptra's ECDSA384_SIGNATURE_VERIFY). Like MC_LMS_SIG_VERIFY/
+ * MC_MLDSA87_SIG_VERIFY, the public key is raw bytes (qx/qy), not an opaque
+ * Cmk, and the caller must SHA-384-hash the message itself -- this command
+ * takes the digest, not the raw message. No explicit pass/fail field; a
+ * mismatch surfaces as CMD_FAILURE (-EIO).
+ */
+struct cptra_mci_ecdsa384_sig_verify_req {
+	struct cptra_mci_mbox_req_hdr hdr;
+	uint8_t pub_key_x[CPTRA_MCI_ECC384_SCALAR_SIZE];
+	uint8_t pub_key_y[CPTRA_MCI_ECC384_SCALAR_SIZE];
+	uint8_t signature_r[CPTRA_MCI_ECC384_SCALAR_SIZE];
+	uint8_t signature_s[CPTRA_MCI_ECC384_SCALAR_SIZE];
+	uint8_t hash[CPTRA_MCI_ECC384_SCALAR_SIZE];
+};
+
+struct cptra_mci_ecdsa384_sig_verify_resp {
+	struct cptra_mci_mbox_resp_hdr hdr;
+};
+
+#define CPTRA_MCI_LMS_PUBKEY_ID_SIZE		16	/* LMS "I" identifier */
+#define CPTRA_MCI_LMS_PUBKEY_DIGEST_SIZE	24	/* N=6 words, LmsSha256N24H15 */
+#define CPTRA_MCI_LMS_OTS_SIGNATURE_SIZE	1252	/* fixed param set, see below */
+#define CPTRA_MCI_LMS_TREE_PATH_SIZE		360	/* H=15 levels * 24-byte digest */
+#define CPTRA_MCI_LMS_HASH_SIZE			48	/* SHA-384 digest of the signed message */
+
+/*
+ * MC_LMS_SIG_VERIFY (LmsVerifyReq/Resp, pure passthrough to Caliptra's
+ * LMS_SIGNATURE_VERIFY). Unlike MC_MLDSA_CMK_VERIFY/MC_ECDSA_CMK_VERIFY, the
+ * public key here is raw bytes, not an opaque Cmk -- LMS keys are generated
+ * offline (e.g. for firmware signing), never held as an on-device Cmk.
+ * Caller must SHA-384-hash the message itself; this command takes the
+ * digest, not the raw message. *_type fields exist on the wire as if the
+ * parameter set were selectable, but Caliptra's runtime hard-codes and
+ * rejects anything except tree_type=12 (LmsSha256N24H15) and
+ * ots_type=7 -- the fixed-size arrays above are sized for exactly that one
+ * parameter set. As with the other *_VERIFY commands, the response carries
+ * no explicit pass/fail field; a mismatch surfaces as CMD_FAILURE (-EIO).
+ */
+#define CPTRA_MCI_LMS_TREE_TYPE_FIXED		12
+#define CPTRA_MCI_LMS_OTS_TYPE_FIXED		7
+
+struct cptra_mci_lms_verify_req {
+	struct cptra_mci_mbox_req_hdr hdr;
+	uint32_t pub_key_tree_type;
+	uint32_t pub_key_ots_type;
+	uint8_t pub_key_id[CPTRA_MCI_LMS_PUBKEY_ID_SIZE];
+	uint8_t pub_key_digest[CPTRA_MCI_LMS_PUBKEY_DIGEST_SIZE];
+	uint32_t signature_q;
+	uint8_t signature_ots[CPTRA_MCI_LMS_OTS_SIGNATURE_SIZE];
+	uint32_t signature_tree_type;
+	uint8_t signature_tree_path[CPTRA_MCI_LMS_TREE_PATH_SIZE];
+	uint8_t hash[CPTRA_MCI_LMS_HASH_SIZE];
+};
+
+struct cptra_mci_lms_verify_resp {
+	struct cptra_mci_mbox_resp_hdr hdr;
+};
+
+/*
+ * MC_MLDSA87_SIG_VERIFY (MldsaVerifyReq/Resp, pure passthrough to Caliptra's
+ * MLDSA87_SIGNATURE_VERIFY). Like MC_LMS_SIG_VERIFY, the public key is raw
+ * bytes rather than an opaque Cmk. Unlike LMS, Caliptra hashes the message
+ * internally, so this command takes the raw message (up to
+ * CPTRA_MCI_MBOX_MAX_INPUT_SIZE), not a pre-hashed digest -- the message
+ * payload is supplied separately to cptra_mci_mbox_execute_sg(), same as
+ * MC_MLDSA_CMK_VERIFY. No explicit pass/fail field; a mismatch surfaces as
+ * CMD_FAILURE (-EIO).
+ */
+struct cptra_mci_mldsa87_sig_verify_hdr {
+	struct cptra_mci_mbox_req_hdr hdr;
+	uint8_t pub_key[CPTRA_MCI_MLDSA87_PUBKEY_SIZE];
+	uint8_t signature[CPTRA_MCI_MLDSA87_SIGNATURE_SIZE];
+	uint32_t message_size;
+};
+
+struct cptra_mci_mldsa87_sig_verify_resp {
 	struct cptra_mci_mbox_resp_hdr hdr;
 };
 
