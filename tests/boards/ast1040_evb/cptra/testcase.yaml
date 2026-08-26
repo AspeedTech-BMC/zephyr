@@ -1,0 +1,9 @@
+common:
+  harness: ztest
+
+tests:
+  boards.ast1040_evb.cptra:
+    platform_allow: ast1040_evb/ast1040/cm4
+    tags:
+      - drivers
+      - crypto

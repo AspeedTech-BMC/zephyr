@@ -24,6 +24,7 @@ set(PERIPH_DIR ${CMAKE_CURRENT_SOURCE_DIR}/..)
 target_sources(app PRIVATE
   src/main.c
   ${PERIPH_DIR}/gpio/src/main.c
+  ${PERIPH_DIR}/cptra/src/main.c
 )
 
 target_include_directories(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../common)

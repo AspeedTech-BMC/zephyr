@@ -13,10 +13,10 @@
  * tests/boards/ast1030_evb/all/src/main.c, which in turn ported it from
  * aspeed-dev-v2.6.0's tests/boards/ast1030/src/main.c.
  *
- * aspeed_testcase[] currently holds only "gpio" - AST1040 has no prior test
- * suite to draw the rest of the peripheral list from (unlike AST1030),
- * so other peripherals get added one at a time in later rounds, same as
- * how the AST1030 port progressed tier by tier.
+ * aspeed_testcase[] currently holds "gpio" and "cptra_mci" - AST1040 has no
+ * prior test suite to draw the rest of the peripheral list from (unlike
+ * AST1030), so other peripherals get added one at a time in later rounds,
+ * same as how the AST1030 port progressed tier by tier.
  *
  * Each peripheral's test_<name>() (defined in its own
  * tests/boards/ast1040_evb/<name>/src/main.c, using ast_zassert_* - see
@@ -32,6 +32,7 @@
 #include <zephyr/ztest.h>
 
 extern int test_gpio(void);
+extern int test_cptra_mci(void);
 
 typedef int (*test_func_t)(void);
 
@@ -43,6 +44,7 @@ struct aspeed_tests {
 
 static struct aspeed_tests aspeed_testcase[] = {
 	{"gpio", test_gpio, -1},
+	{"cptra_mci", test_cptra_mci, -1},
 };
 
 #define TEST_MODULE_CNT ARRAY_SIZE(aspeed_testcase)
