@@ -2114,16 +2114,25 @@
 		drive-strength-desc = <PINCFG_DESC(0x4d8, 26, 2)>;
 		bias-disable-desc = <PINCFG_DESC(0x494, 5, 1)>;
 	};
+	/*
+	 * M16 and A15 are shared balls: the generic per-ball drive-strength
+	 * control for them lives at 0x4d8, but once pinmux (sig_descs) is
+	 * set to the FMC function below, the SCU actually honors the
+	 * FMC-bus drive-strength register at 0x4e0 instead (same register
+	 * used by the dedicated FMC-only balls). Point drive-strength-desc
+	 * at 0x4e0 to match the FMC function selected here; 0x4d8 only
+	 * applies when this ball is muxed to one of its other functions.
+	 */
 	/omit-if-no-ref/ pin_fwspidq2: pin_fwspidq2 {
 		ball = <M16>;
 		sig_descs = <SIG_DESC(0x450, 24, 1)>;
-		drive-strength-desc = <PINCFG_DESC(0x4d8, 28, 2)>;
+		drive-strength-desc = <PINCFG_DESC(0x4e0, 12, 2)>;
 		bias-disable-desc = <PINCFG_DESC(0x494, 6, 1)>;
 	};
 	/omit-if-no-ref/ pin_fwspidq3: pin_fwspidq3 {
 		ball = <A15>;
 		sig_descs = <SIG_DESC(0x450, 28, 1)>;
-		drive-strength-desc = <PINCFG_DESC(0x4d8, 30, 2)>;
+		drive-strength-desc = <PINCFG_DESC(0x4e0, 14, 2)>;
 		bias-disable-desc = <PINCFG_DESC(0x494, 7, 1)>;
 	};
 
@@ -2665,5 +2674,35 @@
 	/omit-if-no-ref/ pin_pe2sgrstn_0: pin_pe2sgrstn_0 {
 		ball = <PCIERC2_PERST>;
 		sig_descs = <SIG_DESC(0x908, 1, 1)>;
+	};
+
+	/omit-if-no-ref/ pin_fwspics0: pin_fwspics0 {
+		ball = <C25>;
+		drive-strength-desc = <PINCFG_DESC(0x4e0, 0, 2)>;
+	};
+
+	/omit-if-no-ref/ pin_fwspics1: pin_fwspics1 {
+		ball = <A13>;
+		drive-strength-desc = <PINCFG_DESC(0x4e0, 2, 2)>;
+	};
+
+	/omit-if-no-ref/ pin_fwspics2: pin_fwspics2 {
+		ball = <A12>;
+		drive-strength-desc = <PINCFG_DESC(0x4e0, 4, 2)>;
+	};
+
+	/omit-if-no-ref/ pin_fwspiclk: pin_fwspiclk {
+		ball = <C24>;
+		drive-strength-desc = <PINCFG_DESC(0x4e0, 6, 2)>;
+	};
+
+	/omit-if-no-ref/ pin_fwspimosi: pin_fwspimosi {
+		ball = <A17>;
+		drive-strength-desc = <PINCFG_DESC(0x4e0, 8, 2)>;
+	};
+
+	/omit-if-no-ref/ pin_fwspimiso: pin_fwspimiso {
+		ball = <A16>;
+		drive-strength-desc = <PINCFG_DESC(0x4e0, 10, 2)>;
 	};
 };

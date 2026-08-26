@@ -252,6 +252,14 @@
 #define SGMII0          218
 #define PCIERC2_PERST   219
 
+/* FMC (firmware SPI flash) dedicated balls: CS0, CLK, MOSI, MISO, CS1, CS2 */
+#define C25    220
+#define C24    221
+#define A17    222
+#define A16    223
+#define A13    224
+#define A12    225
+
 /* Total number of ball identifiers (physical + virtual), keep in sync above */
-#define AST27XX_SOC1_BALL_NUM   220
+#define AST27XX_SOC1_BALL_NUM   226
 #endif /* ZEPHYR_INCLUDE_DT_BINDINGS_PINCTRL_AST27XX_SOC1_H_ */
