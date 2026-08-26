@@ -106,7 +106,7 @@
 			interrupt-parent = <&intc1_3>;
 			interrupts = <25 1>;
 			clocks = <&sysclk1 SCU1_CLK_AHB>;
-			pinctrl-0 = <pinctrl_fwspi_quad_default>;
+			pinctrl-0 = <pinctrl_fwspi_default pinctrl_fwspi_quad_default>;
 			pinctrl-names = "default";
 			num-cs = <2>;
 			ctrl-type = "bspi";

@@ -24,7 +24,10 @@
 #define pinctrl_uart9_default            &pin_txd9 &pin_rxd9
 
 /* SPI */
+#define pinctrl_fwspi_default            &pin_fwspics0 &pin_fwspiclk &pin_fwspimosi &pin_fwspimiso
 #define pinctrl_fwspi_quad_default       &pin_fwspidq2 &pin_fwspidq3
+#define pinctrl_fwspi_cs1_default        &pin_fwspics1
+#define pinctrl_fwspi_cs2_default        &pin_fwspics2
 #define pinctrl_fwspi_abr_default        &pin_fwspi_abr
 #define pinctrl_spi0_default             &pin_spi0ck &pin_spi0mosi &pin_spi0miso
 #define pinctrl_spi0_quad_default        &pin_spi0dq2 &pin_spi0dq3

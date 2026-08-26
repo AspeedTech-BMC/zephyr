@@ -145,6 +145,8 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			spi-ctrl-caps-mask = <0x000e0e0c>;
+			pinctrl-0 = <pinctrl_fwspi_default pinctrl_fwspi_quad_default>;
+			pinctrl-names = "default";
 
 			fmc_cs0: fmc@0 {
 				compatible = "jedec,spi-nor";
@@ -167,6 +169,9 @@
 			#size-cells = <0>;
 			spi-ctrl-caps-mask = <0x000e0e0c>;
 			status = "disabled";
+			pinctrl-0 = <pinctrl_spi0_default pinctrl_spi0_quad_default
+				     pinctrl_spi0_cs1_default>;
+			pinctrl-names = "default";
 
 			spi0_cs0: spi0@0 {
 				compatible = "jedec,spi-nor";

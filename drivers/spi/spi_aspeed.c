@@ -1402,11 +1402,6 @@ static int aspeed_spi_nor_read_init(const struct device *dev,
 	if (config->ops->safs_read_config)
 		config->ops->safs_read_config(dev, &op_info);
 
-	if (config->ops->pinctrl_post_init) {
-		config->ops->pinctrl_post_init(dev,
-			JESD216_GET_DATA_BUSWIDTH(op_info.mode));
-	}
-
 	aspeed_spi_timing_calibration(dev, op_info);
 
 end:
@@ -1765,7 +1760,6 @@ static const struct spi_driver_api aspeed_spi_driver_api = {
 static const __maybe_unused struct aspeed_spi_ops aspeed_common_spi_ops = {
 	.init_data = aspeed_spi_init_data,
 	.pinctrl_init = aspeed_spi_pinctrl_init,
-	.pinctrl_post_init = NULL,
 	.proprietary_config_init = ast1060_spi_proprietary_config_init,
 	.enable_4byte_mode = aspeed_spi_enable_4byte_mode,
 	.cs_group_select = NULL,
@@ -1781,7 +1775,6 @@ static const __maybe_unused struct aspeed_spi_ops aspeed_common_spi_ops = {
 static const __maybe_unused struct aspeed_spi_ops ast1030_spi_ops = {
 	.init_data = aspeed_spi_init_data,
 	.pinctrl_init = aspeed_spi_pinctrl_init,
-	.pinctrl_post_init = NULL,
 	.proprietary_config_init = NULL,
 	.enable_4byte_mode = aspeed_spi_enable_4byte_mode,
 	.cs_group_select = NULL,
@@ -1797,7 +1790,6 @@ static const __maybe_unused struct aspeed_spi_ops ast1030_spi_ops = {
 static const __maybe_unused struct aspeed_spi_ops ast1060_spi_ops = {
 	.init_data = aspeed_spi_init_data,
 	.pinctrl_init = aspeed_spi_pinctrl_init,
-	.pinctrl_post_init = NULL,
 	.proprietary_config_init = ast1060_spi_proprietary_config_init,
 	.enable_4byte_mode = aspeed_spi_enable_4byte_mode,
 	.cs_group_select = NULL,
@@ -1813,7 +1805,6 @@ static const __maybe_unused struct aspeed_spi_ops ast1060_spi_ops = {
 static const __maybe_unused struct aspeed_spi_ops ast2600_spi_ops = {
 	.init_data = ast2600_spi_init_data,
 	.pinctrl_init = aspeed_spi_pinctrl_init,
-	.pinctrl_post_init = NULL,
 	.proprietary_config_init = NULL,
 	.enable_4byte_mode = aspeed_spi_enable_4byte_mode,
 	.cs_group_select = NULL,
@@ -1829,7 +1820,6 @@ static const __maybe_unused struct aspeed_spi_ops ast2600_spi_ops = {
 static const __maybe_unused struct aspeed_spi_ops ast2700_spi_ops = {
 	.init_data = ast2700_spi_init_data,
 	.pinctrl_init = aspeed_spi_pinctrl_init,
-	.pinctrl_post_init = NULL,
 	.proprietary_config_init = NULL,
 	.enable_4byte_mode = ast2700_spi_enable_4byte_mode,
 	.cs_group_select = NULL,
@@ -1846,14 +1836,13 @@ static const __maybe_unused struct aspeed_spi_ops ast2700_spi_ops = {
 
 /*
  * Lite SPI describes the ASPEED SPI controller variant without interrupt
- * controller and pinctrl integration. Since it cannot signal completion via
- * interrupts or configure pins through pinctrl, the driver uses a reduced
- * feature set and falls back to polling where needed.
+ * controller integration. Since it cannot signal completion via
+ * interrupts, the driver uses a reduced feature set and falls back to
+ * polling where needed.
  */
 static const __maybe_unused struct aspeed_spi_ops ast2700_spi_lite_ops = {
 	.init_data = ast2700_spi_init_data,
-	.pinctrl_init = ast2700_spi_lite_pinctrl_init,
-	.pinctrl_post_init = ast2700_spi_lite_pinctrl_post_init,
+	.pinctrl_init = aspeed_spi_pinctrl_init,
 	.proprietary_config_init = NULL,
 	.enable_4byte_mode = ast2700_spi_enable_4byte_mode,
 	.cs_group_select = NULL,
@@ -1874,7 +1863,6 @@ static const __maybe_unused struct aspeed_spi_ops ast2700_spi_lite_ops = {
 static const __maybe_unused struct aspeed_spi_ops ast10x0_g2_spi_ops = {
 	.init_data = ast10x0_g2_spi_init_data,
 	.pinctrl_init = aspeed_spi_pinctrl_init,
-	.pinctrl_post_init = NULL,
 	.proprietary_config_init = ast10x0_g2_spi_proprietary_config_init,
 	.enable_4byte_mode = ast2700_spi_enable_4byte_mode,
 	.cs_group_select = ast10x0_g2_spi_cs_group_select,
@@ -1969,8 +1957,10 @@ static const __maybe_unused struct aspeed_spi_ops ast10x0_g2_spi_ops = {
 	ASPEED_SPI_DEFINE(soc, n)
 
 #define ASPEED_SPI_LITE_INIT(soc, n, ops)                               \
+	ASPEED_SPI_PINCTRL_DEFINE(n)                                        \
 	ASPEED_SPI_CONFIG_INIT(soc, n, ops)                               \
 		.irq_config_func = NULL,                                  \
+		ASPEED_SPI_PINCTRL_CONFIG_INIT(n)                         \
 	};                                                               \
 	ASPEED_SPI_DEFINE(soc, n)
 

@@ -55,8 +55,6 @@ struct aspeed_spi_ops {
 			  struct aspeed_spi_data *data);
 
 	int (*pinctrl_init)(const struct device *dev);
-	void (*pinctrl_post_init)(const struct device *dev,
-				  uint32_t max_bus_width);
 
 	void (*proprietary_config_init)(const struct aspeed_spi_config *config,
 					struct aspeed_spi_data *data);
@@ -127,9 +125,6 @@ struct aspeed_spi_data {
 #endif
 };
 
-int ast2700_spi_lite_pinctrl_init(const struct device *dev);
-void ast2700_spi_lite_pinctrl_post_init(const struct device *dev,
-					 uint32_t max_bus_width);
 void ast1060_spi_proprietary_config_init(const struct aspeed_spi_config *config,
 					 struct aspeed_spi_data *data);
 void ast10x0_g2_spi_proprietary_config_init(const struct aspeed_spi_config *config,
