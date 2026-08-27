@@ -19,7 +19,7 @@ config PINCTRL_ASPEED_G7
 
 config PINCTRL_ASPEED_STRING_NAME
 	bool "Store the pin name in a string"
-	default y
+	default n
 	depends on PINCTRL_ASPEED || PINCTRL_ASPEED_G7
 	help
 	  Enable storing the pin name for debugging
