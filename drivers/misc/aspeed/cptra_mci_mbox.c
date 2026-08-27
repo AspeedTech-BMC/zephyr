@@ -182,6 +182,47 @@ void cptra_mci_mbox_txn_end(void)
 	k_mutex_unlock(&cptra_mci_mbox_mutex);
 }
 
+/*
+ * Direct (non-mailbox-protocol) register access -- see the comment on the
+ * CPTRA_MCI_REG_* / CPTRA_MCI_SOC_IFC_* definitions in cptra_mci_mbox.h.
+ * This shares the page-select window with the mailbox CSR/SRAM, so a
+ * session takes the same lock cptra_mci_mbox_execute() holds around its own
+ * page-select sequence -- otherwise a concurrent mailbox transaction could
+ * have the window switched out from under it mid-transfer.
+ *
+ * Session-scoped so a caller reading several registers on the same page
+ * (e.g. a register dump) pays the lock/page-select cost once instead of
+ * once per register: cptra_mci_reg_session_begin() locks and selects the
+ * page, cptra_mci_reg_session_read() may then be called any number of
+ * times, and cptra_mci_reg_session_end() restores the CSR page and
+ * releases the lock.
+ */
+int cptra_mci_reg_session_begin(uint32_t page)
+{
+	int ret;
+
+	cptra_mci_mbox_txn_begin();
+
+	ret = cptra_mci_mbox_select_page(page);
+	if (ret) {
+		cptra_mci_mbox_txn_end();
+		return ret;
+	}
+
+	return 0;
+}
+
+uint32_t cptra_mci_reg_session_read(uint32_t offset)
+{
+	return sys_read32(cptra_mci_mbox_base + offset);
+}
+
+void cptra_mci_reg_session_end(void)
+{
+	cptra_mci_mbox_select_page(CPTRA_MCI_MBOX_CSR_PAGE);
+	cptra_mci_mbox_txn_end();
+}
+
 uint32_t cptra_mci_mbox_status(void)
 {
 	if (cptra_mci_mbox_select_page(CPTRA_MCI_MBOX_CSR_PAGE))

@@ -8,6 +8,7 @@
 #include <string.h>
 #include <zephyr/kernel.h>
 #include <zephyr/shell/shell.h>
+#include <zephyr/sys/printk.h>
 #include <zephyr/sys/util.h>
 #include <zephyr/crypto/crypto.h>
 #include <zephyr/crypto/ecdsa.h>
@@ -32,6 +33,219 @@ static int cmd_cptra_mci_fw_version(const struct shell *shell, size_t argc, char
 	}
 
 	shell_print(shell, "index %d: %s", index, version);
+
+	return 0;
+}
+
+/*
+ * Dump of the Caliptra-SS subsystem status registers (mci_reg and
+ * soc_ifc_reg blocks) via the cptra_mci_reg_session_* calls -- plain
+ * memory-mapped register reads through the paged SCU1 window, not mailbox
+ * protocol commands. See the comment on CPTRA_MCI_REG_PAGE/
+ * CPTRA_MCI_SOC_IFC_PAGE in cptra_mci_mbox.h for the page-encoding caveat.
+ *
+ * Each register list below is dumped inside a single
+ * cptra_mci_reg_session_begin()/_end() pair per page, so a whole section's
+ * worth of registers costs one lock/page-select instead of one per
+ * register.
+ */
+
+struct cptra_mci_reg_desc {
+	const char *label;
+	uint32_t offset;
+};
+
+struct cptra_mci_reg_flag_desc {
+	const char *label;
+	uint32_t mask;
+};
+
+/* Section header: page is shown once here instead of on every register line. */
+static void cptra_mci_reg_section(const struct shell *shell, const char *name, uint32_t page)
+{
+	shell_print(shell, "\n== %s (page 0x%08x) ==", name, page);
+}
+
+/* Bit-field sub-line, indented further than the register line it belongs to. */
+static void cptra_mci_reg_field_print(const struct shell *shell, const char *name, uint32_t value)
+{
+	shell_print(shell, "        %-20s = %u", name, value);
+}
+
+static const char *cptra_mci_device_lifecycle_name(uint32_t val)
+{
+	switch (val) {
+	case CPTRA_MCI_DEVICE_UNPROVISIONED:
+		return "UNPROVISIONED";
+	case CPTRA_MCI_DEVICE_MANUFACTURING:
+		return "MANUFACTURING";
+	case CPTRA_MCI_DEVICE_PRODUCTION:
+		return "PRODUCTION";
+	default:
+		return "RESERVED";
+	}
+}
+
+/* Must be called inside an open cptra_mci_reg_session_begin()/_end() pair. */
+static void cptra_mci_reg_dump_list(const struct shell *shell,
+				    const struct cptra_mci_reg_desc *list, size_t count)
+{
+	size_t i;
+
+	for (i = 0; i < count; i++) {
+		uint32_t value = cptra_mci_reg_session_read(list[i].offset);
+
+		shell_print(shell, "  %-30s 0x%04x = 0x%08x", list[i].label, list[i].offset,
+			    value);
+	}
+}
+
+static void cptra_mci_reg_dump_array(const struct shell *shell, const char *label,
+				     uint32_t base_offset, uint32_t count)
+{
+	char name[40];
+	uint32_t i;
+
+	for (i = 0; i < count; i++) {
+		uint32_t offset = base_offset + 4 * i;
+		uint32_t value = cptra_mci_reg_session_read(offset);
+
+		snprintk(name, sizeof(name), "%s[%u]", label, i);
+		shell_print(shell, "  %-30s 0x%04x = 0x%08x", name, offset, value);
+	}
+}
+
+static void cptra_mci_reg_print_flags(const struct shell *shell, const char *label,
+				      uint32_t offset, uint32_t value,
+				      const struct cptra_mci_reg_flag_desc *flags, size_t count)
+{
+	size_t i;
+
+	shell_print(shell, "  %-30s 0x%04x = 0x%08x", label, offset, value);
+
+	for (i = 0; i < count; i++)
+		cptra_mci_reg_field_print(shell, flags[i].label, FIELD_GET(flags[i].mask, value));
+}
+
+static void cptra_mci_reg_print_security_state(const struct shell *shell, const char *label,
+					       uint32_t offset, uint32_t value,
+					       uint32_t lifecycle_mask, uint32_t debug_locked_mask,
+					       uint32_t scan_mode_mask)
+{
+	uint32_t lifecycle = FIELD_GET(lifecycle_mask, value);
+
+	shell_print(shell, "  %-30s 0x%04x = 0x%08x", label, offset, value);
+	shell_print(shell, "        %-20s = %u (%s)", "device_lifecycle", lifecycle,
+		    cptra_mci_device_lifecycle_name(lifecycle));
+	cptra_mci_reg_field_print(shell, "debug_locked", FIELD_GET(debug_locked_mask, value));
+	cptra_mci_reg_field_print(shell, "scan_mode", FIELD_GET(scan_mode_mask, value));
+}
+
+static const struct cptra_mci_reg_desc cptra_mci_reg_axi_user_list[] = {
+	{ "MCU_IFU_AXI_USER", CPTRA_MCI_REG_MCU_IFU_AXI_USER },
+	{ "MCU_LSU_AXI_USER", CPTRA_MCI_REG_MCU_LSU_AXI_USER },
+	{ "MCU_SRAM_CONFIG_AXI_USER", CPTRA_MCI_REG_MCU_SRAM_CONFIG_AXI_USER },
+	{ "MCI_SOC_CONFIG_AXI_USER", CPTRA_MCI_REG_MCI_SOC_CONFIG_AXI_USER },
+};
+
+static const struct cptra_mci_reg_desc cptra_mci_reg_ss_list[] = {
+	{ "SS_DEBUG_INTENT", CPTRA_MCI_REG_SS_DEBUG_INTENT },
+	{ "SS_CONFIG_DONE_STICKY", CPTRA_MCI_REG_SS_CONFIG_DONE_STICKY },
+	{ "SS_CONFIG_DONE", CPTRA_MCI_REG_SS_CONFIG_DONE },
+};
+
+static const struct cptra_mci_reg_flag_desc cptra_mci_reg_reset_reason_flags[] = {
+	{ "WARM_RESET", CPTRA_MCI_REG_RESET_REASON_WARM_RESET },
+	{ "FW_BOOT_UPD_RESET", CPTRA_MCI_REG_RESET_REASON_FW_BOOT_UPD_RESET },
+	{ "FW_HITLESS_UPD_RESET", CPTRA_MCI_REG_RESET_REASON_FW_HITLESS_UPD_RESET },
+};
+
+static const struct cptra_mci_reg_desc cptra_mci_soc_ifc_std_list[] = {
+	{ "CPTRA_TRNG_VALID_AXI_USER", CPTRA_MCI_SOC_IFC_CPTRA_TRNG_VALID_AXI_USER },
+	{ "CPTRA_TRNG_AXI_USER_LOCK", CPTRA_MCI_SOC_IFC_CPTRA_TRNG_AXI_USER_LOCK },
+	{ "CPTRA_FUSE_VALID_AXI_USER", CPTRA_MCI_SOC_IFC_CPTRA_FUSE_VALID_AXI_USER },
+};
+
+static const struct cptra_mci_reg_flag_desc cptra_mci_soc_ifc_reset_reason_flags[] = {
+	{ "WARM_RESET", CPTRA_MCI_SOC_IFC_CPTRA_RESET_REASON_WARM_RESET },
+	{ "FW_UPD_RESET", CPTRA_MCI_SOC_IFC_CPTRA_RESET_REASON_FW_UPD_RESET },
+};
+
+static int cmd_cptra_mci_subsystem_info(const struct shell *shell, size_t argc, char **argv)
+{
+	uint32_t value;
+	int ret;
+
+	cptra_mci_reg_section(shell, "mci_reg", CPTRA_MCI_REG_PAGE);
+
+	ret = cptra_mci_reg_session_begin(CPTRA_MCI_REG_PAGE);
+	if (ret) {
+		shell_error(shell, "failed to select mci_reg page: %d", ret);
+		return ret;
+	}
+
+	cptra_mci_reg_dump_list(shell, cptra_mci_reg_axi_user_list,
+				ARRAY_SIZE(cptra_mci_reg_axi_user_list));
+
+	value = cptra_mci_reg_session_read(CPTRA_MCI_REG_RESET_REASON);
+	cptra_mci_reg_print_flags(shell, "RESET_REASON", CPTRA_MCI_REG_RESET_REASON, value,
+				  cptra_mci_reg_reset_reason_flags,
+				  ARRAY_SIZE(cptra_mci_reg_reset_reason_flags));
+
+	value = cptra_mci_reg_session_read(CPTRA_MCI_REG_SECURITY_STATE);
+	cptra_mci_reg_print_security_state(shell, "SECURITY_STATE", CPTRA_MCI_REG_SECURITY_STATE,
+					   value, CPTRA_MCI_REG_SECURITY_STATE_DEVICE_LIFECYCLE,
+					   CPTRA_MCI_REG_SECURITY_STATE_DEBUG_LOCKED,
+					   CPTRA_MCI_REG_SECURITY_STATE_SCAN_MODE);
+
+	cptra_mci_reg_dump_array(shell, "MBOX0_VALID_AXI_USER",
+				 CPTRA_MCI_REG_MBOX0_VALID_AXI_USER(0),
+				 CPTRA_MCI_REG_MBOX_AXI_USER_COUNT);
+	cptra_mci_reg_dump_array(shell, "MBOX0_AXI_USER_LOCK",
+				 CPTRA_MCI_REG_MBOX0_AXI_USER_LOCK(0),
+				 CPTRA_MCI_REG_MBOX_AXI_USER_COUNT);
+	cptra_mci_reg_dump_array(shell, "MBOX1_VALID_AXI_USER",
+				 CPTRA_MCI_REG_MBOX1_VALID_AXI_USER(0),
+				 CPTRA_MCI_REG_MBOX_AXI_USER_COUNT);
+	cptra_mci_reg_dump_array(shell, "MBOX1_AXI_USER_LOCK",
+				 CPTRA_MCI_REG_MBOX1_AXI_USER_LOCK(0),
+				 CPTRA_MCI_REG_MBOX_AXI_USER_COUNT);
+
+	cptra_mci_reg_dump_list(shell, cptra_mci_reg_ss_list, ARRAY_SIZE(cptra_mci_reg_ss_list));
+
+	cptra_mci_reg_session_end();
+
+	cptra_mci_reg_section(shell, "soc_ifc_reg", CPTRA_MCI_SOC_IFC_PAGE);
+
+	ret = cptra_mci_reg_session_begin(CPTRA_MCI_SOC_IFC_PAGE);
+	if (ret) {
+		shell_error(shell, "failed to select soc_ifc_reg page: %d", ret);
+		return ret;
+	}
+
+	value = cptra_mci_reg_session_read(CPTRA_MCI_SOC_IFC_CPTRA_RESET_REASON);
+	cptra_mci_reg_print_flags(shell, "CPTRA_RESET_REASON", CPTRA_MCI_SOC_IFC_CPTRA_RESET_REASON,
+				  value, cptra_mci_soc_ifc_reset_reason_flags,
+				  ARRAY_SIZE(cptra_mci_soc_ifc_reset_reason_flags));
+
+	value = cptra_mci_reg_session_read(CPTRA_MCI_SOC_IFC_CPTRA_SECURITY_STATE);
+	cptra_mci_reg_print_security_state(shell, "CPTRA_SECURITY_STATE",
+					   CPTRA_MCI_SOC_IFC_CPTRA_SECURITY_STATE, value,
+					   CPTRA_MCI_SOC_IFC_CPTRA_SECURITY_STATE_DEVICE_LIFECYCLE,
+					   CPTRA_MCI_SOC_IFC_CPTRA_SECURITY_STATE_DEBUG_LOCKED,
+					   CPTRA_MCI_SOC_IFC_CPTRA_SECURITY_STATE_SCAN_MODE);
+
+	cptra_mci_reg_dump_array(shell, "CPTRA_MBOX_VALID_AXI_USER",
+				 CPTRA_MCI_SOC_IFC_CPTRA_MBOX_VALID_AXI_USER(0),
+				 CPTRA_MCI_SOC_IFC_MBOX_AXI_USER_COUNT);
+	cptra_mci_reg_dump_array(shell, "CPTRA_MBOX_AXI_USER_LOCK",
+				 CPTRA_MCI_SOC_IFC_CPTRA_MBOX_AXI_USER_LOCK(0),
+				 CPTRA_MCI_SOC_IFC_MBOX_AXI_USER_COUNT);
+
+	cptra_mci_reg_dump_list(shell, cptra_mci_soc_ifc_std_list,
+				ARRAY_SIZE(cptra_mci_soc_ifc_std_list));
+
+	cptra_mci_reg_session_end();
 
 	return 0;
 }
@@ -1909,6 +2123,9 @@ SHELL_STATIC_SUBCMD_SET_CREATE(cptra_mci_cmds,
 	SHELL_CMD_ARG(fw_version, NULL,
 		      "get firmware version [index: 0=CaliptraCore 1=McuRuntime 2=SoC]",
 		      cmd_cptra_mci_fw_version, 1, 1),
+	SHELL_CMD_ARG(subsystem_info, NULL,
+		      "dump mci_reg/soc_ifc_reg status registers",
+		      cmd_cptra_mci_subsystem_info, 1, 0),
 	SHELL_CMD_ARG(device_caps, NULL,
 		      "get device capabilities",
 		      cmd_cptra_mci_device_caps, 1, 0),

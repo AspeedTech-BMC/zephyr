@@ -29,9 +29,17 @@
 /* Max time to wait for the mailbox LOCK to become available */
 #define CPTRA_MCI_MBOX_LOCK_TIMEOUT_MS		1000
 
-/* Page targets for SCU1_CPTRA_MCI_WIN */
+/*
+ * Page targets for SCU1_CPTRA_MCI_WIN. Different bus masters reaching this
+ * same window encode the page target differently -- e.g. some write it as
+ * a shifted address>>16 (0x2100), while this MCU-side bus master writes
+ * the full, unshifted target address. Do not reuse a page value derived
+ * for one bus master's encoding on another.
+ */
 #define CPTRA_MCI_MBOX_SRAM_PAGE		0x21400000	/* mailbox data */
 #define CPTRA_MCI_MBOX_CSR_PAGE			0x21600000	/* mcu_mbox0_csr */
+#define CPTRA_MCI_REG_PAGE			0x21000000	/* mci_reg */
+#define CPTRA_MCI_SOC_IFC_PAGE			0xa0030000	/* soc_ifc_reg */
 
 /* mcu_mbox0_csr register offsets, valid once CPTRA_MCI_MBOX_CSR_PAGE is selected */
 #define CPTRA_MCI_MBOX_LOCK			0x00
@@ -45,6 +53,65 @@
 #define CPTRA_MCI_MBOX_CMD_STATUS		0x20
 #define   CPTRA_MCI_MBOX_CMD_STATUS_PS		GENMASK(3, 0)
 #define CPTRA_MCI_MBOX_HW_STATUS		0x24
+
+/*
+ * mci_reg register offsets, valid once CPTRA_MCI_REG_PAGE is selected --
+ * plain memory-mapped status registers, not part of the mailbox
+ * command/lock/execute protocol. Offsets confirmed on real hardware.
+ */
+#define CPTRA_MCI_REG_MCU_IFU_AXI_USER			0x0020
+#define CPTRA_MCI_REG_MCU_LSU_AXI_USER			0x0024
+#define CPTRA_MCI_REG_MCU_SRAM_CONFIG_AXI_USER		0x0028
+#define CPTRA_MCI_REG_MCI_SOC_CONFIG_AXI_USER		0x002c
+#define CPTRA_MCI_REG_RESET_REASON			0x0038
+#define   CPTRA_MCI_REG_RESET_REASON_FW_HITLESS_UPD_RESET	BIT(0)
+#define   CPTRA_MCI_REG_RESET_REASON_FW_BOOT_UPD_RESET		BIT(1)
+#define   CPTRA_MCI_REG_RESET_REASON_WARM_RESET		BIT(2)
+#define CPTRA_MCI_REG_SECURITY_STATE			0x0040
+#define   CPTRA_MCI_REG_SECURITY_STATE_DEVICE_LIFECYCLE	GENMASK(1, 0)
+#define   CPTRA_MCI_REG_SECURITY_STATE_DEBUG_LOCKED		BIT(2)
+#define   CPTRA_MCI_REG_SECURITY_STATE_SCAN_MODE		BIT(3)
+
+/* device_lifecycle_e */
+enum cptra_mci_device_lifecycle {
+	CPTRA_MCI_DEVICE_UNPROVISIONED = 0,
+	CPTRA_MCI_DEVICE_MANUFACTURING = 1,
+	CPTRA_MCI_DEVICE_PRODUCTION = 3,
+};
+
+/* Each MBOXn_*_AXI_USER block is CPTRA_MCI_REG_MBOX_AXI_USER_COUNT 32-bit regs */
+#define CPTRA_MCI_REG_MBOX_AXI_USER_COUNT		5
+#define CPTRA_MCI_REG_MBOX0_VALID_AXI_USER(n)		(0x0180 + 4 * (n))
+#define CPTRA_MCI_REG_MBOX0_AXI_USER_LOCK(n)		(0x01a0 + 4 * (n))
+#define CPTRA_MCI_REG_MBOX1_VALID_AXI_USER(n)		(0x01c0 + 4 * (n))
+#define CPTRA_MCI_REG_MBOX1_AXI_USER_LOCK(n)		(0x01e0 + 4 * (n))
+
+#define CPTRA_MCI_REG_SS_DEBUG_INTENT			0x0418
+#define CPTRA_MCI_REG_SS_CONFIG_DONE_STICKY		0x0440
+#define CPTRA_MCI_REG_SS_CONFIG_DONE			0x0444
+
+/*
+ * soc_ifc_reg register offsets, valid once CPTRA_MCI_SOC_IFC_PAGE is
+ * selected. Bit fields for CPTRA_RESET_REASON/CPTRA_SECURITY_STATE
+ * cross-checked against
+ * caliptra-mcu-sw/registers/generated-firmware/src/soc.rs
+ * (CptraResetReason/CptraSecurityState) -- note CPTRA_RESET_REASON only
+ * has 2 bits (no hitless/boot split), unlike mci_reg's own 3-bit
+ * RESET_REASON.
+ */
+#define CPTRA_MCI_SOC_IFC_CPTRA_RESET_REASON		0x0040
+#define   CPTRA_MCI_SOC_IFC_CPTRA_RESET_REASON_FW_UPD_RESET	BIT(0)
+#define   CPTRA_MCI_SOC_IFC_CPTRA_RESET_REASON_WARM_RESET	BIT(1)
+#define CPTRA_MCI_SOC_IFC_CPTRA_SECURITY_STATE		0x0044
+#define   CPTRA_MCI_SOC_IFC_CPTRA_SECURITY_STATE_DEVICE_LIFECYCLE	GENMASK(1, 0)
+#define   CPTRA_MCI_SOC_IFC_CPTRA_SECURITY_STATE_DEBUG_LOCKED		BIT(2)
+#define   CPTRA_MCI_SOC_IFC_CPTRA_SECURITY_STATE_SCAN_MODE		BIT(3)
+#define CPTRA_MCI_SOC_IFC_MBOX_AXI_USER_COUNT		5
+#define CPTRA_MCI_SOC_IFC_CPTRA_MBOX_VALID_AXI_USER(n)	(0x0048 + 4 * (n))
+#define CPTRA_MCI_SOC_IFC_CPTRA_MBOX_AXI_USER_LOCK(n)	(0x005c + 4 * (n))
+#define CPTRA_MCI_SOC_IFC_CPTRA_TRNG_VALID_AXI_USER	0x0070
+#define CPTRA_MCI_SOC_IFC_CPTRA_TRNG_AXI_USER_LOCK	0x0074
+#define CPTRA_MCI_SOC_IFC_CPTRA_FUSE_VALID_AXI_USER	0x0108
 
 union cptra_mci_mbox_lock_s {
 	volatile uint32_t value;
@@ -882,6 +949,9 @@ int cptra_mci_mbox_execute_sg(uint32_t cmd, const void *hdr, uint32_t hdr_len,
  */
 void cptra_mci_mbox_txn_begin(void);
 void cptra_mci_mbox_txn_end(void);
+int cptra_mci_reg_session_begin(uint32_t page);
+uint32_t cptra_mci_reg_session_read(uint32_t offset);
+void cptra_mci_reg_session_end(void);
 
 /* cptra_mci_misc.c */
 int cptra_mci_get_firmware_version(enum cptra_mci_fw_index index, char *version, size_t len);
