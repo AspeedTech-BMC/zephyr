@@ -290,7 +290,7 @@ LOG_MODULE_REGISTER(espi);
 struct espi_ast2700_perif {
 	struct {
 		bool enable;
-		bool dma_mode;
+		bool mapping_mode;
 		uint8_t *virt;
 		uint64_t saddr;
 		uint64_t taddr;
@@ -439,9 +439,9 @@ static void espi_aspeed_dma_cache_range(void *addr, size_t len,
 	(void)cache_op((void *)start, end - start);
 }
 
-#if DT_INST_PROP(0, perif_mcyc_enable) && DT_INST_PROP(0, perif_mcyc_dma_mode)
-static uint8_t perif_mcyc_buf[DT_INST_PROP(0, perif_mcyc_size)]
-	__aligned(DT_INST_PROP(0, perif_mcyc_size)) NON_CACHED_BSS;
+#if DT_INST_PROP(0, perif_mcyc_enable) && DT_INST_PROP(0, perif_mcyc_mapping_mode)
+static uint8_t perif_mcyc_buf[DT_INST_PROP_BY_IDX(0, perif_mcyc_size, 1)]
+	__aligned(DT_INST_PROP_BY_IDX(0, perif_mcyc_size, 1)) NON_CACHED_BSS;
 #else
 static uint8_t perif_mcyc_buf[0];
 #endif
@@ -519,12 +519,17 @@ static void espi_ast2700_perif_reset(struct espi_ast2700_perif *perif)
 
 		ESPI_WR(reg, ESPI_CH0_CTRL);
 
+		if (perif->mcyc.mapping_mode) {
+			reg = ESPI_RD(ESPI_CH0_MCYC1_MASKL) | ESPI_CH0_MCYC1_MASKL_EN;
+		}  else {
 #if DT_HAS_COMPAT_STATUS_OKAY(aspeed_espi_ast1040)
-		if (!perif->mcyc.dma_mode) {
 			reg = ESPI_RD(ESPI_CH0_MCYC1_MASKL) | ESPI_CH0_MCYC1_MASKL_FW;
-			ESPI_WR(reg, ESPI_CH0_MCYC1_MASKL);
-		}
+#else
+			LOG_ERR("MCYC FW mode not supported on this platform, use mapping mode");
+			reg = ESPI_RD(ESPI_CH0_MCYC1_MASKL) | ESPI_CH0_MCYC1_MASKL_EN;
 #endif
+		}
+		ESPI_WR(reg, ESPI_CH0_MCYC1_MASKL);
 	}
 
 	if (perif->dma.enable) {
@@ -545,7 +550,7 @@ static void espi_ast2700_perif_reset(struct espi_ast2700_perif *perif)
 	ESPI_WR(ESPI_CH0_INT_EN_PC_RX_CMPLT, ESPI_CH0_INT_EN);
 
 #if DT_HAS_COMPAT_STATUS_OKAY(aspeed_espi_ast1040)
-	if (perif->mcyc.enable && !perif->mcyc.dma_mode) {
+	if (perif->mcyc.enable && !perif->mcyc.mapping_mode) {
 		reg = ESPI_RD(ESPI_CH0_INT_EN) | ESPI_CH0_INT_EN_NP_RX_VALID;
 		ESPI_WR(reg, ESPI_CH0_INT_EN);
 	}
@@ -566,7 +571,7 @@ static void espi_ast2700_perif_init(struct espi_ast2700_perif *perif)
 	perif->dma.np_tx_addr = TO_PHY_ADDR((uintptr_t)perif->dma.np_tx_virt);
 
 	perif->mcyc.enable = DT_INST_PROP(0, perif_mcyc_enable);
-	perif->mcyc.dma_mode = DT_INST_PROP(0, perif_mcyc_dma_mode);
+	perif->mcyc.mapping_mode = DT_INST_PROP(0, perif_mcyc_mapping_mode);
 	perif->mcyc.virt = perif_mcyc_buf;
 	perif->mcyc.mcyc_size = COND_CODE_1(DT_INST_NODE_HAS_PROP(0, perif_mcyc_size),
 		(((uint64_t)DT_INST_PROP_BY_IDX(0, perif_mcyc_size, 0) << 32) |

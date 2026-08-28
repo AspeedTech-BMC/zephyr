@@ -22,10 +22,10 @@ properties:
       required: false
       description: enable memory cycle for peripheral channel
 
-    perif-mcyc-dma-mode:
+    perif-mcyc-mapping-mode:
       type: boolean
       required: false
-      description: enable DMA for peripheral channel memory cycle
+      description: enable direct mapping for peripheral channel memory cycle
 
     perif-mcyc-src-addr:
       type: array
