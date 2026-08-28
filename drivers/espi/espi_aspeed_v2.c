@@ -6,6 +6,7 @@
 #define DT_DRV_COMPAT aspeed_espi_v2
 
 #include <soc.h>
+#include <zephyr/cache.h>
 #include <zephyr/drivers/espi.h>
 #include <zephyr/drivers/espi_aspeed.h>
 #include <zephyr/kernel.h>
@@ -340,7 +341,7 @@ struct espi_ast2700_oob_dma_tx_desc {
 	uint32_t raz2;
 	uint32_t raz3;
 	uint32_t pad[3];
-} __packed;
+} __packed __aligned(CONFIG_DCACHE_LINE_SIZE);
 
 struct espi_ast2700_oob_dma_rx_desc {
 	uint32_t data_addrl;
@@ -351,7 +352,7 @@ struct espi_ast2700_oob_dma_rx_desc {
 	uint8_t raz : 7;
 	uint8_t dirty : 1;
 	uint32_t pad[1];
-} __packed;
+} __packed __aligned(CONFIG_DCACHE_LINE_SIZE);
 
 struct espi_ast2700_oob {
 	struct {
@@ -408,14 +409,35 @@ static struct espi_ast2700_data espi_ast2700_data;
 
 /* peripheral channel */
 #if DT_INST_PROP(0, perif_dma_mode)
-static uint8_t perif_pc_rx_buf[ESPI_PLD_LEN_MAX] NON_CACHED_BSS;
-static uint8_t perif_pc_tx_buf[ESPI_PLD_LEN_MAX] NON_CACHED_BSS;
-static uint8_t perif_np_tx_buf[ESPI_PLD_LEN_MAX] NON_CACHED_BSS;
+static uint8_t perif_pc_rx_buf[ESPI_PLD_LEN_MAX] __aligned(CONFIG_DCACHE_LINE_SIZE);
+static uint8_t perif_pc_tx_buf[ESPI_PLD_LEN_MAX] __aligned(CONFIG_DCACHE_LINE_SIZE);
+static uint8_t perif_np_tx_buf[ESPI_PLD_LEN_MAX] __aligned(CONFIG_DCACHE_LINE_SIZE);
 #else
 static uint8_t perif_pc_rx_buf[0];
 static uint8_t perif_pc_tx_buf[0];
 static uint8_t perif_np_tx_buf[0];
 #endif
+
+static void espi_aspeed_dma_cache_range(void *addr, size_t len,
+					int (*cache_op)(void *addr, size_t size))
+{
+	size_t line_size;
+	uintptr_t start, end;
+
+	if (!addr || !len)
+		return;
+
+	line_size = sys_cache_data_line_size_get();
+	if (!line_size) {
+		(void)cache_op(addr, len);
+		return;
+	}
+
+	start = ROUND_DOWN((uintptr_t)addr, line_size);
+	end = ROUND_UP((uintptr_t)addr + len, line_size);
+
+	(void)cache_op((void *)start, end - start);
+}
 
 #if DT_INST_PROP(0, perif_mcyc_enable) && DT_INST_PROP(0, perif_mcyc_dma_mode)
 static uint8_t perif_mcyc_buf[DT_INST_PROP(0, perif_mcyc_size)]
@@ -612,10 +634,12 @@ static void espi_ast2700_vw_init(struct espi_ast2700_vw *vw)
 
 /* out of band channel */
 #if DT_INST_PROP(0, oob_dma_mode)
-static struct espi_ast2700_oob_dma_tx_desc oob_tx_desc[OOB_DMA_DESC_NUM] NON_CACHED_BSS;
-static struct espi_ast2700_oob_dma_rx_desc oob_rx_desc[OOB_DMA_DESC_NUM] NON_CACHED_BSS;
-static uint8_t oob_tx_buf[OOB_DMA_BUF_SIZE] NON_CACHED_BSS;
-static uint8_t oob_rx_buf[OOB_DMA_BUF_SIZE] NON_CACHED_BSS;
+static struct espi_ast2700_oob_dma_tx_desc oob_tx_desc[OOB_DMA_DESC_NUM]
+	__aligned(CONFIG_DCACHE_LINE_SIZE);
+static struct espi_ast2700_oob_dma_rx_desc oob_rx_desc[OOB_DMA_DESC_NUM]
+	__aligned(CONFIG_DCACHE_LINE_SIZE);
+static uint8_t oob_tx_buf[OOB_DMA_BUF_SIZE] __aligned(CONFIG_DCACHE_LINE_SIZE);
+static uint8_t oob_rx_buf[OOB_DMA_BUF_SIZE] __aligned(CONFIG_DCACHE_LINE_SIZE);
 #else
 static struct espi_ast2700_oob_dma_tx_desc oob_tx_desc[0];
 static struct espi_ast2700_oob_dma_rx_desc oob_rx_desc[0];
@@ -679,6 +703,13 @@ static void espi_ast2700_oob_reset(struct espi_ast2700_oob *oob)
 			rx_addr += ESPI_PLD_LEN_MAX;
 		}
 
+		espi_aspeed_dma_cache_range(oob->dma.txd_virt,
+					   sizeof(oob->dma.txd_virt[0]) * OOB_DMA_DESC_NUM,
+					   sys_cache_data_flush_range);
+		espi_aspeed_dma_cache_range(oob->dma.rxd_virt,
+					   sizeof(oob->dma.rxd_virt[0]) * OOB_DMA_DESC_NUM,
+					   sys_cache_data_flush_range);
+
 #if ARM64
 		ESPI_WR(oob->dma.txd_addr >> 32, ESPI_CH2_TX_DMAH);
 #endif
@@ -729,8 +760,8 @@ static void espi_ast2700_oob_init(struct espi_ast2700_oob *oob)
 
 /* flash channel */
 #if DT_INST_PROP(0, flash_dma_mode)
-static uint8_t flash_tx_buf[ESPI_PLD_LEN_MAX] NON_CACHED_BSS;
-static uint8_t flash_rx_buf[ESPI_PLD_LEN_MAX] NON_CACHED_BSS;
+static uint8_t flash_tx_buf[ESPI_PLD_LEN_MAX] __aligned(CONFIG_DCACHE_LINE_SIZE);
+static uint8_t flash_rx_buf[ESPI_PLD_LEN_MAX] __aligned(CONFIG_DCACHE_LINE_SIZE);
 #else
 static uint8_t flash_tx_buf[0];
 static uint8_t flash_rx_buf[0];
@@ -753,12 +784,15 @@ static void espi_ast2700_flash_isr(struct espi_ast2700_data *data)
 
 	sts = ESPI_RD(ESPI_CH3_INT_STS);
 
-	if (sts & ESPI_CH3_INT_STS_TX_CMPLT)
+	if (sts & ESPI_CH3_INT_STS_TX_CMPLT) {
 		ESPI_WR(ESPI_CH3_INT_STS_TX_CMPLT, ESPI_CH3_INT_STS);
+	}
 
 	if (sts & ESPI_CH3_INT_STS_RX_CMPLT) {
 #ifdef CONFIG_ESPI_TAF
-		if (ESPI_RD(ESPI_CAP_CH3_0) & ESPI_CAP_CH3_0_SHARE_MODE) {
+		uint32_t cap = ESPI_RD(ESPI_CAP_CH3_0);
+
+		if (cap & ESPI_CAP_CH3_0_SHARE_MODE) {
 			int i;
 			uint32_t reg, cyc, tag, len;
 			struct espi_flash_rwe *rwe;
@@ -774,26 +808,38 @@ static void espi_ast2700_flash_isr(struct espi_ast2700_data *data)
 			case ESPI_FLASH_ERASE:
 				espi_aspeed_taf_pckt.pkt_len = ((len) ? len : ESPI_PLD_LEN_MAX) +
 								sizeof(struct espi_flash_rwe);
-
 				rwe = (struct espi_flash_rwe *)espi_aspeed_taf_pckt.pkt;
 				rwe->cyc   = cyc;
 				rwe->tag   = tag;
 				rwe->len_h = len >> 8;
 				rwe->len_l = len & 0xff;
 
-				/*
-				 * read addr_be + payload from HW FIFO, starting at
-				 * offset 3 (after hdr)
-				 */
-				for (i = offsetof(struct espi_flash_rwe, addr_be);
-				     i < espi_aspeed_taf_pckt.pkt_len; ++i)
-					espi_aspeed_taf_pckt.pkt[i] =
-						ESPI_RD(ESPI_CH3_RX_DATA) & 0xff;
+				if (flash->dma.enable) {
+					size_t dma_len = espi_aspeed_taf_pckt.pkt_len -
+						offsetof(struct espi_flash_rwe, addr_be);
+
+					espi_aspeed_dma_cache_range(flash->dma.rx_virt, dma_len,
+								 sys_cache_data_invd_range);
+
+					memcpy(espi_aspeed_taf_pckt.pkt +
+						offsetof(struct espi_flash_rwe, addr_be),
+						flash->dma.rx_virt, dma_len);
+				} else {
+					/*
+					 * read addr_be + payload from HW FIFO, starting at
+					 * offset 3 (after hdr)
+					 */
+					for (i = offsetof(struct espi_flash_rwe, addr_be);
+						i < espi_aspeed_taf_pckt.pkt_len; ++i)
+						espi_aspeed_taf_pckt.pkt[i] =
+							ESPI_RD(ESPI_CH3_RX_DATA) & 0xff;
+				}
 
 				espi_taf_dispatch(&espi_aspeed_taf_pckt);
 				ESPI_WR(ESPI_CH3_INT_STS_RX_CMPLT, ESPI_CH3_INT_STS);
 				return;
 			default:
+				LOG_ERR("flash isr: non-taf flash cyc=0x%02x", cyc);
 				break;
 			}
 		}
@@ -1147,9 +1193,11 @@ int espi_aspeed_perif_pc_get_rx(const struct device *dev, struct espi_aspeed_ioc
 	hdr->len_h = len >> 8;
 	hdr->len_l = len & 0xff;
 
-	if (perif->dma.enable)
+	if (perif->dma.enable) {
+		espi_aspeed_dma_cache_range(perif->dma.pc_rx_virt, data_len,
+						 sys_cache_data_invd_range);
 		memcpy(data_buf, perif->dma.pc_rx_virt, data_len);
-	else
+	} else
 		for (i = 0; i < data_len; ++i)
 			data_buf[i] = (ESPI_RD(ESPI_CH0_PC_RX_DATA) & 0xff);
 
@@ -1180,9 +1228,12 @@ int espi_aspeed_perif_pc_put_tx(const struct device *dev, struct espi_aspeed_ioc
 		goto unlock_n_out;
 	}
 
-	if (perif->dma.enable)
+	if (perif->dma.enable) {
 		memcpy(perif->dma.pc_tx_virt, hdr + 1, ioc->pkt_len - sizeof(*hdr));
-	else
+		espi_aspeed_dma_cache_range(perif->dma.pc_tx_virt,
+						 ioc->pkt_len - sizeof(*hdr),
+						 sys_cache_data_flush_range);
+	} else
 		for (i = sizeof(*hdr); i < ioc->pkt_len; ++i)
 			ESPI_WR(ioc->pkt[i], ESPI_CH0_PC_TX_DATA);
 
@@ -1294,9 +1345,12 @@ int espi_aspeed_perif_np_put_tx(const struct device *dev, struct espi_aspeed_ioc
 		goto unlock_n_out;
 	}
 
-	if (perif->dma.enable)
+	if (perif->dma.enable) {
 		memcpy(perif->dma.np_tx_virt, hdr + 1, ioc->pkt_len - sizeof(*hdr));
-	else
+		espi_aspeed_dma_cache_range(perif->dma.np_tx_virt,
+						 ioc->pkt_len - sizeof(*hdr),
+						 sys_cache_data_flush_range);
+	} else
 		for (i = sizeof(*hdr); i < ioc->pkt_len; ++i)
 			ESPI_WR(ioc->pkt[i], ESPI_CH0_NP_TX_DATA);
 
@@ -1351,6 +1405,8 @@ int espi_ast2700_oob_get_rx(const struct device *dev, struct espi_aspeed_ioc *io
 
 		d = &oob->dma.rxd_virt[wptr];
 
+		espi_aspeed_dma_cache_range(d, sizeof(*d), sys_cache_data_invd_range);
+
 		ioc->pkt_len = (d->len) ? d->len : ESPI_PLD_LEN_MAX;
 		ioc->pkt_len += sizeof(struct espi_comm_hdr);
 
@@ -1358,14 +1414,22 @@ int espi_ast2700_oob_get_rx(const struct device *dev, struct espi_aspeed_ioc *io
 		hdr->tag = d->tag;
 		hdr->len_h = d->len >> 8;
 		hdr->len_l = d->len & 0xff;
+
+		espi_aspeed_dma_cache_range(oob->dma.rx_virt + (ESPI_PLD_LEN_MAX * wptr),
+					   ioc->pkt_len - sizeof(*hdr),
+					   sys_cache_data_invd_range);
 		memcpy(hdr + 1, oob->dma.rx_virt + (ESPI_PLD_LEN_MAX * wptr),
 		       ioc->pkt_len - sizeof(*hdr));
 
 		d->dirty = 0;
+		espi_aspeed_dma_cache_range(d, sizeof(*d), sys_cache_data_flush_range);
 
 		wptr = (wptr + 1) % OOB_DMA_DESC_NUM;
 		ESPI_WR(wptr | ESPI_CH2_RX_DESC_WPTR_VALID, ESPI_CH2_RX_DESC_WPTR);
 
+		espi_aspeed_dma_cache_range(&oob->dma.rxd_virt[wptr],
+					   sizeof(oob->dma.rxd_virt[0]),
+					   sys_cache_data_invd_range);
 		if (oob->dma.rxd_virt[wptr].dirty)
 			k_sem_give(&oob->rx_ready);
 
@@ -1424,14 +1488,18 @@ int espi_ast2700_oob_put_tx(const struct device *dev, struct espi_aspeed_ioc *io
 			goto unlock_n_out;
 		}
 
-		d = (void *)&oob->dma.tx_virt[wptr];
+		d = &oob->dma.txd_virt[wptr];
 		d->cyc = hdr->cyc;
 		d->tag = hdr->tag;
 		d->len = (hdr->len_h << 8) | (hdr->len_l & 0xff);
 		d->msg_type = OOB_DMA_DESC_CUSTOM;
+		espi_aspeed_dma_cache_range(d, sizeof(*d), sys_cache_data_flush_range);
 
 		memcpy(oob->dma.tx_virt + (ESPI_PLD_LEN_MAX * wptr), hdr + 1,
 		       ioc->pkt_len - sizeof(*hdr));
+		espi_aspeed_dma_cache_range(oob->dma.tx_virt + (ESPI_PLD_LEN_MAX * wptr),
+					   ioc->pkt_len - sizeof(*hdr),
+					   sys_cache_data_flush_range);
 
 		wptr = (wptr + 1) % OOB_DMA_DESC_NUM;
 		ESPI_WR(wptr | ESPI_CH2_TX_DESC_WPTR_VALID, ESPI_CH2_TX_DESC_WPTR);
@@ -1516,9 +1584,11 @@ int espi_aspeed_flash_get_rx(const struct device *dev, struct espi_aspeed_ioc *i
 	hdr->len_h = len >> 8;
 	hdr->len_l = len & 0xff;
 
-	if (flash->dma.enable)
+	if (flash->dma.enable) {
+		espi_aspeed_dma_cache_range(flash->dma.rx_virt, ioc->pkt_len - sizeof(*hdr),
+					   sys_cache_data_invd_range);
 		memcpy(hdr + 1, flash->dma.rx_virt, ioc->pkt_len - sizeof(*hdr));
-	else
+	} else
 		for (i = sizeof(*hdr); i < ioc->pkt_len; ++i)
 			ioc->pkt[i] = ESPI_RD(ESPI_CH3_RX_DATA) & 0xff;
 
@@ -1535,6 +1605,7 @@ int espi_aspeed_flash_put_tx(const struct device *dev, struct espi_aspeed_ioc *i
 	int i, rc;
 	uint32_t reg;
 	uint32_t cyc, tag, len;
+	size_t payload_len;
 	struct espi_comm_hdr *hdr = (struct espi_comm_hdr *)ioc->pkt;
 	struct espi_flash_rwe *flash_rwe = (struct espi_flash_rwe *)ioc->pkt;
 	struct espi_ast2700_data *data = (struct espi_ast2700_data *)dev->data;
@@ -1550,23 +1621,27 @@ int espi_aspeed_flash_put_tx(const struct device *dev, struct espi_aspeed_ioc *i
 		goto unlock_n_out;
 	}
 
+	cyc = flash_rwe->cyc;
+	tag = flash_rwe->tag;
+	len = (flash_rwe->len_h << 8) | (flash_rwe->len_l & 0xff);
+	payload_len = ioc->pkt_len - sizeof(*hdr);
+
 	if (flash->dma.enable) {
-		memcpy(flash->dma.tx_virt, hdr + 1, ioc->pkt_len - sizeof(*hdr));
+		if (payload_len) {
+			memcpy(flash->dma.tx_virt, hdr + 1, payload_len);
+			espi_aspeed_dma_cache_range(flash->dma.tx_virt, payload_len,
+						   sys_cache_data_flush_range);
+		}
 	} else {
 		for (i = sizeof(*hdr); i < ioc->pkt_len; ++i) {
 			ESPI_WR(ioc->pkt[i], ESPI_CH3_TX_DATA);
 		}
 	}
 
-	cyc = flash_rwe->cyc;
-	tag = flash_rwe->tag;
-	len = (flash_rwe->len_h << 8) | (flash_rwe->len_l & 0xff);
-
 	reg = FIELD_PREP(ESPI_CH3_TX_CTRL_CYC, cyc)
 	      | FIELD_PREP(ESPI_CH3_TX_CTRL_TAG, tag)
 	      | FIELD_PREP(ESPI_CH3_TX_CTRL_LEN, len)
 	      | ESPI_CH3_TX_CTRL_TRIG_PEND;
-
 	ESPI_WR(reg, ESPI_CH3_TX_CTRL);
 
 	rc = 0;
