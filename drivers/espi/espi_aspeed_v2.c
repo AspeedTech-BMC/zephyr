@@ -790,6 +790,10 @@ static void espi_ast2700_flash_isr(struct espi_ast2700_data *data)
 	sts = ESPI_RD(ESPI_CH3_INT_STS);
 
 	if (sts & ESPI_CH3_INT_STS_TX_CMPLT) {
+		if (flash->dma.enable) {
+			/* re-assert FLASH_NP_FREE by writing RX_CTRL pend bit */
+			ESPI_WR(ESPI_CH3_RX_CTRL_SERV_PEND, ESPI_CH3_RX_CTRL);
+		}
 		ESPI_WR(ESPI_CH3_INT_STS_TX_CMPLT, ESPI_CH3_INT_STS);
 	}
 
