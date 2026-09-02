@@ -20,7 +20,13 @@
 
 /* device define */
 #define AST_I2C_F_D_BASE		0x200
+
+#if defined(CONFIG_SOC_AST1040_CM4) || \
+	defined(CONFIG_SOC_AST1080_CM4)
+#define AST_I2C_F_D_OFFSET	0x200
+#else
 #define AST_I2C_F_D_OFFSET	0x100
+#endif
 
 /* device registers */
 #define AST_I2C_F_EN			0x04
