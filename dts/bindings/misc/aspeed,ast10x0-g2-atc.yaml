@@ -1,0 +1,19 @@
+# Copyright (c) 2026, ASPEED Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+description: ASPEED AST10x0-G2 Anti-Tamper Controller (ATC)
+
+compatible: "aspeed,ast10x0-g2-atc"
+
+include: [base.yaml]
+
+properties:
+  reg:
+    required: true
+
+  interrupts:
+    required: true
+    description: |
+      TSENSE (temperature sensor) anti-tamper interrupt line.
+      Clock attack monitor, glitch detection and IR drop interrupts
+      are not wired up yet.

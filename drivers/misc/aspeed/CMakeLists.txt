@@ -30,5 +30,6 @@ zephyr_library_sources_ifdef(CONFIG_PRIVILEGE_CTRL		prictrl_aspeed.c)
 zephyr_library_sources_ifdef(CONFIG_OTP_AST27XX			otp_ast2700.c)
 zephyr_library_sources_ifdef(CONFIG_OTP_AST27XX			lib_otp_ast2700.c)
 zephyr_library_sources_ifdef(CONFIG_EDAF_BRIDGE_ASPEED		edaf_bridge_aspeed.c)
+zephyr_library_sources_ifdef(CONFIG_ATC_ASPEED			atc_aspeed.c)
 
 zephyr_library_link_libraries_ifdef(CONFIG_MBEDTLS mbedTLS)

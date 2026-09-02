@@ -180,6 +180,14 @@ config EDAF_BRIDGE_ASPEED
 	  This option enables the eDAF bridge controller
 	  for ASPEED SoCs.
 
+config ATC_ASPEED
+	bool "ASPEED Anti-Tamper Controller (ATC) driver"
+	depends on SOC_FAMILY_ASPEED
+	help
+	  This option enables the Anti-Tamper Controller driver for
+	  ASPEED SoCs, including clock attack monitor, glitch detection,
+	  IR drop detection and temperature sensor (TSENSE) tamper events.
+
 module = MISC_ASPEED
 module-str = misc-aspeed
 source "subsys/logging/Kconfig.template.log_config"

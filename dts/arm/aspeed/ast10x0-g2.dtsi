@@ -876,6 +876,13 @@
 			};
 		};
 
+		atc: atc@74c35000 {
+			compatible = "aspeed,ast10x0-g2-atc";
+			reg = <0x74c35000 0x100>;
+			interrupts = <INTR_AATSENSE AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+			status = "disabled";
+		};
+
 		wdt0: wdt@74c37000 {
 			compatible = "aspeed,ast10x0-g2-watchdog";
 			reg = <0x74c37000 0x80>;

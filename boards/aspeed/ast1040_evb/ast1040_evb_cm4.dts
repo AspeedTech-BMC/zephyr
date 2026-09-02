@@ -455,3 +455,5 @@ zephyr_udc0: &udc1 {
 &cptra_mci_mldsa {
 	status = "okay";
 };
+
+&atc { status = "okay"; };
