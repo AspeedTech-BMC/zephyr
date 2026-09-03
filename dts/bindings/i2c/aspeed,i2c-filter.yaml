@@ -11,6 +11,7 @@ compatible: "aspeed,i2c-filter"
 include:
   - name: base.yaml
   - name: pinctrl-device.yaml
+  - name: reset-device.yaml
 
 properties:
     reg:
