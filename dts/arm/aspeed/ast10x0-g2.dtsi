@@ -335,6 +335,7 @@
 			compatible = "aspeed,i2c-filter";
 			reg = <0x74c14000 0x1000>;
 			clocks = <&sysclk SCU1_CLK_APB>;
+			resets = <&sysrst SCU1_RESET_I2C_FILTER>;
 			interrupts = <INTR_I2C_F0 AST10X0_G2_IRQ_DEFAULT_PRIORITY>,
 						 <INTR_I2C_F1 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
 			pinctrl-0 = <pinctrl_smbflt1_default pinctrl_smbflt2_default>;
