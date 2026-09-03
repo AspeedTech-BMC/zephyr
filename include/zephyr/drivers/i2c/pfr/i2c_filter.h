@@ -24,8 +24,10 @@
 #if defined(CONFIG_SOC_AST1040_CM4) || \
 	defined(CONFIG_SOC_AST1080_CM4)
 #define AST_I2C_F_D_OFFSET	0x200
+#define FILTER_DMA_ADDR_MASK 0x0FFFFFFFF
 #else
 #define AST_I2C_F_D_OFFSET	0x100
+#define FILTER_DMA_ADDR_MASK 0xFFFFFFFFF
 #endif
 
 /* device registers */

@@ -16,6 +16,7 @@
 #include <zephyr/drivers/clock_control.h>
 #include <zephyr/drivers/i2c/pfr/i2c_filter.h>
 #include <zephyr/drivers/pinctrl.h>
+#include <zephyr/drivers/reset.h>
 
 #define LOG_LEVEL CONFIG_I2C_LOG_LEVEL
 #include <zephyr/logging/log.h>
@@ -64,6 +65,7 @@ struct ast_i2c_filter_config {
 	const struct device *clock_dev;
 	const clock_control_subsys_t clk_id;
 	const struct pinctrl_dev_config *pcfg;
+	const struct reset_dt_spec reset;
 	struct filter_array *filter_child;
 	uint32_t filter_child_num;
 	void (*irq_config_func)(const struct device *dev);
@@ -225,7 +227,10 @@ uint8_t clr_idx, uint8_t clr_tbl)
 
 	/* set white list buffer into device */
 	if (data->filter_dev_en && data->filter_en) {
-		I2C_LW_R((uint32_t)TO_PHY_ADDR((uintptr_t)&filter_tbl[(cfg->index)]),
+		uint32_t white_list = (uint32_t)TO_PHY_ADDR((uintptr_t)&filter_tbl[(cfg->index)]);
+
+		white_list &= FILTER_DMA_ADDR_MASK;
+		I2C_LW_R(white_list,
 		(data->filter_dev_base + AST_I2C_F_BUF));
 	}
 
@@ -361,6 +366,9 @@ int ast_i2c_filter_global_init(const struct device *dev)
 	/* hook interrupt routine*/
 	cfg->irq_config_func(dev);
 
+	/* deassert scu for i2c controller */
+	reset_line_deassert_dt(&cfg->reset);
+
 	return 0;
 }
 
@@ -415,6 +423,7 @@ struct filter_info {
 		.filter_child = child_filter_##inst,	 \
 		.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(0)),	\
 		.clk_id = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(0, clk_id),	\
+		.reset = RESET_DT_SPEC_INST_GET(0),\
 		.filter_child_num = ARRAY_SIZE(child_filter_##inst), \
 		.irq_config_func = ast_i2c_filter_cfg_##inst,	 \
 		.pcfg = PINCTRL_DT_INST_DEV_CONFIG_GET(inst),		 \
