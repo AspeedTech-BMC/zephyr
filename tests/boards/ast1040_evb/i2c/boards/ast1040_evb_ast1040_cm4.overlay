@@ -3,24 +3,9 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  *
- * GPIO and I2C nodes required by the combined test image.
- */
-
-/* GPIO loopback */
-
-&gpio0 {
-	status = "okay";
-};
-
-&gpio0_96_127 {
-	status = "okay";
-};
-
-/* I2C loopback */
-
-/*
- * i2c4/i2c5 targets are defined by the board. Other wired pairs are omitted
- * because they conflict with the board's PWM/TACH pinmux.
+ * i2c4/i2c5 targets are defined by the board. Enable the conflict-free
+ * i2c10/i2c11 loopback pair here; the other wired pairs conflict with the
+ * board's PWM/TACH pinmux.
  */
 
 &i2c10 {

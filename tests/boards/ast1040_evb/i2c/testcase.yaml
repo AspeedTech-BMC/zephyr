@@ -1,0 +1,6 @@
+tests:
+  boards.ast1040_evb.i2c:
+    platform_allow: ast1040_evb/ast1040/cm4
+    tags:
+      - drivers
+      - i2c
