@@ -1418,7 +1418,7 @@ void ast2700_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, u
 	if (AST_I2CS_ABNOR_STOP & sts) {
 		LOG_ERR("The target abnomal protocol occurs isr: 0x%08x.\n", isr);
 		cmd = SLAVE_TRIGGER_CMD | AST_I2CS_RX_DMA_EN;
-		sys_write32(AST_I2CS_SET_RX_DMA_LEN(ASPEED_I2C_DMA_SIZE),
+		sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE),
 		       i2c_base + AST_I2CS_DMA_LEN);
 		sys_write32(cmd, i2c_base + AST_I2CS_CMD_STS);
 		/* clear sirq log */
@@ -1482,7 +1482,7 @@ void ast2700_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, u
 		if (data->slave_get_cfg) {
 			data->slave_cb->write_requested(data->slave_get_cfg);
 		}
-		sys_write32(AST_I2CS_SET_RX_DMA_LEN(ASPEED_I2C_DMA_SIZE),
+		sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE),
 		       i2c_base + AST_I2CS_DMA_LEN);
 		cmd = SLAVE_TRIGGER_CMD | AST_I2CS_RX_DMA_EN;
 		break;
@@ -1512,7 +1512,7 @@ void ast2700_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, u
 				, data->slave_dma_buf[i]);
 			}
 		}
-		sys_write32(AST_I2CS_SET_RX_DMA_LEN(ASPEED_I2C_DMA_SIZE),
+		sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE),
 		       i2c_base + AST_I2CS_DMA_LEN);
 		if (data->slave_get_cfg) {
 			data->slave_cb->stop(data->slave_get_cfg);
@@ -1543,7 +1543,7 @@ void ast2700_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, u
 				, data->slave_dma_buf[i]);
 			}
 		}
-		sys_write32(AST_I2CS_SET_RX_DMA_LEN(ASPEED_I2C_DMA_SIZE),
+		sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE),
 		       i2c_base + AST_I2CS_DMA_LEN);
 		cmd = SLAVE_TRIGGER_CMD | AST_I2CS_RX_DMA_EN;
 		break;
@@ -1577,7 +1577,7 @@ void ast2700_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, u
 		}
 		data->slave_get_cfg = NULL;
 
-		sys_write32(AST_I2CS_SET_RX_DMA_LEN(ASPEED_I2C_DMA_SIZE),
+		sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE),
 		       i2c_base + AST_I2CS_DMA_LEN);
 		cmd = SLAVE_TRIGGER_CMD | AST_I2CS_RX_DMA_EN;
 		break;
@@ -1619,7 +1619,7 @@ void ast2700_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, u
 		if (data->slave_get_cfg) {
 			data->slave_cb->write_requested(data->slave_get_cfg);
 		}
-		sys_write32(AST_I2CS_SET_RX_DMA_LEN(ASPEED_I2C_DMA_SIZE),
+		sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE),
 		       i2c_base + AST_I2CS_DMA_LEN);
 		cmd = SLAVE_TRIGGER_CMD | AST_I2CS_RX_DMA_EN;
 		break;
@@ -1653,7 +1653,7 @@ void ast2700_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, u
 			data->slave_cb->stop(data->slave_get_cfg);
 		}
 		data->slave_get_cfg = NULL;
-		sys_write32(AST_I2CS_SET_RX_DMA_LEN(ASPEED_I2C_DMA_SIZE),
+		sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE),
 		       i2c_base + AST_I2CS_DMA_LEN);
 		cmd = SLAVE_TRIGGER_CMD | AST_I2CS_RX_DMA_EN;
 		break;
@@ -1669,7 +1669,7 @@ void ast2700_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, u
 				ast2700_i2c_get_target(data,
 						   sirq_log >> SLAVE_ADDR_SHIFT);
 		}
-		sys_write32(AST_I2CS_SET_RX_DMA_LEN(ASPEED_I2C_DMA_SIZE),
+		sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE),
 		       i2c_base + AST_I2CS_DMA_LEN);
 		cmd = SLAVE_TRIGGER_CMD | AST_I2CS_RX_DMA_EN;
 		/* workaround: not clear slave match due to wait next isr check tx or rx */
@@ -1683,7 +1683,7 @@ void ast2700_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, u
 		data->slave_get_cfg = NULL;
 		sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG);
 
-		sys_write32(AST_I2CS_SET_RX_DMA_LEN(ASPEED_I2C_DMA_SIZE),
+		sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE),
 		       i2c_base + AST_I2CS_DMA_LEN);
 
 		cmd = SLAVE_TRIGGER_CMD | AST_I2CS_RX_DMA_EN;
@@ -1703,7 +1703,7 @@ void ast2700_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, u
 		if (data->slave_get_cfg) {
 			data->slave_cb->write_requested(data->slave_get_cfg);
 		}
-		sys_write32(AST_I2CS_SET_RX_DMA_LEN(ASPEED_I2C_DMA_SIZE),
+		sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE),
 		       i2c_base + AST_I2CS_DMA_LEN);
 		cmd = SLAVE_TRIGGER_CMD | AST_I2CS_RX_DMA_EN;
 		break;
