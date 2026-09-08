@@ -1,0 +1,380 @@
+/*
+ * Copyright (c) 2026 Aspeed Technology Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Combined overlay: union of every peripheral test's own overlay under
+ * tests/boards/ast1030_evb/<peripheral>/boards/ast1030_evb.overlay.
+ * Verified (via a scratch merged build) that no two peripherals target the
+ * same devicetree node. gpio0_a_d (used by src/gpio_concurrent.c, pins 8/9
+ * loopback) needs no overlay - it's status-okay by default in the SoC dtsi.
+ */
+
+/* --- from adc --- */
+
+&adc0 {
+	status = "okay";
+
+	pinctrl-names = "default";
+	pinctrl-0 = <pinctrl_adc0_default pinctrl_adc1_default
+		pinctrl_adc2_default pinctrl_adc3_default
+		pinctrl_adc4_default pinctrl_adc5_default
+		pinctrl_adc6_default pinctrl_adc7_default>;
+};
+
+&adc1 {
+	status = "okay";
+
+	pinctrl-names = "default";
+	pinctrl-0 = <pinctrl_adc8_default pinctrl_adc9_default
+		pinctrl_adc10_default pinctrl_adc11_default
+		pinctrl_adc12_default pinctrl_adc13_default
+		pinctrl_adc14_default pinctrl_adc15_default>;
+};
+
+/* --- from espi --- */
+
+&espi {
+	status = "okay";
+};
+
+/* --- from spi --- */
+
+&fmc {
+	status = "okay";
+};
+
+&fmc_cs0 {
+	status = "okay";
+	spi-max-buswidth = <4>;
+	spi-max-frequency = <50000000>;
+};
+
+&fmc_cs1 {
+	status = "okay";
+	spi-max-buswidth = <4>;
+	spi-max-frequency = <50000000>;
+};
+
+&spi1 {
+	status = "okay";
+};
+
+&spi1_cs0 {
+	status = "okay";
+	spi-max-buswidth = <4>;
+	spi-max-frequency = <50000000>;
+};
+
+&spi1_cs1 {
+	status = "okay";
+	spi-max-buswidth = <4>;
+	spi-max-frequency = <50000000>;
+};
+
+&spi2 {
+	status = "okay";
+};
+
+&spi2_cs0 {
+	status = "okay";
+	spi-max-buswidth = <4>;
+	spi-max-frequency = <50000000>;
+};
+
+&spi2_cs1 {
+	status = "okay";
+	spi-max-buswidth = <4>;
+	spi-max-frequency = <50000000>;
+};
+
+/* --- from pwm_tach --- */
+
+&pwm {
+	status = "okay";
+
+	pinctrl-names = "default";
+	pinctrl-0 = <pinctrl_pwm0_default pinctrl_pwm1_default
+			pinctrl_pwm2_default pinctrl_pwm3_default
+			pinctrl_pwm4_default pinctrl_pwm5_default
+			pinctrl_pwm6_default pinctrl_pwm7_default
+			pinctrl_pwm8_default pinctrl_pwm9_default
+			pinctrl_pwm10_default pinctrl_pwm11_default
+			pinctrl_pwm12_default pinctrl_pwm13_default
+			pinctrl_pwm14_default pinctrl_pwm15_default>;
+};
+
+&tach {
+	status = "okay";
+
+	pinctrl-names = "default";
+	pinctrl-0 = <pinctrl_tach0_default pinctrl_tach1_default
+			pinctrl_tach2_default pinctrl_tach3_default
+			pinctrl_tach4_default pinctrl_tach5_default
+			pinctrl_tach6_default pinctrl_tach7_default
+			pinctrl_tach8_default pinctrl_tach9_default
+			pinctrl_tach10_default pinctrl_tach11_default
+			pinctrl_tach12_default pinctrl_tach13_default
+			pinctrl_tach14_default pinctrl_tach15_default>;
+
+	fan0: fan@0 {
+		reg = <0>;
+		pulse-pr = <1>;
+		min-rpm = <1000>;
+		tach-div = <2>;
+	};
+
+	fan1: fan@1 {
+		reg = <1>;
+		pulse-pr = <1>;
+		min-rpm = <1000>;
+		tach-div = <2>;
+	};
+
+	fan2: fan@2 {
+		reg = <2>;
+		pulse-pr = <1>;
+		min-rpm = <1000>;
+		tach-div = <2>;
+	};
+
+	fan3: fan@3 {
+		reg = <3>;
+		pulse-pr = <1>;
+		min-rpm = <1000>;
+		tach-div = <2>;
+	};
+
+	fan4: fan@4 {
+		reg = <4>;
+		pulse-pr = <1>;
+		min-rpm = <1000>;
+		tach-div = <2>;
+	};
+
+	fan5: fan@5 {
+		reg = <5>;
+		pulse-pr = <1>;
+		min-rpm = <1000>;
+		tach-div = <2>;
+	};
+
+	fan6: fan@6 {
+		reg = <6>;
+		pulse-pr = <1>;
+		min-rpm = <1000>;
+		tach-div = <2>;
+	};
+
+	fan7: fan@7 {
+		reg = <7>;
+		pulse-pr = <1>;
+		min-rpm = <1000>;
+		tach-div = <2>;
+	};
+
+	fan8: fan@8 {
+		reg = <8>;
+		pulse-pr = <1>;
+		min-rpm = <1000>;
+		tach-div = <2>;
+	};
+
+	fan9: fan@9 {
+		reg = <9>;
+		pulse-pr = <1>;
+		min-rpm = <1000>;
+		tach-div = <2>;
+	};
+
+	fan10: fan@a {
+		reg = <0xa>;
+		pulse-pr = <1>;
+		min-rpm = <1000>;
+		tach-div = <2>;
+	};
+
+	fan11: fan@b {
+		reg = <0xb>;
+		pulse-pr = <1>;
+		min-rpm = <1000>;
+		tach-div = <2>;
+	};
+
+	fan12: fan@c {
+		reg = <0xc>;
+		pulse-pr = <1>;
+		min-rpm = <1000>;
+		tach-div = <2>;
+	};
+
+	fan13: fan@d {
+		reg = <0xd>;
+		pulse-pr = <1>;
+		min-rpm = <1000>;
+		tach-div = <2>;
+	};
+
+	fan14: fan@e {
+		reg = <0xe>;
+		pulse-pr = <1>;
+		min-rpm = <1000>;
+		tach-div = <2>;
+	};
+
+	fan15: fan@f {
+		reg = <0xf>;
+		pulse-pr = <2>;
+		min-rpm = <700>;
+		tach-div = <5>;
+	};
+};
+
+/* --- from crypto --- */
+
+&hace {
+	status = "okay";
+};
+
+&rsa {
+	status = "okay";
+};
+
+/* --- from i2c --- */
+
+/*
+ * Bus pairing mirrors the old CI test: i2c0/i2c1, i2c2/i2c3, i2c4/i2c5 are
+ * wired together on the EVB. Each pair carries one IPMB target (on the
+ * even bus) and one EEPROM target (on the odd bus), so either half can
+ * act as bus master for the other's target.
+ */
+
+&i2c0 {
+	status = "okay";
+
+	ipmb0: ipmb@50 {
+		compatible = "aspeed,ipmb";
+		reg = <0x50>;
+		size = <5>;
+	};
+};
+
+&i2c1 {
+	status = "okay";
+
+	eeprom1: eeprom@41 {
+		compatible = "zephyr,i2c-target-eeprom";
+		reg = <0x41>;
+		size = <256>;
+	};
+};
+
+&i2c2 {
+	status = "okay";
+
+	ipmb2: ipmb@52 {
+		compatible = "aspeed,ipmb";
+		reg = <0x52>;
+		size = <5>;
+	};
+};
+
+&i2c3 {
+	status = "okay";
+
+	eeprom3: eeprom@43 {
+		compatible = "zephyr,i2c-target-eeprom";
+		reg = <0x43>;
+		size = <256>;
+	};
+};
+
+&i2c4 {
+	status = "okay";
+
+	ipmb4: ipmb@54 {
+		compatible = "aspeed,ipmb";
+		reg = <0x54>;
+		size = <5>;
+	};
+};
+
+&i2c5 {
+	status = "okay";
+
+	eeprom5: eeprom@45 {
+		compatible = "zephyr,i2c-target-eeprom";
+		reg = <0x45>;
+		size = <256>;
+	};
+};
+
+/* --- from i3c --- */
+
+/*
+ * i3c0-to-i3c1 self-loopback (mirrors the old ast1030 CI i3c test):
+ * i3c0 plays the role of the bus controller; i3c1 runs in secondary/target
+ * mode and exposes an i3c-target-mqueue child device (i3c1_smq). The
+ * controller attaches i3c1 as an I3C device dynamically at runtime
+ * (i3c_attach_i3c_device()), so unlike i3c1_smq it has no static DT child
+ * node of its own under i3c0.
+ *
+ * assigned-address values (0x8 for i3c0, 0x9 for i3c1), ibi-append-pec,
+ * and the i3c1_smq reg/msg-size/mandatory-data-byte are carried over
+ * from the old tests/boards/ast1030/boards/ast1030_evb.overlay
+ * (aspeed-dev-v2.6.0) as closely as the new bindings allow.
+ *
+ * ibi-append-pec specifically must not be dropped: per
+ * dts/bindings/i3c/aspeed,i3c.yaml, it's required "if the master device
+ * is AST2600 or AST1030A0" - without it, IBIs from i3c1 (target) never
+ * get recognized correctly by i3c0 (controller) on real hardware
+ * (confirmed: dropping it reproduces "timed out waiting for IBI" / IBI
+ * MDB mismatch on real AST1030 silicon).
+ */
+&i3c0 {
+	status = "okay";
+	assigned-address = <0x8>;
+};
+
+&i3c1 {
+	status = "okay";
+	secondary;
+	dcr = <0xcc>;
+	assigned-address = <0x9>;
+	ibi-append-pec;
+
+	i3c1_smq: i3c-tmq@7ec80011000 {
+		compatible = "i3c-target-mqueue";
+		reg = <0x0 0x7ec 0x80011000>;
+		msg-size = <256>;
+		num-of-msgs = <4>;
+		mandatory-data-byte = <0xbf>;
+		status = "okay";
+	};
+};
+
+/* --- from jtag --- */
+
+&jtag1 {
+	status = "okay";
+};
+
+/*
+ * Provides slot0_partition, referenced by the board dts's
+ * zephyr,code-partition chosen node (boards/aspeed/ast1030_evb/ast1030_evb.dts)
+ * which the shared board dts itself never defines. Supplied here instead of
+ * editing the shared board dts, following the same per-app overlay pattern
+ * used by samples/boards/ast1030_evb/demo/boards/ast1030_evb.overlay.
+ */
+&fmc_cs0 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		slot0_partition: partition@0 {
+			label = "image-0";
+			reg = <0x0 0x100000>;
+		};
+	};
+};
+

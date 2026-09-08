@@ -1,0 +1,164 @@
+/*
+ * Copyright (c) 2026 Aspeed Technology Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+&pwm {
+	status = "okay";
+
+	pinctrl-names = "default";
+	pinctrl-0 = <pinctrl_pwm0_default pinctrl_pwm1_default
+			pinctrl_pwm2_default pinctrl_pwm3_default
+			pinctrl_pwm4_default pinctrl_pwm5_default
+			pinctrl_pwm6_default pinctrl_pwm7_default
+			pinctrl_pwm8_default pinctrl_pwm9_default
+			pinctrl_pwm10_default pinctrl_pwm11_default
+			pinctrl_pwm12_default pinctrl_pwm13_default
+			pinctrl_pwm14_default pinctrl_pwm15_default>;
+};
+
+&tach {
+	status = "okay";
+
+	pinctrl-names = "default";
+	pinctrl-0 = <pinctrl_tach0_default pinctrl_tach1_default
+			pinctrl_tach2_default pinctrl_tach3_default
+			pinctrl_tach4_default pinctrl_tach5_default
+			pinctrl_tach6_default pinctrl_tach7_default
+			pinctrl_tach8_default pinctrl_tach9_default
+			pinctrl_tach10_default pinctrl_tach11_default
+			pinctrl_tach12_default pinctrl_tach13_default
+			pinctrl_tach14_default pinctrl_tach15_default>;
+
+	fan0: fan@0 {
+		reg = <0>;
+		pulse-pr = <1>;
+		min-rpm = <1000>;
+		tach-div = <2>;
+	};
+
+	fan1: fan@1 {
+		reg = <1>;
+		pulse-pr = <1>;
+		min-rpm = <1000>;
+		tach-div = <2>;
+	};
+
+	fan2: fan@2 {
+		reg = <2>;
+		pulse-pr = <1>;
+		min-rpm = <1000>;
+		tach-div = <2>;
+	};
+
+	fan3: fan@3 {
+		reg = <3>;
+		pulse-pr = <1>;
+		min-rpm = <1000>;
+		tach-div = <2>;
+	};
+
+	fan4: fan@4 {
+		reg = <4>;
+		pulse-pr = <1>;
+		min-rpm = <1000>;
+		tach-div = <2>;
+	};
+
+	fan5: fan@5 {
+		reg = <5>;
+		pulse-pr = <1>;
+		min-rpm = <1000>;
+		tach-div = <2>;
+	};
+
+	fan6: fan@6 {
+		reg = <6>;
+		pulse-pr = <1>;
+		min-rpm = <1000>;
+		tach-div = <2>;
+	};
+
+	fan7: fan@7 {
+		reg = <7>;
+		pulse-pr = <1>;
+		min-rpm = <1000>;
+		tach-div = <2>;
+	};
+
+	fan8: fan@8 {
+		reg = <8>;
+		pulse-pr = <1>;
+		min-rpm = <1000>;
+		tach-div = <2>;
+	};
+
+	fan9: fan@9 {
+		reg = <9>;
+		pulse-pr = <1>;
+		min-rpm = <1000>;
+		tach-div = <2>;
+	};
+
+	fan10: fan@a {
+		reg = <0xa>;
+		pulse-pr = <1>;
+		min-rpm = <1000>;
+		tach-div = <2>;
+	};
+
+	fan11: fan@b {
+		reg = <0xb>;
+		pulse-pr = <1>;
+		min-rpm = <1000>;
+		tach-div = <2>;
+	};
+
+	fan12: fan@c {
+		reg = <0xc>;
+		pulse-pr = <1>;
+		min-rpm = <1000>;
+		tach-div = <2>;
+	};
+
+	fan13: fan@d {
+		reg = <0xd>;
+		pulse-pr = <1>;
+		min-rpm = <1000>;
+		tach-div = <2>;
+	};
+
+	fan14: fan@e {
+		reg = <0xe>;
+		pulse-pr = <1>;
+		min-rpm = <1000>;
+		tach-div = <2>;
+	};
+
+	fan15: fan@f {
+		reg = <0xf>;
+		pulse-pr = <2>;
+		min-rpm = <700>;
+		tach-div = <5>;
+	};
+};
+
+/*
+ * Provides slot0_partition, referenced by the board dts's
+ * zephyr,code-partition chosen node (boards/aspeed/ast1030_evb/ast1030_evb.dts)
+ * which the shared board dts itself never defines. Supplied here instead of
+ * editing the shared board dts, following the same per-app overlay pattern
+ * used by samples/boards/ast1030_evb/demo/boards/ast1030_evb.overlay.
+ */
+&fmc_cs0 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		slot0_partition: partition@0 {
+			label = "image-0";
+			reg = <0x0 0x100000>;
+		};
+	};
+};

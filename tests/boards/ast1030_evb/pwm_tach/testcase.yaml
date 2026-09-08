@@ -1,0 +1,7 @@
+tests:
+  boards.ast1030_evb.pwm_tach:
+    platform_allow: ast1030_evb
+    tags:
+      - drivers
+      - pwm
+      - sensor
