@@ -389,6 +389,8 @@ struct i2c_aspeed_data {
 	struct i2c_target_config *slave_cfg[I2C_SLAVE_COUNT];
 	struct i2c_target_config *slave_get_cfg;
 	const struct i2c_target_callbacks *slave_cb;
+	void (*slave_packet_irq)(const struct device *dev, uint32_t i2c_base, uint32_t sts);
+	void (*slave_byte_irq)(const struct device *dev, uint32_t i2c_base, uint32_t sts);
 #endif
 };
 
@@ -1500,7 +1502,7 @@ static void ast2700_i2c_get_target(struct i2c_aspeed_data *data, uint8_t addr)
 		LOG_DBG("address [%x] could not find\n", addr);
 }
 
-void ast2700_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, uint32_t sts)
+void ast2700_i2c_slave_packet_dma_irq(const struct device *dev, uint32_t i2c_base, uint32_t sts)
 {
 	struct i2c_aspeed_data *data = DEV_DATA(dev);
 	int slave_rx_len = 0;
@@ -2033,7 +2035,540 @@ void ast2700_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, u
 	sys_read32(i2c_base + AST_I2CS_ISR);
 }
 
-void ast2600_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, uint32_t sts)
+void ast2700_i2c_slave_packet_buff_irq(const struct device *dev, uint32_t i2c_base, uint32_t sts)
+{
+	struct i2c_aspeed_data *data = DEV_DATA(dev);
+	int slave_rx_len = 0;
+	uint32_t cmd = 0;
+	int i;
+	uint32_t sirq_log;
+	uint32_t isr;
+
+	sys_write32(AST_I2CS_SADDR_PENDING | AST_I2CS_WAIT_TX_DMA | AST_I2CS_WAIT_RX_DMA,
+	i2c_base + AST_I2CS_ISR);
+	isr = sys_read32(i2c_base + AST_I2CS_ISR);
+
+	sts = isr & ~(AST_I2CS_SLAVE_PENDING | AST_I2CS_ADDR_NAK_MASK);
+
+	/* Handle i2c slave timeout condition */
+	/* Skip */
+
+	if (AST_I2CS_ABNOR_STOP & sts) {
+		LOG_ERR("The target abnomal protocol occurs isr: 0x%08x.\n", isr);
+		cmd = SLAVE_TRIGGER_CMD | AST_I2CS_RX_DMA_EN;
+		sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE),
+		       i2c_base + AST_I2CS_DMA_LEN);
+		sys_write32(cmd, i2c_base + AST_I2CS_CMD_STS);
+		/* clear sirq log */
+		while ((sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG))) {
+			/* assign the target client*/
+			if (sirq_log & SADDR_HIT) {
+				if (!data->slave_get_cfg)
+					ast2700_i2c_get_target(data,
+							       sirq_log >> SLAVE_ADDR_SHIFT);
+			}
+		};
+		sys_write32(isr, i2c_base + AST_I2CS_ISR);
+		if (data->slave_get_cfg) {
+			data->slave_cb->stop(data->slave_get_cfg);
+			data->slave_get_cfg = NULL;
+		}
+		return;
+	}
+
+	sts &= ~(AST_I2CS_PKT_DONE | AST_I2CS_PKT_ERROR);
+
+	switch (sts) {
+	case AST_I2CS_SADDR_PENDING | AST_I2CS_WAIT_RX_DMA |
+		AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE | AST_I2CS_STOP:
+	case AST_I2CS_SADDR_PENDING | AST_I2CS_WAIT_RX_DMA |
+		AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE:
+		sys_write32(AST_I2CS_SLAVE_MATCH, i2c_base + AST_I2CS_ISR);
+		isr = sys_read32(i2c_base + AST_I2CS_ISR);
+		sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG);
+		if (!data->slave_get_cfg)
+			ast2700_i2c_get_target(data,
+						   sirq_log >> SLAVE_ADDR_SHIFT);
+		if (data->slave_get_cfg) {
+			data->slave_cb->write_requested(data->slave_get_cfg);
+		}
+		sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG);
+		slave_rx_len = AST_I2C_GET_RX_DMA_LEN(sys_read32(i2c_base +
+							  AST_I2CS_DMA_LEN_STS));
+
+		/*aspeed_cache_invalid_data*/
+		cache_data_invd_range((&data->slave_dma_buf[0])
+		, slave_rx_len);
+
+		if (data->slave_cb->write_received) {
+			for (i = 0; i < slave_rx_len; i++) {
+				LOG_DBG("[%02x] ", data->slave_dma_buf[i]);
+				data->slave_cb->write_received(data->slave_get_cfg
+				, data->slave_dma_buf[i]);
+			}
+		}
+		if (sts & AST_I2CS_STOP) {
+			if (data->slave_get_cfg) {
+				data->slave_cb->stop(data->slave_get_cfg);
+			}
+			data->slave_get_cfg = NULL;
+		}
+		sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG);
+		if (!data->slave_get_cfg)
+			ast2700_i2c_get_target(data,
+						   sirq_log >> SLAVE_ADDR_SHIFT);
+		if (data->slave_get_cfg) {
+			data->slave_cb->write_requested(data->slave_get_cfg);
+		}
+		sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE),
+		       i2c_base + AST_I2CS_DMA_LEN);
+		cmd = SLAVE_TRIGGER_CMD | AST_I2CS_RX_DMA_EN;
+		break;
+	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE | AST_I2CS_STOP:
+		sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG);
+		/* bug workaround */
+		if (sirq_log & SADDR_HIT) {
+			if (!data->slave_get_cfg)
+				ast2700_i2c_get_target(data,
+						   sirq_log >> SLAVE_ADDR_SHIFT);
+			if (data->slave_get_cfg) {
+				data->slave_cb->write_requested(data->slave_get_cfg);
+			}
+			sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG);
+		}
+		slave_rx_len = AST_I2C_GET_RX_DMA_LEN(sys_read32(i2c_base +
+							  AST_I2CS_DMA_LEN_STS));
+
+		/*aspeed_cache_invalid_data*/
+		cache_data_invd_range((&data->slave_dma_buf[0])
+		, slave_rx_len);
+
+		if (data->slave_get_cfg) {
+			for (i = 0; i < slave_rx_len; i++) {
+				LOG_DBG("[%02x] ", data->slave_dma_buf[i]);
+				data->slave_cb->write_received(data->slave_get_cfg
+				, data->slave_dma_buf[i]);
+			}
+		}
+		sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE),
+		       i2c_base + AST_I2CS_DMA_LEN);
+		if (data->slave_get_cfg) {
+			data->slave_cb->stop(data->slave_get_cfg);
+		}
+		data->slave_get_cfg = NULL;
+		cmd = SLAVE_TRIGGER_CMD | AST_I2CS_RX_DMA_EN;
+		break;
+	case AST_I2CS_SLAVE_MATCH:
+		sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG);
+		if (!data->slave_get_cfg)
+			ast2700_i2c_get_target(data,
+						   sirq_log >> SLAVE_ADDR_SHIFT);
+		if (data->slave_get_cfg) {
+			data->slave_cb->write_requested(data->slave_get_cfg);
+		}
+		sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG);
+		slave_rx_len = AST_I2C_GET_RX_DMA_LEN(sys_read32(i2c_base +
+							  AST_I2CS_DMA_LEN_STS));
+
+		/*aspeed_cache_invalid_data*/
+		cache_data_invd_range((&data->slave_dma_buf[0])
+		, slave_rx_len);
+
+		if (data->slave_get_cfg) {
+			for (i = 0; i < slave_rx_len; i++) {
+				LOG_DBG("[%02x] ", data->slave_dma_buf[i]);
+				data->slave_cb->write_received(data->slave_get_cfg
+				, data->slave_dma_buf[i]);
+			}
+		}
+		sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE),
+		       i2c_base + AST_I2CS_DMA_LEN);
+		cmd = SLAVE_TRIGGER_CMD | AST_I2CS_RX_DMA_EN;
+		break;
+	case AST_I2CS_SADDR_PENDING | AST_I2CS_SLAVE_MATCH |
+		AST_I2CS_RX_DONE | AST_I2CS_STOP:
+	case AST_I2CS_SLAVE_MATCH | AST_I2CS_STOP:
+		sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG);
+		if (!data->slave_get_cfg)
+			ast2700_i2c_get_target(data,
+						   sirq_log >> SLAVE_ADDR_SHIFT);
+		if (data->slave_get_cfg) {
+			data->slave_cb->write_requested(data->slave_get_cfg);
+		}
+		sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG);
+		slave_rx_len = AST_I2C_GET_RX_DMA_LEN(sys_read32(i2c_base +
+							  AST_I2CS_DMA_LEN_STS));
+
+		/*aspeed_cache_invalid_data*/
+		cache_data_invd_range((&data->slave_dma_buf[0])
+		, slave_rx_len);
+
+		if (data->slave_get_cfg) {
+			for (i = 0; i < slave_rx_len; i++) {
+				LOG_DBG("[%02x] ", data->slave_dma_buf[i]);
+				data->slave_cb->write_received(data->slave_get_cfg
+				, data->slave_dma_buf[i]);
+			}
+		}
+		if (data->slave_get_cfg) {
+			data->slave_cb->stop(data->slave_get_cfg);
+		}
+		data->slave_get_cfg = NULL;
+
+		sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE),
+		       i2c_base + AST_I2CS_DMA_LEN);
+		cmd = SLAVE_TRIGGER_CMD | AST_I2CS_RX_DMA_EN;
+		break;
+	case AST_I2CS_WAIT_RX_DMA | AST_I2CS_SLAVE_MATCH |
+		AST_I2CS_RX_DONE | AST_I2CS_STOP:
+		sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG);
+		/* workaround: false alarm slave match check */
+		if (sirq_log & SADDR_HIT) {
+			if (!data->slave_get_cfg)
+				ast2700_i2c_get_target(data,
+						   sirq_log >> SLAVE_ADDR_SHIFT);
+			if (data->slave_get_cfg) {
+				data->slave_cb->write_requested(data->slave_get_cfg);
+			}
+			sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG);
+		}
+		slave_rx_len = AST_I2C_GET_RX_DMA_LEN(sys_read32(i2c_base +
+									  AST_I2CS_DMA_LEN_STS));
+
+		/*aspeed_cache_invalid_data*/
+		cache_data_invd_range((&data->slave_dma_buf[0])
+		, slave_rx_len);
+
+		if (data->slave_get_cfg) {
+			for (i = 0; i < slave_rx_len; i++) {
+				LOG_DBG("[%02x] ", data->slave_dma_buf[i]);
+				data->slave_cb->write_received(data->slave_get_cfg
+				, data->slave_dma_buf[i]);
+			}
+		}
+		if (data->slave_get_cfg) {
+			data->slave_cb->stop(data->slave_get_cfg);
+		}
+		data->slave_get_cfg = NULL;
+		sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG);
+		if (!data->slave_get_cfg)
+			ast2700_i2c_get_target(data,
+					   sirq_log >> SLAVE_ADDR_SHIFT);
+		if (data->slave_get_cfg) {
+			data->slave_cb->write_requested(data->slave_get_cfg);
+		}
+		sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE),
+		       i2c_base + AST_I2CS_DMA_LEN);
+		cmd = SLAVE_TRIGGER_CMD | AST_I2CS_RX_DMA_EN;
+		break;
+	case AST_I2CS_RX_DONE | AST_I2CS_STOP:
+		sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG);
+		/* workaround new slave match */
+		if (sirq_log & SADDR_HIT) {
+			if (!data->slave_get_cfg)
+				ast2700_i2c_get_target(data,
+						   sirq_log >> SLAVE_ADDR_SHIFT);
+			if (data->slave_get_cfg) {
+				data->slave_cb->write_requested(data->slave_get_cfg);
+			}
+			sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG);
+		}
+		slave_rx_len = AST_I2C_GET_RX_DMA_LEN(sys_read32(i2c_base +
+							  AST_I2CS_DMA_LEN_STS));
+
+		/*aspeed_cache_invalid_data*/
+		cache_data_invd_range((&data->slave_dma_buf[0])
+		, slave_rx_len);
+
+		if (data->slave_get_cfg) {
+			for (i = 0; i < slave_rx_len; i++) {
+				LOG_DBG("[%02x] ", data->slave_dma_buf[i]);
+				data->slave_cb->write_received(data->slave_get_cfg
+				, data->slave_dma_buf[i]);
+			}
+		}
+		if (data->slave_get_cfg) {
+			data->slave_cb->stop(data->slave_get_cfg);
+		}
+		data->slave_get_cfg = NULL;
+		sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE),
+		       i2c_base + AST_I2CS_DMA_LEN);
+		cmd = SLAVE_TRIGGER_CMD | AST_I2CS_RX_DMA_EN;
+		break;
+	case AST_I2CS_TX_NAK | AST_I2CS_STOP | AST_I2CS_SLAVE_MATCH:
+		sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG);
+		if (data->slave_get_cfg) {
+			data->slave_cb->stop(data->slave_get_cfg);
+		}
+		data->slave_get_cfg = NULL;
+		sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG);
+		if (sirq_log & SADDR_HIT) {
+			if (!data->slave_get_cfg)
+				ast2700_i2c_get_target(data,
+						   sirq_log >> SLAVE_ADDR_SHIFT);
+		}
+		sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE),
+		       i2c_base + AST_I2CS_DMA_LEN);
+		cmd = SLAVE_TRIGGER_CMD | AST_I2CS_RX_DMA_EN;
+		/* workaround: not clear slave match due to wait next isr check tx or rx */
+		isr &= ~AST_I2CS_SLAVE_MATCH;
+		break;
+	case AST_I2CS_TX_NAK | AST_I2CS_STOP:
+		sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG);
+		if (data->slave_get_cfg) {
+			data->slave_cb->stop(data->slave_get_cfg);
+		}
+		data->slave_get_cfg = NULL;
+		sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG);
+
+		sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE),
+		       i2c_base + AST_I2CS_DMA_LEN);
+
+		cmd = SLAVE_TRIGGER_CMD | AST_I2CS_RX_DMA_EN;
+		break;
+	case AST_I2CS_WAIT_RX_DMA | AST_I2CS_TX_NAK |
+		AST_I2CS_STOP | AST_I2CS_SLAVE_MATCH:
+		sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG);
+		sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG);
+		if (data->slave_get_cfg) {
+			data->slave_cb->stop(data->slave_get_cfg);
+		}
+		data->slave_get_cfg = NULL;
+		sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG);
+		if (!data->slave_get_cfg)
+			ast2700_i2c_get_target(data,
+					   sirq_log >> SLAVE_ADDR_SHIFT);
+		if (data->slave_get_cfg) {
+			data->slave_cb->write_requested(data->slave_get_cfg);
+		}
+		sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE),
+		       i2c_base + AST_I2CS_DMA_LEN);
+		cmd = SLAVE_TRIGGER_CMD | AST_I2CS_RX_DMA_EN;
+		break;
+	case AST_I2CS_SLAVE_MATCH | AST_I2CS_WAIT_TX_DMA:
+		sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG);
+		if (!data->slave_get_cfg)
+			ast2700_i2c_get_target(data,
+					   sirq_log >> SLAVE_ADDR_SHIFT);
+		if (data->slave_get_cfg) {
+			data->slave_cb->read_requested(data->slave_get_cfg
+			, &data->slave_dma_buf[0]);
+			/* cache flush to DRAM */
+			cache_data_flush_range((&data->slave_dma_buf[0])
+			, 1);
+		}
+		LOG_DBG("tx [%02x]", data->slave_dma_buf[0]);
+		sys_write32(AST_I2CS_SET_TX_DMA_LEN(1)
+		, i2c_base + AST_I2CS_DMA_LEN);
+		cmd = SLAVE_TRIGGER_CMD | AST_I2CS_TX_DMA_EN;
+		break;
+	case AST_I2CS_TX_ACK | AST_I2CS_WAIT_TX_DMA:
+		sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG);
+		if (data->slave_get_cfg) {
+			data->slave_cb->read_processed(data->slave_get_cfg
+			, &data->slave_dma_buf[0]);
+			/* cache flush to DRAM */
+			cache_data_flush_range((&data->slave_dma_buf[0])
+			, 1);
+		}
+		LOG_DBG("tx [%02x]", data->slave_dma_buf[0]);
+		sys_write32(AST_I2CS_SET_TX_DMA_LEN(1)
+		, i2c_base + AST_I2CS_DMA_LEN);
+		cmd = SLAVE_TRIGGER_CMD | AST_I2CS_TX_DMA_EN;
+		break;
+	case AST_I2CS_WAIT_TX_DMA | AST_I2CS_SLAVE_MATCH |
+		AST_I2CS_RX_DONE | AST_I2CS_STOP:
+		sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG);
+		slave_rx_len = AST_I2C_GET_RX_DMA_LEN(sys_read32(i2c_base +
+									  AST_I2CS_DMA_LEN_STS));
+
+		/*aspeed_cache_invalid_data*/
+		cache_data_invd_range((&data->slave_dma_buf[0])
+		, slave_rx_len);
+
+		if (data->slave_get_cfg) {
+			for (i = 0; i < slave_rx_len; i++) {
+				LOG_DBG("[%02x] ", data->slave_dma_buf[i]);
+				data->slave_cb->write_received(data->slave_get_cfg
+				, data->slave_dma_buf[i]);
+			}
+		}
+		if (data->slave_get_cfg) {
+			data->slave_cb->stop(data->slave_get_cfg);
+		}
+		data->slave_get_cfg = NULL;
+		sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG);
+		if (!data->slave_get_cfg)
+			ast2700_i2c_get_target(data,
+					   sirq_log >> SLAVE_ADDR_SHIFT);
+		if (data->slave_get_cfg) {
+			data->slave_cb->read_requested(data->slave_get_cfg
+			, &data->slave_dma_buf[0]);
+			/* cache flush to DRAM */
+			cache_data_flush_range((&data->slave_dma_buf[0])
+			, 1);
+		}
+		LOG_DBG("tx [%02x]", data->slave_dma_buf[0]);
+		sys_write32(AST_I2CS_SET_TX_DMA_LEN(1)
+		, i2c_base + AST_I2CS_DMA_LEN);
+		cmd = SLAVE_TRIGGER_CMD | AST_I2CS_TX_DMA_EN;
+		break;
+	case AST_I2CS_WAIT_TX_DMA | AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE:
+		sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG);
+		slave_rx_len = AST_I2C_GET_RX_DMA_LEN(sys_read32(i2c_base +
+									  AST_I2CS_DMA_LEN_STS));
+
+		/*aspeed_cache_invalid_data*/
+		cache_data_invd_range((&data->slave_dma_buf[0])
+		, slave_rx_len);
+
+		if (data->slave_get_cfg) {
+			for (i = 0; i < slave_rx_len; i++) {
+				LOG_DBG("[%02x] ", data->slave_dma_buf[i]);
+				data->slave_cb->write_received(data->slave_get_cfg
+				, data->slave_dma_buf[i]);
+			}
+		}
+		sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG);
+		if (!data->slave_get_cfg)
+			ast2700_i2c_get_target(data,
+					   sirq_log >> SLAVE_ADDR_SHIFT);
+		if (data->slave_get_cfg) {
+			data->slave_cb->read_requested(data->slave_get_cfg
+			, &data->slave_dma_buf[0]);
+			/* cache flush to DRAM */
+			cache_data_flush_range((&data->slave_dma_buf[0])
+			, 1);
+		}
+		LOG_DBG("tx [%02x]", data->slave_dma_buf[0]);
+		sys_write32(AST_I2CS_SET_TX_DMA_LEN(1)
+		, i2c_base + AST_I2CS_DMA_LEN);
+		cmd = SLAVE_TRIGGER_CMD | AST_I2CS_TX_DMA_EN;
+		break;
+	case AST_I2CS_SADDR_PENDING | AST_I2CS_WAIT_TX_DMA |
+		AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE:
+		sys_write32(AST_I2CS_SLAVE_MATCH, i2c_base + AST_I2CS_ISR);
+		isr = sys_read32(i2c_base + AST_I2CS_ISR);
+		sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG);
+		if (!data->slave_get_cfg)
+			ast2700_i2c_get_target(data,
+					   sirq_log >> SLAVE_ADDR_SHIFT);
+		if (data->slave_get_cfg) {
+			data->slave_cb->write_requested(data->slave_get_cfg);
+		}
+		sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG);
+		slave_rx_len = AST_I2C_GET_RX_DMA_LEN(sys_read32(i2c_base +
+									  AST_I2CS_DMA_LEN_STS));
+
+		/*aspeed_cache_invalid_data*/
+		cache_data_invd_range((&data->slave_dma_buf[0])
+		, slave_rx_len);
+
+		if (data->slave_get_cfg) {
+			for (i = 0; i < slave_rx_len; i++) {
+				LOG_DBG("[%02x] ", data->slave_dma_buf[i]);
+				data->slave_cb->write_received(data->slave_get_cfg
+				, data->slave_dma_buf[i]);
+			}
+		}
+		sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG);
+		if (!data->slave_get_cfg)
+			ast2700_i2c_get_target(data,
+					   sirq_log >> SLAVE_ADDR_SHIFT);
+		if (data->slave_get_cfg) {
+			data->slave_cb->read_requested(data->slave_get_cfg
+			, &data->slave_dma_buf[0]);
+			/* cache flush to DRAM */
+			cache_data_flush_range((&data->slave_dma_buf[0])
+			, 1);
+		}
+		LOG_DBG("tx [%02x]", data->slave_dma_buf[0]);
+		sys_write32(AST_I2CS_SET_TX_DMA_LEN(1)
+		, i2c_base + AST_I2CS_DMA_LEN);
+		cmd = SLAVE_TRIGGER_CMD | AST_I2CS_TX_DMA_EN;
+		break;
+	case AST_I2CS_SADDR_PENDING | AST_I2CS_WAIT_TX_DMA |
+			AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE | AST_I2CS_STOP:
+		sys_write32(AST_I2CS_SLAVE_MATCH, i2c_base + AST_I2CS_ISR);
+		isr = sys_read32(i2c_base + AST_I2CS_ISR);
+		sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG);
+		if (!data->slave_get_cfg)
+			ast2700_i2c_get_target(data,
+					   sirq_log >> SLAVE_ADDR_SHIFT);
+		if (data->slave_get_cfg) {
+			data->slave_cb->write_requested(data->slave_get_cfg);
+		}
+		sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG);
+
+		slave_rx_len = AST_I2C_GET_RX_DMA_LEN(sys_read32(i2c_base +
+							  AST_I2CS_DMA_LEN_STS));
+
+		/*aspeed_cache_invalid_data*/
+		cache_data_invd_range((&data->slave_dma_buf[0])
+		, slave_rx_len);
+
+		if (data->slave_get_cfg) {
+			for (i = 0; i < slave_rx_len; i++) {
+				LOG_DBG("[%02x] ", data->slave_dma_buf[i]);
+				data->slave_cb->write_received(data->slave_get_cfg
+				, data->slave_dma_buf[i]);
+			}
+		}
+		if (data->slave_get_cfg) {
+			data->slave_cb->stop(data->slave_get_cfg);
+		}
+		data->slave_get_cfg = NULL;
+		sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG);
+		if (!data->slave_get_cfg)
+			ast2700_i2c_get_target(data,
+					   sirq_log >> SLAVE_ADDR_SHIFT);
+		if (data->slave_get_cfg) {
+			data->slave_cb->read_requested(data->slave_get_cfg
+			, &data->slave_dma_buf[0]);
+			/* cache flush to DRAM */
+			cache_data_flush_range((&data->slave_dma_buf[0])
+			, 1);
+		}
+		LOG_DBG("tx [%02x]", data->slave_dma_buf[0]);
+		sys_write32(AST_I2CS_SET_TX_DMA_LEN(1)
+		, i2c_base + AST_I2CS_DMA_LEN);
+		cmd = SLAVE_TRIGGER_CMD | AST_I2CS_TX_DMA_EN;
+		break;
+	case AST_I2CS_WAIT_TX_DMA:
+		sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG);
+		if (!data->slave_get_cfg)
+			ast2700_i2c_get_target(data,
+					   sirq_log >> SLAVE_ADDR_SHIFT);
+		if (data->slave_get_cfg) {
+			data->slave_cb->read_requested(data->slave_get_cfg
+			, &data->slave_dma_buf[0]);
+			/* cache flush to DRAM */
+			cache_data_flush_range((&data->slave_dma_buf[0])
+			, 1);
+		}
+		LOG_DBG("tx [%02x]", data->slave_dma_buf[0]);
+		sys_write32(AST_I2CS_SET_TX_DMA_LEN(1)
+		, i2c_base + AST_I2CS_DMA_LEN);
+		cmd = SLAVE_TRIGGER_CMD | AST_I2CS_TX_DMA_EN;
+		break;
+	default:
+		LOG_DBG("unhandled slave isr case %x, sts %x\n", sts,
+			sys_read32(i2c_base + AST_I2CC_STS_AND_BUFF));
+
+		/* clear sirq log */
+		while (sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG))
+			;
+		break;
+	}
+
+	if (cmd)
+		sys_write32(cmd, i2c_base + AST_I2CS_CMD_STS);
+
+	sys_write32(isr, i2c_base + AST_I2CS_ISR);
+	sys_read32(i2c_base + AST_I2CS_ISR);
+}
+
+void ast2600_i2c_slave_packet_dma_irq(const struct device *dev, uint32_t i2c_base, uint32_t sts)
 {
 	struct i2c_aspeed_config *config = DEV_CFG(dev);
 	struct i2c_aspeed_data *data = DEV_DATA(dev);
@@ -2066,38 +2601,18 @@ void ast2600_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, u
 				slave_cb->write_requested(slave_cfg);
 			}
 
-			if (config->mode == DMA_MODE) {
-				slave_rx_len =
-				AST_I2C_GET_RX_DMA_LEN(sys_read32(i2c_base + AST_I2CS_DMA_LEN_STS));
+			slave_rx_len =
+			AST_I2C_GET_RX_DMA_LEN(sys_read32(i2c_base + AST_I2CS_DMA_LEN_STS));
 
-				/*aspeed_cache_invalid_data*/
-				cache_data_invd_range((&data->slave_dma_buf[0])
-				, slave_rx_len);
+			/*aspeed_cache_invalid_data*/
+			cache_data_invd_range((&data->slave_dma_buf[0])
+			, slave_rx_len);
 
-				if (slave_cb->write_received) {
-					for (i = 0; i < slave_rx_len; i++) {
-						LOG_DBG("[%02x] ", data->slave_dma_buf[i]);
-						slave_cb->write_received(slave_cfg
-						, data->slave_dma_buf[i]);
-					}
-				}
-			} else if (config->mode == BUFF_MODE) {
-				LOG_DBG("Slave_Buff");
-				slave_rx_len =
-				AST_I2CC_GET_RX_BUF_LEN(sys_read32(i2c_base + AST_I2CC_BUFF_CTRL));
-
-				if (slave_cb->write_received) {
-					for (i = 0; i < slave_rx_len ; i++) {
-						slave_cb->write_received(slave_cfg
-						, sys_read8(config->buf_base + i));
-					}
-				}
-			} else {
-				byte_data =
-				AST_I2CC_GET_RX_BUFF(sys_read32(i2c_base + AST_I2CC_STS_AND_BUFF));
-				LOG_DBG("[%02x]", byte_data);
-				if (slave_cb->write_received) {
-					slave_cb->write_received(slave_cfg, byte_data);
+			if (slave_cb->write_received) {
+				for (i = 0; i < slave_rx_len; i++) {
+					LOG_DBG("[%02x] ", data->slave_dma_buf[i]);
+					slave_cb->write_received(slave_cfg
+					, data->slave_dma_buf[i]);
 				}
 			}
 			aspeed_i2c_trigger_package_cmd(i2c_base, config->mode);
@@ -2133,44 +2648,25 @@ void ast2600_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, u
 			}
 		}
 
-		if (config->mode == DMA_MODE) {
-			slave_rx_len =
-			AST_I2C_GET_RX_DMA_LEN(sys_read32(i2c_base + AST_I2CS_DMA_LEN_STS));
+		slave_rx_len =
+		AST_I2C_GET_RX_DMA_LEN(sys_read32(i2c_base + AST_I2CS_DMA_LEN_STS));
 
-			/*aspeed_cache_invalid_data*/
-			cache_data_invd_range((&data->slave_dma_buf[0])
-			, slave_rx_len);
+		/*aspeed_cache_invalid_data*/
+		cache_data_invd_range((&data->slave_dma_buf[0])
+		, slave_rx_len);
 
-			if (slave_cb->write_received) {
-				for (i = 0; i < slave_rx_len; i++) {
-					LOG_DBG("[%02x] ", data->slave_dma_buf[i]);
-					slave_cb->write_received(slave_cfg
-					, data->slave_dma_buf[i]);
-				}
-			}
-
-			sys_write32(0, i2c_base + AST_I2CS_DMA_LEN_STS);
-			sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE)
-			, i2c_base + AST_I2CS_DMA_LEN);
-		} else if (config->mode == BUFF_MODE) {
-			LOG_DBG("Slave_Buff");
-			slave_rx_len =
-			AST_I2CC_GET_RX_BUF_LEN(sys_read32(i2c_base + AST_I2CC_BUFF_CTRL));
-
-			if (slave_cb->write_received) {
-				for (i = 0; i < slave_rx_len ; i++) {
-					slave_cb->write_received(slave_cfg
-					, sys_read8(config->buf_base + i));
-				}
-			}
-		} else {
-			byte_data =
-			AST_I2CC_GET_RX_BUFF(sys_read32(i2c_base + AST_I2CC_STS_AND_BUFF));
-			LOG_DBG("[%02x]", byte_data);
-			if (slave_cb->write_received) {
-				slave_cb->write_received(slave_cfg, byte_data);
+		if (slave_cb->write_received) {
+			for (i = 0; i < slave_rx_len; i++) {
+				LOG_DBG("[%02x] ", data->slave_dma_buf[i]);
+				slave_cb->write_received(slave_cfg
+				, data->slave_dma_buf[i]);
 			}
 		}
+
+		sys_write32(0, i2c_base + AST_I2CS_DMA_LEN_STS);
+		sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE)
+		, i2c_base + AST_I2CS_DMA_LEN);
+
 		if (sts & AST_I2CS_STOP) {
 			if (slave_cb->stop) {
 				slave_cb->stop(slave_cfg);
@@ -2194,68 +2690,30 @@ void ast2600_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, u
 			}
 		}
 
-		cmd = SLAVE_TRIGGER_CMD;
-		if (config->mode == DMA_MODE) {
-			cmd |= AST_I2CS_TX_DMA_EN;
-			slave_rx_len =
-			AST_I2C_GET_RX_DMA_LEN(sys_read32(i2c_base + AST_I2CS_DMA_LEN_STS));
+		cmd = SLAVE_TRIGGER_CMD | AST_I2CS_TX_DMA_EN;
 
-			for (i = 0; i < slave_rx_len; i++) {
-				cache_data_invd_range((&data->slave_dma_buf[i])
-				, 1);
-				LOG_DBG("rx [%02x]", data->slave_dma_buf[i]);
-				if (slave_cb->write_received) {
-					slave_cb->write_received(slave_cfg
-					, data->slave_dma_buf[i]);
-				}
-			}
+		slave_rx_len =
+		AST_I2C_GET_RX_DMA_LEN(sys_read32(i2c_base + AST_I2CS_DMA_LEN_STS));
 
-			if (slave_cb->read_requested) {
-				slave_cb->read_requested(slave_cfg
-				, &data->slave_dma_buf[0]);
-			}
-			LOG_DBG("tx [%02x]", data->slave_dma_buf[0]);
-
-			sys_write32(0, i2c_base + AST_I2CS_DMA_LEN_STS);
-			sys_write32(AST_I2CS_SET_TX_DMA_LEN(1)
-			, i2c_base + AST_I2CS_DMA_LEN);
-		} else if (config->mode == BUFF_MODE) {
-
-			cmd |= AST_I2CS_TX_BUFF_EN;
-			slave_rx_len =
-			AST_I2CC_GET_RX_BUF_LEN(sys_read32(i2c_base + AST_I2CC_BUFF_CTRL));
-			for (i = 0; i < slave_rx_len; i++) {
-				LOG_DBG("rx [%02x]", (sys_read32(config->buf_base + i) & 0xFF));
-				if (slave_cb->write_received) {
-					slave_cb->write_received(slave_cfg
-					, (sys_read32(config->buf_base + i) & 0xFF));
-				}
-			}
-
-			if (slave_cb->read_requested) {
-				slave_cb->read_requested(slave_cfg, &value);
-			}
-			LOG_DBG("tx [%02x]", value);
-
-			sys_write32(value, config->buf_base);
-			sys_write32(AST_I2CC_SET_TX_BUF_LEN(1)
-			, i2c_base + AST_I2CC_BUFF_CTRL);
-		} else {
-			cmd &= ~AST_I2CS_PKT_MODE_EN;
-			cmd |= AST_I2CS_TX_CMD;
-			byte_data = AST_I2CC_GET_RX_BUFF(sys_read32(i2c_base +
-			AST_I2CC_STS_AND_BUFF));
-
-			LOG_DBG("rx : [%02x]", byte_data);
+		for (i = 0; i < slave_rx_len; i++) {
+			cache_data_invd_range((&data->slave_dma_buf[i])
+			, 1);
+			LOG_DBG("rx [%02x]", data->slave_dma_buf[i]);
 			if (slave_cb->write_received) {
-				slave_cb->write_received(slave_cfg, byte_data);
+				slave_cb->write_received(slave_cfg
+				, data->slave_dma_buf[i]);
 			}
-			if (slave_cb->read_requested) {
-				slave_cb->read_requested(slave_cfg, &byte_data);
-			}
-			LOG_DBG("tx : [%02x]", byte_data);
-			sys_write32(byte_data, i2c_base + AST_I2CC_STS_AND_BUFF);
 		}
+
+		if (slave_cb->read_requested) {
+			slave_cb->read_requested(slave_cfg
+			, &data->slave_dma_buf[0]);
+		}
+		LOG_DBG("tx [%02x]", data->slave_dma_buf[0]);
+
+		sys_write32(0, i2c_base + AST_I2CS_DMA_LEN_STS);
+		sys_write32(AST_I2CS_SET_TX_DMA_LEN(1)
+		, i2c_base + AST_I2CS_DMA_LEN);
 		LOG_DBG("slave cmd %x\n", cmd);
 		sys_write32(cmd, i2c_base + AST_I2CS_CMD_STS);
 		break;
@@ -2263,70 +2721,30 @@ void ast2600_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, u
 	case AST_I2CS_SLAVE_MATCH | AST_I2CS_WAIT_TX_DMA:
 		/*First Start read*/
 		LOG_DBG("S: AST_I2CS_SLAVE_MATCH | AST_I2CS_Wait_TX_DMA\n");
-		cmd = SLAVE_TRIGGER_CMD;
-		if (config->mode == DMA_MODE) {
-			cmd |= AST_I2CS_TX_DMA_EN;
-			if (slave_cb->read_requested) {
-				slave_cb->read_requested(slave_cfg
-				, &data->slave_dma_buf[0]);
-			}
-			/*currently i2c slave framework only support one byte request.*/
-			LOG_DBG("tx: [%x]\n", data->slave_dma_buf[0]);
-			sys_write32(AST_I2CS_SET_TX_DMA_LEN(1)
-			, i2c_base + AST_I2CS_DMA_LEN);
-		} else if (config->mode == BUFF_MODE) {
-			cmd |= AST_I2CS_TX_BUFF_EN;
-			if (slave_cb->read_requested) {
-				slave_cb->read_requested(slave_cfg, &byte_data);
-			}
-			/* currently i2c slave framework only support one byte request. */
-			LOG_DBG("tx : [%02x]", byte_data);
-			sys_write8(byte_data, config->buf_base);
-			sys_write32(AST_I2CC_SET_TX_BUF_LEN(1)
-			, i2c_base + AST_I2CC_BUFF_CTRL);
-		} else {
-			cmd &= ~AST_I2CS_PKT_MODE_EN;
-			cmd |= AST_I2CS_TX_CMD;
-			if (slave_cb->read_requested) {
-				slave_cb->read_requested(slave_cfg, &byte_data);
-			}
-			sys_write32(byte_data, i2c_base + AST_I2CC_STS_AND_BUFF);
+		cmd = SLAVE_TRIGGER_CMD | AST_I2CS_TX_DMA_EN;
+		if (slave_cb->read_requested) {
+			slave_cb->read_requested(slave_cfg
+			, &data->slave_dma_buf[0]);
 		}
+		/*currently i2c slave framework only support one byte request.*/
+		LOG_DBG("tx: [%x]\n", data->slave_dma_buf[0]);
+		sys_write32(AST_I2CS_SET_TX_DMA_LEN(1)
+		, i2c_base + AST_I2CS_DMA_LEN);
 		sys_write32(cmd, i2c_base + AST_I2CS_CMD_STS);
 		break;
 
 	case AST_I2CS_WAIT_TX_DMA:
 		/*it should be next start read*/
 		LOG_DBG("S: AST_I2CS_Wait_TX_DMA\n");
-		cmd = SLAVE_TRIGGER_CMD;
-		if (config->mode == DMA_MODE) {
-			cmd |= AST_I2CS_TX_DMA_EN;
-			if (slave_cb->read_processed) {
-				slave_cb->read_processed(slave_cfg
-				, &data->slave_dma_buf[0]);
-			}
-			LOG_DBG("rx : [%02x]", data->slave_dma_buf[0]);
-			sys_write32(0, i2c_base + AST_I2CS_DMA_LEN_STS);
-			sys_write32(AST_I2CS_SET_TX_DMA_LEN(1)
-			, i2c_base + AST_I2CS_DMA_LEN);
-		} else if (config->mode == BUFF_MODE) {
-			cmd |= AST_I2CS_TX_BUFF_EN;
-			if (slave_cb->read_processed) {
-				slave_cb->read_processed(slave_cfg, &value);
-			}
-			LOG_DBG("tx: [%02x]\n", value);
-			sys_write8(value, config->buf_base);
-			sys_write32(AST_I2CC_SET_TX_BUF_LEN(1)
-			, i2c_base + AST_I2CC_BUFF_CTRL);
-		} else {
-			cmd &= ~AST_I2CS_PKT_MODE_EN;
-			cmd |= AST_I2CS_TX_CMD;
-			if (slave_cb->read_processed) {
-				slave_cb->read_processed(slave_cfg, &byte_data);
-			}
-			LOG_DBG("tx: [%02x]\n", byte_data);
-			sys_write32(byte_data, i2c_base + AST_I2CC_STS_AND_BUFF);
+		cmd = SLAVE_TRIGGER_CMD | AST_I2CS_TX_DMA_EN;
+		if (slave_cb->read_processed) {
+			slave_cb->read_processed(slave_cfg
+			, &data->slave_dma_buf[0]);
 		}
+		LOG_DBG("rx : [%02x]", data->slave_dma_buf[0]);
+		sys_write32(0, i2c_base + AST_I2CS_DMA_LEN_STS);
+		sys_write32(AST_I2CS_SET_TX_DMA_LEN(1)
+		, i2c_base + AST_I2CS_DMA_LEN);
 		sys_write32(cmd, i2c_base + AST_I2CS_CMD_STS);
 		break;
 
@@ -2335,22 +2753,198 @@ void ast2600_i2c_slave_packet_irq(const struct device *dev, uint32_t i2c_base, u
 	case AST_I2CS_STOP:
 		/*it just tx complete*/
 		LOG_DBG("S: AST_I2CS_STOP\n");
-		cmd = SLAVE_TRIGGER_CMD;
+		cmd = SLAVE_TRIGGER_CMD | AST_I2CS_RX_DMA_EN;
 		if (slave_cb->stop) {
 			slave_cb->stop(slave_cfg);
 		}
-		if (config->mode == DMA_MODE) {
-			cmd |= AST_I2CS_RX_DMA_EN;
-			sys_write32(0, i2c_base + AST_I2CS_DMA_LEN_STS);
-			sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE)
-			, i2c_base + AST_I2CS_DMA_LEN);
-		} else if (config->mode == BUFF_MODE) {
-			cmd |= AST_I2CS_RX_BUFF_EN;
-			sys_write32(AST_I2CC_SET_RX_BUF_LEN(config->buf_size)
-			, i2c_base + AST_I2CC_BUFF_CTRL);
-		} else {
-			cmd &= ~AST_I2CS_PKT_MODE_EN;
+		sys_write32(0, i2c_base + AST_I2CS_DMA_LEN_STS);
+		sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE)
+		, i2c_base + AST_I2CS_DMA_LEN);
+		sys_write32(cmd, i2c_base + AST_I2CS_CMD_STS);
+		break;
+
+	default:
+		LOG_DBG("TODO slave sts case %x, now %x\n"
+		, sts, sys_read32(i2c_base + AST_I2CS_ISR));
+		break;
+	}
+}
+
+void ast2600_i2c_slave_packet_buff_irq(const struct device *dev, uint32_t i2c_base, uint32_t sts)
+{
+	struct i2c_aspeed_config *config = DEV_CFG(dev);
+	struct i2c_aspeed_data *data = DEV_DATA(dev);
+	struct i2c_target_config *slave_cfg = data->slave_cfg[AST_I2CS_GET_SLAVE(sts)];
+	const struct i2c_target_callbacks *slave_cb = slave_cfg->callbacks;
+	uint32_t cmd = 0;
+	uint32_t i, slave_rx_len = 0;
+	uint8_t byte_data = 0, value = 0;
+
+	/* clear irq first */
+	sys_write32(AST_I2CS_PKT_DONE, i2c_base + AST_I2CS_ISR);
+	sys_read32(i2c_base + AST_I2CS_ISR);
+
+	sts &= ~(AST_I2CS_PKT_DONE | AST_I2CS_PKT_ERROR | AST_I2CS_ADDR_INDICATE_MASK);
+
+	switch (sts) {
+	case AST_I2CS_SLAVE_MATCH:
+	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE:
+		if (slave_cb->write_requested) {
+			slave_cb->write_requested(slave_cfg);
 		}
+		break;
+	case AST_I2CS_SLAVE_MATCH | AST_I2CS_WAIT_RX_DMA:
+	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE | AST_I2CS_WAIT_RX_DMA: /* re-trigger? */
+		if (sys_read32(i2c_base + AST_I2CM_ISR)) {
+			LOG_DBG("S : Sw|D - Wait normal\n");
+		} else {
+			LOG_DBG("S : Sw|D - Issue rx dma\n");
+			if (slave_cb->write_requested) {
+				slave_cb->write_requested(slave_cfg);
+			}
+
+			LOG_DBG("Slave_Buff");
+			slave_rx_len =
+			AST_I2CC_GET_RX_BUF_LEN(sys_read32(i2c_base + AST_I2CC_BUFF_CTRL));
+
+			if (slave_cb->write_received) {
+				for (i = 0; i < slave_rx_len ; i++) {
+					slave_cb->write_received(slave_cfg
+					, sys_read8(config->buf_base + i));
+				}
+			}
+
+			aspeed_i2c_trigger_package_cmd(i2c_base, config->mode);
+		}
+		break;
+	case AST_I2CS_SLAVE_MATCH | AST_I2CS_STOP:
+		LOG_DBG("S : Sw | P\n");
+		if (slave_cb->stop) {
+			slave_cb->stop(slave_cfg);
+		}
+		aspeed_i2c_trigger_package_cmd(i2c_base, config->mode);
+		break;
+	case AST_I2CS_RX_DONE | AST_I2CS_STOP:
+	case AST_I2CS_RX_DONE | AST_I2CS_WAIT_RX_DMA: /* wait for last package received data done */
+	case AST_I2CS_RX_DONE | AST_I2CS_WAIT_RX_DMA | AST_I2CS_STOP:
+	case AST_I2CS_RX_DONE_NAK | AST_I2CS_RX_DONE | AST_I2CS_STOP:
+	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE | AST_I2CS_STOP:
+	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE | AST_I2CS_WAIT_RX_DMA | AST_I2CS_STOP:
+	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE_NAK | AST_I2CS_RX_DONE | AST_I2CS_STOP:
+		if (sts & AST_I2CS_STOP) {
+			if (sts & AST_I2CS_SLAVE_MATCH) {
+				LOG_DBG("S : Sw|D|P\n");
+			} else {
+				LOG_DBG("S : D|P\n");
+			}
+		} else {
+			LOG_DBG("S : Sw|D\n");
+		}
+
+		if (sts & AST_I2CS_SLAVE_MATCH) {
+			if (slave_cb->write_requested) {
+				slave_cb->write_requested(slave_cfg);
+			}
+		}
+
+		LOG_DBG("Slave_Buff");
+		slave_rx_len =
+		AST_I2CC_GET_RX_BUF_LEN(sys_read32(i2c_base + AST_I2CC_BUFF_CTRL));
+
+		if (slave_cb->write_received) {
+			for (i = 0; i < slave_rx_len ; i++) {
+				slave_cb->write_received(slave_cfg
+				, sys_read8(config->buf_base + i));
+			}
+		}
+
+		if (sts & AST_I2CS_STOP) {
+			if (slave_cb->stop) {
+				slave_cb->stop(slave_cfg);
+			}
+		}
+		aspeed_i2c_trigger_package_cmd(i2c_base, config->mode);
+		break;
+	/*it is Mw data Mr coming -> it need send tx*/
+	case AST_I2CS_RX_DONE | AST_I2CS_WAIT_TX_DMA:
+	case AST_I2CS_SLAVE_MATCH | AST_I2CS_RX_DONE | AST_I2CS_WAIT_TX_DMA:
+		/*it should be repeat start read*/
+		if (sts & AST_I2CS_SLAVE_MATCH) {
+			LOG_DBG("S: I2CS_W_TX_DMA | I2CS_S_MATCH | I2CS_R_DONE\n");
+		} else {
+			LOG_DBG("S: I2CS_W_TX_DMA | I2CS_R_DONE\n");
+		}
+
+		if (sts & AST_I2CS_SLAVE_MATCH) {
+			if (slave_cb->write_requested) {
+				slave_cb->write_requested(slave_cfg);
+			}
+		}
+
+		cmd = SLAVE_TRIGGER_CMD | AST_I2CS_TX_BUFF_EN;
+
+		slave_rx_len =
+		AST_I2CC_GET_RX_BUF_LEN(sys_read32(i2c_base + AST_I2CC_BUFF_CTRL));
+		for (i = 0; i < slave_rx_len; i++) {
+			LOG_DBG("rx [%02x]", (sys_read32(config->buf_base + i) & 0xFF));
+			if (slave_cb->write_received) {
+				slave_cb->write_received(slave_cfg
+				, (sys_read32(config->buf_base + i) & 0xFF));
+			}
+		}
+
+		if (slave_cb->read_requested) {
+			slave_cb->read_requested(slave_cfg, &value);
+		}
+		LOG_DBG("tx [%02x]", value);
+
+		sys_write32(value, config->buf_base);
+		sys_write32(AST_I2CC_SET_TX_BUF_LEN(1)
+		, i2c_base + AST_I2CC_BUFF_CTRL);
+		LOG_DBG("slave cmd %x\n", cmd);
+		sys_write32(cmd, i2c_base + AST_I2CS_CMD_STS);
+		break;
+
+	case AST_I2CS_SLAVE_MATCH | AST_I2CS_WAIT_TX_DMA:
+		/*First Start read*/
+		LOG_DBG("S: AST_I2CS_SLAVE_MATCH | AST_I2CS_Wait_TX_DMA\n");
+		cmd = SLAVE_TRIGGER_CMD | AST_I2CS_TX_BUFF_EN;
+		if (slave_cb->read_requested) {
+			slave_cb->read_requested(slave_cfg, &byte_data);
+		}
+		/* currently i2c slave framework only support one byte request. */
+		LOG_DBG("tx : [%02x]", byte_data);
+		sys_write8(byte_data, config->buf_base);
+		sys_write32(AST_I2CC_SET_TX_BUF_LEN(1)
+		, i2c_base + AST_I2CC_BUFF_CTRL);
+		sys_write32(cmd, i2c_base + AST_I2CS_CMD_STS);
+		break;
+
+	case AST_I2CS_WAIT_TX_DMA:
+		/*it should be next start read*/
+		LOG_DBG("S: AST_I2CS_Wait_TX_DMA\n");
+		cmd = SLAVE_TRIGGER_CMD | AST_I2CS_TX_BUFF_EN;
+		if (slave_cb->read_processed) {
+			slave_cb->read_processed(slave_cfg, &value);
+		}
+		LOG_DBG("tx: [%02x]\n", value);
+		sys_write8(value, config->buf_base);
+		sys_write32(AST_I2CC_SET_TX_BUF_LEN(1)
+		, i2c_base + AST_I2CC_BUFF_CTRL);
+		sys_write32(cmd, i2c_base + AST_I2CS_CMD_STS);
+		break;
+
+	case AST_I2CS_TX_NAK | AST_I2CS_STOP:
+		LOG_DBG("S: AST_I2CS_TX_NAK\n");
+	case AST_I2CS_STOP:
+		/*it just tx complete*/
+		LOG_DBG("S: AST_I2CS_STOP\n");
+		cmd = SLAVE_TRIGGER_CMD | AST_I2CS_RX_BUFF_EN;
+		if (slave_cb->stop) {
+			slave_cb->stop(slave_cfg);
+		}
+		sys_write32(AST_I2CC_SET_RX_BUF_LEN(config->buf_size)
+		, i2c_base + AST_I2CC_BUFF_CTRL);
 		sys_write32(cmd, i2c_base + AST_I2CS_CMD_STS);
 		break;
 
@@ -2546,13 +3140,9 @@ int aspeed_i2c_slave_irq(const struct device *dev)
 	}
 
 	if (AST_I2CS_PKT_DONE & sts) {
-		if (data->version == AST2700) {
-			ast2700_i2c_slave_packet_irq(dev, i2c_base, sts);
-		} else {
-			ast2600_i2c_slave_packet_irq(dev, i2c_base, sts);
-		}
+		data->slave_packet_irq(dev, i2c_base, sts);
 	} else {
-		aspeed_i2c_slave_byte_irq(dev, i2c_base, sts);
+		data->slave_byte_irq(dev, i2c_base, sts);
 	}
 
 	return 1;
@@ -2599,10 +3189,7 @@ static int i2c_aspeed_init(const struct device *dev)
 
 	/* initial slave attach function pointer */
 	data->slave_attached = 0;
-#ifdef CONFIG_I2C_TARGET
-	for (i = 0; i < I2C_SLAVE_COUNT; i++)
-		data->slave_cfg[i] = NULL;
-#endif
+
 	clock_control_get_rate(config->clock_dev, config->clk_id, &config->clk_src);
 	LOG_INF("clk src %d, multi-master %d, xfer mode %d",
 		config->clk_src, config->multi_master, config->mode);
@@ -2621,6 +3208,9 @@ static int i2c_aspeed_init(const struct device *dev)
 		reg |= USE_DMA_MODE;
 		data->setup_tx = ast2600_i2c_setup_dma_tx;
 		data->setup_rx = ast2600_i2c_setup_dma_rx;
+#ifdef CONFIG_I2C_TARGET
+		data->slave_packet_irq = ast2700_i2c_slave_packet_dma_irq;
+#endif
 	} else if (config->mode == BUFF_MODE) {
 		sys_write32(0x00, i2c_base + AST_I2CM_TX_DMA);
 		sys_write32(0x00, i2c_base + AST_I2CM_TX_DMA_H);
@@ -2633,27 +3223,46 @@ static int i2c_aspeed_init(const struct device *dev)
 		reg &= ~USE_DMA_MODE;
 		data->setup_tx = ast2700_i2c_setup_buff_tx;
 		data->setup_rx = ast2700_i2c_setup_buff_rx;
+#ifdef CONFIG_I2C_TARGET
+		data->slave_packet_irq = ast2700_i2c_slave_packet_buff_irq;
+#endif
 	} else {
 		return -EINVAL;
 	}
 	sys_write32(reg, i2c_base + AST2700_I2CC_VER_CTRL);
 
 	data->is_irq_err = ast2700_i2c_is_irq_error;
+
 #else
 	data->version = AST2600;
 
 	if (config->mode == DMA_MODE) {
 		data->setup_tx = ast2600_i2c_setup_dma_tx;
 		data->setup_rx = ast2600_i2c_setup_dma_rx;
+#ifdef CONFIG_I2C_TARGET
+		data->slave_packet_irq = ast2600_i2c_slave_packet_dma_irq;
+#endif
 	} else if (config->mode == BUFF_MODE) {
 		data->setup_tx = ast2600_i2c_setup_buff_tx;
 		data->setup_rx = ast2600_i2c_setup_buff_rx;
+#ifdef CONFIG_I2C_TARGET
+		data->slave_packet_irq = ast2600_i2c_slave_packet_dma_irq;
+#endif
 	} else {
 		data->setup_tx = ast2600_i2c_setup_byte_tx;
 		data->setup_rx = ast2600_i2c_setup_byte_rx;
+#ifdef CONFIG_I2C_TARGET
+		data->slave_byte_irq = aspeed_i2c_slave_byte_irq;
+#endif
 	}
 
 	data->is_irq_err = ast2600_i2c_is_irq_error;
+
+#endif
+
+#ifdef CONFIG_I2C_TARGET
+		for (i = 0; i < I2C_SLAVE_COUNT; i++)
+			data->slave_cfg[i] = NULL;
 #endif
 
 	bitrate_cfg = i2c_map_dt_bitrate(config->bitrate);
