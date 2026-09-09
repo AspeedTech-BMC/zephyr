@@ -831,8 +831,94 @@ static uint32_t ast2600_i2c_setup_dma_rx(uint32_t cmd, const struct device *dev)
 
 #if defined(CONFIG_SOC_AST2700_SSP) || \
 	defined(CONFIG_SOC_AST2700_A1_SSP) || \
+	defined(CONFIG_SOC_AST2705_SSP) || \
 	defined(CONFIG_SOC_AST1040_CM4) || \
 	defined(CONFIG_SOC_AST1080_CM4)
+
+static uint32_t ast2700_i2c_setup_buff_tx(uint32_t cmd, const struct device *dev)
+{
+	struct i2c_aspeed_config *config = DEV_CFG(dev);
+	struct i2c_aspeed_data *data = DEV_DATA(dev);
+	uint32_t i2c_base = DEV_BASE(dev);
+	struct i2c_msg *msg = &data->msgs[data->msgs_index];
+	int xfer_len = msg->len - data->master_xfer_cnt;
+	uint8_t wbuf[4], i;
+
+	cmd |= AST_I2CM_PKT_EN;
+
+	/*buff mode*/
+	if (msg->len > config->buf_size) {
+		xfer_len = config->buf_size;
+	} else {
+		if (data->msgs_index + 1 == data->msgs_count) {
+			LOG_DBG("with P\n");
+			cmd |= AST_I2CM_STOP_CMD;
+		}
+		xfer_len = msg->len;
+	}
+
+	if (cmd & AST_I2CM_START_CMD)
+		cmd |= AST_I2CM_PKT_ADDR(data->addr);
+
+	if (xfer_len) {
+		cmd |= AST_I2CM_TX_DMA_EN | AST_I2CM_TX_CMD;
+		sys_write32(AST_I2CM_SET_TX_DMA_LEN(xfer_len - 1),
+		i2c_base + AST_I2CM_DMA_LEN);
+		for (i = 0; i < xfer_len; i++) {
+			wbuf[i % 4] = msg->buf[i];
+			if (i % 4 == 3) {
+				sys_write32(*(uint32_t *)wbuf,
+						config->buf_base + i - 3);
+			}
+			LOG_DBG("[%02x]\n", msg->buf[i]);
+		}
+		if (--i % 4 != 3) {
+			sys_write32(*(uint32_t *)wbuf,
+					config->buf_base + i - (i % 4));
+		}
+	}
+
+	LOG_DBG("len %d , Buff tx_cmd %x\n", xfer_len, cmd);
+	sys_write32(cmd, i2c_base + AST_I2CM_CMD_STS);
+
+	return 0;
+}
+
+static uint32_t ast2700_i2c_setup_buff_rx(uint32_t cmd, const struct device *dev)
+{
+	struct i2c_aspeed_config *config = DEV_CFG(dev);
+	struct i2c_aspeed_data *data = DEV_DATA(dev);
+	uint32_t i2c_base = DEV_BASE(dev);
+	struct i2c_msg *msg = &data->msgs[data->msgs_index];
+	int xfer_len = msg->len - data->master_xfer_cnt;
+
+	cmd |= AST_I2CM_PKT_EN;
+
+	/*buff mode*/
+	if (msg->len > config->buf_size) {
+		xfer_len = config->buf_size;
+	} else {
+		xfer_len = msg->len;
+		if (data->msgs_index + 1 == data->msgs_count) {
+			LOG_DBG("last stop\n");
+			cmd |= AST_I2CM_RX_CMD_LAST | AST_I2CM_STOP_CMD;
+		}
+	}
+
+	if (cmd & AST_I2CM_START_CMD)
+		cmd |= AST_I2CM_PKT_ADDR(data->addr);
+
+	if (xfer_len) {
+		cmd |= AST_I2CM_RX_DMA_EN | AST_I2CM_RX_CMD;
+		sys_write32(AST_I2CM_SET_RX_DMA_LEN(xfer_len - 1),
+		i2c_base + AST_I2CM_DMA_LEN);
+	}
+
+	LOG_DBG("len %d , Buff tx_cmd %x\n", xfer_len, cmd);
+	sys_write32(cmd, i2c_base + AST_I2CM_CMD_STS);
+
+	return 0;
+}
 
 #else
 
@@ -1145,8 +1231,13 @@ void do_i2cm_tx(const struct device *dev)
 		xfer_len =
 		AST_I2C_GET_TX_DMA_LEN(sys_read32(i2c_base + AST_I2CM_DMA_LEN_STS));
 	} else if (config->mode == BUFF_MODE) {
-		xfer_len =
-		AST_I2CC_GET_TX_BUF_LEN(sys_read32(i2c_base + AST_I2CC_BUFF_CTRL));
+		if (data->version == AST2600) {
+			xfer_len =
+			AST_I2CC_GET_TX_BUF_LEN(sys_read32(i2c_base + AST_I2CC_BUFF_CTRL));
+		} else {
+			xfer_len =
+			AST_I2C_GET_TX_DMA_LEN(sys_read32(i2c_base + AST_I2CM_DMA_LEN_STS));
+		}
 	} else {
 		xfer_len = 1;
 	}
@@ -1178,11 +1269,22 @@ void do_i2cm_rx(const struct device *dev)
 		xfer_len =
 		AST_I2C_GET_RX_DMA_LEN(sys_read32(i2c_base + AST_I2CM_DMA_LEN_STS));
 	} else if (config->mode == BUFF_MODE) {
-		xfer_len =
-		AST_I2CC_GET_RX_BUF_LEN(sys_read32(i2c_base + AST_I2CC_BUFF_CTRL));
-		for (i = 0; i < xfer_len; i++) {
-			msg->buf[data->master_xfer_cnt + i] =
-			sys_read8(config->buf_base + i);
+		if (data->version == AST2600) {
+			xfer_len =
+			AST_I2CC_GET_RX_BUF_LEN(sys_read32(i2c_base + AST_I2CC_BUFF_CTRL));
+
+			for (i = 0; i < xfer_len; i++) {
+				msg->buf[data->master_xfer_cnt + i] =
+				sys_read8(config->buf_base + i);
+			}
+		} else {
+			xfer_len =
+			AST_I2C_GET_RX_DMA_LEN(sys_read32(i2c_base + AST_I2CM_DMA_LEN_STS));
+
+			for (i = 0; i < xfer_len; i++) {
+				msg->buf[data->master_xfer_cnt + i] =
+				sys_read8(config->buf_base + 0x10 + i);
+			}
 		}
 	} else {
 		xfer_len = 1;
@@ -1197,7 +1299,8 @@ void do_i2cm_rx(const struct device *dev)
 	if (data->master_xfer_cnt == msg->len) {
 		/*TODO dma unmap*/
 		/*Assure cache coherency after DMA write operation*/
-		cache_data_invd_range(msg->buf, (size_t)(msg->len));
+		if (config->mode == DMA_MODE)
+			cache_data_invd_range(msg->buf, (size_t)(msg->len));
 
 		for (i = 0; i < msg->len; i++) {
 			LOG_DBG("M: r %d:[%x]\n", i, msg->buf[i]);
@@ -2523,11 +2626,13 @@ static int i2c_aspeed_init(const struct device *dev)
 		sys_write32(0x00, i2c_base + AST_I2CM_TX_DMA_H);
 		sys_write32(0x10, i2c_base + AST_I2CM_RX_DMA);
 		sys_write32(0x00, i2c_base + AST_I2CM_RX_DMA_H);
-		sys_write32(0x30, i2c_base + AST_I2CS_TX_DMA);
+		sys_write32(0x20, i2c_base + AST_I2CS_TX_DMA);
 		sys_write32(0x00, i2c_base + AST_I2CS_TX_DMA_H);
 		sys_write32(0x30, i2c_base + AST_I2CS_RX_DMA);
 		sys_write32(0x00, i2c_base + AST_I2CS_RX_DMA_H);
 		reg &= ~USE_DMA_MODE;
+		data->setup_tx = ast2700_i2c_setup_buff_tx;
+		data->setup_rx = ast2700_i2c_setup_buff_rx;
 	} else {
 		return -EINVAL;
 	}
@@ -2726,7 +2831,7 @@ static const struct i2c_driver_api i2c_aspeed_driver_api = {
 	static const struct i2c_aspeed_config i2c_aspeed_config_##n = {                        \
 		.base = DT_INST_REG_ADDR_BY_IDX(n, 0),                                             \
 		.buf_base = DT_INST_REG_ADDR_BY_IDX(n, 1),                                         \
-		.buf_size = DT_INST_REG_SIZE_BY_IDX(n, 1),                                         \
+		.buf_size = DT_INST_REG_SIZE_BY_IDX(n, 1) >> 2,                                    \
 		.irq_config_func = i2c_aspeed_config_func_##n,                                     \
 		.bitrate = DT_INST_PROP(n, clock_frequency),                                       \
 		.mode = DT_ENUM_IDX(DT_INST(n, DT_DRV_COMPAT), xfer_mode),                         \
