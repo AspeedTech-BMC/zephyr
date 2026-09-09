@@ -1522,10 +1522,6 @@ void ast2700_i2c_slave_packet_dma_irq(const struct device *dev, uint32_t i2c_bas
 
 	if (AST_I2CS_ABNOR_STOP & sts) {
 		LOG_ERR("The target abnomal protocol occurs isr: 0x%08x.\n", isr);
-		cmd = SLAVE_TRIGGER_CMD | AST_I2CS_RX_DMA_EN;
-		sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE),
-		       i2c_base + AST_I2CS_DMA_LEN);
-		sys_write32(cmd, i2c_base + AST_I2CS_CMD_STS);
 		/* clear sirq log */
 		while ((sirq_log = sys_read32(i2c_base + AST2700_I2CC_SIRQ_LOG))) {
 			/* assign the target client*/
@@ -1540,6 +1536,10 @@ void ast2700_i2c_slave_packet_dma_irq(const struct device *dev, uint32_t i2c_bas
 			data->slave_cb->stop(data->slave_get_cfg);
 			data->slave_get_cfg = NULL;
 		}
+		cmd = SLAVE_TRIGGER_CMD | AST_I2CS_RX_DMA_EN;
+		sys_write32(AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_BUF_SIZE),
+		       i2c_base + AST_I2CS_DMA_LEN);
+		sys_write32(cmd, i2c_base + AST_I2CS_CMD_STS);
 		return;
 	}
 
