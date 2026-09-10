@@ -436,20 +436,6 @@ static int mipi_i3c_hci_target_raise_hotjoin(struct i3c_hci *hci)
 	return mipi_i3c_hci_target_request_event_poll(hci, MIPI_I3C_HCI_TARGET_EVENT_HOTJOIN);
 }
 
-static int mipi_i3c_hci_target_raise_mastership(struct i3c_hci *hci)
-{
-	if (!hci->is_secondary) {
-		return -ENOTSUP;
-	}
-
-	if (!mipi_i3c_hci_target_event_enabled(hci, MIPI_I3C_HCI_TARGET_EVENT_MASTER_REQUEST)) {
-		return -EACCES;
-	}
-
-	return mipi_i3c_hci_target_request_event_poll(hci,
-						      MIPI_I3C_HCI_TARGET_EVENT_MASTER_REQUEST);
-}
-
 int mipi_i3c_hci_target_init(struct i3c_hci *hci)
 {
 	const struct mipi_i3c_hci_target_dt_props *props;
@@ -619,7 +605,15 @@ int mipi_i3c_hci_target_ibi_raise(const struct device *dev, struct i3c_ibi *requ
 		ret = mipi_i3c_hci_target_raise_hotjoin(hci);
 		break;
 	case I3C_IBI_CONTROLLER_ROLE_REQUEST:
-		ret = mipi_i3c_hci_target_raise_mastership(hci);
+		/*
+		 * Controller-role handoff (a target requesting to become the
+		 * active controller) is unimplemented in this driver: no
+		 * customer uses it and it has never been exercised on real
+		 * hardware. Reject explicitly rather than silently attempting
+		 * something unverified.
+		 */
+		LOG_ERR("%s ibi_raise: controller-role request not supported", dev->name);
+		ret = -ENOSYS;
 		break;
 	default:
 		LOG_ERR("%s ibi_raise: unknown ibi_type %d", dev->name, request->ibi_type);
