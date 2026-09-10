@@ -1195,6 +1195,8 @@ static void hci_dma_process_target_rx(struct i3c_hci *hci, struct i3c_hci_dma_ri
 	}
 
 	if (TARGET_RESP_CCC_INDICATE(status)) {
+		LOG_DBG("%s target rx: CCC 0x%02x received (%u bytes payload)",
+			hci->dev->name, (unsigned int)TARGET_RESP_CCC_HDR(status), ibi_size);
 		if (hci->vendor && hci->vendor->ccc_handler) {
 			hci->vendor->ccc_handler(hci, TARGET_RESP_CCC_HDR(status));
 		}

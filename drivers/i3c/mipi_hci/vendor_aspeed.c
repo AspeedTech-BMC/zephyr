@@ -646,8 +646,33 @@ uint32_t mipi_i3c_hci_aspeed_ring_status(struct i3c_hci *hci)
 
 void mipi_i3c_hci_aspeed_ccc_handler(struct i3c_hci *hci, uint8_t ccc)
 {
-	ARG_UNUSED(hci);
-	ARG_UNUSED(ccc);
+	if (!hci) {
+		return;
+	}
+
+	LOG_DBG("%s ccc_handler: CCC 0x%02x", hci->dev->name, ccc);
+
+	switch (ccc) {
+	case I3C_CCC_ENTDAA:
+	case I3C_CCC_SETNEWDA:
+	case I3C_CCC_SETDASA:
+	case I3C_CCC_SETAASA:
+	case I3C_CCC_RSTDAA:
+		/*
+		 * Every CCC that can assign, change, or clear this target's
+		 * dynamic address is enumerated here explicitly - there is no
+		 * need to poll STS1.SLV_DYNAMIC_ADDRESS_VALID on unrelated
+		 * IRQs to catch this: the HCI already tells us exactly when
+		 * one of these completes via TARGET_RESP_CCC_INDICATE, so
+		 * resync hci->target_cb->address right here, event-driven.
+		 */
+		LOG_DBG("%s ccc_handler: CCC 0x%02x may have changed the dynamic "
+			"address, resyncing target_cb", hci->dev->name, ccc);
+		mipi_i3c_hci_target_update_registered_addr(hci);
+		break;
+	default:
+		break;
+	}
 }
 
 static bool mipi_i3c_hci_aspeed_pio_ibi_thld_status_only(struct i3c_hci *hci)

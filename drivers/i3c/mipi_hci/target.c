@@ -159,18 +159,20 @@ static uint8_t mipi_i3c_hci_target_get_dynamic_addr(struct i3c_hci *hci)
 	return 0;
 }
 
-static void mipi_i3c_hci_target_update_registered_addr(struct i3c_hci *hci)
+void mipi_i3c_hci_target_update_registered_addr(struct i3c_hci *hci)
 {
 	uint8_t dyn_addr;
 
 	if (!hci->target_cb) {
+		LOG_DBG("%s update_registered_addr: no target_cb registered yet, skipping",
+			hci->dev->name);
 		return;
 	}
 
 	dyn_addr = mipi_i3c_hci_target_get_dynamic_addr(hci);
-	if (dyn_addr != 0U) {
-		hci->target_cb->address = dyn_addr;
-	}
+	LOG_DBG("%s update_registered_addr: target_cb->address %#x -> %#x",
+		hci->dev->name, hci->target_cb->address, dyn_addr);
+	hci->target_cb->address = dyn_addr;
 }
 
 static int mipi_i3c_hci_target_alloc_rx_buf(struct i3c_hci *hci)

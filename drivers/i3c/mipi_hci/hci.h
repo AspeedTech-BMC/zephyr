@@ -448,6 +448,7 @@ void mipi_i3c_hci_target_dyn_addr_updated(struct i3c_hci *hci, uint8_t new_addr)
 void mipi_i3c_hci_target_handle_defslvs(struct i3c_hci *hci, const void *payload,
 					size_t payload_len);
 void mipi_i3c_hci_target_role_updated(struct i3c_hci *hci);
+void mipi_i3c_hci_target_update_registered_addr(struct i3c_hci *hci);
 #else
 static inline int mipi_i3c_hci_target_init(struct i3c_hci *hci)
 {
@@ -540,6 +541,11 @@ static inline void mipi_i3c_hci_target_handle_defslvs(struct i3c_hci *hci,
 }
 
 static inline void mipi_i3c_hci_target_role_updated(struct i3c_hci *hci)
+{
+	ARG_UNUSED(hci);
+}
+
+static inline void mipi_i3c_hci_target_update_registered_addr(struct i3c_hci *hci)
 {
 	ARG_UNUSED(hci);
 }
