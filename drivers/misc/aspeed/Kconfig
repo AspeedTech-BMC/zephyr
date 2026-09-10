@@ -77,6 +77,13 @@ config OTP_AST27XX
 	help
 	  This option enables the OTP Utility for ASPEED AST27XX SoCs Series.
 
+config OTP_AST1040_SHELL
+	bool "Enable AST1040 OTP shell commands"
+	depends on OTP_AST27XX && SOC_SERIES_AST10x0_G2
+	help
+	  This option enables the OTP shell commands (version/read/pb/dump)
+	  for ASPEED AST1040 SoCs, built on top of the AST27XX OTP driver.
+
 config CPTRA_UPDATE
 	bool "ASPEED CPTRA Update driver"
 	depends on SOC_AST2700_BOOTMCU || SOC_AST2705_BOOTMCU

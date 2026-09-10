@@ -29,6 +29,7 @@ zephyr_library_sources_ifdef(CONFIG_CPTRA_MCI_CRYPTOGRAPHIC_MBOX	cptra_mci_crypt
 zephyr_library_sources_ifdef(CONFIG_PRIVILEGE_CTRL		prictrl_aspeed.c)
 zephyr_library_sources_ifdef(CONFIG_OTP_AST27XX			otp_ast2700.c)
 zephyr_library_sources_ifdef(CONFIG_OTP_AST27XX			lib_otp_ast2700.c)
+zephyr_library_sources_ifdef(CONFIG_OTP_AST1040_SHELL		otp_shell_ast1040.c)
 zephyr_library_sources_ifdef(CONFIG_EDAF_BRIDGE_ASPEED		edaf_bridge_aspeed.c)
 zephyr_library_sources_ifdef(CONFIG_ATC_ASPEED			atc_aspeed.c)
 

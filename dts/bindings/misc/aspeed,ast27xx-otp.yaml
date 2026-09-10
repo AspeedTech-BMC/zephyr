@@ -12,3 +12,10 @@ properties:
       type: phandle
       required: true
       description: phandle to SCU device tree node
+
+    aspeed,otp-gran-bits:
+      type: int
+      default: 16
+      description: |
+        OTP macro cell width in bits. AST2700 is 16 (the default); AST1040
+        uses a 32-bit-granularity OTP macro, same design as AST2705.

@@ -58,6 +58,14 @@
 			};
 		};
 
+		otp: otp@74c07000 {
+			compatible = "aspeed,ast27xx-otp";
+			reg = <0x74c07000 0x1000>;
+			aspeed,scu = <&syscon>;
+			aspeed,otp-gran-bits = <32>;
+			status = "disabled";
+		};
+
 		cptra_mci_mbox: cptra-mci-mbox@74200000 {
 			compatible = "aspeed,cptra-mci-mbox";
 			reg = <0x74200000 0x10000>;

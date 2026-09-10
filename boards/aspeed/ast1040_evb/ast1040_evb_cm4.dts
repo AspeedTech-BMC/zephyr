@@ -457,3 +457,7 @@ zephyr_udc0: &udc1 {
 };
 
 &atc { status = "okay"; };
+
+&otp {
+	status = "okay";
+};

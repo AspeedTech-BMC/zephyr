@@ -38,8 +38,11 @@ LOG_MODULE_REGISTER(otp_ast2700, CONFIG_LOG_DEFAULT_LEVEL);
 #define OTP_MASTER			OTP_M2
 #elif defined(CONFIG_SOC_AST2700_TSP)
 #define OTP_MASTER			OTP_M3
+#elif defined(CONFIG_SOC_AST1040_CM4)
+/* AST1040 CM4 plays the CA35 role on this OTP macro */
+#define OTP_MASTER			OTP_M1
 #else
-/* bootmcu */
+/* bootmcu (AST2700 and AST1040 share OTP_M0 here) */
 #define OTP_MASTER			OTP_M0
 #endif
 
@@ -193,6 +196,8 @@ enum rom_patch_version_a1 {
 struct otp_ast27xx_config {
 	uintptr_t base;
 	uintptr_t scu_base;
+	/* OTP macro cell width in bits (16 on AST2700, 32 on AST1040 - same design as AST2705) */
+	uint8_t gran_bits;
 };
 
 struct otp_ast27xx_drv_state {
@@ -220,6 +225,7 @@ struct otp_region_ecc {
 	bool ecc_en;
 };
 
+#if !defined(CONFIG_SOC_SERIES_AST10x0_G2)
 /*
  * Per-region ECC default, consulted when state->gbl_ecc_en (force ECC) is
  * off. OTPRBP/OTPSTRAP don't support ECC in hardware, so ecc_supported is
@@ -254,11 +260,16 @@ static const struct otp_region_ecc otp_region_ecc_tbl[OTP_REGION_MAX] = {
 		SW_PUF_REGION_START_ADDR, HW_PUF_REGION_END_ADDR, true, true
 	},
 };
+#endif /* !CONFIG_SOC_SERIES_AST10x0_G2 */
 
 static bool otp_region_ecc_active(const struct device *dev, uint32_t offset)
 {
 	struct otp_ast27xx_drv_state *state = (struct otp_ast27xx_drv_state *)dev->data;
 
+#if defined(CONFIG_SOC_SERIES_AST10x0_G2)
+	/* Region layout/ECC table below is AST2700-specific; TBD on AST1040 */
+	return state->gbl_ecc_en;
+#else
 	for (int i = 0; i < OTP_REGION_MAX; i++) {
 		const struct otp_region_ecc *region = &otp_region_ecc_tbl[i];
 
@@ -272,6 +283,7 @@ static bool otp_region_ecc_active(const struct device *dev, uint32_t offset)
 	}
 
 	return false;
+#endif
 }
 
 static void otp_unlock(const struct device *dev)
@@ -351,6 +363,10 @@ static void otp_ecc_cfg(const struct device *dev, bool ecc_en, bool auto_cfg)
 
 	sys_write32(ecc_en, cfg->base + OTP_ECC_EN);
 
+	/* OTP_PMC_CQ/OTP_DAP_CFG_RQ don't exist on AST1040 */
+	if (IS_ENABLED(CONFIG_SOC_SERIES_AST10x0_G2))
+		return;
+
 	/* Self config or auto config */
 	sys_write32(self_cfg ? 0x4 : 0x0, cfg->base + OTP_PMC_CQ);
 	/* Clearing OTP_PMC_CQ auto-reverts OTP_DAP_CFG_RQ, no explicit write needed to disable */
@@ -358,7 +374,7 @@ static void otp_ecc_cfg(const struct device *dev, bool ecc_en, bool auto_cfg)
 		sys_write32(0x40008, cfg->base + OTP_DAP_CFG_RQ);
 }
 
-static int otp_read_data(const struct device *dev, uint32_t offset, uint16_t *data)
+static int otp_read_data(const struct device *dev, uint32_t offset, uint32_t *data)
 {
 	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
 	int ret;
@@ -381,12 +397,14 @@ static int otp_read_data(const struct device *dev, uint32_t offset, uint16_t *da
 	return ret;
 }
 
-int otp_prog_data(const struct device *dev, uint32_t offset, uint16_t data)
+int otp_prog_data(const struct device *dev, uint32_t offset, uint32_t data)
 {
 	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
 
 	sys_write32(otp_region_ecc_active(dev, offset), cfg->base + OTP_ECC_EN);
-	sys_write32(0x0, cfg->base + OTP_PMC_CQ);
+	/* OTP_PMC_CQ doesn't exist on AST1040 */
+	if (!IS_ENABLED(CONFIG_SOC_SERIES_AST10x0_G2))
+		sys_write32(0x0, cfg->base + OTP_PMC_CQ);
 
 	sys_write32(offset, cfg->base + OTP_ADDR);
 	sys_write32(data, cfg->base + OTP_WDATA_0);
@@ -399,8 +417,14 @@ int otp_prog_multi_data(const struct device *dev, uint32_t offset, uint32_t *dat
 {
 	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
 
+	/* Only 4 WDATA registers (WDATA_0..WDATA_3) exist per OTP_CMD_PROG_MULTI */
+	if (count > 4)
+		return -EINVAL;
+
 	sys_write32(otp_region_ecc_active(dev, offset), cfg->base + OTP_ECC_EN);
-	sys_write32(0x0, cfg->base + OTP_PMC_CQ);
+	/* OTP_PMC_CQ doesn't exist on AST1040 */
+	if (!IS_ENABLED(CONFIG_SOC_SERIES_AST10x0_G2))
+		sys_write32(0x0, cfg->base + OTP_PMC_CQ);
 
 	sys_write32(offset, cfg->base + OTP_ADDR);
 	for (int i = 0; i < count; i++)
@@ -413,15 +437,20 @@ int otp_prog_multi_data(const struct device *dev, uint32_t offset, uint32_t *dat
 
 static int aspeed_otp_read(const struct device *dev, uint32_t offset, void *buf, int size)
 {
+	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
 	int ret = 0;
-	uint16_t *data = (uint16_t *)buf;
+	uint32_t rdata;
 
 	for (int i = 0; i < size; i++) {
-		ret = otp_read_data(dev, offset + i, data + i);
+		ret = otp_read_data(dev, offset + i, &rdata);
 		if (ret) {
 			LOG_ERR("%s: read failed", __func__);
 			break;
 		}
+		if (cfg->gran_bits == 32)
+			((uint32_t *)buf)[i] = rdata;
+		else
+			((uint16_t *)buf)[i] = (uint16_t)rdata;
 	}
 
 	return ret;
@@ -429,14 +458,25 @@ static int aspeed_otp_read(const struct device *dev, uint32_t offset, void *buf,
 
 static int aspeed_otp_write(const struct device *dev, uint32_t offset, void *buf, int size)
 {
-	uint32_t *data32 = (uint32_t *)buf;
-	uint16_t *data = (uint16_t *)buf;
+	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
 	int ret;
 
-	if (size == 1)
-		ret = otp_prog_data(dev, offset, data[0]);
-	else
-		ret = otp_prog_multi_data(dev, offset, data32, size / 2);
+	if (cfg->gran_bits == 32) {
+		uint32_t *data = (uint32_t *)buf;
+
+		if (size == 1)
+			ret = otp_prog_data(dev, offset, data[0]);
+		else
+			ret = otp_prog_multi_data(dev, offset, data, size);
+	} else {
+		uint32_t *data32 = (uint32_t *)buf;
+		uint16_t *data = (uint16_t *)buf;
+
+		if (size == 1)
+			ret = otp_prog_data(dev, offset, data[0]);
+		else
+			ret = otp_prog_multi_data(dev, offset, data32, size / 2);
+	}
 
 	if (ret)
 		LOG_ERR("%s: prog failed", __func__);
@@ -446,8 +486,15 @@ static int aspeed_otp_write(const struct device *dev, uint32_t offset, void *buf
 
 static int aspeed_otp_ecc_init(const struct device *dev)
 {
-	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
 	struct otp_ast27xx_drv_state *state = (struct otp_ast27xx_drv_state *)dev->data;
+
+#if defined(CONFIG_SOC_SERIES_AST10x0_G2)
+	/* OTPSTRAP14 location is AST2700-specific; region layout is TBD on AST1040 */
+	state->gbl_ecc_en = 0x0;
+
+	return 0;
+#else
+	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
 	int ret;
 	uint32_t val;
 
@@ -466,10 +513,20 @@ static int aspeed_otp_ecc_init(const struct device *dev)
 		state->gbl_ecc_en = 0x0;
 
 	return 0;
+#endif
 }
 
 static int aspeed_chip_version(const struct device *dev, uint32_t *chip_version)
 {
+#if defined(CONFIG_SOC_SERIES_AST10x0_G2)
+	/*
+	 * AST1040 is single-die and its chip-ID revision values aren't known
+	 * yet, so don't touch AST2700's dual-die SCU0/SCU1 addresses here.
+	 */
+	*chip_version = -1;
+
+	return 0;
+#else
 	uint32_t revid0, revid1;
 
 	revid0 = sys_read32(SCU0_REVISION_ID);
@@ -492,8 +549,10 @@ static int aspeed_chip_version(const struct device *dev, uint32_t *chip_version)
 	}
 
 	return 0;
+#endif
 }
 
+#if !defined(CONFIG_SOC_SERIES_AST10x0_G2)
 static void aspeed_otp_rom_info_a2(const struct device *dev)
 {
 	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
@@ -538,9 +597,20 @@ static void aspeed_otp_rom_info_a1(const struct device *dev)
 
 	LOG_INF("\tROM patch: %s", rom_ver_str);
 }
+#endif /* !CONFIG_SOC_SERIES_AST10x0_G2 */
 
 static void aspeed_otp_dump_info(const struct device *dev)
 {
+#if defined(CONFIG_SOC_SERIES_AST10x0_G2)
+	/*
+	 * ROM patch info (SCU1_ROM_PATCH_OFFSET) and CAL_REGION_START_ADDR
+	 * both belong to the AST2700 region/SCU layout; region layout is
+	 * still TBD on AST1040, so skip the whole dump rather than print
+	 * misleading info read from addresses that have no confirmed
+	 * meaning there.
+	 */
+	ARG_UNUSED(dev);
+#else
 	uint32_t offset = CAL_REGION_START_ADDR + CAL_VENDOR_KEY_HASH_OFFSET;
 	uint16_t hash[CAL_VENDOR_KEY_HASH_BYTES / sizeof(uint16_t)];
 	uint32_t ver;
@@ -564,6 +634,7 @@ static void aspeed_otp_dump_info(const struct device *dev)
 
 	LOG_INF("\tVendor key hash: %04x%04x...",
 		sys_be16_to_cpu(hash[0]), sys_be16_to_cpu(hash[1]));
+#endif
 }
 
 #if defined(CONFIG_SOC_AST2700_BOOTMCU)
@@ -636,6 +707,7 @@ static struct otp_driver_api otp_funcs = {
 static const struct otp_ast27xx_config otp_ast27xx_config = {
 	.base = DT_REG_ADDR(DT_DRV_INST(0)),
 	.scu_base = DT_REG_ADDR_BY_IDX(DT_INST_PHANDLE_BY_IDX(0, aspeed_scu, 0), 0),
+	.gran_bits = DT_INST_PROP_OR(0, aspeed_otp_gran_bits, 16),
 };
 
 static struct otp_ast27xx_drv_state otp_ast27xx_state;

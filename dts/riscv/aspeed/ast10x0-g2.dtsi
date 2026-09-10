@@ -78,6 +78,14 @@
 			reg = <0x14c020f0 0x8>;
 		};
 
+		otp: otp@14c07000 {
+			compatible = "aspeed,ast27xx-otp";
+			reg = <0x14c07000 0x1000>;
+			aspeed,scu = <&syscon1>;
+			aspeed,otp-gran-bits = <32>;
+			status = "disabled";
+		};
+
 		cptra_mbox: cptra-mbox@14c60000 {
 			compatible = "aspeed,cptra-mbox";
 			reg = <0x14c60000 0x1000>;
