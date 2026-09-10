@@ -1374,7 +1374,13 @@ static int cmd_i3c_hj_request(const struct shell *shell_ctx, size_t argc, char *
 	}
 
 	request.ibi_type = I3C_IBI_HOTJOIN;
+	shell_print(shell_ctx, "I3C: requesting hot-join on %s", dev->name);
 	ret = i3c_ibi_raise(dev, &request);
+	if (ret != 0) {
+		shell_error(shell_ctx, "I3C: hot-join request on %s failed: %d", dev->name, ret);
+	} else {
+		shell_print(shell_ctx, "I3C: hot-join request on %s completed", dev->name);
+	}
 
 	return ret;
 }

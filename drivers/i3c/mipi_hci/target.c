@@ -328,18 +328,28 @@ static int mipi_i3c_hci_target_request_event_poll(struct i3c_hci *hci,
 
 	ret = mipi_i3c_hci_target_set_event(hci, event);
 	if (ret != 0) {
+		LOG_ERR("%s event %d: set_event failed: %d", hci->dev->name, event, ret);
 		return ret;
 	}
 
 	if (!hci->vendor || !hci->vendor->target_request_pending) {
+		LOG_DBG("%s event %d: no target_request_pending vendor hook, assume done",
+			hci->dev->name, event);
 		return 0;
 	}
+
+	LOG_DBG("%s event %d: request bit set, polling for HW to clear it", hci->dev->name,
+		event);
 
 	if (!WAIT_FOR(!hci->vendor->target_request_pending(hci, event),
 		      MIPI_I3C_HCI_TARGET_POLL_TIMEOUT_US,
 		      k_busy_wait(1))) {
+		LOG_ERR("%s event %d: timed out waiting for HW to service request (bus master "
+			"never responded?)", hci->dev->name, event);
 		return -ETIMEDOUT;
 	}
+
+	LOG_DBG("%s event %d: request serviced by HW", hci->dev->name, event);
 
 	return 0;
 }
@@ -397,18 +407,29 @@ out:
 
 static int mipi_i3c_hci_target_raise_hotjoin(struct i3c_hci *hci)
 {
+	uint8_t dyn_addr;
+
 	if (!hci->is_secondary) {
+		LOG_ERR("%s hotjoin: refused, device is not configured as secondary controller",
+			hci->dev->name);
 		return -ENOTSUP;
 	}
 
-	if (mipi_i3c_hci_target_get_dynamic_addr(hci) != 0U) {
+	dyn_addr = mipi_i3c_hci_target_get_dynamic_addr(hci);
+	if (dyn_addr != 0U) {
+		LOG_ERR("%s hotjoin: refused, already has dynamic address 0x%02x",
+			hci->dev->name, dyn_addr);
 		return -EALREADY;
 	}
 
 	if (!mipi_i3c_hci_target_event_enabled(hci,
 					       MIPI_I3C_HCI_TARGET_EVENT_HOTJOIN)) {
+		LOG_ERR("%s hotjoin: refused, HJ_EN not set by active controller (ENEC/DISEC?)",
+			hci->dev->name);
 		return -EACCES;
 	}
+
+	LOG_DBG("%s hotjoin: preconditions ok, requesting event", hci->dev->name);
 
 	return mipi_i3c_hci_target_request_event_poll(hci, MIPI_I3C_HCI_TARGET_EVENT_HOTJOIN);
 }
@@ -568,14 +589,21 @@ int mipi_i3c_hci_target_ibi_raise(const struct device *dev, struct i3c_ibi *requ
 	int ret;
 
 	if (!request) {
+		LOG_ERR("%s ibi_raise: NULL request", dev->name);
 		return -EINVAL;
 	}
 
+	LOG_DBG("%s ibi_raise: type=%d is_target=%d is_secondary=%d", dev->name,
+		request->ibi_type, hci->is_target, hci->is_secondary);
+
 	if (!hci->is_target) {
+		LOG_ERR("%s ibi_raise: not configured as target", dev->name);
 		return -ENOTSUP;
 	}
 
 	if (request->payload_len != 0U && !request->payload) {
+		LOG_ERR("%s ibi_raise: payload_len=%u but payload is NULL", dev->name,
+			request->payload_len);
 		return -EINVAL;
 	}
 
@@ -592,11 +620,14 @@ int mipi_i3c_hci_target_ibi_raise(const struct device *dev, struct i3c_ibi *requ
 		ret = mipi_i3c_hci_target_raise_mastership(hci);
 		break;
 	default:
+		LOG_ERR("%s ibi_raise: unknown ibi_type %d", dev->name, request->ibi_type);
 		ret = -EINVAL;
 		break;
 	}
 
 	k_mutex_unlock(&hci->control_mutex);
+
+	LOG_DBG("%s ibi_raise: type=%d ret=%d", dev->name, request->ibi_type, ret);
 
 	return ret;
 }

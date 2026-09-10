@@ -939,6 +939,7 @@ static bool mipi_i3c_hci_aspeed_target_event_enabled(struct i3c_hci *hci,
 {
 	uint32_t sts1_bit;
 	uint32_t req_bit;
+	uint32_t sts1;
 
 	if (!mipi_i3c_hci_aspeed_target_event_bits(event, &sts1_bit, &req_bit)) {
 		return false;
@@ -947,10 +948,17 @@ static bool mipi_i3c_hci_aspeed_target_event_enabled(struct i3c_hci *hci,
 	ARG_UNUSED(req_bit);
 
 	if (!hci || hci->VENDOR_regs == 0U) {
+		LOG_WRN("target_event_enabled: event %d, no VENDOR_regs, assuming enabled",
+			event);
 		return true;
 	}
 
-	return (ast_inhouse_read(hci, ASPEED_I3C_SLV_STS1) & sts1_bit) != 0U;
+	sts1 = ast_inhouse_read(hci, ASPEED_I3C_SLV_STS1);
+
+	LOG_DBG("%s target_event_enabled: event %d STS1=%#x bit=%#x enabled=%d",
+		hci->dev->name, event, sts1, sts1_bit, (sts1 & sts1_bit) != 0U);
+
+	return (sts1 & sts1_bit) != 0U;
 }
 
 static int mipi_i3c_hci_aspeed_target_request_event(struct i3c_hci *hci,
@@ -967,11 +975,15 @@ static int mipi_i3c_hci_aspeed_target_request_event(struct i3c_hci *hci,
 	ARG_UNUSED(sts1_bit);
 
 	if (!hci || hci->VENDOR_regs == 0U) {
+		LOG_ERR("target_request_event: event %d, no VENDOR_regs", event);
 		return -ENOTSUP;
 	}
 
 	reg = ast_inhouse_read(hci, ASPEED_I3C_SLV_CAP_CTRL);
 	ast_inhouse_write(hci, ASPEED_I3C_SLV_CAP_CTRL, reg | req_bit);
+
+	LOG_DBG("%s target_request_event: event %d CAP_CTRL %#x -> %#x (req_bit=%#x)",
+		hci->dev->name, event, reg, reg | req_bit, req_bit);
 
 	return 0;
 }
