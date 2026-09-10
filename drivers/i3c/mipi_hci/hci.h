@@ -226,8 +226,6 @@ struct mipi_i3c_hci_vendor_ops {
 	 */
 	bool (*dma_addr_visible)(struct i3c_hci *hci, uint64_t phys, size_t len);
 	void (*pio_log_prog_error)(struct i3c_hci *hci, uint32_t status);
-	bool (*status_changed_role)(struct i3c_hci *hci, uint32_t old_status,
-				    uint32_t status);
 	uint64_t (*target_pid)(struct i3c_hci *hci, uint16_t extra_info);
 	uint8_t (*target_dynamic_addr)(struct i3c_hci *hci);
 	bool (*target_event_enabled)(struct i3c_hci *hci,

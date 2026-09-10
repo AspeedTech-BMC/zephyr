@@ -894,25 +894,6 @@ static void mipi_i3c_hci_aspeed_pio_log_prog_error(struct i3c_hci *hci,
 		(unsigned int)QUEUE_PTR1_IBI_DATA_R(data));
 }
 
-static bool mipi_i3c_hci_aspeed_status_changed_role(struct i3c_hci *hci,
-						    uint32_t old_status,
-						    uint32_t status)
-{
-	uint32_t role_mask = ASPEED_I3C_STS_MODE_PURE_SLV |
-			     ASPEED_I3C_STS_MODE_SECONDARY_SLV_TO_MST |
-			     ASPEED_I3C_STS_MODE_SECONDARY_MST_TO_SLV |
-			     ASPEED_I3C_STS_MODE_SECONDARY_SLV |
-			     ASPEED_I3C_STS_MODE_SECONDARY_MST |
-			     ASPEED_I3C_STS_MODE_PRIMARY_SLV_TO_MST |
-			     ASPEED_I3C_STS_MODE_PRIMARY_MST_TO_SLV |
-			     ASPEED_I3C_STS_MODE_PRIMARY_SLV |
-			     ASPEED_I3C_STS_MODE_PRIMARY_MST;
-
-	ARG_UNUSED(hci);
-
-	return ((status ^ old_status) & role_mask) != 0U;
-}
-
 static uint64_t mipi_i3c_hci_aspeed_target_pid(struct i3c_hci *hci,
 					       uint16_t extra_info)
 {
@@ -1311,7 +1292,6 @@ const struct mipi_i3c_hci_vendor_ops mipi_i3c_hci_aspeed_ops = {
 	.dma_to_phys = mipi_i3c_hci_aspeed_dma_to_phys,
 	.dma_addr_visible = mipi_i3c_hci_aspeed_dma_addr_visible,
 	.pio_log_prog_error = mipi_i3c_hci_aspeed_pio_log_prog_error,
-	.status_changed_role = mipi_i3c_hci_aspeed_status_changed_role,
 	.target_pid = mipi_i3c_hci_aspeed_target_pid,
 	.target_dynamic_addr = mipi_i3c_hci_aspeed_target_dynamic_addr,
 	.target_event_enabled = mipi_i3c_hci_aspeed_target_event_enabled,

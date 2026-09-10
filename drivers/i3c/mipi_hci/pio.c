@@ -128,7 +128,6 @@ struct hci_pio_data {
 	unsigned int max_ibi_thresh;
 	uint32_t reg_queue_thresh;
 	uint32_t enabled_irqs;
-	uint32_t last_vendor_status;
 	unsigned int ibi_subscribers;
 	bool hj_enabled;
 };
@@ -996,24 +995,6 @@ static bool hci_pio_process_ibi(struct i3c_hci *hci, struct hci_pio_data *pio)
 	}
 }
 
-static void hci_pio_vendor_check_status(struct i3c_hci *hci,
-					struct hci_pio_data *pio)
-{
-	uint32_t status;
-
-	if (!hci->vendor || !hci->vendor->get_status ||
-	    !hci->vendor->status_changed_role) {
-		return;
-	}
-
-	status = hci->vendor->get_status(hci);
-	if (hci->vendor->status_changed_role(hci, pio->last_vendor_status,
-					     status)) {
-		mipi_i3c_hci_target_role_updated(hci);
-	}
-	pio->last_vendor_status = status;
-}
-
 static int hci_pio_init(struct i3c_hci *hci)
 {
 	struct hci_pio_data *pio;
@@ -1092,9 +1073,6 @@ static int hci_pio_init(struct i3c_hci *hci)
 	}
 	hci_reg_set(hci, HC_CONTROL, HC_CONTROL_PIO_MODE);
 	hci_pio_set_signal(hci, pio);
-	if (hci->vendor && hci->vendor->get_status) {
-		pio->last_vendor_status = hci->vendor->get_status(hci);
-	}
 	return 0;
 }
 
@@ -1374,7 +1352,6 @@ static bool hci_pio_irq_handler(struct i3c_hci *hci)
 		return false;
 	}
 	key = k_spin_lock(&hci->lock);
-	hci_pio_vendor_check_status(hci, pio);
 	status = hci_pio_read(hci, PIO_INTR_STATUS);
 	LOG_DBG("%s PIO_INTR_STATUS %#x/%#x", hci->dev->name, status, pio->enabled_irqs);
 	status &= pio->enabled_irqs | STAT_LATENCY_WARNINGS;
