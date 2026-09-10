@@ -200,7 +200,7 @@ static void hci_pio_write_cmd(struct i3c_hci *hci, struct hci_xfer *xfer)
 	unsigned int desc_words = hci_pio_cmd_desc_words(hci);
 
 	for (unsigned int i = 0; i < desc_words; i++) {
-		LOG_DBG("cmd_desc[%u] = %#x", i, xfer->cmd_desc[i]);
+		LOG_DBG("%s cmd_desc[%u] = %#x", hci->dev->name, i, xfer->cmd_desc[i]);
 		hci_pio_write(hci, PIO_COMMAND_QUEUE_PORT, xfer->cmd_desc[i]);
 	}
 }
@@ -317,7 +317,7 @@ static void hci_pio_move_extra_rx(struct i3c_hci *hci, struct hci_xfer *xfer,
 		next = next->next_data;
 	}
 	if (extra != 0U) {
-		LOG_ERR("dropping %u RX bytes after short read", extra);
+		LOG_ERR("%s dropping %u RX bytes after short read", hci->dev->name, extra);
 	}
 }
 
@@ -435,12 +435,13 @@ static void hci_pio_target_handle_response(struct i3c_hci *hci,
 	bool ccc = TARGET_RESP_CCC_INDICATE(resp) != 0U;
 	unsigned int tid = TARGET_RESP_TID(resp);
 
-	LOG_DBG("target resp=%#x status=%u type=%u tid=%u ccc=%u len=%u",
-		resp, status, (unsigned int)TARGET_RESP_XFER_TYPE(resp), tid, ccc, nbytes);
+	LOG_DBG("%s target resp=%#x status=%u type=%u tid=%u ccc=%u len=%u",
+		hci->dev->name, resp, status, (unsigned int)TARGET_RESP_XFER_TYPE(resp),
+		tid, ccc, nbytes);
 	if (target_received) {
 		if (nbytes > hci->target_rx.max_len) {
-			LOG_ERR("target write length %u exceeds RX buffer %u",
-				nbytes, hci->target_rx.max_len);
+			LOG_ERR("%s target write length %u exceeds RX buffer %u",
+				hci->dev->name, nbytes, hci->target_rx.max_len);
 			hci_pio_target_read_rx_fifo(hci, nbytes);
 		} else {
 			hci_pio_target_read_rx_fifo(hci, nbytes);
@@ -463,7 +464,7 @@ static void hci_pio_target_handle_response(struct i3c_hci *hci,
 	}
 	if (status >= TARGET_RESP_ERR_CRC &&
 	    status <= TARGET_RESP_ERR_I2C_READ_TOO_MUCH) {
-		LOG_ERR("target transfer error %#x", status);
+		LOG_ERR("%s target transfer error %#x", hci->dev->name, status);
 		hci_pio_err(hci, pio, 0U);
 	}
 }
@@ -484,9 +485,10 @@ static bool hci_pio_process_resp(struct i3c_hci *hci, struct hci_pio_data *pio)
 		uint32_t resp = hci_pio_read(hci, PIO_RESPONSE_QUEUE_PORT);
 		unsigned int tid = RESP_TID(resp);
 
-		LOG_DBG("resp=%#x", resp);
+		LOG_DBG("%s resp=%#x", hci->dev->name, resp);
 		if (tid != xfer->cmd_tid) {
-			LOG_ERR("response tid=%u when expecting %u", tid, xfer->cmd_tid);
+			LOG_ERR("%s response tid=%u when expecting %u",
+				hci->dev->name, tid, xfer->cmd_tid);
 			hci_pio_err(hci, pio, STAT_PROG_ERRORS);
 			return false;
 		}
@@ -518,8 +520,8 @@ static bool hci_pio_process_resp(struct i3c_hci *hci, struct hci_pio_data *pio)
 				pio->tx_tail = NULL;
 			}
 		} else if (xfer->data_left != 0U) {
-			LOG_DBG("PIO xfer has %u bytes left after response",
-				xfer->data_left);
+			LOG_DBG("%s PIO xfer has %u bytes left after response",
+				hci->dev->name, xfer->data_left);
 		}
 		pio->curr_resp = xfer->next_resp;
 		if (!pio->curr_resp) {
@@ -658,7 +660,7 @@ static void hci_pio_err(struct i3c_hci *hci, struct hci_pio_data *pio,
 	if ((hci_pio_read(hci, PIO_INTR_STATUS) & STAT_RESP_READY) != 0U) {
 		uint32_t resp = hci_pio_read(hci, PIO_RESPONSE_QUEUE_PORT);
 
-		LOG_ERR("orphan response %#x on PIO error", resp);
+		LOG_ERR("%s orphan response %#x on PIO error", hci->dev->name, resp);
 	}
 	if ((status & STAT_PROG_ERRORS) != 0U) {
 		if (hci->VENDOR_regs != 0U && hci->vendor &&
@@ -669,8 +671,8 @@ static void hci_pio_err(struct i3c_hci *hci, struct hci_pio_data *pio,
 			uint32_t queue = hci_pio_read(hci, PIO_QUEUE_CUR_STATUS);
 			uint32_t data = hci_pio_read(hci, PIO_DATA_BUFFER_CUR_STATUS);
 
-			LOG_ERR("PIO prog error %#x C/R/I=%u/%u/%u TX/RX=%u/%u",
-				(uint32_t)(status & STAT_PROG_ERRORS),
+			LOG_ERR("%s PIO prog error %#x C/R/I=%u/%u/%u TX/RX=%u/%u",
+				hci->dev->name, (uint32_t)(status & STAT_PROG_ERRORS),
 				(unsigned int)FIELD_GET(CUR_CMD_Q_EMPTY_LEVEL, queue),
 				(unsigned int)FIELD_GET(CUR_RESP_Q_LEVEL, queue),
 				(unsigned int)FIELD_GET(CUR_IBI_Q_LEVEL, queue),
@@ -769,8 +771,8 @@ static int hci_pio_submit_ibi_slot(struct i3c_hci *hci,
 out:
 #endif
 	if (ret != 0) {
-		LOG_ERR("failed to submit IBI from 0x%02x: %d",
-			slot->target ? slot->target->dynamic_addr : 0U, ret);
+		LOG_ERR("%s failed to submit IBI from 0x%02x: %d",
+			hci->dev->name, slot->target ? slot->target->dynamic_addr : 0U, ret);
 	}
 	hci_pio_ibi_recycle_slot(dev_ibi, slot);
 	return ret;
@@ -882,15 +884,15 @@ static bool hci_pio_prep_new_ibi(struct i3c_hci *hci, struct hci_pio_data *pio)
 	unsigned int ibi_addr = FIELD_GET(IBI_TARGET_ADDR, ibi_status);
 	bool ibi_rnw = FIELD_GET(IBI_TARGET_RNW, ibi_status) != 0U;
 
-	LOG_DBG("IBI status=%#x", ibi_status);
+	LOG_DBG("%s IBI status=%#x", hci->dev->name, ibi_status);
 	if (IBI_TYPE_HJ(ibi_addr, ibi_rnw)) {
 		if (!hci_pio_submit_hotjoin(hci)) {
-			LOG_ERR("failed to enqueue hot-join work");
+			LOG_ERR("%s failed to enqueue hot-join work", hci->dev->name);
 		}
 		return false;
 	}
 	if (IBI_TYPE_CR(ibi_addr, ibi_rnw)) {
-		LOG_INF("controller-role request from 0x%02x", ibi_addr);
+		LOG_INF("%s controller-role request from 0x%02x", hci->dev->name, ibi_addr);
 		return false;
 	}
 	ibi->addr = ibi_addr;
@@ -900,30 +902,31 @@ static bool hci_pio_prep_new_ibi(struct i3c_hci *hci, struct hci_pio_data *pio)
 	ibi->slot = NULL;
 	ibi->data_ptr = NULL;
 	if ((ibi_status & IBI_ERROR) != 0U) {
-		LOG_ERR("IBI error from 0x%02x", ibi_addr);
+		LOG_ERR("%s IBI error from 0x%02x", hci->dev->name, ibi_addr);
 		return ibi->seg_cnt != 0U;
 	}
 	target = i3c_dev_list_i3c_addr_find(&hci->common.attached_dev, (uint8_t)ibi_addr);
 	if (!target) {
-		LOG_ERR("IBI for unknown target 0x%02x", ibi_addr);
+		LOG_ERR("%s IBI for unknown target 0x%02x", hci->dev->name, ibi_addr);
 		return true;
 	}
 	dev_data = target->controller_priv;
 	dev_ibi = dev_data ? dev_data->ibi_data : NULL;
 	if (!dev_ibi) {
-		LOG_ERR("IBI for target 0x%02x without setup", ibi_addr);
+		LOG_ERR("%s IBI for target 0x%02x without setup", hci->dev->name, ibi_addr);
 		return true;
 	}
 	ibi->max_len = dev_ibi->max_len;
 	if (ibi->seg_len > ibi->max_len ||
 	    ibi->seg_len > CONFIG_I3C_IBI_MAX_PAYLOAD_SIZE) {
-		LOG_ERR("IBI payload too big (%u > %u)", ibi->seg_len,
+		LOG_ERR("%s IBI payload too big (%u > %u)", hci->dev->name,
+			ibi->seg_len,
 			MIN(ibi->max_len, (unsigned int)CONFIG_I3C_IBI_MAX_PAYLOAD_SIZE));
 		return true;
 	}
 	ibi->slot = hci_pio_ibi_get_slot(dev_ibi);
 	if (!ibi->slot) {
-		LOG_ERR("no free IBI slot for target 0x%02x", ibi_addr);
+		LOG_ERR("%s no free IBI slot for target 0x%02x", hci->dev->name, ibi_addr);
 		return true;
 	}
 	ibi->slot->target = target;
@@ -972,8 +975,8 @@ static bool hci_pio_process_ibi(struct i3c_hci *hci, struct hci_pio_data *pio)
 		unsigned int ibi_addr = FIELD_GET(IBI_TARGET_ADDR, ibi_status);
 
 		if (ibi_addr != ibi->addr) {
-			LOG_ERR("IBI address changed from 0x%02x to 0x%02x",
-				ibi->addr, ibi_addr);
+			LOG_ERR("%s IBI address changed from 0x%02x to 0x%02x",
+				hci->dev->name, ibi->addr, ibi_addr);
 			hci_pio_free_current_ibi_slot(pio);
 		}
 		ibi->last_seg = (ibi_status & IBI_LAST_STATUS) != 0U;
@@ -983,7 +986,8 @@ static bool hci_pio_process_ibi(struct i3c_hci *hci, struct hci_pio_data *pio)
 		    (ibi->slot->payload.payload_len + ibi->seg_len > ibi->max_len ||
 		     ibi->slot->payload.payload_len + ibi->seg_len >
 			     CONFIG_I3C_IBI_MAX_PAYLOAD_SIZE)) {
-			LOG_ERR("IBI payload too big (%u > %u)",
+			LOG_ERR("%s IBI payload too big (%u > %u)",
+				hci->dev->name,
 				ibi->slot->payload.payload_len + ibi->seg_len,
 				MIN(ibi->max_len,
 				    (unsigned int)CONFIG_I3C_IBI_MAX_PAYLOAD_SIZE));
@@ -1028,13 +1032,13 @@ static int hci_pio_init(struct i3c_hci *hci)
 	}
 	hci->io_data = pio;
 	size_val = hci_pio_read(hci, PIO_QUEUE_SIZE);
-	LOG_INF("PIO CMD/RESP FIFO = %u entries",
+	LOG_INF("%s PIO CMD/RESP FIFO = %u entries", hci->dev->name,
 		(unsigned int)FIELD_GET(CR_QUEUE_SIZE, size_val));
-	LOG_INF("PIO IBI FIFO = %u bytes",
+	LOG_INF("%s PIO IBI FIFO = %u bytes", hci->dev->name,
 		(unsigned int)(4U * FIELD_GET(IBI_STATUS_SIZE, size_val)));
-	LOG_INF("PIO RX data FIFO = %u bytes",
+	LOG_INF("%s PIO RX data FIFO = %u bytes", hci->dev->name,
 		(unsigned int)(4U * (2U << FIELD_GET(RX_DATA_BUFFER_SIZE, size_val))));
-	LOG_INF("PIO TX data FIFO = %u bytes",
+	LOG_INF("%s PIO TX data FIFO = %u bytes", hci->dev->name,
 		(unsigned int)(4U * (2U << FIELD_GET(TX_DATA_BUFFER_SIZE, size_val))));
 	if (hci->is_target && !hci->target_rx.buf) {
 		hci->target_rx.max_len = 4U * (2U << FIELD_GET(TX_DATA_BUFFER_SIZE, size_val));
@@ -1106,7 +1110,7 @@ static void hci_pio_cleanup(struct i3c_hci *hci)
 	}
 	if (pio->curr_xfer || pio->curr_rx ||
 	    pio->curr_tx || pio->curr_resp) {
-		LOG_WRN("cleaning up PIO with pending transfers");
+		LOG_WRN("%s cleaning up PIO with pending transfers", hci->dev->name);
 	}
 	hci_pio_cancel_all(pio);
 	hci->io_data = NULL;
@@ -1372,7 +1376,7 @@ static bool hci_pio_irq_handler(struct i3c_hci *hci)
 	key = k_spin_lock(&hci->lock);
 	hci_pio_vendor_check_status(hci, pio);
 	status = hci_pio_read(hci, PIO_INTR_STATUS);
-	LOG_DBG("PIO_INTR_STATUS %#x/%#x", status, pio->enabled_irqs);
+	LOG_DBG("%s PIO_INTR_STATUS %#x/%#x", hci->dev->name, status, pio->enabled_irqs);
 	status &= pio->enabled_irqs | STAT_LATENCY_WARNINGS;
 	if (status == 0U) {
 		k_spin_unlock(&hci->lock, key);
@@ -1398,8 +1402,8 @@ static bool hci_pio_irq_handler(struct i3c_hci *hci)
 	}
 	if ((status & STAT_LATENCY_WARNINGS) != 0U) {
 		hci_pio_write(hci, PIO_INTR_STATUS, status & STAT_LATENCY_WARNINGS);
-		LOG_WRN("PIO warning condition %#x",
-			(uint32_t)(status & STAT_LATENCY_WARNINGS));
+		LOG_WRN("%s PIO warning condition %#x",
+			hci->dev->name, (uint32_t)(status & STAT_LATENCY_WARNINGS));
 	}
 	if ((status & STAT_ALL_ERRORS) != 0U) {
 		hci_pio_write(hci, PIO_INTR_STATUS, status & STAT_ALL_ERRORS);

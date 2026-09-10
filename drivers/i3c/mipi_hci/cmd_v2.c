@@ -492,8 +492,8 @@ static int hci_cmd_v2_daa(struct i3c_hci *hci)
 		bcr = FIELD_GET(W1_MASK(55, 48), device_id[1]);
 		dcr = FIELD_GET(W1_MASK(63, 56), device_id[1]);
 
-		LOG_DBG("assigned address %#x to PID 0x%012llx DCR %#x BCR %#x",
-			next_addr, (unsigned long long)pid, dcr, bcr);
+		LOG_DBG("%s assigned address %#x to PID 0x%012llx DCR %#x BCR %#x",
+			hci->dev->name, next_addr, (unsigned long long)pid, dcr, bcr);
 		hci_cmd_v2_update_daa_target(hci, next_addr, pid, dcr, bcr);
 	}
 

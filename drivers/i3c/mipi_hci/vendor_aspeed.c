@@ -819,8 +819,8 @@ static void mipi_i3c_hci_aspeed_dma_log_status(struct i3c_hci *hci,
 		return;
 	}
 
-	LOG_DBG("%s: ring=%#x wdma_dbg=%#x rdma_dbg=%#x", reason,
-		mipi_i3c_hci_aspeed_ring_status(hci),
+	LOG_DBG("%s %s: ring=%#x wdma_dbg=%#x rdma_dbg=%#x", hci->dev->name,
+		reason, mipi_i3c_hci_aspeed_ring_status(hci),
 		ast_inhouse_read(hci, ASPEED_I3C_WDMA_DBG_LO),
 		ast_inhouse_read(hci, ASPEED_I3C_RDMA_DBG_LO));
 }
@@ -852,9 +852,9 @@ static void mipi_i3c_hci_aspeed_pio_log_prog_error(struct i3c_hci *hci,
 	queue = ast_inhouse_read(hci, ASPEED_I3C_QUEUE_PTR0);
 	data = ast_inhouse_read(hci, ASPEED_I3C_QUEUE_PTR1);
 
-	LOG_ERR("PIO prog error %#x C/R/I=%u:%u/%u:%u/%u:%u "
+	LOG_ERR("%s PIO prog error %#x C/R/I=%u:%u/%u:%u/%u:%u "
 		"TX/RX/IBI=%u:%u/%u:%u/%u:%u",
-		(uint32_t)status,
+		hci->dev->name, (uint32_t)status,
 		(unsigned int)QUEUE_PTR0_CMD_W(queue),
 		(unsigned int)QUEUE_PTR0_CMD_R(queue),
 		(unsigned int)QUEUE_PTR0_RESP_W(queue),

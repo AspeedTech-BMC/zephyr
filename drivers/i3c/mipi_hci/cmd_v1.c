@@ -426,9 +426,9 @@ static void hci_cmd_v1_update_daa_target(struct i3c_hci *hci, uint8_t addr,
 		 * Say so loudly - a PID mismatch here is the usual reason a
 		 * DT-described target "has no dynamic address" after DAA.
 		 */
-		LOG_WRN("DAA: no DT child matches PID 0x%012llx (BCR %#x DCR %#x); "
+		LOG_WRN("%s DAA: no DT child matches PID 0x%012llx (BCR %#x DCR %#x); "
 			"address 0x%02x reserved but not attached",
-			(unsigned long long)pid, bcr, dcr, addr);
+			hci->dev->name, (unsigned long long)pid, bcr, dcr, addr);
 		i3c_addr_slots_mark_i3c(&hci->common.attached_dev.addr_slots, addr);
 		return;
 	}
@@ -559,8 +559,8 @@ static int hci_cmd_v1_daa(struct i3c_hci *hci)
 		}
 
 		i3c_hci_dct_get_val(hci, 0, &pid, &dcr, &bcr);
-		LOG_DBG("assigned address %#x to PID 0x%012llx DCR %#x BCR %#x",
-			next_addr, (unsigned long long)pid, dcr, bcr);
+		LOG_DBG("%s assigned address %#x to PID 0x%012llx DCR %#x BCR %#x",
+			hci->dev->name, next_addr, (unsigned long long)pid, dcr, bcr);
 
 		mipi_i3c_hci_dat_v1.free_entry(hci, (unsigned int)dat_idx);
 		dat_idx = -1;

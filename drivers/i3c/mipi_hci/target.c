@@ -255,8 +255,8 @@ static void mipi_i3c_hci_target_release_xfer(struct i3c_hci *hci,
 	    !mipi_i3c_hci_target_xfer_completed(completion)) {
 		if (!hci->io || !hci->io->dequeue_xfer ||
 		    !hci->io->dequeue_xfer(hci, *xfer, 1)) {
-			LOG_WRN("target transfer TID %u still owned by backend; deferring free",
-				(*xfer)->cmd_tid);
+			LOG_WRN("%s target transfer TID %u still owned by backend; deferring free",
+				hci->dev->name, (*xfer)->cmd_tid);
 			*xfer = NULL;
 			return;
 		}
@@ -639,7 +639,8 @@ int mipi_i3c_hci_target_ibi_enable(const struct device *dev, struct i3c_device_d
 	 */
 	ret = i3c_ccc_do_events_set(target, true, &events);
 	if (ret != 0) {
-		LOG_ERR("ENEC ENINTR to 0x%02x failed: %d", target->dynamic_addr, ret);
+		LOG_ERR("%s ENEC ENINTR to 0x%02x failed: %d",
+			dev->name, target->dynamic_addr, ret);
 		hci->io->free_ibi(hci, target);
 		return ret;
 	}
@@ -666,8 +667,8 @@ int mipi_i3c_hci_target_ibi_disable(const struct device *dev, struct i3c_device_
 	if (target->dynamic_addr != 0U) {
 		ret = i3c_ccc_do_events_set(target, false, &events);
 		if (ret != 0) {
-			LOG_WRN("DISEC INTR to 0x%02x failed: %d",
-				target->dynamic_addr, ret);
+			LOG_WRN("%s DISEC INTR to 0x%02x failed: %d",
+				dev->name, target->dynamic_addr, ret);
 		}
 	}
 

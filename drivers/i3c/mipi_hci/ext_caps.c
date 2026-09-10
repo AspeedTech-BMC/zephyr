@@ -51,13 +51,13 @@ static int hci_extcap_hardware_id(struct i3c_hci *hci, uintptr_t base)
 	hci->vendor_version_id = hci_extcap_read(base, 0x08);
 	hci->vendor_product_id = hci_extcap_read(base, 0x0c) >> 16;
 
-	LOG_INF("vendor MIPI ID %#x", hci->vendor_mipi_id);
-	LOG_INF("vendor version ID %#x", hci->vendor_version_id);
-	LOG_INF("vendor product ID %#x", hci->vendor_product_id);
+	LOG_INF("%s vendor MIPI ID %#x", hci->dev->name, hci->vendor_mipi_id);
+	LOG_INF("%s vendor version ID %#x", hci->dev->name, hci->vendor_version_id);
+	LOG_INF("%s vendor product ID %#x", hci->dev->name, hci->vendor_product_id);
 
 	if (hci->vendor_mipi_id == MIPI_VENDOR_NXP) {
 		hci->quirks |= HCI_QUIRK_RAW_CCC;
-		LOG_DBG("raw CCC quirk enabled for NXP HCI");
+		LOG_DBG("%s raw CCC quirk enabled for NXP HCI", hci->dev->name);
 	}
 
 	return 0;
@@ -74,14 +74,12 @@ static int hci_extcap_master_config(struct i3c_hci *hci, uintptr_t base)
 		"primary/secondary master",
 	};
 
-	ARG_UNUSED(hci);
-
-	LOG_INF("operation mode: %s", functionality[operation_mode]);
+	LOG_INF("%s operation mode: %s", hci->dev->name, functionality[operation_mode]);
 	if ((operation_mode & 0x1U) != 0U) {
 		return 0;
 	}
 
-	LOG_ERR("only master mode is currently supported");
+	LOG_ERR("%s only master mode is currently supported", hci->dev->name);
 	return -EOPNOTSUPP;
 }
 
@@ -90,9 +88,7 @@ static int hci_extcap_multi_bus(struct i3c_hci *hci, uintptr_t base)
 	uint32_t bus_instance = hci_extcap_read(base, 0x04);
 	unsigned int count = FIELD_GET(GENMASK(3, 0), bus_instance);
 
-	ARG_UNUSED(hci);
-
-	LOG_INF("%u bus instances", count);
+	LOG_INF("%s %u bus instances", hci->dev->name, count);
 	return 0;
 }
 
@@ -101,14 +97,12 @@ static int hci_extcap_xfer_modes(struct i3c_hci *hci, uintptr_t base)
 	uint32_t header = hci_extcap_read(base, 0);
 	uint32_t entries = FIELD_GET(CAP_HEADER_LENGTH, header) - 1U;
 
-	ARG_UNUSED(hci);
-
-	LOG_INF("transfer mode table has %u entries", entries);
+	LOG_INF("%s transfer mode table has %u entries", hci->dev->name, entries);
 	for (unsigned int index = 0; index < entries; index++) {
 		uint32_t mode_entry = hci_extcap_read(base, 4U + index * 4U);
 
-		LOG_DBG("mode %u: %#x supported=%u mode=%u", index, mode_entry,
-			(unsigned int)FIELD_GET(XFERMODE_SUPPORTED, mode_entry),
+		LOG_DBG("%s mode %u: %#x supported=%u mode=%u", hci->dev->name,
+			index, mode_entry, (unsigned int)FIELD_GET(XFERMODE_SUPPORTED, mode_entry),
 			(unsigned int)FIELD_GET(XFERMODE_MODE, mode_entry));
 	}
 
@@ -120,9 +114,7 @@ static int hci_extcap_xfer_rates(struct i3c_hci *hci, uintptr_t base)
 	uint32_t header = hci_extcap_read(base, 0);
 	uint32_t entries = FIELD_GET(CAP_HEADER_LENGTH, header) - 1U;
 
-	ARG_UNUSED(hci);
-
-	LOG_INF("available data rates:");
+	LOG_INF("%s available data rates:", hci->dev->name);
 	for (unsigned int index = 0; index < entries; index++) {
 		uint32_t rate_entry = hci_extcap_read(base, 4U + index * 4U);
 		unsigned int rate = FIELD_GET(XFERRATE_ACTUAL_RATE_KHZ, rate_entry);
@@ -136,8 +128,8 @@ static int hci_extcap_xfer_rates(struct i3c_hci *hci, uintptr_t base)
 			mode = "I2C";
 		}
 
-		LOG_INF("rate %u for %s = %u kHz", rate_id, mode, rate);
-		LOG_DBG("rate entry %u: %#x", index, rate_entry);
+		LOG_INF("%s rate %u for %s = %u kHz", hci->dev->name, rate_id, mode, rate);
+		LOG_DBG("%s rate entry %u: %#x", hci->dev->name, index, rate_entry);
 	}
 
 	return 0;
@@ -150,69 +142,63 @@ static int hci_extcap_auto_command(struct i3c_hci *hci, uintptr_t base)
 	unsigned int max_count = FIELD_GET(GENMASK(3, 0), autocmd_ext_caps);
 	unsigned int count = FIELD_GET(GENMASK(3, 0), autocmd_ext_config);
 
-	LOG_INF("%u/%u active auto-command entries", count, max_count);
+	LOG_INF("%s %u/%u active auto-command entries", hci->dev->name, count, max_count);
 	hci->AUTOCMD_regs = base;
 	return 0;
 }
 
 static int hci_extcap_debug(struct i3c_hci *hci, uintptr_t base)
 {
-	LOG_INF("debug registers present");
+	LOG_INF("%s debug registers present", hci->dev->name);
 	hci->DEBUG_regs = base;
 	return 0;
 }
 
 static int hci_extcap_scheduled_cmd(struct i3c_hci *hci, uintptr_t base)
 {
-	ARG_UNUSED(hci);
 	ARG_UNUSED(base);
 
-	LOG_INF("scheduled commands available");
+	LOG_INF("%s scheduled commands available", hci->dev->name);
 	return 0;
 }
 
 static int hci_extcap_non_curr_master(struct i3c_hci *hci, uintptr_t base)
 {
-	ARG_UNUSED(hci);
 	ARG_UNUSED(base);
 
-	LOG_INF("non-current master support available");
+	LOG_INF("%s non-current master support available", hci->dev->name);
 	return 0;
 }
 
 static int hci_extcap_ccc_resp_conf(struct i3c_hci *hci, uintptr_t base)
 {
-	ARG_UNUSED(hci);
 	ARG_UNUSED(base);
 
-	LOG_INF("CCC response configuration available");
+	LOG_INF("%s CCC response configuration available", hci->dev->name);
 	return 0;
 }
 
 static int hci_extcap_global_dat(struct i3c_hci *hci, uintptr_t base)
 {
-	ARG_UNUSED(hci);
 	ARG_UNUSED(base);
 
-	LOG_INF("global DAT available");
+	LOG_INF("%s global DAT available", hci->dev->name);
 	return 0;
 }
 
 static int hci_extcap_multilane(struct i3c_hci *hci, uintptr_t base)
 {
-	ARG_UNUSED(hci);
 	ARG_UNUSED(base);
 
-	LOG_INF("master multi-lane support available");
+	LOG_INF("%s master multi-lane support available", hci->dev->name);
 	return 0;
 }
 
 static int hci_extcap_ncm_multilane(struct i3c_hci *hci, uintptr_t base)
 {
-	ARG_UNUSED(hci);
 	ARG_UNUSED(base);
 
-	LOG_INF("NCM multi-lane support available");
+	LOG_INF("%s NCM multi-lane support available", hci->dev->name);
 	return 0;
 }
 
@@ -248,7 +234,7 @@ static const struct hci_ext_caps ext_capabilities[] = {
 static int hci_extcap_vendor_nxp(struct i3c_hci *hci, uintptr_t base)
 {
 	hci->vendor_data = (void *)base;
-	LOG_INF("NXP build date info %#x", hci_extcap_read(base, 0x04));
+	LOG_INF("%s NXP build date info %#x", hci->dev->name, hci_extcap_read(base, 0x04));
 	hci_extcap_write(base, 0x04, 0xdeadbeef);
 	return 0;
 }
@@ -258,11 +244,11 @@ static int hci_extcap_vendor_aspeed(struct i3c_hci *hci, uintptr_t base)
 	uint32_t regs_offset;
 
 	regs_offset = hci_extcap_read(base, 0x04);
-	LOG_INF("INHOUSE control at offset %#x", regs_offset);
+	LOG_INF("%s INHOUSE control at offset %#x", hci->dev->name, regs_offset);
 	hci->VENDOR_regs = regs_offset != 0U ? hci->base_regs + regs_offset : 0U;
 
 	regs_offset = hci_extcap_read(base, 0x08);
-	LOG_INF("PHY control at offset %#x", regs_offset);
+	LOG_INF("%s PHY control at offset %#x", hci->dev->name, regs_offset);
 	hci->PHY_regs = regs_offset != 0U ? hci->base_regs + regs_offset : 0U;
 
 	return 0;
@@ -302,13 +288,14 @@ static int hci_extcap_vendor_specific(struct i3c_hci *hci, uintptr_t base,
 	}
 
 	if (!vendor_cap_entry) {
-		LOG_WRN("unknown ext_cap %#x for vendor %#x", cap_id, hci->vendor_mipi_id);
+		LOG_WRN("%s unknown ext_cap %#x for vendor %#x", hci->dev->name,
+			cap_id, hci->vendor_mipi_id);
 		return 0;
 	}
 
 	if (cap_length < vendor_cap_entry->min_length) {
-		LOG_ERR("ext_cap %#x has size %u, expecting >= %u",
-			cap_id, cap_length, vendor_cap_entry->min_length);
+		LOG_ERR("%s ext_cap %#x has size %u, expecting >= %u",
+			hci->dev->name, cap_id, cap_length, vendor_cap_entry->min_length);
 		return -EINVAL;
 	}
 
@@ -331,10 +318,11 @@ int i3c_hci_parse_ext_caps(struct i3c_hci *hci)
 		uint32_t cap_length = FIELD_GET(CAP_HEADER_LENGTH, cap_header);
 		const struct hci_ext_caps *cap_entry = NULL;
 
-		LOG_DBG("id=%#x length=%u", cap_id, cap_length);
+		LOG_DBG("%s id=%#x length=%u", hci->dev->name, cap_id, cap_length);
 
 		if (cap_id == 0U && cap_length != 0U && cap_length != 1U) {
-			LOG_ERR("malformed ext-cap header (id=0, length=%u)", cap_length);
+			LOG_ERR("%s malformed ext-cap header (id=0, length=%u)",
+				hci->dev->name, cap_length);
 			return -EINVAL;
 		}
 
@@ -343,7 +331,8 @@ int i3c_hci_parse_ext_caps(struct i3c_hci *hci)
 		}
 
 		if (cap_length > ((end - curr_cap) / sizeof(uint32_t))) {
-			LOG_ERR("ext_cap %#x has size %u, too big", cap_id, cap_length);
+			LOG_ERR("%s ext_cap %#x has size %u, too big",
+				hci->dev->name, cap_id, cap_length);
 			return -EINVAL;
 		}
 
@@ -361,10 +350,10 @@ int i3c_hci_parse_ext_caps(struct i3c_hci *hci)
 		}
 
 		if (!cap_entry) {
-			LOG_WRN("unknown ext_cap %#x", cap_id);
+			LOG_WRN("%s unknown ext_cap %#x", hci->dev->name, cap_id);
 		} else if (cap_length < cap_entry->min_length) {
-			LOG_ERR("ext_cap %#x has size %u, expecting >= %u",
-				cap_id, cap_length, cap_entry->min_length);
+			LOG_ERR("%s ext_cap %#x has size %u, expecting >= %u",
+				hci->dev->name, cap_id, cap_length, cap_entry->min_length);
 			err = -EINVAL;
 		} else {
 			err = cap_entry->parser(hci, curr_cap);

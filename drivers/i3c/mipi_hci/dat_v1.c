@@ -103,18 +103,19 @@ static int hci_dat_v1_init(struct i3c_hci *hci)
 	k_spinlock_key_t key;
 
 	if (hci->DAT_regs == 0U) {
-		LOG_ERR("only DAT in register space is supported");
+		LOG_ERR("%s only DAT in register space is supported", hci->dev->name);
 		return -EOPNOTSUPP;
 	}
 
 	if (hci->DAT_entry_size != DAT_V1_ENTRY_SIZE) {
-		LOG_ERR("unsupported DAT entry size %u", hci->DAT_entry_size);
+		LOG_ERR("%s unsupported DAT entry size %u", hci->dev->name,
+			hci->DAT_entry_size);
 		return -EOPNOTSUPP;
 	}
 
 	if (hci->DAT_entries > I3C_HCI_DAT_BITMAP_BITS) {
-		LOG_ERR("DAT has %u entries, software bitmap supports %u",
-			hci->DAT_entries, I3C_HCI_DAT_BITMAP_BITS);
+		LOG_ERR("%s DAT has %u entries, software bitmap supports %u",
+			hci->dev->name, hci->DAT_entries, I3C_HCI_DAT_BITMAP_BITS);
 		return -EOPNOTSUPP;
 	}
 
@@ -226,7 +227,8 @@ static void hci_dat_v1_set_dynamic_addr(struct i3c_hci *hci, unsigned int dat_id
 	bool addr_indexed;
 
 	if (!hci_dat_v1_idx_valid(hci, dat_idx)) {
-		LOG_ERR("invalid DAT dynamic address update idx %u addr %#x", dat_idx, address);
+		LOG_ERR("%s invalid DAT dynamic address update idx %u addr %#x",
+			hci->dev->name, dat_idx, address);
 		return;
 	}
 
@@ -249,13 +251,13 @@ static void hci_dat_v1_set_dynamic_addr(struct i3c_hci *hci, unsigned int dat_id
 
 	if (addr_indexed && dat_idx != address) {
 		if (!hci_dat_v1_idx_valid(hci, address)) {
-			LOG_ERR("DAT relocation rejected: addr %#x out of range",
-				address);
+			LOG_ERR("%s DAT relocation rejected: addr %#x out of range",
+				hci->dev->name, address);
 			goto out;
 		}
 		if (bitmap && hci_dat_v1_bitmap_test(bitmap, address)) {
-			LOG_ERR("DAT relocation rejected: slot %u already taken",
-				address);
+			LOG_ERR("%s DAT relocation rejected: slot %u already taken",
+				hci->dev->name, address);
 			goto out;
 		}
 

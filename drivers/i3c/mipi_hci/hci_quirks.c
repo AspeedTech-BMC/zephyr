@@ -86,7 +86,7 @@ void mipi_i3c_hci_apply_quirks(struct i3c_hci *hci)
 	switch (hci->vendor_mipi_id) {
 	case MIPI_VENDOR_NXP:
 		hci->quirks |= HCI_QUIRK_RAW_CCC;
-		LOG_DBG("raw CCC quirk enabled for NXP HCI");
+		LOG_DBG("%s raw CCC quirk enabled for NXP HCI", hci->dev->name);
 		break;
 	default:
 		break;

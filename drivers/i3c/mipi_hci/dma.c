@@ -284,9 +284,9 @@ static void *hci_dma_alloc_buf(struct i3c_hci *hci, size_t size, size_t align,
 
 	phys = hci_dma_to_phys(hci, (uintptr_t)buf);
 	if (!hci_dma_phys_addr_visible(hci, phys, rounded)) {
-		LOG_ERR("DMA ring buffer %p phys 0x%llx size %zu "
+		LOG_ERR("%s DMA ring buffer %p phys 0x%llx size %zu "
 			"not I3C DMA-visible; refusing DMA mode",
-			buf, (unsigned long long)phys, rounded);
+			hci->dev->name, buf, (unsigned long long)phys, rounded);
 		k_free(buf);
 		return NULL;
 	}
@@ -417,16 +417,17 @@ static int hci_dma_map_one(struct i3c_hci *hci, struct hci_xfer *xfer)
 
 		bounce = k_aligned_alloc(align, rounded);
 		if (!bounce) {
-			LOG_ERR("DMA bounce alloc failed for size %zu", dma->len);
+			LOG_ERR("%s DMA bounce alloc failed for size %zu",
+				hci->dev->name, dma->len);
 			k_free(dma);
 			return -ENOMEM;
 		}
 
 		bphys = hci_dma_to_phys(hci, (uintptr_t)bounce);
 		if (!hci_dma_phys_addr_visible(hci, bphys, rounded)) {
-			LOG_ERR("DMA bounce %p phys 0x%llx size %zu still not "
+			LOG_ERR("%s DMA bounce %p phys 0x%llx size %zu still not "
 				"I3C DMA-visible",
-				bounce, (unsigned long long)bphys, rounded);
+				hci->dev->name, bounce, (unsigned long long)bphys, rounded);
 			k_free(bounce);
 			k_free(dma);
 			return -ENOMEM;
@@ -717,8 +718,8 @@ static int hci_dma_init_ring(struct i3c_hci *hci, struct i3c_dma *dma,
 	rh_reg_write(rh, RING_OPERATION1, 0U);
 	rh_reg_write(rh, RING_CONTROL, RING_CTRL_ENABLE | RING_CTRL_RUN_STOP);
 
-	LOG_DBG("DMA ring %u offset %#x xfer %u-byte resp %u-byte ibi %s",
-		ring_id, offset, rh->xfer_struct_sz, rh->resp_struct_sz,
+	LOG_DBG("%s DMA ring %u offset %#x xfer %u-byte resp %u-byte ibi %s",
+		hci->dev->name, ring_id, offset, rh->xfer_struct_sz, rh->resp_struct_sz,
 		rh->has_ibi ? "enabled" : "disabled");
 
 	return 0;
@@ -870,8 +871,8 @@ static void hci_dma_abort_ring(struct i3c_hci *hci, struct i3c_hci_dma_ring *rh)
 	(void)k_sem_take(&rh->op_done, K_MSEC(1000));
 	ring_status = rh_reg_read(rh, RING_STATUS);
 	if (ring_status & RING_STATUS_RUNNING) {
-		LOG_ERR("DMA ring at %#lx did not stop, status %#x",
-			(unsigned long)rh->regs, ring_status);
+		LOG_ERR("%s DMA ring at %#lx did not stop, status %#x",
+			hci->dev->name, (unsigned long)rh->regs, ring_status);
 	}
 }
 
@@ -986,8 +987,8 @@ static void hci_dma_complete_target_xfer(struct i3c_hci *hci, uint32_t resp)
 
 	if (TARGET_RESP_STATUS(resp) >= TARGET_RESP_ERR_CRC &&
 	    TARGET_RESP_STATUS(resp) <= TARGET_RESP_ERR_I2C_READ_TOO_MUCH) {
-		LOG_ERR("target DMA transfer error status %#x",
-			(uint32_t)TARGET_RESP_STATUS(resp));
+		LOG_ERR("%s target DMA transfer error status %#x",
+			hci->dev->name, (uint32_t)TARGET_RESP_STATUS(resp));
 		mipi_i3c_hci_resume(hci);
 	}
 }
@@ -1047,7 +1048,8 @@ static void hci_dma_xfer_done(struct i3c_hci *hci, struct i3c_hci_dma_ring *rh)
 		hci_dma_unmap_one(xfer);
 
 		if (!hci->is_target && tid != xfer->cmd_tid) {
-			LOG_ERR("DMA response TID %u expected %u", tid, xfer->cmd_tid);
+			LOG_ERR("%s DMA response TID %u expected %u",
+				hci->dev->name, tid, xfer->cmd_tid);
 		}
 
 		if (hci->is_target) {
@@ -1105,20 +1107,20 @@ static int hci_dma_deliver_sir(struct i3c_hci *hci, struct i3c_hci_dma_ring *rh,
 
 	target = i3c_dev_list_i3c_addr_find(&hci->common.attached_dev, (uint8_t)ibi_addr);
 	if (!target) {
-		LOG_ERR("IBI for unknown device %#x", ibi_addr);
+		LOG_ERR("%s IBI for unknown device %#x", hci->dev->name, ibi_addr);
 		return -ENODEV;
 	}
 
 	dev_data = target->controller_priv;
 	dev_ibi = dev_data ? dev_data->ibi_data : NULL;
 	if (!dev_ibi) {
-		LOG_ERR("IBI from %#x without IBI setup", ibi_addr);
+		LOG_ERR("%s IBI from %#x without IBI setup", hci->dev->name, ibi_addr);
 		return -ENODEV;
 	}
 
 	if (ibi_size > dev_ibi->max_len ||
 	    ibi_size > (unsigned int)CONFIG_I3C_IBI_MAX_PAYLOAD_SIZE) {
-		LOG_ERR("IBI payload too large: %u", ibi_size);
+		LOG_ERR("%s IBI payload too large: %u", hci->dev->name, ibi_size);
 		return -EMSGSIZE;
 	}
 
@@ -1129,7 +1131,8 @@ static int hci_dma_deliver_sir(struct i3c_hci *hci, struct i3c_hci_dma_ring *rh,
 
 	ret = i3c_ibi_work_enqueue_target_irq(target, payload, ibi_size);
 	if (ret != 0) {
-		LOG_ERR("failed to enqueue IBI from %#x: %d", ibi_addr, ret);
+		LOG_ERR("%s failed to enqueue IBI from %#x: %d",
+			hci->dev->name, ibi_addr, ret);
 	}
 	return ret;
 #else
@@ -1148,7 +1151,8 @@ static void hci_dma_deliver_controller_role_request(struct i3c_hci *hci, int ibi
 
 	target = i3c_dev_list_i3c_addr_find(&hci->common.attached_dev, (uint8_t)ibi_addr);
 	if (!target) {
-		LOG_WRN("controller-role request from unknown device %#x", ibi_addr);
+		LOG_WRN("%s controller-role request from unknown device %#x",
+			hci->dev->name, ibi_addr);
 		return;
 	}
 
@@ -1160,7 +1164,7 @@ static void hci_dma_deliver_controller_role_request(struct i3c_hci *hci, int ibi
 
 	(void)i3c_ibi_work_enqueue(&work);
 #else
-	LOG_WRN("dropping controller-role request from %#x", ibi_addr);
+	LOG_WRN("%s dropping controller-role request from %#x", hci->dev->name, ibi_addr);
 #endif
 }
 
@@ -1180,13 +1184,13 @@ static void hci_dma_process_target_rx(struct i3c_hci *hci, struct i3c_hci_dma_ri
 	int ret;
 
 	if (ibi_size > hci->target_rx.max_len) {
-		LOG_ERR("target private write too large: %u", ibi_size);
+		LOG_ERR("%s target private write too large: %u", hci->dev->name, ibi_size);
 		return;
 	}
 
 	ret = hci_dma_copy_ibi_data(rh, start_chunk, hci->target_rx.buf, ibi_size);
 	if (ret != 0) {
-		LOG_ERR("failed to copy target private write: %d", ret);
+		LOG_ERR("%s failed to copy target private write: %d", hci->dev->name, ret);
 		return;
 	}
 
@@ -1297,10 +1301,11 @@ static void hci_dma_process_ibi(struct i3c_hci *hci, struct i3c_hci_dma_ring *rh
 	if (hci->is_target) {
 		hci_dma_process_target_rx(hci, rh, start_chunk, last_status, ibi_size);
 	} else if (ibi_status_error != 0U) {
-		LOG_ERR("IBI error from %#x: %#x", ibi_addr, ibi_status_error);
+		LOG_ERR("%s IBI error from %#x: %#x", hci->dev->name,
+			ibi_addr, ibi_status_error);
 	} else if (IBI_TYPE_HJ(ibi_addr, ibi_rnw)) {
 		if (!hci_dma_submit_hotjoin(hci)) {
-			LOG_ERR("failed to enqueue hot-join work");
+			LOG_ERR("%s failed to enqueue hot-join work", hci->dev->name);
 		}
 	} else if (IBI_TYPE_CR(ibi_addr, ibi_rnw)) {
 		hci_dma_deliver_controller_role_request(hci, ibi_addr);
@@ -1459,7 +1464,7 @@ static bool hci_dma_irq_handler(struct i3c_hci *hci)
 		if (status & (INTR_TRANSFER_COMPLETION | INTR_TRANSFER_ERR)) {
 			hci_dma_xfer_done(hci, rh);
 			if (status & INTR_TRANSFER_ERR) {
-				LOG_WRN("DMA ring %u transfer error", i);
+				LOG_WRN("%s DMA ring %u transfer error", hci->dev->name, i);
 				hci_dma_vendor_log_status(hci, "transfer error");
 				hci_dma_vendor_recover_fifo(hci);
 				mipi_i3c_hci_resume(hci);
@@ -1473,7 +1478,7 @@ static bool hci_dma_irq_handler(struct i3c_hci *hci)
 		if (status & INTR_TRANSFER_ABORT) {
 			uint32_t ring_status = rh_reg_read(rh, RING_STATUS);
 
-			LOG_WRN("DMA ring %u transfer aborted", i);
+			LOG_WRN("%s DMA ring %u transfer aborted", hci->dev->name, i);
 			hci_dma_vendor_log_status(hci, "transfer abort");
 			hci_dma_vendor_recover_fifo(hci);
 			mipi_i3c_hci_resume(hci);
@@ -1488,7 +1493,7 @@ static bool hci_dma_irq_handler(struct i3c_hci *hci)
 		}
 
 		if (status & INTR_IBI_RING_FULL) {
-			LOG_ERR("DMA ring %u IBI ring full", i);
+			LOG_ERR("%s DMA ring %u IBI ring full", hci->dev->name, i);
 		}
 
 		handled = true;

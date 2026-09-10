@@ -227,8 +227,8 @@ static int mipi_i3c_hci_detect_version(struct i3c_hci *hci)
 	hci->version_minor = (regval >> 4) & 0xf;
 	hci->revision = regval & 0xf;
 
-	LOG_INF("MIPI I3C HCI v%u.%u r%02u", hci->version_major, hci->version_minor,
-		hci->revision);
+	LOG_INF("%s MIPI I3C HCI v%u.%u r%02u", hci->dev->name,
+		hci->version_major, hci->version_minor, hci->revision);
 
 	switch (regval & ~0xfU) {
 	case 0x100:
@@ -236,7 +236,7 @@ static int mipi_i3c_hci_detect_version(struct i3c_hci *hci)
 	case 0x200:
 		return 0;
 	default:
-		LOG_ERR("unsupported HCI version register %#x", regval);
+		LOG_ERR("%s unsupported HCI version register %#x", hci->dev->name, regval);
 		return -EPROTONOSUPPORT;
 	}
 }
@@ -249,7 +249,7 @@ static int mipi_i3c_hci_discover_sections(struct i3c_hci *hci)
 	int ret;
 
 	hci->caps = hci_reg_read(hci, HC_CAPABILITIES);
-	LOG_DBG("HC_CAPABILITIES %#x", hci->caps);
+	LOG_DBG("%s HC_CAPABILITIES %#x", hci->dev->name, hci->caps);
 
 	size_in_dwords = (hci->version_major < 1) ||
 			 ((hci->version_major == 1) && (hci->version_minor < 1));
@@ -265,8 +265,8 @@ static int mipi_i3c_hci_discover_sections(struct i3c_hci *hci)
 	if (size_in_dwords) {
 		hci->DAT_entries = 4U * hci->DAT_entries / hci->DAT_entry_size;
 	}
-	LOG_DBG("DAT: %u %u-byte entries at offset %#x", hci->DAT_entries,
-		hci->DAT_entry_size, offset);
+	LOG_DBG("%s DAT: %u %u-byte entries at offset %#x", hci->dev->name,
+		hci->DAT_entries, hci->DAT_entry_size, offset);
 
 	regval = hci_reg_read(hci, DCT_SECTION);
 	offset = FIELD_GET(DCT_TABLE_OFFSET, regval);
@@ -279,23 +279,23 @@ static int mipi_i3c_hci_discover_sections(struct i3c_hci *hci)
 	if (size_in_dwords) {
 		hci->DCT_entries = 4U * hci->DCT_entries / hci->DCT_entry_size;
 	}
-	LOG_DBG("DCT: %u %u-byte entries at offset %#x", hci->DCT_entries,
-		hci->DCT_entry_size, offset);
+	LOG_DBG("%s DCT: %u %u-byte entries at offset %#x", hci->dev->name,
+		hci->DCT_entries, hci->DCT_entry_size, offset);
 
 	regval = hci_reg_read(hci, RING_HEADERS_SECTION);
 	offset = FIELD_GET(RING_HEADERS_OFFSET, regval);
 	hci->RHS_regs = offset ? hci->base_regs + offset : 0;
-	LOG_DBG("Ring Headers at offset %#x", offset);
+	LOG_DBG("%s Ring Headers at offset %#x", hci->dev->name, offset);
 
 	regval = hci_reg_read(hci, PIO_SECTION);
 	offset = FIELD_GET(PIO_REGS_OFFSET, regval);
 	hci->PIO_regs = offset ? hci->base_regs + offset : 0;
-	LOG_DBG("PIO section at offset %#x", offset);
+	LOG_DBG("%s PIO section at offset %#x", hci->dev->name, offset);
 
 	regval = hci_reg_read(hci, EXT_CAPS_SECTION);
 	offset = FIELD_GET(EXT_CAPS_OFFSET, regval);
 	hci->EXTCAPS_regs = offset ? hci->base_regs + offset : 0;
-	LOG_DBG("Extended Caps at offset %#x", offset);
+	LOG_DBG("%s Extended Caps at offset %#x", hci->dev->name, offset);
 
 	ret = i3c_hci_parse_ext_caps(hci);
 	if (ret != 0) {
@@ -338,7 +338,7 @@ static int mipi_i3c_hci_select_cmd_ops(struct i3c_hci *hci)
 		hci->cmd = &mipi_i3c_hci_cmd_v2;
 		return 0;
 	default:
-		LOG_ERR("unsupported CMD_SIZE capability value");
+		LOG_ERR("%s unsupported CMD_SIZE capability value", hci->dev->name);
 		return -EINVAL;
 	}
 }
@@ -356,7 +356,7 @@ static int mipi_i3c_hci_select_pio(struct i3c_hci *hci, bool mode_selector)
 	}
 
 	hci->io = &mipi_i3c_hci_pio;
-	LOG_INF("Using HCI PIO transfer mode");
+	LOG_INF("%s Using HCI PIO transfer mode", hci->dev->name);
 	return 0;
 #else
 	ARG_UNUSED(hci);
@@ -389,7 +389,7 @@ static int mipi_i3c_hci_select_dma(struct i3c_hci *hci, bool mode_selector)
 	}
 
 	hci->io = &mipi_i3c_hci_dma;
-	LOG_INF("Using HCI DMA transfer mode");
+	LOG_INF("%s Using HCI DMA transfer mode", hci->dev->name);
 	return 0;
 #else
 	ARG_UNUSED(hci);
@@ -853,8 +853,8 @@ static int mipi_i3c_hci_do_ccc(const struct device *dev, struct i3c_ccc_payload 
 
 		ret = mipi_i3c_hci_response_to_errno(xfer[idx].response);
 		if (ret != 0) {
-			LOG_ERR("CCC 0x%02x target 0x%02x response %#x", payload->ccc.id,
-				target->addr, xfer[idx].response);
+			LOG_ERR("%s CCC 0x%02x target 0x%02x response %#x",
+				dev->name, payload->ccc.id, target->addr, xfer[idx].response);
 			goto out;
 		}
 
@@ -948,8 +948,8 @@ static int mipi_i3c_hci_i3c_xfers(const struct device *dev,
 	for (uint8_t i = 0; i < num_msgs; i++) {
 		ret = mipi_i3c_hci_response_to_errno(xfer[i].response);
 		if (ret != 0) {
-			LOG_ERR("I3C target 0x%02x response %#x", target->dynamic_addr,
-				xfer[i].response);
+			LOG_ERR("%s I3C target 0x%02x response %#x", dev->name,
+				target->dynamic_addr, xfer[i].response);
 			goto out;
 		}
 
@@ -1020,7 +1020,8 @@ static int mipi_i3c_hci_i2c_xfers(const struct device *dev,
 	for (uint8_t i = 0; i < num_msgs; i++) {
 		ret = mipi_i3c_hci_response_to_errno(xfer[i].response);
 		if (ret != 0) {
-			LOG_ERR("I2C target 0x%02x response %#x", target->addr, xfer[i].response);
+			LOG_ERR("%s I2C target 0x%02x response %#x", dev->name,
+				target->addr, xfer[i].response);
 			goto out;
 		}
 	}
@@ -1185,7 +1186,7 @@ static void mipi_i3c_hci_hj_work_handler(struct k_work *work)
 
 	ret = mipi_i3c_hci_do_daa(hci->dev);
 	if (ret != 0) {
-		LOG_DBG("hot-join DAA failed: %d", ret);
+		LOG_DBG("%s hot-join DAA failed: %d", hci->dev->name, ret);
 	}
 
 	/*
@@ -1224,12 +1225,12 @@ static void mipi_i3c_hci_handle_core_irq(struct i3c_hci *hci)
 	hci_reg_write(hci, INTR_STATUS, status);
 
 	if (status & INTR_HC_SEQ_CANCEL) {
-		LOG_DBG("host controller cancelled transaction sequence");
+		LOG_DBG("%s host controller cancelled transaction sequence", hci->dev->name);
 		status &= ~INTR_HC_SEQ_CANCEL;
 	}
 
 	if (status & INTR_HC_CMD_SEQ_UFLOW_STAT) {
-		LOG_WRN("host controller command sequence underflow");
+		LOG_WRN("%s host controller command sequence underflow", hci->dev->name);
 		status &= ~INTR_HC_CMD_SEQ_UFLOW_STAT;
 	}
 
@@ -1243,7 +1244,7 @@ static void mipi_i3c_hci_handle_core_irq(struct i3c_hci *hci)
 	}
 
 	if (status != 0U) {
-		LOG_WRN("unexpected HCI interrupt status %#x", status);
+		LOG_WRN("%s unexpected HCI interrupt status %#x", hci->dev->name, status);
 	}
 
 	if (hci->io && hci->io->irq_handler) {
@@ -1319,7 +1320,7 @@ static void mipi_i3c_hci_isr(const struct device *dev)
 	}
 
 	if (summary != 0U) {
-		LOG_WRN("unexpected vendor I3C interrupt summary %#x", summary);
+		LOG_WRN("%s unexpected vendor I3C interrupt summary %#x", dev->name, summary);
 	}
 
 	if (hci->vendor->renew_irq) {
@@ -1343,7 +1344,7 @@ static int mipi_i3c_hci_init(const struct device *dev)
 	if (config->pcfg) {
 		ret = pinctrl_apply_state(config->pcfg, PINCTRL_STATE_DEFAULT);
 		if (ret < 0) {
-			LOG_ERR("pinctrl apply failed: %d", ret);
+			LOG_ERR("%s pinctrl apply failed: %d", dev->name, ret);
 			return ret;
 		}
 	}
@@ -1363,13 +1364,13 @@ static int mipi_i3c_hci_init(const struct device *dev)
 	}
 
 	if (!hci->clk || !device_is_ready(hci->clk)) {
-		LOG_ERR("clock controller is not ready");
+		LOG_ERR("%s clock controller is not ready", dev->name);
 		return -ENODEV;
 	}
 
 	ret = clock_control_on(hci->clk, hci->clock_id);
 	if (ret != 0) {
-		LOG_ERR("failed to enable clock: %d", ret);
+		LOG_ERR("%s failed to enable clock: %d", dev->name, ret);
 		return ret;
 	}
 
@@ -1447,7 +1448,8 @@ static int mipi_i3c_hci_init(const struct device *dev)
 			 * later). Keep the device available so the application
 			 * can retry SETDASA / DAA at runtime.
 			 */
-			LOG_WRN("bus init failed (%d); device available for retry", ret);
+			LOG_WRN("%s bus init failed (%d); device available for retry",
+				dev->name, ret);
 			ret = 0;
 		}
 	}
