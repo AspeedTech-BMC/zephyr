@@ -1364,7 +1364,7 @@ static int cmd_i3c_i2c_detach(const struct shell *shell_ctx, size_t argc, char *
 static int cmd_i3c_hj_request(const struct shell *shell_ctx, size_t argc, char **argv)
 {
 	const struct device *dev;
-	struct i3c_ibi request;
+	struct i3c_ibi request = {0};
 	int ret;
 
 	dev = device_get_binding(argv[ARGV_DEV]);
