@@ -47,6 +47,15 @@ config CPTRA_MCI_SHA
 	  This option enables the Caliptra-SS MCI mailbox SHA
 	  (MC_SHA_INIT/MC_SHA_UPDATE/MC_SHA_FINAL) driver for ASPEED SoCs.
 
+config CPTRA_MCI_SHA_ACC
+	bool "ASPEED CPTRA MCI mailbox SHA_ACC DMA-path engine driver"
+	depends on CPTRA_MCI_MBOX
+	help
+	  This option enables the Caliptra-SS MCI mailbox SHA_ACC
+	  (MC_SHA_ACC_INIT/MC_SHA_ACC_UPDATE/MC_SHA_ACC_FINAL) driver for ASPEED
+	  SoCs.  Caliptra reads source data directly over AXI — no mailbox copy
+	  buffer is needed.
+
 config CPTRA_MCI_ECDSA
 	bool "ASPEED CPTRA MCI mailbox raw-pubkey ECDSA-384 verify driver"
 	depends on CPTRA_MCI_MBOX
