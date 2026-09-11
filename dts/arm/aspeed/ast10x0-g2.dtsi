@@ -77,6 +77,11 @@
 				status = "disabled";
 			};
 
+			cptra_mci_sha_acc: cptra-mci-sha-acc {
+				compatible = "aspeed,cptra-mci-sha-acc";
+				status = "disabled";
+			};
+
 			cptra_mci_ecdsa: cptra-mci-ecdsa {
 				compatible = "aspeed,cptra-mci-ecdsa";
 				status = "disabled";
