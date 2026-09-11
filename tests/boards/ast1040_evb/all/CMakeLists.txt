@@ -16,6 +16,7 @@ target_sources(app PRIVATE
   ${PERIPH_DIR}/gpio/src/main.c
   ${PERIPH_DIR}/cptra/src/main.c
   ${PERIPH_DIR}/i2c/src/main.c
+  ${PERIPH_DIR}/otp/src/main.c
 )
 
 target_include_directories(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../common)
