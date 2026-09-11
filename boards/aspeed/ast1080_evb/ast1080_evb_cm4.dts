@@ -423,6 +423,10 @@
 	status = "okay";
 };
 
+&cptra_mci_sha_acc {
+	status = "okay";
+};
+
 &cptra_mci_ecdsa {
 	status = "okay";
 };
