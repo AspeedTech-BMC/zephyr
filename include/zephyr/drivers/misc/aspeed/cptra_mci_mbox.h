@@ -196,6 +196,9 @@ enum cptra_mci_mbox_cmd {
 	CPTRA_MCI_MBCMD_OCP_LOCK_SET_PERMA_HEK             = 0x4F4C5350, /* "OLSP" */
 	CPTRA_MCI_MBCMD_GET_OCP_LOCK_ENDORSEMENT_CERT      = 0x4F4C4543, /* "OLEC" */
 	CPTRA_MCI_MBCMD_OCP_LOCK_ENUMERATE_HPKE_HANDLES    = 0x4F4C4548, /* "OLEH" */
+	CPTRA_MCI_MBCMD_SHA_ACC_INIT                       = 0x4D434E49, /* "MCNI" */
+	CPTRA_MCI_MBCMD_SHA_ACC_UPDATE                     = 0x4D434E55, /* "MCNU" */
+	CPTRA_MCI_MBCMD_SHA_ACC_FINAL                      = 0x4D434E46, /* "MCNF" */
 };
 
 /* Common request/response headers (messages.rs MailboxReqHeader/MailboxRespHeaderVarSize) */
@@ -380,6 +383,32 @@ struct cptra_mci_sha_final_resp {
 	struct cptra_mci_mbox_resp_hdr_var hdr;
 	uint8_t hash[CPTRA_MCI_SHA512_DIGEST_SIZE];
 };
+
+/* MC_SHA_ACC_INIT: DMA-path SHA; Caliptra reads data_size bytes from [addr_hi:addr_lo] over AXI */
+struct cptra_mci_sha_acc_init_req {
+	struct cptra_mci_mbox_req_hdr hdr;
+	uint32_t hash_algorithm;
+	uint32_t data_size;
+	uint32_t addr_lo;
+	uint32_t addr_hi;
+};
+
+/* MC_SHA_ACC_UPDATE and MC_SHA_ACC_FINAL requests share this layout */
+struct cptra_mci_sha_acc_data_req {
+	struct cptra_mci_mbox_req_hdr hdr;
+	uint32_t token;
+	uint32_t data_size;
+	uint32_t addr_lo;
+	uint32_t addr_hi;
+};
+
+/* MC_SHA_ACC_INIT and MC_SHA_ACC_UPDATE responses — carries the session token */
+struct cptra_mci_sha_acc_ctx_resp {
+	struct cptra_mci_mbox_resp_hdr hdr;
+	uint32_t token;
+};
+
+/* MC_SHA_ACC_FINAL response reuses cptra_mci_sha_final_resp */
 
 /*
  * MC_CM_STATUS (bare MailboxReqHeader request / CmStatusResp). Reports how
