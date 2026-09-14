@@ -20,6 +20,8 @@ LOG_MODULE_REGISTER(i2c_global);
 
 #define ASPEED_I2CG_CONTROL		0x0C
 #define ASPEED_I2CG_NEW_CLK_DIV	0x10
+#define ASPEED_I2CG_SRAM_CTRL	0x14
+#define ASPEED_I2CG_SRAM_CTRL1	0x18
 
 #define CLK_NEW_MODE		BIT(1)
 #define REG_NEW_MODE		BIT(2)
@@ -31,6 +33,7 @@ LOG_MODULE_REGISTER(i2c_global);
 
 #define AST2600ID 0x05000000
 #define AST2700ID 0x06000000
+#define ASPEED_I2CG_SRAM_SETTING 0x66666666
 
 /* Device config */
 struct i2c_global_config {
@@ -79,6 +82,13 @@ static int i2c_global_init(const struct device *dev)
 	sys_write32(config->clk_divider, i2c_global_base + ASPEED_I2CG_NEW_CLK_DIV);
 	LOG_DBG("i2c divid %x\n", sys_read32(i2c_global_base + ASPEED_I2CG_NEW_CLK_DIV));
 
+#if defined(CONFIG_SOC_AST2705_SSP) || \
+	defined(CONFIG_SOC_AST1040_CM4) || \
+	defined(CONFIG_SOC_AST1080_CM4)
+	/* fill i2c SRAM setting */
+	sys_write32(ASPEED_I2CG_SRAM_SETTING, i2c_global_base + ASPEED_I2CG_SRAM_CTRL);
+	sys_write32(ASPEED_I2CG_SRAM_SETTING, i2c_global_base + ASPEED_I2CG_SRAM_CTRL1);
+#endif
 	return 0;
 }
 
