@@ -367,7 +367,8 @@ int ast_i2c_filter_global_init(const struct device *dev)
 	cfg->irq_config_func(dev);
 
 	/* deassert scu for i2c controller */
-	reset_line_deassert_dt(&cfg->reset);
+	if (cfg->reset.dev)
+		reset_line_deassert_dt(&cfg->reset);
 
 	return 0;
 }
@@ -423,7 +424,7 @@ struct filter_info {
 		.filter_child = child_filter_##inst,	 \
 		.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(0)),	\
 		.clk_id = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(0, clk_id),	\
-		.reset = RESET_DT_SPEC_INST_GET(0),\
+		.reset = RESET_DT_SPEC_INST_GET_OR(0, {0}),\
 		.filter_child_num = ARRAY_SIZE(child_filter_##inst), \
 		.irq_config_func = ast_i2c_filter_cfg_##inst,	 \
 		.pcfg = PINCTRL_DT_INST_DEV_CONFIG_GET(inst),		 \
