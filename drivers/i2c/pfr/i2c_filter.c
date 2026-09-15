@@ -23,7 +23,7 @@
 LOG_MODULE_REGISTER(i2c_pfr_filter);
 
 /* #define ASPEED_I2C_FJ_DUMP */
-#define ASPEED_I2C_FW_DUMP
+/* #define ASPEED_I2C_FW_DUMP */
 
 #ifdef ASPEED_I2C_FJ_DUMP
 #define I2C_W_R(value, addr) LOG_INF("  dw %x %x", addr, value);
