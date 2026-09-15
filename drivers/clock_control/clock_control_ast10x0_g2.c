@@ -215,7 +215,7 @@ static uint32_t ast10x0_g2_get_security_clk_rate(uintptr_t base, bool ssp)
 
 static uint32_t ast10x0_g2_get_uxclk_rate(uintptr_t base, bool high_rate)
 {
-	static const uint8_t dividers[] = { 10, 5, 2, 1 };
+	static const uint8_t dividers[] = { 5, 4, 2, 8 };
 	uint32_t clk_sel2 = sys_read32(base + SCU_CLK_SEL2);
 	uint32_t div_sel;
 	uint32_t hpll_rate;
