@@ -1238,6 +1238,8 @@
 			reg = <0x74c05000 0x1000>;
 			interrupts = <INTR_ESPI_GLOBAL AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk SCU1_CLK_AHB>;
+			pinctrl-0 = <pinctrl_espi_default>;
+			pinctrl-names = "default";
 			aspeed,scu = <&syscon>;
 			status = "disabled";
 		};

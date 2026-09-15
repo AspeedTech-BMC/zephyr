@@ -210,6 +210,8 @@
 			interrupt-parent = <&intc1_0>;
 			interrupts = <10 1>;
 			clocks = <&sysclk1 SCU1_CLK_GATE_ESPI0CLK>;
+			pinctrl-0 = <pinctrl_espi0_default>;
+			pinctrl-names = "default";
 			status = "disabled";
 		};
 

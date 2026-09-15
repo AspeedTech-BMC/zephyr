@@ -9,6 +9,7 @@
 #include <zephyr/cache.h>
 #include <zephyr/drivers/espi.h>
 #include <zephyr/drivers/espi_aspeed.h>
+#include <zephyr/drivers/pinctrl.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/byteorder.h>
@@ -1028,13 +1029,17 @@ int espi_aspeed_taf_register(const struct device *dev,
 /* eSPI controller config. */
 struct espi_ast2700_config {
 	uintptr_t base;
+	const struct pinctrl_dev_config *pcfg;
 #if DT_HAS_COMPAT_STATUS_OKAY(aspeed_espi_ast1040)
 	uintptr_t scu_base;
 #endif
 };
 
+PINCTRL_DT_INST_DEFINE(0);
+
 static const struct espi_ast2700_config espi_ast2700_config = {
 	.base = DT_INST_REG_ADDR(0),
+	.pcfg = PINCTRL_DT_INST_DEV_CONFIG_GET(0),
 #if DT_HAS_COMPAT_STATUS_OKAY(aspeed_espi_ast1040)
 	.scu_base = DT_REG_ADDR_BY_IDX(DT_INST_PHANDLE_BY_IDX(0, aspeed_scu, 0), 0),
 #endif
@@ -1073,11 +1078,17 @@ static void espi_ast2700_isr(const struct device *dev)
 
 static int espi_ast2700_init(const struct device *dev)
 {
+	int rc;
 	uint32_t reg;
 	struct espi_ast2700_config *cfg = (struct espi_ast2700_config *)dev->config;
 	struct espi_ast2700_data *data = (struct espi_ast2700_data *)dev->data;
 
 	data->dev = dev;
+
+	rc = pinctrl_apply_state(cfg->pcfg, PINCTRL_STATE_DEFAULT);
+	if (rc < 0) {
+		return rc;
+	}
 
 	espi_base = cfg->base;
 #if DT_HAS_COMPAT_STATUS_OKAY(aspeed_espi_ast1040)
