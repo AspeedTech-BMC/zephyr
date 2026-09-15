@@ -371,7 +371,7 @@
 			interrupt-parent = <&intc1_2>;
 			interrupts = <0 1>;
 			clocks = <&sysclk1 SCU1_CLK_APB>;
-			xfer-mode = "DMA";
+			xfer-mode = "BUFF";
 			multi-master = <0>;
 			smbus-timeout = <1>;
 			manual-high-count = <0>;
@@ -389,7 +389,7 @@
 			interrupt-parent = <&intc1_2>;
 			interrupts = <1 1>;
 			clocks = <&sysclk1 SCU1_CLK_APB>;
-			xfer-mode = "DMA";
+			xfer-mode = "BUFF";
 			multi-master = <0>;
 			smbus-timeout = <1>;
 			manual-high-count = <0>;
@@ -407,7 +407,7 @@
 			interrupt-parent = <&intc1_2>;
 			interrupts = <2 1>;
 			clocks = <&sysclk1 SCU1_CLK_APB>;
-			xfer-mode = "DMA";
+			xfer-mode = "BUFF";
 			multi-master = <0>;
 			smbus-timeout = <1>;
 			manual-high-count = <0>;
@@ -425,7 +425,7 @@
 			interrupt-parent = <&intc1_2>;
 			interrupts = <3 1>;
 			clocks = <&sysclk1 SCU1_CLK_APB>;
-			xfer-mode = "DMA";
+			xfer-mode = "BUFF";
 			multi-master = <0>;
 			smbus-timeout = <1>;
 			manual-high-count = <0>;
@@ -443,7 +443,7 @@
 			interrupt-parent = <&intc1_2>;
 			interrupts = <4 1>;
 			clocks = <&sysclk1 SCU1_CLK_APB>;
-			xfer-mode = "DMA";
+			xfer-mode = "BUFF";
 			multi-master = <0>;
 			smbus-timeout = <1>;
 			manual-high-count = <0>;
@@ -461,7 +461,7 @@
 			interrupt-parent = <&intc1_2>;
 			interrupts = <5 1>;
 			clocks = <&sysclk1 SCU1_CLK_APB>;
-			xfer-mode = "DMA";
+			xfer-mode = "BUFF";
 			multi-master = <0>;
 			smbus-timeout = <1>;
 			manual-high-count = <0>;
@@ -479,7 +479,7 @@
 			interrupt-parent = <&intc1_2>;
 			interrupts = <6 1>;
 			clocks = <&sysclk1 SCU1_CLK_APB>;
-			xfer-mode = "DMA";
+			xfer-mode = "BUFF";
 			multi-master = <0>;
 			smbus-timeout = <1>;
 			manual-high-count = <0>;
@@ -497,7 +497,7 @@
 			interrupt-parent = <&intc1_2>;
 			interrupts = <7 1>;
 			clocks = <&sysclk1 SCU1_CLK_APB>;
-			xfer-mode = "DMA";
+			xfer-mode = "BUFF";
 			multi-master = <0>;
 			smbus-timeout = <1>;
 			manual-high-count = <0>;
@@ -515,7 +515,7 @@
 			interrupt-parent = <&intc1_2>;
 			interrupts = <8 1>;
 			clocks = <&sysclk1 SCU1_CLK_APB>;
-			xfer-mode = "DMA";
+			xfer-mode = "BUFF";
 			multi-master = <0>;
 			smbus-timeout = <1>;
 			manual-high-count = <0>;
@@ -533,7 +533,7 @@
 			interrupt-parent = <&intc1_2>;
 			interrupts = <9 1>;
 			clocks = <&sysclk1 SCU1_CLK_APB>;
-			xfer-mode = "DMA";
+			xfer-mode = "BUFF";
 			multi-master = <0>;
 			smbus-timeout = <1>;
 			manual-high-count = <0>;
@@ -551,7 +551,7 @@
 			interrupt-parent = <&intc1_2>;
 			interrupts = <10 1>;
 			clocks = <&sysclk1 SCU1_CLK_APB>;
-			xfer-mode = "DMA";
+			xfer-mode = "BUFF";
 			multi-master = <0>;
 			smbus-timeout = <1>;
 			manual-high-count = <0>;
@@ -569,7 +569,7 @@
 			interrupt-parent = <&intc1_2>;
 			interrupts = <11 1>;
 			clocks = <&sysclk1 SCU1_CLK_APB>;
-			xfer-mode = "DMA";
+			xfer-mode = "BUFF";
 			multi-master = <0>;
 			smbus-timeout = <1>;
 			manual-high-count = <0>;
@@ -587,7 +587,7 @@
 			interrupt-parent = <&intc1_2>;
 			interrupts = <12 1>;
 			clocks = <&sysclk1 SCU1_CLK_APB>;
-			xfer-mode = "DMA";
+			xfer-mode = "BUFF";
 			multi-master = <0>;
 			smbus-timeout = <1>;
 			manual-high-count = <0>;
@@ -605,7 +605,7 @@
 			interrupt-parent = <&intc1_2>;
 			interrupts = <13 1>;
 			clocks = <&sysclk1 SCU1_CLK_APB>;
-			xfer-mode = "DMA";
+			xfer-mode = "BUFF";
 			multi-master = <0>;
 			smbus-timeout = <1>;
 			manual-high-count = <0>;
@@ -623,7 +623,7 @@
 			interrupt-parent = <&intc1_2>;
 			interrupts = <14 1>;
 			clocks = <&sysclk1 SCU1_CLK_APB>;
-			xfer-mode = "DMA";
+			xfer-mode = "BUFF";
 			multi-master = <0>;
 			smbus-timeout = <1>;
 			manual-high-count = <0>;
@@ -641,7 +641,7 @@
 			interrupt-parent = <&intc1_2>;
 			interrupts = <15 1>;
 			clocks = <&sysclk1 SCU1_CLK_APB>;
-			xfer-mode = "DMA";
+			xfer-mode = "BUFF";
 			multi-master = <0>;
 			smbus-timeout = <1>;
 			manual-high-count = <0>;
