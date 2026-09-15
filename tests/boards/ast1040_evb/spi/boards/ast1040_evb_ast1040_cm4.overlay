@@ -1,0 +1,36 @@
+/*
+ * Copyright (c) 2026 Aspeed Technology Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * fmc_cs0, spi0/spi0_cs0/spi0_cs1 and spi1/spi1_cs0/spi1_cs1 are already
+ * enabled by the board dts. Only bump buswidth/frequency to quad + 50MHz on
+ * every node under test here, matching tests/boards/ast1030_evb/spi.
+ * fmc_cs1 is left disabled: no flash is populated on that chip select on
+ * this board.
+ */
+
+&fmc_cs0 {
+	spi-max-buswidth = <4>;
+	spi-max-frequency = <50000000>;
+};
+
+&spi0_cs0 {
+	spi-max-buswidth = <4>;
+	spi-max-frequency = <50000000>;
+};
+
+&spi0_cs1 {
+	spi-max-buswidth = <4>;
+	spi-max-frequency = <50000000>;
+};
+
+&spi1_cs0 {
+	spi-max-buswidth = <4>;
+	spi-max-frequency = <50000000>;
+};
+
+&spi1_cs1 {
+	spi-max-buswidth = <4>;
+	spi-max-frequency = <50000000>;
+};
