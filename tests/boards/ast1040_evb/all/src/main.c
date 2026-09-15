@@ -14,6 +14,7 @@ extern int test_gpio(void);
 extern int test_cptra_mci(void);
 extern int test_i2c(void);
 extern int test_otp(void);
+extern int test_uart(void);
 
 typedef int (*test_func_t)(void);
 
@@ -28,6 +29,7 @@ static struct aspeed_tests aspeed_testcase[] = {
 	{"cptra_mci", test_cptra_mci, -1},
 	{"i2c", test_i2c, -1},
 	{"otp", test_otp, -1},
+	{"uart", test_uart, -1},
 };
 
 #define TEST_MODULE_CNT ARRAY_SIZE(aspeed_testcase)
