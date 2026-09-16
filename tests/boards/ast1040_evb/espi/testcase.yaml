@@ -1,0 +1,7 @@
+tests:
+  boards.ast1040_evb.espi:
+    platform_allow: ast1040_evb/ast1040/cm4
+    timeout: 630
+    tags:
+      - drivers
+      - espi

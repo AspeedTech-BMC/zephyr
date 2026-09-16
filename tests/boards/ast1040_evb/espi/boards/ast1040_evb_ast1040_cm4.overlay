@@ -1,0 +1,20 @@
+/*
+ * Copyright (c) 2026 Aspeed Technology Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+&espi0 {
+	status = "okay";
+	perif-mcyc-enable;
+	perif-mcyc-src-addr = <0x0 0x98000000>;
+	perif-mcyc-size = <0x0 0x10000>;
+	flash-edaf-mode = <1>;
+};
+
+&vuart0 {
+	virtual,port = <0x3f8>;
+	virtual,sirq = <4>;
+	virtual,sirq-polarity = <0>;
+	status = "okay";
+};
