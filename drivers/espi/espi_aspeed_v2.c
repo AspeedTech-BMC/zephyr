@@ -453,7 +453,6 @@ static void espi_ast2700_perif_isr(struct espi_ast2700_data *data)
 	uint32_t sts;
 
 	sts = ESPI_RD(ESPI_CH0_INT_STS);
-	LOG_INF("perif int sts: 0x%08x", sts);
 
 #if DT_HAS_COMPAT_STATUS_OKAY(aspeed_espi_ast1040)
 	if (sts & ESPI_CH0_INT_STS_NP_RX_VALID) {
@@ -989,9 +988,6 @@ static void espi_taf_work(struct k_work *item)
 		.len  = ((uint16_t)rwe->len_h << 8) | rwe->len_l,
 		.data = (rwe->cyc == ESPI_FLASH_WRITE) ? rwe->data : NULL,
 	};
-
-	LOG_INF("TAF req: cyc=0x%02x tag=%d addr=0x%08x len=%d",
-		req.cyc, req.tag, req.addr, req.len);
 
 	if (data->handler)
 		data->handler(data->host_dev, &req, data->user_data);
