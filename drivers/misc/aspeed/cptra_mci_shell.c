@@ -2119,9 +2119,20 @@ static int cmd_cptra_mci_sha_perf(const struct shell *shell, size_t argc, char *
 	return 0;
 }
 
-/* AXI bus addresses for SHA_ACC DMA sources (as seen by Caliptra, platform-independent) */
+/*
+ * Pre-remap AXI addresses fed to sha_acc_remap_addr() in the MCU firmware.
+ * HyperRAM: 0xf000_0000 – no remap needed (passes through as-is).
+ * FMC:      0x2000_0000 – remapped to the fixed FMC window at 0x4000_0000 (MSB=0x02).
+ * SPI0:     0x4000_0000 – remapped to AHBC 0x3000_0000 with MSB=0x04.
+ * SPI1:     0x6000_0000 – remapped to AHBC 0x3000_0000 with MSB=0x06.
+ */
 #define SHA_ACC_HYPERRAM_AXI  0xf0000000UL
-#define SHA_ACC_FLASH_AXI     0x40000000UL
+#define SHA_ACC_FMC_AXI       0x20000000UL
+#define SHA_ACC_SPI0_AXI      0x40000000UL
+#define SHA_ACC_SPI1_AXI      0x60000000UL
+
+/* 2 MB per SHA_ACC UPDATE chunk for the chunked perf test */
+#define SHA_ACC_CHUNK_SIZE    (2UL * 1024 * 1024)
 
 static int cptra_mci_sha_acc_perf_run(const struct shell *shell, const struct device *dev,
 				      const char *label, uintptr_t axi_base, size_t size)
@@ -2172,14 +2183,28 @@ static int cptra_mci_sha_acc_perf_run(const struct shell *shell, const struct de
 
 static int cmd_cptra_mci_sha_acc_perf(const struct shell *shell, size_t argc, char **argv)
 {
-	static const struct {
-		const char *label;
-		size_t size;
-	} sizes[] = {
+	static const struct { const char *label; size_t size; } hyperram_sizes[] = {
 		{ "256KB", 256UL * 1024 },
 		{ "512KB", 512UL * 1024 },
-		{ "1MB",   1024UL * 1024 },
-		{ "16MB",  1024UL * 1024 * 16 },
+		{ "1MB",   1UL * 1024 * 1024 },
+		{ "16MB",  16UL * 1024 * 1024 },
+	};
+	static const struct { const char *label; size_t size; } fmc_sizes[] = {
+		{ "256KB", 256UL * 1024 },
+		{ "512KB", 512UL * 1024 },
+		{ "1MB",   1UL * 1024 * 1024 },
+		{ "2MB",   2UL * 1024 * 1024 },
+		{ "4MB",   4UL * 1024 * 1024 },
+	};
+	static const struct { const char *label; size_t size; } spi_sizes[] = {
+		{ "256KB", 256UL * 1024 },
+		{ "512KB", 512UL * 1024 },
+		{ "1MB",   1UL * 1024 * 1024 },
+		{ "2MB",   2UL * 1024 * 1024 },
+		{ "4MB",   4UL * 1024 * 1024 },
+		{ "8MB",   8UL * 1024 * 1024 },
+		{ "16MB",  16UL * 1024 * 1024 },
+		{ "32MB",  32UL * 1024 * 1024 },
 	};
 	const struct device *dev;
 	int ret;
@@ -2191,17 +2216,158 @@ static int cmd_cptra_mci_sha_acc_perf(const struct shell *shell, size_t argc, ch
 	}
 
 	shell_print(shell, "--- HyperRAM (AXI 0x%08x) ---", (unsigned int)SHA_ACC_HYPERRAM_AXI);
-	for (size_t i = 0; i < ARRAY_SIZE(sizes); i++) {
-		ret = cptra_mci_sha_acc_perf_run(shell, dev, sizes[i].label,
-						 SHA_ACC_HYPERRAM_AXI, sizes[i].size);
+	for (size_t i = 0; i < ARRAY_SIZE(hyperram_sizes); i++) {
+		ret = cptra_mci_sha_acc_perf_run(shell, dev, hyperram_sizes[i].label,
+						 SHA_ACC_HYPERRAM_AXI, hyperram_sizes[i].size);
 		if (ret)
 			return ret;
 	}
 
-	shell_print(shell, "--- Flash (AXI 0x%08x) ---", (unsigned int)SHA_ACC_FLASH_AXI);
+	shell_print(shell, "--- FMC Flash (AXI 0x%08x) ---", (unsigned int)SHA_ACC_FMC_AXI);
+	for (size_t i = 0; i < ARRAY_SIZE(fmc_sizes); i++) {
+		ret = cptra_mci_sha_acc_perf_run(shell, dev, fmc_sizes[i].label,
+						 SHA_ACC_FMC_AXI, fmc_sizes[i].size);
+		if (ret)
+			return ret;
+	}
+
+	shell_print(shell, "--- SPI0 Flash (AXI 0x%08x) ---", (unsigned int)SHA_ACC_SPI0_AXI);
+	for (size_t i = 0; i < ARRAY_SIZE(spi_sizes); i++) {
+		ret = cptra_mci_sha_acc_perf_run(shell, dev, spi_sizes[i].label,
+						 SHA_ACC_SPI0_AXI, spi_sizes[i].size);
+		if (ret)
+			return ret;
+	}
+
+	shell_print(shell, "--- SPI1 Flash (AXI 0x%08x) ---", (unsigned int)SHA_ACC_SPI1_AXI);
+	for (size_t i = 0; i < ARRAY_SIZE(spi_sizes); i++) {
+		ret = cptra_mci_sha_acc_perf_run(shell, dev, spi_sizes[i].label,
+						 SHA_ACC_SPI1_AXI, spi_sizes[i].size);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
+
+/*
+ * Chunked SHA_ACC perf: INIT(2MB) + N×UPDATE(2MB) + FINAL(0).
+ * All chunks are read from the same axi_base offset (same 2MB window repeated).
+ * Matches the board test cm_sha_acc_chunked_perf pattern.
+ */
+static int cptra_mci_sha_acc_chunked_perf_run(const struct shell *shell,
+					      const struct device *dev,
+					      const char *label,
+					      uintptr_t axi_base,
+					      size_t total_bytes)
+{
+	struct hash_ctx ctx = { 0 };
+	struct hash_pkt pkt = { 0 };
+	uint8_t digest[SHA384_DIGEST_SIZE];
+	size_t n_chunks = total_bytes / SHA_ACC_CHUNK_SIZE;
+	uint32_t elapsed_ms;
+	uint64_t start, kbps;
+	size_t i;
+	int ret;
+
+	if (n_chunks == 0)
+		return 0;
+
+	ctx.flags = crypto_query_hwcaps(dev);
+	ret = hash_begin_session(dev, &ctx, CRYPTO_HASH_ALGO_SHA384);
+	if (ret) {
+		shell_error(shell, "%s: hash_begin_session failed: %d", label, ret);
+		return ret;
+	}
+
+	pkt.in_buf = (uint8_t *)axi_base;
+	pkt.in_len = SHA_ACC_CHUNK_SIZE;
+	pkt.out_buf = digest;
+
+	start = k_uptime_get();
+
+	/* n_chunks-1 calls: INIT on first, UPDATE on subsequent. */
+	for (i = 0; i < n_chunks - 1; i++) {
+		ret = hash_update(&ctx, &pkt);
+		if (ret) {
+			shell_error(shell, "%s: hash_update [%u] failed: %d",
+				    label, (unsigned int)i, ret);
+			hash_free_session(dev, &ctx);
+			return ret;
+		}
+	}
+
+	/* Final call: UPDATE (if already initialized) + FINAL(data_size=0). */
+	ret = hash_compute(&ctx, &pkt);
+	elapsed_ms = (uint32_t)(k_uptime_get() - start);
+	hash_free_session(dev, &ctx);
+
+	if (ret) {
+		shell_error(shell, "%s: hash_compute failed: %d", label, ret);
+		return ret;
+	}
+
+	if (elapsed_ms == 0)
+		elapsed_ms = 1;
+
+	kbps = ((uint64_t)total_bytes * 1000ULL) / elapsed_ms / 1024ULL;
+	shell_print(shell, "%-6s: %10u bytes in %8u ms -> %u KB/s",
+		    label, (unsigned int)total_bytes, elapsed_ms, (unsigned int)kbps);
+
+	return 0;
+}
+
+static int cmd_cptra_mci_sha_acc_chunked_perf(const struct shell *shell, size_t argc, char **argv)
+{
+	static const struct { const char *label; size_t size; } sizes[] = {
+		{ "2MB",  2UL * 1024 * 1024 },
+		{ "4MB",  4UL * 1024 * 1024 },
+		{ "8MB",  8UL * 1024 * 1024 },
+		{ "16MB", 16UL * 1024 * 1024 },
+		{ "32MB", 32UL * 1024 * 1024 },
+		{ "64MB", 64UL * 1024 * 1024 },
+	};
+	const struct device *dev;
+	int ret;
+
+	dev = DEVICE_DT_GET_ANY(aspeed_cptra_mci_sha_acc);
+	if (!dev) {
+		shell_error(shell, "cptra_mci_sha_acc device not found");
+		return -ENODEV;
+	}
+
+	shell_print(shell, "--- HyperRAM (AXI 0x%08x, 2MB chunks) ---",
+		    (unsigned int)SHA_ACC_HYPERRAM_AXI);
 	for (size_t i = 0; i < ARRAY_SIZE(sizes); i++) {
-		ret = cptra_mci_sha_acc_perf_run(shell, dev, sizes[i].label,
-						 SHA_ACC_FLASH_AXI, sizes[i].size);
+		ret = cptra_mci_sha_acc_chunked_perf_run(shell, dev, sizes[i].label,
+							 SHA_ACC_HYPERRAM_AXI, sizes[i].size);
+		if (ret)
+			return ret;
+	}
+
+	shell_print(shell, "--- FMC Flash (AXI 0x%08x, 2MB chunks) ---",
+		    (unsigned int)SHA_ACC_FMC_AXI);
+	for (size_t i = 0; i < ARRAY_SIZE(sizes); i++) {
+		ret = cptra_mci_sha_acc_chunked_perf_run(shell, dev, sizes[i].label,
+							 SHA_ACC_FMC_AXI, sizes[i].size);
+		if (ret)
+			return ret;
+	}
+
+	shell_print(shell, "--- SPI0 Flash (AXI 0x%08x, 2MB chunks) ---",
+		    (unsigned int)SHA_ACC_SPI0_AXI);
+	for (size_t i = 0; i < ARRAY_SIZE(sizes); i++) {
+		ret = cptra_mci_sha_acc_chunked_perf_run(shell, dev, sizes[i].label,
+							 SHA_ACC_SPI0_AXI, sizes[i].size);
+		if (ret)
+			return ret;
+	}
+
+	shell_print(shell, "--- SPI1 Flash (AXI 0x%08x, 2MB chunks) ---",
+		    (unsigned int)SHA_ACC_SPI1_AXI);
+	for (size_t i = 0; i < ARRAY_SIZE(sizes); i++) {
+		ret = cptra_mci_sha_acc_chunked_perf_run(shell, dev, sizes[i].label,
+							 SHA_ACC_SPI1_AXI, sizes[i].size);
 		if (ret)
 			return ret;
 	}
@@ -2296,9 +2462,13 @@ SHELL_STATIC_SUBCMD_SET_CREATE(cptra_mci_cmds,
 		      "SHA384 throughput over 256KB/512KB/1MB/16MB of data",
 		      cmd_cptra_mci_sha_perf, 1, 0),
 	SHELL_CMD_ARG(sha_acc_perf, NULL,
-		      "SHA384 DMA-path (SHA_ACC) throughput over HyperRAM and Flash at "
-		      "256KB/512KB/1MB/16MB",
+		      "SHA384 DMA-path (SHA_ACC) throughput: HyperRAM 256KB~16MB, "
+		      "FMC 256KB~4MB, SPI0/SPI1 256KB~32MB (single INIT+FINAL per run)",
 		      cmd_cptra_mci_sha_acc_perf, 1, 0),
+	SHELL_CMD_ARG(sha_acc_chunked_perf, NULL,
+		      "SHA384 DMA-path (SHA_ACC) chunked throughput: INIT + N*UPDATE(2MB) + "
+		      "FINAL over HyperRAM/FMC/SPI0/SPI1 at 2MB~64MB total",
+		      cmd_cptra_mci_sha_acc_chunked_perf, 1, 0),
 	SHELL_SUBCMD_SET_END
 );
 

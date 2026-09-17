@@ -28,13 +28,11 @@
 
 LOG_MODULE_REGISTER(cptra_mci_sha_acc, CONFIG_LOG_DEFAULT_LEVEL);
 
-#define SHA_ACC_TOKEN_INVALID UINT32_MAX
-
 struct cptra_mci_sha_acc_drv_state {
 	bool in_use;
+	bool initialized;
 	uint32_t mci_algo;
 	uint32_t dgst_len;
-	uint32_t token;
 };
 
 #define DEV_DATA(dev) \
@@ -43,7 +41,7 @@ struct cptra_mci_sha_acc_drv_state {
 /* ---- mailbox helpers ---- */
 
 static int sha_acc_do_init(uint32_t algo, uint32_t addr_lo, uint32_t addr_hi,
-			   uint32_t data_size, uint32_t *token_out)
+			   uint32_t data_size)
 {
 	struct cptra_mci_sha_acc_init_req req = {
 		.hash_algorithm = algo,
@@ -51,7 +49,7 @@ static int sha_acc_do_init(uint32_t algo, uint32_t addr_lo, uint32_t addr_hi,
 		.addr_lo = addr_lo,
 		.addr_hi = addr_hi,
 	};
-	struct cptra_mci_sha_acc_ctx_resp resp = { 0 };
+	struct cptra_mci_mbox_resp_hdr resp = { 0 };
 	uint32_t resp_len;
 	int ret;
 
@@ -62,25 +60,19 @@ static int sha_acc_do_init(uint32_t algo, uint32_t addr_lo, uint32_t addr_hi,
 	ret = cptra_mci_mbox_execute(CPTRA_MCI_MBCMD_SHA_ACC_INIT,
 				     &req, sizeof(req),
 				     &resp, sizeof(resp), &resp_len);
-	if (ret) {
+	if (ret)
 		LOG_ERR("SHA_ACC_INIT failed: %d", ret);
-		return ret;
-	}
-
-	*token_out = resp.token;
-	return 0;
+	return ret;
 }
 
-static int sha_acc_do_update(uint32_t token, uint32_t addr_lo, uint32_t addr_hi,
-			     uint32_t data_size)
+static int sha_acc_do_update(uint32_t addr_lo, uint32_t addr_hi, uint32_t data_size)
 {
 	struct cptra_mci_sha_acc_data_req req = {
-		.token = token,
 		.data_size = data_size,
 		.addr_lo = addr_lo,
 		.addr_hi = addr_hi,
 	};
-	struct cptra_mci_sha_acc_ctx_resp resp = { 0 };
+	struct cptra_mci_mbox_resp_hdr resp = { 0 };
 	uint32_t resp_len;
 	int ret;
 
@@ -96,10 +88,9 @@ static int sha_acc_do_update(uint32_t token, uint32_t addr_lo, uint32_t addr_hi,
 	return ret;
 }
 
-static int sha_acc_do_final(uint32_t token, uint8_t *digest, uint32_t dgst_len)
+static int sha_acc_do_final(uint8_t *digest, uint32_t dgst_len)
 {
 	struct cptra_mci_sha_acc_data_req req = {
-		.token = token,
 		.data_size = 0,
 		.addr_lo = 0,
 		.addr_hi = 0,
@@ -135,27 +126,29 @@ static int cptra_mci_sha_acc_compute(struct hash_ctx *ctx, struct hash_pkt *pkt,
 		uint32_t axi_lo = (uint32_t)(uintptr_t)pkt->in_buf;
 		uint32_t axi_hi = (uint32_t)((uint64_t)(uintptr_t)pkt->in_buf >> 32);
 
-		if (state->token == SHA_ACC_TOKEN_INVALID) {
+		if (!state->initialized) {
 			ret = sha_acc_do_init(state->mci_algo, axi_lo, axi_hi,
-					      (uint32_t)pkt->in_len, &state->token);
+					      (uint32_t)pkt->in_len);
+			if (ret)
+				return ret;
+			state->initialized = true;
 		} else {
-			ret = sha_acc_do_update(state->token, axi_lo, axi_hi,
-						(uint32_t)pkt->in_len);
+			ret = sha_acc_do_update(axi_lo, axi_hi, (uint32_t)pkt->in_len);
+			if (ret)
+				return ret;
 		}
-		if (ret)
-			return ret;
 	}
 
 	if (!finish)
 		return 0;
 
-	if (state->token == SHA_ACC_TOKEN_INVALID) {
+	if (!state->initialized) {
 		LOG_ERR("SHA_ACC: no data added before final");
 		return -EINVAL;
 	}
 
-	ret = sha_acc_do_final(state->token, pkt->out_buf, state->dgst_len);
-	state->token = SHA_ACC_TOKEN_INVALID;
+	ret = sha_acc_do_final(pkt->out_buf, state->dgst_len);
+	state->initialized = false;
 	return ret;
 }
 
@@ -183,7 +176,7 @@ static int cptra_mci_sha_acc_session_setup(const struct device *dev, struct hash
 		return -EINVAL;
 	}
 
-	state->token = SHA_ACC_TOKEN_INVALID;
+	state->initialized = false;
 	state->in_use = true;
 	ctx->device = dev;
 	ctx->hash_hndlr = cptra_mci_sha_acc_compute;
@@ -197,7 +190,7 @@ static int cptra_mci_sha_acc_session_free(const struct device *dev, struct hash_
 
 	ARG_UNUSED(ctx);
 	state->in_use = false;
-	state->token = SHA_ACC_TOKEN_INVALID;
+	state->initialized = false;
 
 	return 0;
 }

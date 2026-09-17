@@ -396,16 +396,9 @@ struct cptra_mci_sha_acc_init_req {
 /* MC_SHA_ACC_UPDATE and MC_SHA_ACC_FINAL requests share this layout */
 struct cptra_mci_sha_acc_data_req {
 	struct cptra_mci_mbox_req_hdr hdr;
-	uint32_t token;
 	uint32_t data_size;
 	uint32_t addr_lo;
 	uint32_t addr_hi;
-};
-
-/* MC_SHA_ACC_INIT and MC_SHA_ACC_UPDATE responses — carries the session token */
-struct cptra_mci_sha_acc_ctx_resp {
-	struct cptra_mci_mbox_resp_hdr hdr;
-	uint32_t token;
 };
 
 /* MC_SHA_ACC_FINAL response reuses cptra_mci_sha_final_resp */
