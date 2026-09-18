@@ -251,7 +251,8 @@ static int aspeed_udc_start_in(const struct device *dev,
 	tx_len = MIN(buf->len, ep_data->mps);
 	ep_data->tx_last = tx_len;
 
-	sys_cache_data_flush_range(buf->data, tx_len);
+	if (tx_len)
+		sys_cache_data_flush_range(buf->data, tx_len);
 
 	if (ep_data->hw_ep == 0) {
 		sys_write32(TO_PHY_ADDR((uintptr_t)buf->data),

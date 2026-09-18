@@ -1328,7 +1328,8 @@ int usb_dc_ep_write(const uint8_t ep, const uint8_t *const data,
 		LOG_DBG("trigger ep0 tx len: [%d/%d]", tx_len, data_len);
 		dev_data.ep_data[0].tx_last = tx_len;
 
-		sys_cache_data_flush_range(dev_data.ep_data[0].tx_dma, tx_len);
+		if (tx_len)
+			sys_cache_data_flush_range(dev_data.ep_data[0].tx_dma, tx_len);
 		sys_write32(TO_PHY_ADDR((uintptr_t)dev_data.ep_data[0].tx_dma),
 			    dev_data.base + ASPEED_USB_EP0_DATA_BUFF);
 		aspeed_udc_ep0_tx(tx_len);
@@ -1350,7 +1351,8 @@ int usb_dc_ep_write(const uint8_t ep, const uint8_t *const data,
 		if (ret_bytes)
 			*ret_bytes = tx_len;
 
-		sys_cache_data_flush_range((void *)data, tx_len);
+		if (tx_len)
+			sys_cache_data_flush_range((void *)data, tx_len);
 		sys_write32(TO_PHY_ADDR((uintptr_t)data), ep_reg + ASPEED_EP_DMA_BUFF);
 		sys_write32(EP_TX_LEN(tx_len), ep_reg + ASPEED_EP_DMA_STS);
 		sys_write32(EP_TX_LEN(tx_len) | 0x1,
