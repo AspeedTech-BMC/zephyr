@@ -236,7 +236,7 @@ struct cptra_mci_fw_version_resp {
 };
 
 /* MC_DEVICE_CAPABILITIES (DeviceCapsReq/DeviceCapsResp) */
-#define CPTRA_MCI_DEVICE_CAPS_SIZE		32
+#define CPTRA_MCI_DEVICE_CAPS_SIZE		36
 
 struct cptra_mci_device_caps_req {
 	struct cptra_mci_mbox_req_hdr hdr;
@@ -272,7 +272,7 @@ struct cptra_mci_clear_log_resp {
 };
 
 /* MC_GET_AUTH_CMD_CHALLENGE (GetAuthCmdChallengeReq/GetAuthCmdChallengeResp) */
-#define CPTRA_MCI_AUTH_CHALLENGE_SIZE		32
+#define CPTRA_MCI_AUTH_CHALLENGE_SIZE		48
 
 struct cptra_mci_auth_cmd_challenge_req {
 	struct cptra_mci_mbox_req_hdr hdr;
