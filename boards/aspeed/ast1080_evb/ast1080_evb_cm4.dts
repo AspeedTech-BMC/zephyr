@@ -319,10 +319,10 @@
 	cs-group-analog-mux-enable;
 	/* Pins shared with SPI monitor (spim1/spim2). */
 	pinctrl-0 = <
-		pinctrl_spif0_default
-		pinctrl_spif0_cs1_default
-		pinctrl_spif1_default
-		pinctrl_spif1_cs1_default
+		pinctrl_spif0_default_o
+		pinctrl_spif0_cs1_default_o
+		pinctrl_spif1_default_o
+		pinctrl_spif1_cs1_default_o
 	>;
 };
 
@@ -350,8 +350,8 @@
 	status = "okay";
 	/* Pins shared with SPI monitor (spim3).*/
 	pinctrl-0 = <
-		pinctrl_spif2_default
-		pinctrl_spif2_cs1_default
+		pinctrl_spif2_default_o
+		pinctrl_spif2_cs1_default_o
 	>;
 };
 
@@ -365,6 +365,8 @@
 };
 
 &spim1 {
+	pinctrl-0 = <pinctrl_spif0_default_i pinctrl_spif0_cs1_default_i>;
+	pinctrl-names = "default";
 	allow-cmds = [03 13 0b 0c 6b 6c 01 05 35 06 04 20 21 9f 5a b7 e9 32 34 d8 dc 02 12 3b 3c
 				  70 50 eb ec c2];
 
@@ -372,6 +374,8 @@
 };
 
 &spim2 {
+	pinctrl-0 = <pinctrl_spif1_default_i pinctrl_spif1_cs1_default_i>;
+	pinctrl-names = "default";
 	allow-cmds = [03 13 0b 0c 6b 6c 01 05 35 06 04 20 21 9f 5a b7 e9 32 34 d8 dc 02 12 3b 3c
 				  70 50 eb ec c2];
 
@@ -379,6 +383,8 @@
 };
 
 &spim3 {
+	pinctrl-0 = <pinctrl_spif2_default_i pinctrl_spif2_cs1_default_i>;
+	pinctrl-names = "default";
 	allow-cmds = [03 13 0b 0c 6b 6c 01 05 35 06 04 20 21 9f 5a b7 e9 32 34 d8 dc 02 12 3b 3c
 				  70 50 eb ec c2];
 

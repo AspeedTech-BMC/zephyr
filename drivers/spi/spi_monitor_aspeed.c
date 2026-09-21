@@ -1216,62 +1216,6 @@ static void ast1080_spi_decoding_win_config(const struct device *dev)
 	release_spim_device(dev);
 }
 
-struct ast1080_spim_gpio_reg {
-	uint32_t addr;
-	uint32_t mask;
-	uint32_t val;
-};
-
-/*
- * These SCU2xx pinmux registers are shared across SPIM0/1/2 (spim1/2/3) —
- * e.g. 0x74c0244c carries SPIM0 in its top byte and SPIM2 in the bottom
- * three bytes. Only the bits that were "2" in the old hardcoded writes
- * belong to that SPIM instance; everything else must be preserved via
- * read-modify-write instead of being zeroed out.
- */
-static const struct ast1080_spim_gpio_reg ast1080_spim_gpio_cfg[][2] = {
-	/* ctrl_idx 1: SPIM0 */
-	{
-		{ .addr = 0x74c0244c, .mask = 0xFF000000, .val = 0x22000000 },
-		{ .addr = 0x74c02450, .mask = 0x000FFFFF, .val = 0x00022222 },
-	},
-	/* ctrl_idx 2: SPIM1 */
-	{
-		{ .addr = 0x74c02418, .mask = 0xFFFFF000, .val = 0x22222000 },
-		{ .addr = 0x74c0241c, .mask = 0xFF0000FF, .val = 0x22000022 },
-	},
-	/* ctrl_idx 3: SPIM2 */
-	{
-		{ .addr = 0x74c02448, .mask = 0xF0000000, .val = 0x20000000 },
-		{ .addr = 0x74c0244c, .mask = 0x00FFFFFF, .val = 0x00222222 },
-	},
-};
-
-static void ast1080_spim_gpio_mode_config(const struct device *dev)
-{
-	const struct aspeed_spim_config *config = dev->config;
-	const struct ast1080_spim_gpio_reg *cfg;
-	uint32_t reg;
-	uint32_t i;
-
-	if (config->ctrl_idx < 1 || config->ctrl_idx > ARRAY_SIZE(ast1080_spim_gpio_cfg)) {
-		LOG_ERR("[%s] unexpected ctrl_idx %u for SPIM gpio mode config",
-			dev->name, config->ctrl_idx);
-		return;
-	}
-	cfg = ast1080_spim_gpio_cfg[config->ctrl_idx - 1];
-
-	acquire_spim_device(dev);
-
-	for (i = 0; i < 2; i++) {
-		reg = sys_read32(cfg[i].addr);
-		reg = (reg & ~cfg[i].mask) | cfg[i].val;
-		sys_write32(reg, cfg[i].addr);
-	}
-
-	release_spim_device(dev);
-}
-
 static void ast1080_push_pull_mode_config(const struct device *dev)
 {
 	const struct aspeed_spim_config *config = dev->config;
@@ -1403,7 +1347,6 @@ static void ast1080_monitor_elec_char_init(const struct device *dev)
 	ast1080_spi_decoding_win_config(dev);
 	ast2700_blocked_cs_config(dev);
 	ast2700_blocked_fifo_init(dev);
-	ast1080_spim_gpio_mode_config(dev);
 }
 
 static void ast10x0_g2_filter_elec_char_init(const struct device *dev)
