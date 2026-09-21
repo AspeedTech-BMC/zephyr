@@ -29,6 +29,9 @@
 /* Max time to wait for the mailbox LOCK to become available */
 #define CPTRA_MCI_MBOX_LOCK_TIMEOUT_MS		1000
 
+/* Max time to wait for a submitted mailbox command to leave CMD_BUSY */
+#define CPTRA_MCI_MBOX_EXECUTE_TIMEOUT_MS	5000
+
 /*
  * Page targets for SCU1_CPTRA_MCI_WIN. Different bus masters reaching this
  * same window encode the page target differently -- e.g. some write it as

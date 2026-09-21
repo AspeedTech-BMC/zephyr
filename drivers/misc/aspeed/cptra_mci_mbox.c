@@ -297,9 +297,16 @@ static int cptra_mci_mbox_execute_iov(uint32_t cmd, const struct cptra_mci_mbox_
 
 	sys_write32(0x1, cptra_mci_mbox_base + CPTRA_MCI_MBOX_EXECUTE);
 
+	deadline = k_uptime_get() + CPTRA_MCI_MBOX_EXECUTE_TIMEOUT_MS;
+
 	do {
 		sts = FIELD_GET(CPTRA_MCI_MBOX_CMD_STATUS_PS,
 				sys_read32(cptra_mci_mbox_base + CPTRA_MCI_MBOX_CMD_STATUS));
+		if (sts == CPTRA_MCI_MBSTS_CMD_BUSY && k_uptime_get() > deadline) {
+			LOG_ERR("Timed out waiting for MCI mbox cmd 0x%x to complete", cmd);
+			ret = -ETIMEDOUT;
+			goto unlock;
+		}
 	} while (sts == CPTRA_MCI_MBSTS_CMD_BUSY);
 
 	MCI_MBOX_DBG("cptra_mci_mbox_execute: cmd_status=0x%x\n", sts);
