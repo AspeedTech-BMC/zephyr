@@ -163,6 +163,12 @@ int test_i3c(void)
 	k_sem_init(&ibi_complete, 0, 1);
 	atomic_set(&target_side_ok, 1);
 
+	/* Register the target mqueue before receiving private writes. */
+	const struct i3c_target_driver_api *i3c1_smq_api =
+		(const struct i3c_target_driver_api *)i3c1_smq_dev->api;
+	ast_zassert_ok(i3c1_smq_api->driver_register(i3c1_smq_dev),
+		       "failed to register i3c1 target mqueue");
+
 	k_thread_create(&i3c_target_thread, i3c_target_thread_stack,
 			I3C_TARGET_THREAD_STACK_SIZE, test_i3c_target_task,
 			(void *)i3c1_smq_dev, NULL, NULL, I3C_TARGET_THREAD_PRIO, 0, K_NO_WAIT);
@@ -234,6 +240,7 @@ int test_i3c(void)
 	}
 
 	ast_zassert_ok(i3c_detach_i3c_device(&i3c1_target), "failed to detach target device");
+	i3c1_smq_api->driver_unregister(i3c1_smq_dev);
 
 	k_thread_abort(&i3c_target_thread);
 
