@@ -17,6 +17,9 @@
 #include <zephyr/crypto/mldsa.h>
 #include <zephyr/drivers/misc/aspeed/cptra_mci_mbox.h>
 
+/* Highlights just the "PASS" substring of an otherwise normal-color shell_print() line. */
+#define CPTRA_MCI_SHELL_PASS(shell) shell_fprintf(shell, SHELL_VT100_COLOR_GREEN, "PASS")
+
 static int cmd_cptra_mci_fw_version(const struct shell *shell, size_t argc, char **argv)
 {
 	enum cptra_mci_fw_index index = CPTRA_MCI_FW_INDEX_CALIPTRA_CORE;
@@ -319,7 +322,9 @@ static int cmd_cptra_mci_ecdsa_test(const struct shell *shell, size_t argc, char
 		shell_error(shell, "public key does not match known-answer vector");
 		return -EIO;
 	}
-	shell_print(shell, "public key matches known-answer vector: PASS");
+	shell_fprintf(shell, SHELL_NORMAL, "public key matches known-answer vector: ");
+	CPTRA_MCI_SHELL_PASS(shell);
+	shell_fprintf(shell, SHELL_NORMAL, "\n");
 
 	if (argc > 1) {
 		digest_len = hex2bin(argv[1], strlen(argv[1]), digest, sizeof(digest));
@@ -353,7 +358,9 @@ static int cmd_cptra_mci_ecdsa_test(const struct shell *shell, size_t argc, char
 		shell_error(shell, "positive case FAIL (expected PASS): %d", ret);
 		return ret;
 	}
-	shell_print(shell, "positive case (correct digest): PASS");
+	shell_fprintf(shell, SHELL_NORMAL, "positive case (correct digest): ");
+	CPTRA_MCI_SHELL_PASS(shell);
+	shell_fprintf(shell, SHELL_NORMAL, "\n");
 
 	/* Negative case: same signature, a tampered digest -- must be rejected. */
 	memcpy(bad_digest, digest, digest_len);
@@ -366,8 +373,10 @@ static int cmd_cptra_mci_ecdsa_test(const struct shell *shell, size_t argc, char
 	}
 	shell_print(shell, "negative case (tampered digest): correctly rejected (%d)", ret);
 
-	shell_print(shell, "MC_ECDSA_CMK_PUBLIC_KEY/SIGN/VERIFY: PASS "
-		    "(pubkey retrieved, positive and negative verify cases both OK)");
+	shell_fprintf(shell, SHELL_NORMAL, "MC_ECDSA_CMK_PUBLIC_KEY/SIGN/VERIFY: ");
+	CPTRA_MCI_SHELL_PASS(shell);
+	shell_fprintf(shell, SHELL_NORMAL,
+		      " (pubkey retrieved, positive and negative verify cases both OK)\n");
 
 	return 0;
 }
@@ -464,7 +473,9 @@ static int cptra_mci_hmac_test_run(const struct shell *shell, const char *label,
 		return -EIO;
 	}
 
-	shell_print(shell, "%s: PASS", label);
+	shell_fprintf(shell, SHELL_NORMAL, "%s: ", label);
+	CPTRA_MCI_SHELL_PASS(shell);
+	shell_fprintf(shell, SHELL_NORMAL, "\n");
 
 	return 0;
 }
@@ -509,7 +520,9 @@ static int cmd_cptra_mci_hmac_test(const struct shell *shell, size_t argc, char 
 	if (ret)
 		return ret;
 
-	shell_print(shell, "MC_HMAC: PASS (all 4 RFC 4231 known-answer cases matched)");
+	shell_fprintf(shell, SHELL_NORMAL, "MC_HMAC: ");
+	CPTRA_MCI_SHELL_PASS(shell);
+	shell_fprintf(shell, SHELL_NORMAL, " (all 4 RFC 4231 known-answer cases matched)\n");
 
 	return 0;
 }
@@ -634,7 +647,9 @@ static int cmd_cptra_mci_hkdf_test(const struct shell *shell, size_t argc, char 
 			    "known-answer vector)");
 		return -EIO;
 	}
-	shell_print(shell, "HMAC-KDF-Counter: PASS");
+	shell_fprintf(shell, SHELL_NORMAL, "HMAC-KDF-Counter: ");
+	CPTRA_MCI_SHELL_PASS(shell);
+	shell_fprintf(shell, SHELL_NORMAL, "\n");
 
 	/* HKDF-Extract+Expand mode. */
 	ret = cptra_mci_import_key(CPTRA_MCI_KEY_USAGE_HMAC, cptra_mci_hkdf_ee_salt,
@@ -676,10 +691,13 @@ static int cmd_cptra_mci_hkdf_test(const struct shell *shell, size_t argc, char 
 			    "known-answer vector)");
 		return -EIO;
 	}
-	shell_print(shell, "HKDF-Extract+Expand: PASS");
+	shell_fprintf(shell, SHELL_NORMAL, "HKDF-Extract+Expand: ");
+	CPTRA_MCI_SHELL_PASS(shell);
+	shell_fprintf(shell, SHELL_NORMAL, "\n");
 
-	shell_print(shell, "MC_HMAC_KDF_COUNTER/MC_HKDF_EXTRACT+EXPAND: PASS "
-		    "(both known-answer cases matched)");
+	shell_fprintf(shell, SHELL_NORMAL, "MC_HMAC_KDF_COUNTER/MC_HKDF_EXTRACT+EXPAND: ");
+	CPTRA_MCI_SHELL_PASS(shell);
+	shell_fprintf(shell, SHELL_NORMAL, " (both known-answer cases matched)\n");
 
 	return 0;
 }
@@ -736,7 +754,9 @@ static int cmd_cptra_mci_mldsa_test(const struct shell *shell, size_t argc, char
 		shell_error(shell, "public key does not match known-answer vector");
 		return -EIO;
 	}
-	shell_print(shell, "public key matches known-answer vector: PASS");
+	shell_fprintf(shell, SHELL_NORMAL, "public key matches known-answer vector: ");
+	CPTRA_MCI_SHELL_PASS(shell);
+	shell_fprintf(shell, SHELL_NORMAL, "\n");
 
 	if (argc > 1) {
 		message_len = hex2bin(argv[1], strlen(argv[1]), message, sizeof(message));
@@ -770,7 +790,9 @@ static int cmd_cptra_mci_mldsa_test(const struct shell *shell, size_t argc, char
 		shell_error(shell, "positive case FAIL (expected PASS): %d", ret);
 		return ret;
 	}
-	shell_print(shell, "positive case (correct message): PASS");
+	shell_fprintf(shell, SHELL_NORMAL, "positive case (correct message): ");
+	CPTRA_MCI_SHELL_PASS(shell);
+	shell_fprintf(shell, SHELL_NORMAL, "\n");
 
 	/* Negative case: same signature, a tampered message -- must be rejected. */
 	memcpy(bad_message, message, message_len);
@@ -783,8 +805,10 @@ static int cmd_cptra_mci_mldsa_test(const struct shell *shell, size_t argc, char
 	}
 	shell_print(shell, "negative case (tampered message): correctly rejected (%d)", ret);
 
-	shell_print(shell, "MC_MLDSA_CMK_PUBLIC_KEY/SIGN/VERIFY: PASS "
-		    "(pubkey retrieved, positive and negative verify cases both OK)");
+	shell_fprintf(shell, SHELL_NORMAL, "MC_MLDSA_CMK_PUBLIC_KEY/SIGN/VERIFY: ");
+	CPTRA_MCI_SHELL_PASS(shell);
+	shell_fprintf(shell, SHELL_NORMAL,
+		      " (pubkey retrieved, positive and negative verify cases both OK)\n");
 
 	return 0;
 }
@@ -1057,8 +1081,9 @@ static int cmd_cptra_mci_sig_verify_test(const struct shell *shell, size_t argc,
 			return ret;
 		}
 
-		shell_print(shell, "MC_ECDSA384_SIG_VERIFY positive case: PASS "
-			    "(agrees with the Cmk-based signature)");
+		shell_fprintf(shell, SHELL_NORMAL, "MC_ECDSA384_SIG_VERIFY positive case: ");
+		CPTRA_MCI_SHELL_PASS(shell);
+		shell_fprintf(shell, SHELL_NORMAL, " (agrees with the Cmk-based signature)\n");
 
 		memcpy(bad_hash, hash, sizeof(hash));
 		bad_hash[0] ^= 0xFF;
@@ -1072,8 +1097,9 @@ static int cmd_cptra_mci_sig_verify_test(const struct shell *shell, size_t argc,
 			return -EIO;
 		}
 
-		shell_print(shell, "MC_ECDSA384_SIG_VERIFY negative case: PASS "
-			    "(tampered digest correctly rejected)");
+		shell_fprintf(shell, SHELL_NORMAL, "MC_ECDSA384_SIG_VERIFY negative case: ");
+		CPTRA_MCI_SHELL_PASS(shell);
+		shell_fprintf(shell, SHELL_NORMAL, " (tampered digest correctly rejected)\n");
 	}
 
 	/*
@@ -1152,8 +1178,9 @@ static int cmd_cptra_mci_sig_verify_test(const struct shell *shell, size_t argc,
 			return ret;
 		}
 
-		shell_print(shell, "MC_MLDSA87_SIG_VERIFY positive case: PASS "
-			    "(agrees with the Cmk-based signature)");
+		shell_fprintf(shell, SHELL_NORMAL, "MC_MLDSA87_SIG_VERIFY positive case: ");
+		CPTRA_MCI_SHELL_PASS(shell);
+		shell_fprintf(shell, SHELL_NORMAL, " (agrees with the Cmk-based signature)\n");
 
 		memcpy(bad_message, message, sizeof(message));
 		bad_message[0] ^= 0xFF;
@@ -1167,8 +1194,9 @@ static int cmd_cptra_mci_sig_verify_test(const struct shell *shell, size_t argc,
 			return -EIO;
 		}
 
-		shell_print(shell, "MC_MLDSA87_SIG_VERIFY negative case: PASS "
-			    "(tampered message correctly rejected)");
+		shell_fprintf(shell, SHELL_NORMAL, "MC_MLDSA87_SIG_VERIFY negative case: ");
+		CPTRA_MCI_SHELL_PASS(shell);
+		shell_fprintf(shell, SHELL_NORMAL, " (tampered message correctly rejected)\n");
 	}
 
 	/*
@@ -1230,7 +1258,9 @@ static int cmd_cptra_mci_sig_verify_test(const struct shell *shell, size_t argc,
 			return ret;
 		}
 
-		shell_print(shell, "MC_LMS_SIG_VERIFY positive case: PASS");
+		shell_fprintf(shell, SHELL_NORMAL, "MC_LMS_SIG_VERIFY positive case: ");
+		CPTRA_MCI_SHELL_PASS(shell);
+		shell_fprintf(shell, SHELL_NORMAL, "\n");
 
 		memcpy(bad_hash, hash, sizeof(bad_hash));
 		bad_hash[0] ^= 0xFF;
@@ -1244,12 +1274,15 @@ static int cmd_cptra_mci_sig_verify_test(const struct shell *shell, size_t argc,
 			return -EIO;
 		}
 
-		shell_print(shell, "MC_LMS_SIG_VERIFY negative case: PASS "
-			    "(tampered digest correctly rejected)");
+		shell_fprintf(shell, SHELL_NORMAL, "MC_LMS_SIG_VERIFY negative case: ");
+		CPTRA_MCI_SHELL_PASS(shell);
+		shell_fprintf(shell, SHELL_NORMAL, " (tampered digest correctly rejected)\n");
 	}
 
-	shell_print(shell, "sig_verify_test: PASS (ECDSA384/LMS/ML-DSA-87 raw-pubkey signature "
-		    "verify all OK)");
+	shell_fprintf(shell, SHELL_NORMAL, "sig_verify_test: ");
+	CPTRA_MCI_SHELL_PASS(shell);
+	shell_fprintf(shell, SHELL_NORMAL,
+		      " (ECDSA384/LMS/ML-DSA-87 raw-pubkey signature verify all OK)\n");
 
 	return 0;
 }
@@ -1323,8 +1356,10 @@ static int cmd_cptra_mci_ecdh_test(const struct shell *shell, size_t argc, char 
 		return -EIO;
 	}
 
-	shell_print(shell, "MC_ECDH_GENERATE/MC_ECDH_FINISH: PASS "
-		    "(alice and bob independently derived the same shared secret)");
+	shell_fprintf(shell, SHELL_NORMAL, "MC_ECDH_GENERATE/MC_ECDH_FINISH: ");
+	CPTRA_MCI_SHELL_PASS(shell);
+	shell_fprintf(shell, SHELL_NORMAL,
+		      " (alice and bob independently derived the same shared secret)\n");
 
 	return 0;
 }
@@ -1451,9 +1486,10 @@ static int cmd_cptra_mci_aes_test(const struct shell *shell, size_t argc, char *
 		return -EIO;
 	}
 
-	shell_print(shell, "MC_AES_ENCRYPT/DECRYPT (init+update): PASS "
-		    "(round-tripped %u bytes across 2 chunks)",
-		    (unsigned int)(sizeof(plain1) + sizeof(plain2)));
+	shell_fprintf(shell, SHELL_NORMAL, "MC_AES_ENCRYPT/DECRYPT (init+update): ");
+	CPTRA_MCI_SHELL_PASS(shell);
+	shell_fprintf(shell, SHELL_NORMAL, " (round-tripped %u bytes across 2 chunks)\n",
+		      (unsigned int)(sizeof(plain1) + sizeof(plain2)));
 
 	return 0;
 }
@@ -1547,8 +1583,10 @@ static int cmd_cptra_mci_aes_gcm_test(const struct shell *shell, size_t argc, ch
 		shell_error(shell, "FAIL: decrypted chunk 2 does not match original plaintext");
 		return -EIO;
 	}
-	shell_print(shell, "positive case (correct tag): PASS, round-tripped %u bytes",
-		    (unsigned int)(sizeof(plain1) + sizeof(plain2)));
+	shell_fprintf(shell, SHELL_NORMAL, "positive case (correct tag): ");
+	CPTRA_MCI_SHELL_PASS(shell);
+	shell_fprintf(shell, SHELL_NORMAL, ", round-tripped %u bytes\n",
+		      (unsigned int)(sizeof(plain1) + sizeof(plain2)));
 
 	/*
 	 * Decrypt, negative case: a fresh session (context was consumed above),
@@ -1578,8 +1616,9 @@ static int cmd_cptra_mci_aes_gcm_test(const struct shell *shell, size_t argc, ch
 	}
 	shell_print(shell, "negative case (tampered tag): correctly rejected (%d)", ret);
 
-	shell_print(shell,
-		    "MC_AES_GCM_ENCRYPT/DECRYPT: PASS (positive and negative cases both OK)");
+	shell_fprintf(shell, SHELL_NORMAL, "MC_AES_GCM_ENCRYPT/DECRYPT: ");
+	CPTRA_MCI_SHELL_PASS(shell);
+	shell_fprintf(shell, SHELL_NORMAL, " (positive and negative cases both OK)\n");
 
 	return 0;
 }
@@ -1797,11 +1836,13 @@ static int cmd_cptra_mci_trng_test(const struct shell *shell, size_t argc, char 
 		}
 	}
 
-	shell_print(shell, "MC_RANDOM_STIR/MC_RANDOM_GENERATE: PASS "
-		    "(%u chunks of %u bytes, no repeats within a %u-chunk window)",
-		    (unsigned int)CPTRA_MCI_TRNG_TEST_ITERATIONS,
-		    (unsigned int)CPTRA_MCI_TRNG_TEST_CHUNK_SIZE,
-		    (unsigned int)CPTRA_MCI_TRNG_TEST_WINDOW);
+	shell_fprintf(shell, SHELL_NORMAL, "MC_RANDOM_STIR/MC_RANDOM_GENERATE: ");
+	CPTRA_MCI_SHELL_PASS(shell);
+	shell_fprintf(shell, SHELL_NORMAL,
+		      " (%u chunks of %u bytes, no repeats within a %u-chunk window)\n",
+		      (unsigned int)CPTRA_MCI_TRNG_TEST_ITERATIONS,
+		      (unsigned int)CPTRA_MCI_TRNG_TEST_CHUNK_SIZE,
+		      (unsigned int)CPTRA_MCI_TRNG_TEST_WINDOW);
 
 	return 0;
 }
@@ -1980,7 +2021,9 @@ static int cptra_mci_sha_test_run(const struct shell *shell, const struct device
 		return -EIO;
 	}
 
-	shell_print(shell, "%s: PASS", label);
+	shell_fprintf(shell, SHELL_NORMAL, "%s: ", label);
+	CPTRA_MCI_SHELL_PASS(shell);
+	shell_fprintf(shell, SHELL_NORMAL, "\n");
 
 	return 0;
 }
@@ -2020,7 +2063,9 @@ static int cmd_cptra_mci_sha_test(const struct shell *shell, size_t argc, char *
 	if (ret)
 		return ret;
 
-	shell_print(shell, "MC_SHA: PASS (all 4 known-answer cases matched)");
+	shell_fprintf(shell, SHELL_NORMAL, "MC_SHA: ");
+	CPTRA_MCI_SHELL_PASS(shell);
+	shell_fprintf(shell, SHELL_NORMAL, " (all 4 known-answer cases matched)\n");
 
 	return 0;
 }
