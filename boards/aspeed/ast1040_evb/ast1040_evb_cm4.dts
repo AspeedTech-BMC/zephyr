@@ -306,6 +306,122 @@
 	};
 };
 
+&jtag1 {
+	status = "okay";
+};
+
+&i3c0 {
+	status = "okay";
+	secondary;
+	dcr = <0x00>;
+	pid-extra-info = <0x000>;
+	io-mode = "dma";
+
+	i3c-tmq@7ec80000000 {
+		compatible = "i3c-target-mqueue";
+		reg = <0x0 0x7ec 0x80000000>;
+		msg-size = <128>;
+		num-of-msgs = <4>;
+		mandatory-data-byte = <0xae>;
+		status = "okay";
+	};
+};
+
+&i3c1 {
+	status = "okay";
+	io-mode = "dma";
+
+	target@7ec80000000 {
+		compatible = "i3c-dummy-device";
+		reg = <0x0 0x7ec 0x80000000>;
+		zephyr,deferred-init;
+	};
+};
+
+&i3c2 {
+	status = "okay";
+	secondary;
+	dcr = <0x00>;
+	pid-extra-info = <0x002>;
+	io-mode = "dma";
+
+	i3c-tmq@7ec80000002 {
+		compatible = "i3c-target-mqueue";
+		reg = <0x0 0x7ec 0x80000002>;
+		msg-size = <128>;
+		num-of-msgs = <4>;
+		mandatory-data-byte = <0xae>;
+		status = "okay";
+	};
+};
+
+&i3c3 {
+	status = "okay";
+	io-mode = "dma";
+
+	target@7ec80000002 {
+		compatible = "i3c-dummy-device";
+		reg = <0x0 0x7ec 0x80000002>;
+		zephyr,deferred-init;
+	};
+};
+
+&i3c4 {
+	status = "okay";
+	secondary;
+	dcr = <0x00>;
+	pid-extra-info = <0x004>;
+	io-mode = "dma";
+
+	i3c-tmq@7ec80000004 {
+		compatible = "i3c-target-mqueue";
+		reg = <0x0 0x7ec 0x80000004>;
+		msg-size = <128>;
+		num-of-msgs = <4>;
+		mandatory-data-byte = <0xae>;
+		status = "okay";
+	};
+};
+
+&i3c5 {
+	status = "okay";
+	io-mode = "dma";
+
+	target@7ec80000004 {
+		compatible = "i3c-dummy-device";
+		reg = <0x0 0x7ec 0x80000004>;
+		zephyr,deferred-init;
+	};
+};
+
+&i3c6 {
+	status = "okay";
+	secondary;
+	dcr = <0x00>;
+	pid-extra-info = <0x006>;
+	io-mode = "dma";
+
+	i3c-tmq@7ec80000006 {
+		compatible = "i3c-target-mqueue";
+		reg = <0x0 0x7ec 0x80000006>;
+		msg-size = <128>;
+		num-of-msgs = <4>;
+		mandatory-data-byte = <0xae>;
+		status = "okay";
+	};
+};
+
+&i3c7 {
+	status = "okay";
+	io-mode = "dma";
+
+	target@7ec80000006 {
+		compatible = "i3c-dummy-device";
+		reg = <0x0 0x7ec 0x80000006>;
+		zephyr,deferred-init;
+	};
+};
+
 &gpio0 {
 	status = "okay";
 };
