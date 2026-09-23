@@ -67,7 +67,16 @@ enum cptra_mbox_cmd {
 	CPTRA_MBCMD_SIGN_WITH_EXPORTED_ECDSA        = 0x53574545, /* "SWEE" */
 	CPTRA_MBCMD_REVOKE_EXPORTED_CDI_HANDLE      = 0x52564348, /* "RVCH" */
 	CPTRA_MBCMD_GET_PCR_LOG                     = 0x504C4F47, /* "PLOG" */
-	CPTRA_MBCMD_REALLOCATE_DPE_CONTEXT_LIMITS   = 0x52435458, /* "RCTX" */
+	CPTRA_MBCMD_REALLOCATE_DPE_CONTEXT_LIMITS    = 0x52435458, /* "RCTX" */
+	CPTRA_MBCMD_MLDSA87_SIGNATURE_VERIFY         = 0x4D445356, /* "MDSV" */
+	CPTRA_MBCMD_INVOKE_DPE_MLDSA87_COMMAND       = 0x4D4C4450, /* "MLDP" */
+	CPTRA_MBCMD_GET_PQ_CERT                      = 0x47505143, /* "GPQC" */
+	CPTRA_MBCMD_POPULATE_PQ_CERT                 = 0x50505143, /* "PPQC" */
+	CPTRA_MBCMD_GET_PQ_CSR                       = 0x50514353, /* "PQCS" */
+	CPTRA_MBCMD_GET_PQ_INFO                      = 0x5051494E, /* "PQIN" */
+	CPTRA_MBCMD_SET_PQ_SEED                      = 0x50515344, /* "PQSD" */
+	CPTRA_MBCMD_CERTIFY_KEY_EXTENDED_MLDSA87     = 0x434B454D, /* "CKEM" */
+	CPTRA_MBCMD_SIGN_WITH_EXPORTED_MLDSA         = 0x53574D4C, /* "SWML" */
 };
 
 union cptra_mbox_lock_s {
@@ -635,6 +644,121 @@ struct cptra_revoke_exported_cdi_handle_oa {
 	uint32_t fips_status;
 };
 
+/* MLDSA87_SIGNATURE_VERIFY: message digest must be pre-loaded into SHA acc */
+struct cptra_mldsa87_verify_ia {
+	uint8_t pub_key[2592];
+	uint8_t signature[4627];
+	uint8_t _pad[1];
+};
+
+struct cptra_mldsa87_verify_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+};
+
+/* INVOKE_DPE_MLDSA87 */
+struct cptra_invoke_dpe_mldsa87_command_ia {
+	uint32_t data_size;
+	uint8_t data[512];
+};
+
+struct cptra_invoke_dpe_mldsa87_command_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+	uint32_t data_size;
+	uint8_t data[25168];
+};
+
+/* GET_PQ_CERT */
+struct cptra_get_pq_cert_ia {
+	uint32_t tbs_size;
+	uint8_t signature[4627];
+	uint8_t tbs[3543];
+	uint8_t _pad[2];
+};
+
+struct cptra_get_pq_cert_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+	uint32_t cert_size;
+	uint8_t cert[8192];
+};
+
+/* POPULATE_PQ_CERT */
+struct cptra_populate_pq_cert_ia {
+	uint32_t cert_size;
+	uint8_t cert[8192];
+};
+
+struct cptra_populate_pq_cert_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+};
+
+/* GET_PQ_CSR */
+struct cptra_get_pq_csr_ia {
+};
+
+struct cptra_get_pq_csr_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+	uint32_t data_size;
+	uint8_t data[12800];
+};
+
+/* GET_PQ_INFO */
+struct cptra_get_pq_info_ia {
+};
+
+struct cptra_get_pq_info_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+	uint8_t pq_pub_key[2592];
+};
+
+/* SET_PQ_SEED */
+struct cptra_set_pq_seed_ia {
+	uint8_t seed[32];
+};
+
+struct cptra_set_pq_seed_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+};
+
+/* CERTIFY_KEY_EXTENDED_MLDSA87 */
+struct cptra_certify_key_extended_mldsa87_ia {
+	uint8_t certify_key_req[72];
+	uint32_t flags;
+};
+
+struct cptra_certify_key_extended_mldsa87_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+	uint32_t size;
+	uint8_t certify_key_resp[25152];
+};
+
+/* SIGN_WITH_EXPORTED_MLDSA */
+#define SIGN_WITH_EXPORTED_MLDSA_MODE_DATA		0
+#define SIGN_WITH_EXPORTED_MLDSA_MODE_EXTERNAL_MU	1
+#define SIGN_WITH_EXPORTED_MLDSA_MU_SIZE		64
+
+struct cptra_sign_with_exported_mldsa_ia {
+	uint8_t exported_cdi_handle[32];
+	uint32_t sign_mode;
+	uint32_t message_size;
+	uint8_t message[1024];
+};
+
+struct cptra_sign_with_exported_mldsa_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+	uint8_t derived_pubkey[2592];
+	uint8_t signature[4627];
+	uint8_t reserved[1];
+};
+
 #define DPE_COMMAND_MAGIC			0x44504543	/* DPEC */
 #define DPE_RESPONSE_MAGIC			0x44504552	/* DPER */
 
@@ -896,6 +1020,33 @@ __subsystem struct cptra_driver_api {
 	int (*caliptra_reallocate_dpe_context_limits)(const struct device *dev,
 					    struct cptra_reallocate_dpe_context_limits_ia *input,
 					    struct cptra_reallocate_dpe_context_limits_oa *output);
+	int (*caliptra_mldsa87_verify)(const struct device *dev,
+				       struct cptra_mldsa87_verify_ia *input,
+				       struct cptra_mldsa87_verify_oa *output);
+	int (*caliptra_invoke_dpe_mldsa87_command)(const struct device *dev,
+		struct cptra_invoke_dpe_mldsa87_command_ia *input,
+		struct cptra_invoke_dpe_mldsa87_command_oa *output);
+	int (*caliptra_get_pq_cert)(const struct device *dev,
+				    struct cptra_get_pq_cert_ia *input,
+				    struct cptra_get_pq_cert_oa *output);
+	int (*caliptra_populate_pq_cert)(const struct device *dev,
+					 struct cptra_populate_pq_cert_ia *input,
+					 struct cptra_populate_pq_cert_oa *output);
+	int (*caliptra_get_pq_csr)(const struct device *dev,
+				   struct cptra_get_pq_csr_ia *input,
+				   struct cptra_get_pq_csr_oa *output);
+	int (*caliptra_get_pq_info)(const struct device *dev,
+				    struct cptra_get_pq_info_ia *input,
+				    struct cptra_get_pq_info_oa *output);
+	int (*caliptra_set_pq_seed)(const struct device *dev,
+				    struct cptra_set_pq_seed_ia *input,
+				    struct cptra_set_pq_seed_oa *output);
+	int (*caliptra_certify_key_extended_mldsa87)(const struct device *dev,
+		struct cptra_certify_key_extended_mldsa87_ia *input,
+		struct cptra_certify_key_extended_mldsa87_oa *output);
+	int (*caliptra_sign_with_exported_mldsa)(const struct device *dev,
+						 struct cptra_sign_with_exported_mldsa_ia *input,
+						 struct cptra_sign_with_exported_mldsa_oa *output);
 };
 
 static inline int caliptra_fw_upload(const struct device *dev, uint8_t *buf, int size)
@@ -1326,6 +1477,132 @@ caliptra_reallocate_dpe_context_limits(const struct device *dev,
 
 	api = (struct cptra_driver_api *)dev->api;
 	tmp = api->caliptra_reallocate_dpe_context_limits(dev, input, output);
+
+	return tmp;
+}
+
+static inline int
+caliptra_mldsa87_verify(const struct device *dev,
+			struct cptra_mldsa87_verify_ia *input,
+			struct cptra_mldsa87_verify_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_mldsa87_verify(dev, input, output);
+
+	return tmp;
+}
+
+static inline int
+caliptra_invoke_dpe_mldsa87_command(const struct device *dev,
+				    struct cptra_invoke_dpe_mldsa87_command_ia *input,
+				    struct cptra_invoke_dpe_mldsa87_command_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_invoke_dpe_mldsa87_command(dev, input, output);
+
+	return tmp;
+}
+
+static inline int
+caliptra_get_pq_cert(const struct device *dev,
+		     struct cptra_get_pq_cert_ia *input,
+		     struct cptra_get_pq_cert_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_get_pq_cert(dev, input, output);
+
+	return tmp;
+}
+
+static inline int
+caliptra_populate_pq_cert(const struct device *dev,
+			  struct cptra_populate_pq_cert_ia *input,
+			  struct cptra_populate_pq_cert_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_populate_pq_cert(dev, input, output);
+
+	return tmp;
+}
+
+static inline int
+caliptra_get_pq_csr(const struct device *dev,
+		    struct cptra_get_pq_csr_ia *input,
+		    struct cptra_get_pq_csr_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_get_pq_csr(dev, input, output);
+
+	return tmp;
+}
+
+static inline int
+caliptra_get_pq_info(const struct device *dev,
+		     struct cptra_get_pq_info_ia *input,
+		     struct cptra_get_pq_info_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_get_pq_info(dev, input, output);
+
+	return tmp;
+}
+
+static inline int
+caliptra_set_pq_seed(const struct device *dev,
+		     struct cptra_set_pq_seed_ia *input,
+		     struct cptra_set_pq_seed_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_set_pq_seed(dev, input, output);
+
+	return tmp;
+}
+
+static inline int
+caliptra_certify_key_extended_mldsa87(const struct device *dev,
+				      struct cptra_certify_key_extended_mldsa87_ia *input,
+				      struct cptra_certify_key_extended_mldsa87_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_certify_key_extended_mldsa87(dev, input, output);
+
+	return tmp;
+}
+
+static inline int
+caliptra_sign_with_exported_mldsa(const struct device *dev,
+				  struct cptra_sign_with_exported_mldsa_ia *input,
+				  struct cptra_sign_with_exported_mldsa_oa *output)
+{
+	struct cptra_driver_api *api;
+	int tmp;
+
+	api = (struct cptra_driver_api *)dev->api;
+	tmp = api->caliptra_sign_with_exported_mldsa(dev, input, output);
 
 	return tmp;
 }

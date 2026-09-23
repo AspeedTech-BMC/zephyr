@@ -1126,6 +1126,438 @@ static int aspeed_cptra_reallocate_dpe_context_limits(const struct device *dev,
 	return rc;
 }
 
+static int aspeed_cptra_mldsa87_verify(const struct device *dev,
+				       struct cptra_mldsa87_verify_ia *input,
+				       struct cptra_mldsa87_verify_oa *output)
+{
+	struct cptra_dice_drv_state *state = DEV_DATA(dev);
+	uint32_t cmd = CPTRA_MBCMD_MLDSA87_SIGNATURE_VERIFY;
+	uint32_t csum = 0, sts, dlen, ilen, olen;
+	int rc;
+
+	if (state->in_use) {
+		LOG_ERR("Peripheral in use");
+		return -EBUSY;
+	}
+
+	LOG_DBG("Start doing mldsa87_verify");
+	state->in_use = true;
+
+	while (cptra_mbox_lock())
+		;
+
+	sts = cptra_mbox_status();
+	if (FIELD_GET(CPTRA_MBOX_STS_FSM_PS, sts) != CPTRA_MBFSM_RDY_FOR_CMD) {
+		rc = -EACCES;
+		goto unlock;
+	}
+
+	csum = cptra_mbox_csum(csum, (uint8_t *)&cmd, sizeof(cmd));
+	csum = cptra_mbox_csum(csum, (uint8_t *)input, sizeof(struct cptra_mldsa87_verify_ia));
+
+	dlen = sizeof(csum) + sizeof(struct cptra_mldsa87_verify_ia);
+	ilen = sizeof(struct cptra_mldsa87_verify_ia);
+	olen = sizeof(struct cptra_mldsa87_verify_oa);
+	rc = cptra_mbox_trigger(cmd, dlen, csum, (uint8_t *)input, ilen, (uint8_t *)output, olen);
+	if (rc)
+		aspeed_cptra_ifc_error(dev);
+
+unlock:
+	while (cptra_mbox_unlock())
+		;
+
+	LOG_DBG("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
+
+	state->in_use = false;
+
+	return rc;
+}
+
+static int aspeed_cptra_invoke_dpe_mldsa87_command(const struct device *dev,
+		struct cptra_invoke_dpe_mldsa87_command_ia *input,
+		struct cptra_invoke_dpe_mldsa87_command_oa *output)
+{
+	struct cptra_dice_drv_state *state = DEV_DATA(dev);
+	uint32_t cmd = CPTRA_MBCMD_INVOKE_DPE_MLDSA87_COMMAND;
+	uint32_t csum = 0, sts, dlen, ilen, olen;
+	int rc;
+
+	if (state->in_use) {
+		LOG_ERR("Peripheral in use");
+		return -EBUSY;
+	}
+
+	LOG_DBG("Start doing invoke_dpe_mldsa87_command");
+	state->in_use = true;
+
+	while (cptra_mbox_lock())
+		;
+
+	sts = cptra_mbox_status();
+	if (FIELD_GET(CPTRA_MBOX_STS_FSM_PS, sts) != CPTRA_MBFSM_RDY_FOR_CMD) {
+		rc = -EACCES;
+		goto unlock_idm;
+	}
+
+	csum = cptra_mbox_csum(csum, (uint8_t *)&cmd, sizeof(cmd));
+	csum = cptra_mbox_csum(csum, (uint8_t *)input,
+			       sizeof(struct cptra_invoke_dpe_mldsa87_command_ia));
+
+	dlen = sizeof(csum) + sizeof(struct cptra_invoke_dpe_mldsa87_command_ia);
+	ilen = sizeof(struct cptra_invoke_dpe_mldsa87_command_ia);
+	olen = sizeof(struct cptra_invoke_dpe_mldsa87_command_oa);
+	rc = cptra_mbox_trigger(cmd, dlen, csum, (uint8_t *)input, ilen, (uint8_t *)output, olen);
+	if (rc)
+		aspeed_cptra_ifc_error(dev);
+
+unlock_idm:
+	while (cptra_mbox_unlock())
+		;
+
+	LOG_DBG("chksum: 0x%x, fips_status: 0x%x, data_size: 0x%x",
+		output->chksum, output->fips_status, output->data_size);
+
+	state->in_use = false;
+
+	return rc;
+}
+
+static int aspeed_cptra_get_pq_cert(const struct device *dev,
+				    struct cptra_get_pq_cert_ia *input,
+				    struct cptra_get_pq_cert_oa *output)
+{
+	struct cptra_dice_drv_state *state = DEV_DATA(dev);
+	uint32_t cmd = CPTRA_MBCMD_GET_PQ_CERT;
+	uint32_t csum = 0, sts, dlen, ilen, olen;
+	int rc;
+
+	if (state->in_use) {
+		LOG_ERR("Peripheral in use");
+		return -EBUSY;
+	}
+
+	LOG_DBG("Start doing get_pq_cert");
+	state->in_use = true;
+
+	while (cptra_mbox_lock())
+		;
+
+	sts = cptra_mbox_status();
+	if (FIELD_GET(CPTRA_MBOX_STS_FSM_PS, sts) != CPTRA_MBFSM_RDY_FOR_CMD) {
+		rc = -EACCES;
+		goto unlock_gpc;
+	}
+
+	csum = cptra_mbox_csum(csum, (uint8_t *)&cmd, sizeof(cmd));
+	csum = cptra_mbox_csum(csum, (uint8_t *)input, sizeof(struct cptra_get_pq_cert_ia));
+
+	dlen = sizeof(csum) + sizeof(struct cptra_get_pq_cert_ia);
+	ilen = sizeof(struct cptra_get_pq_cert_ia);
+	olen = sizeof(struct cptra_get_pq_cert_oa);
+	rc = cptra_mbox_trigger(cmd, dlen, csum, (uint8_t *)input, ilen, (uint8_t *)output, olen);
+	if (rc)
+		aspeed_cptra_ifc_error(dev);
+
+unlock_gpc:
+	while (cptra_mbox_unlock())
+		;
+
+	LOG_DBG("chksum: 0x%x, fips_status: 0x%x, cert_size: %u",
+		output->chksum, output->fips_status, output->cert_size);
+
+	state->in_use = false;
+
+	return rc;
+}
+
+static int aspeed_cptra_populate_pq_cert(const struct device *dev,
+					 struct cptra_populate_pq_cert_ia *input,
+					 struct cptra_populate_pq_cert_oa *output)
+{
+	struct cptra_dice_drv_state *state = DEV_DATA(dev);
+	uint32_t cmd = CPTRA_MBCMD_POPULATE_PQ_CERT;
+	uint32_t csum = 0, sts, dlen, ilen, olen;
+	int rc;
+
+	if (state->in_use) {
+		LOG_ERR("Peripheral in use");
+		return -EBUSY;
+	}
+
+	LOG_DBG("Start doing populate_pq_cert");
+	state->in_use = true;
+
+	while (cptra_mbox_lock())
+		;
+
+	sts = cptra_mbox_status();
+	if (FIELD_GET(CPTRA_MBOX_STS_FSM_PS, sts) != CPTRA_MBFSM_RDY_FOR_CMD) {
+		rc = -EACCES;
+		goto unlock_ppc;
+	}
+
+	csum = cptra_mbox_csum(csum, (uint8_t *)&cmd, sizeof(cmd));
+	csum = cptra_mbox_csum(csum, (uint8_t *)input, sizeof(struct cptra_populate_pq_cert_ia));
+
+	dlen = sizeof(csum) + sizeof(struct cptra_populate_pq_cert_ia);
+	ilen = sizeof(struct cptra_populate_pq_cert_ia);
+	olen = sizeof(struct cptra_populate_pq_cert_oa);
+	rc = cptra_mbox_trigger(cmd, dlen, csum, (uint8_t *)input, ilen, (uint8_t *)output, olen);
+	if (rc)
+		aspeed_cptra_ifc_error(dev);
+
+unlock_ppc:
+	while (cptra_mbox_unlock())
+		;
+
+	LOG_DBG("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
+
+	state->in_use = false;
+
+	return rc;
+}
+
+static int aspeed_cptra_get_pq_csr(const struct device *dev,
+				   struct cptra_get_pq_csr_ia *input,
+				   struct cptra_get_pq_csr_oa *output)
+{
+	struct cptra_dice_drv_state *state = DEV_DATA(dev);
+	uint32_t cmd = CPTRA_MBCMD_GET_PQ_CSR;
+	uint32_t csum = 0, sts, dlen, ilen, olen;
+	int rc;
+
+	if (state->in_use) {
+		LOG_ERR("Peripheral in use");
+		return -EBUSY;
+	}
+
+	LOG_DBG("Start doing get_pq_csr");
+	state->in_use = true;
+
+	while (cptra_mbox_lock())
+		;
+
+	sts = cptra_mbox_status();
+	if (FIELD_GET(CPTRA_MBOX_STS_FSM_PS, sts) != CPTRA_MBFSM_RDY_FOR_CMD) {
+		rc = -EACCES;
+		goto unlock_gcsr;
+	}
+
+	csum = cptra_mbox_csum(csum, (uint8_t *)&cmd, sizeof(cmd));
+	csum = cptra_mbox_csum(csum, (uint8_t *)input, sizeof(struct cptra_get_pq_csr_ia));
+
+	dlen = sizeof(csum) + sizeof(struct cptra_get_pq_csr_ia);
+	ilen = sizeof(struct cptra_get_pq_csr_ia);
+	olen = sizeof(struct cptra_get_pq_csr_oa);
+	rc = cptra_mbox_trigger(cmd, dlen, csum, (uint8_t *)input, ilen, (uint8_t *)output, olen);
+	if (rc)
+		aspeed_cptra_ifc_error(dev);
+
+unlock_gcsr:
+	while (cptra_mbox_unlock())
+		;
+
+	LOG_DBG("chksum: 0x%x, fips_status: 0x%x, data_size: %u",
+		output->chksum, output->fips_status, output->data_size);
+
+	state->in_use = false;
+
+	return rc;
+}
+
+static int aspeed_cptra_get_pq_info(const struct device *dev,
+				    struct cptra_get_pq_info_ia *input,
+				    struct cptra_get_pq_info_oa *output)
+{
+	struct cptra_dice_drv_state *state = DEV_DATA(dev);
+	uint32_t cmd = CPTRA_MBCMD_GET_PQ_INFO;
+	uint32_t csum = 0, sts, dlen, ilen, olen;
+	int rc;
+
+	if (state->in_use) {
+		LOG_ERR("Peripheral in use");
+		return -EBUSY;
+	}
+
+	LOG_DBG("Start doing get_pq_info");
+	state->in_use = true;
+
+	while (cptra_mbox_lock())
+		;
+
+	sts = cptra_mbox_status();
+	if (FIELD_GET(CPTRA_MBOX_STS_FSM_PS, sts) != CPTRA_MBFSM_RDY_FOR_CMD) {
+		rc = -EACCES;
+		goto unlock_gpi;
+	}
+
+	csum = cptra_mbox_csum(csum, (uint8_t *)&cmd, sizeof(cmd));
+	csum = cptra_mbox_csum(csum, (uint8_t *)input, sizeof(struct cptra_get_pq_info_ia));
+
+	dlen = sizeof(csum) + sizeof(struct cptra_get_pq_info_ia);
+	ilen = sizeof(struct cptra_get_pq_info_ia);
+	olen = sizeof(struct cptra_get_pq_info_oa);
+	rc = cptra_mbox_trigger(cmd, dlen, csum, (uint8_t *)input, ilen, (uint8_t *)output, olen);
+	if (rc)
+		aspeed_cptra_ifc_error(dev);
+
+unlock_gpi:
+	while (cptra_mbox_unlock())
+		;
+
+	LOG_DBG("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
+	LOG_HEXDUMP_DBG(output->pq_pub_key, 32, "PQ public key (first 32 bytes):");
+
+	state->in_use = false;
+
+	return rc;
+}
+
+static int aspeed_cptra_set_pq_seed(const struct device *dev,
+				    struct cptra_set_pq_seed_ia *input,
+				    struct cptra_set_pq_seed_oa *output)
+{
+	struct cptra_dice_drv_state *state = DEV_DATA(dev);
+	uint32_t cmd = CPTRA_MBCMD_SET_PQ_SEED;
+	uint32_t csum = 0, sts, dlen, ilen, olen;
+	int rc;
+
+	if (state->in_use) {
+		LOG_ERR("Peripheral in use");
+		return -EBUSY;
+	}
+
+	LOG_DBG("Start doing set_pq_seed");
+	state->in_use = true;
+
+	while (cptra_mbox_lock())
+		;
+
+	sts = cptra_mbox_status();
+	if (FIELD_GET(CPTRA_MBOX_STS_FSM_PS, sts) != CPTRA_MBFSM_RDY_FOR_CMD) {
+		rc = -EACCES;
+		goto unlock_sps;
+	}
+
+	csum = cptra_mbox_csum(csum, (uint8_t *)&cmd, sizeof(cmd));
+	csum = cptra_mbox_csum(csum, (uint8_t *)input, sizeof(struct cptra_set_pq_seed_ia));
+
+	dlen = sizeof(csum) + sizeof(struct cptra_set_pq_seed_ia);
+	ilen = sizeof(struct cptra_set_pq_seed_ia);
+	olen = sizeof(struct cptra_set_pq_seed_oa);
+	rc = cptra_mbox_trigger(cmd, dlen, csum, (uint8_t *)input, ilen, (uint8_t *)output, olen);
+	if (rc)
+		aspeed_cptra_ifc_error(dev);
+
+unlock_sps:
+	while (cptra_mbox_unlock())
+		;
+
+	LOG_DBG("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
+
+	state->in_use = false;
+
+	return rc;
+}
+
+static int aspeed_cptra_certify_key_extended_mldsa87(const struct device *dev,
+		struct cptra_certify_key_extended_mldsa87_ia *input,
+		struct cptra_certify_key_extended_mldsa87_oa *output)
+{
+	struct cptra_dice_drv_state *state = DEV_DATA(dev);
+	uint32_t cmd = CPTRA_MBCMD_CERTIFY_KEY_EXTENDED_MLDSA87;
+	uint32_t csum = 0, sts, dlen, ilen, olen;
+	int rc;
+
+	if (state->in_use) {
+		LOG_ERR("Peripheral in use");
+		return -EBUSY;
+	}
+
+	LOG_DBG("Start doing certify_key_extended_mldsa87");
+	state->in_use = true;
+
+	while (cptra_mbox_lock())
+		;
+
+	sts = cptra_mbox_status();
+	if (FIELD_GET(CPTRA_MBOX_STS_FSM_PS, sts) != CPTRA_MBFSM_RDY_FOR_CMD) {
+		rc = -EACCES;
+		goto unlock_ckem;
+	}
+
+	csum = cptra_mbox_csum(csum, (uint8_t *)&cmd, sizeof(cmd));
+	csum = cptra_mbox_csum(csum, (uint8_t *)input,
+			       sizeof(struct cptra_certify_key_extended_mldsa87_ia));
+
+	dlen = sizeof(csum) + sizeof(struct cptra_certify_key_extended_mldsa87_ia);
+	ilen = sizeof(struct cptra_certify_key_extended_mldsa87_ia);
+	olen = sizeof(struct cptra_certify_key_extended_mldsa87_oa);
+	rc = cptra_mbox_trigger(cmd, dlen, csum, (uint8_t *)input, ilen, (uint8_t *)output, olen);
+	if (rc)
+		aspeed_cptra_ifc_error(dev);
+
+unlock_ckem:
+	while (cptra_mbox_unlock())
+		;
+
+	LOG_DBG("chksum: 0x%x, fips_status: 0x%x, size: %u",
+		output->chksum, output->fips_status, output->size);
+
+	state->in_use = false;
+
+	return rc;
+}
+
+static int aspeed_cptra_sign_with_exported_mldsa(const struct device *dev,
+						 struct cptra_sign_with_exported_mldsa_ia *input,
+						 struct cptra_sign_with_exported_mldsa_oa *output)
+{
+	struct cptra_dice_drv_state *state = DEV_DATA(dev);
+	uint32_t cmd = CPTRA_MBCMD_SIGN_WITH_EXPORTED_MLDSA;
+	uint32_t csum = 0, sts, dlen, ilen, olen;
+	int rc;
+
+	if (state->in_use) {
+		LOG_ERR("Peripheral in use");
+		return -EBUSY;
+	}
+
+	LOG_DBG("Start doing sign_with_exported_mldsa");
+	state->in_use = true;
+
+	while (cptra_mbox_lock())
+		;
+
+	sts = cptra_mbox_status();
+	if (FIELD_GET(CPTRA_MBOX_STS_FSM_PS, sts) != CPTRA_MBFSM_RDY_FOR_CMD) {
+		rc = -EACCES;
+		goto unlock_swml;
+	}
+
+	csum = cptra_mbox_csum(csum, (uint8_t *)&cmd, sizeof(cmd));
+	csum = cptra_mbox_csum(csum, (uint8_t *)input,
+			       sizeof(struct cptra_sign_with_exported_mldsa_ia));
+
+	dlen = sizeof(csum) + sizeof(struct cptra_sign_with_exported_mldsa_ia);
+	ilen = sizeof(struct cptra_sign_with_exported_mldsa_ia);
+	olen = sizeof(struct cptra_sign_with_exported_mldsa_oa);
+	rc = cptra_mbox_trigger(cmd, dlen, csum, (uint8_t *)input, ilen, (uint8_t *)output, olen);
+	if (rc)
+		aspeed_cptra_ifc_error(dev);
+
+unlock_swml:
+	while (cptra_mbox_unlock())
+		;
+
+	LOG_DBG("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
+	LOG_HEXDUMP_DBG(output->derived_pubkey, 32, "MLDSA87 derived_pubkey (first 32 bytes):");
+
+	state->in_use = false;
+
+	return rc;
+}
+
 static struct cptra_driver_api cptra_funcs = {
 	.caliptra_stash_measurement = aspeed_cptra_stash_measurement,
 	.caliptra_quote_pcrs = aspeed_cptra_quote_pcrs,
@@ -1149,6 +1581,15 @@ static struct cptra_driver_api cptra_funcs = {
 	.caliptra_revoke_exported_cdi_handle = aspeed_cptra_revoke_exported_cdi_handle,
 	.caliptra_get_pcr_log = aspeed_cptra_get_pcr_log,
 	.caliptra_reallocate_dpe_context_limits = aspeed_cptra_reallocate_dpe_context_limits,
+	.caliptra_mldsa87_verify = aspeed_cptra_mldsa87_verify,
+	.caliptra_invoke_dpe_mldsa87_command = aspeed_cptra_invoke_dpe_mldsa87_command,
+	.caliptra_get_pq_cert = aspeed_cptra_get_pq_cert,
+	.caliptra_populate_pq_cert = aspeed_cptra_populate_pq_cert,
+	.caliptra_get_pq_csr = aspeed_cptra_get_pq_csr,
+	.caliptra_get_pq_info = aspeed_cptra_get_pq_info,
+	.caliptra_set_pq_seed = aspeed_cptra_set_pq_seed,
+	.caliptra_certify_key_extended_mldsa87 = aspeed_cptra_certify_key_extended_mldsa87,
+	.caliptra_sign_with_exported_mldsa = aspeed_cptra_sign_with_exported_mldsa,
 };
 
 static const struct cptra_dice_config cptra_dice_config = {

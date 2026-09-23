@@ -442,6 +442,12 @@ int cptra_misc_init(const struct device *dev)
 		return -ENODEV;
 	}
 
+	if (sys_read32(cfg->ifc_base + CPTRA_HW_ERROR_FATAL) ||
+	    sys_read32(cfg->ifc_base + CPTRA_HW_ERROR_NONFATAL) ||
+	    sys_read32(cfg->ifc_base + CPTRA_FW_ERROR_FATAL) ||
+	    sys_read32(cfg->ifc_base + CPTRA_FW_ERROR_NONFATAL))
+		aspeed_cptra_ifc_error(dev);
+
 	LOG_INF("\t0x%x: Caliptra misc driver initialized", (uint32_t)cfg->base);
 
 	return 0;
