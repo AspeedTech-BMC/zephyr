@@ -27,3 +27,10 @@ properties:
     type: int
     required: false
     description: Size of AES encryption in bytes
+  hard-lock:
+    type: boolean
+    required: false
+    description: >
+      Hard-lock the DRAMC configuration registers (DRAMC_HARD_LOCK_KEY) once
+      DRAM init completes, permanently blocking further register writes
+      until the next power cycle. Left to the customer to enable.
