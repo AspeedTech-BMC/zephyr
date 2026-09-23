@@ -158,6 +158,12 @@
 	//ecc-enable;
 	//ecc-size = <0x35500000>; /* 853MB */
 
+	/*
+	 * Hard-lock the DRAMC config registers after init (blocks further
+	 * writes until power cycle). Off by default; enable per-customer.
+	 */
+	//hard-lock;
+
 	mpus = <&ca35_s>, <&ssp>, <&tsp>, <&share_1>, <&share_2>, <&share_3>, <&vb>;
 };
 
