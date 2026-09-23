@@ -94,7 +94,16 @@
 		ball = <R10>;
 		sig_descs = <SIG_DESC(0x408, 0, 3)>;
 	};
+	/*
+	 * Primary PWM4 path. The alternate path below (pin_dpwm4,
+	 * ball R10) only takes effect while this ball's mux is not
+	 * selecting PWM4 (datasheet: SCU424[02:00] not-equal 1).
+	 */
 	/omit-if-no-ref/ pin_pwm4: pin_pwm4 {
+		ball = <A3>;
+		sig_descs = <SIG_DESC(0x424, 0, 1)>;
+	};
+	/omit-if-no-ref/ pin_dpwm4: pin_dpwm4 {
 		ball = <R10>;
 		sig_descs = <SIG_DESC(0x408, 0, 4)>;
 	};
@@ -106,7 +115,16 @@
 		ball = <P11>;
 		sig_descs = <SIG_DESC(0x408, 4, 3)>;
 	};
+	/*
+	 * Primary PWM5 path. The alternate path below (pin_dpwm5,
+	 * ball P11) only takes effect while this ball's mux is not
+	 * selecting PWM5 (datasheet: SCU424[06:04] not-equal 1).
+	 */
 	/omit-if-no-ref/ pin_pwm5: pin_pwm5 {
+		ball = <A2>;
+		sig_descs = <SIG_DESC(0x424, 4, 1)>;
+	};
+	/omit-if-no-ref/ pin_dpwm5: pin_dpwm5 {
 		ball = <P11>;
 		sig_descs = <SIG_DESC(0x408, 4, 4)>;
 	};
@@ -118,7 +136,16 @@
 		ball = <R11>;
 		sig_descs = <SIG_DESC(0x408, 8, 3)>;
 	};
+	/*
+	 * Primary PWM6 path. The alternate path below (pin_dpwm6,
+	 * ball R11) only takes effect while this ball's mux is not
+	 * selecting PWM6 (datasheet: SCU424[10:08] not-equal 1).
+	 */
 	/omit-if-no-ref/ pin_pwm6: pin_pwm6 {
+		ball = <B6>;
+		sig_descs = <SIG_DESC(0x424, 8, 1)>;
+	};
+	/omit-if-no-ref/ pin_dpwm6: pin_dpwm6 {
 		ball = <R11>;
 		sig_descs = <SIG_DESC(0x408, 8, 4)>;
 	};
@@ -130,7 +157,16 @@
 		ball = <U12>;
 		sig_descs = <SIG_DESC(0x408, 12, 3)>;
 	};
+	/*
+	 * Primary PWM7 path. The alternate path below (pin_dpwm7,
+	 * ball U12) only takes effect while this ball's mux is not
+	 * selecting PWM7 (datasheet: SCU424[14:12] not-equal 1).
+	 */
 	/omit-if-no-ref/ pin_pwm7: pin_pwm7 {
+		ball = <L3>;
+		sig_descs = <SIG_DESC(0x424, 12, 1)>;
+	};
+	/omit-if-no-ref/ pin_dpwm7: pin_dpwm7 {
 		ball = <U12>;
 		sig_descs = <SIG_DESC(0x408, 12, 4)>;
 	};
@@ -142,7 +178,16 @@
 		ball = <T12>;
 		sig_descs = <SIG_DESC(0x408, 16, 3)>;
 	};
+	/*
+	 * Primary TACH4 path. The alternate path below (pin_dtach4,
+	 * ball T12) only takes effect while this ball's mux is not
+	 * selecting TACH4 (datasheet: SCU42C[02:00] not-equal 1).
+	 */
 	/omit-if-no-ref/ pin_tach4: pin_tach4 {
+		ball = <T1>;
+		sig_descs = <SIG_DESC(0x42c, 0, 1)>;
+	};
+	/omit-if-no-ref/ pin_dtach4: pin_dtach4 {
 		ball = <T12>;
 		sig_descs = <SIG_DESC(0x408, 16, 4)>;
 	};
@@ -154,7 +199,16 @@
 		ball = <R12>;
 		sig_descs = <SIG_DESC(0x408, 20, 3)>;
 	};
+	/*
+	 * Primary TACH5 path. The alternate path below (pin_dtach5,
+	 * ball R12) only takes effect while this ball's mux is not
+	 * selecting TACH5 (datasheet: SCU42C[06:04] not-equal 1).
+	 */
 	/omit-if-no-ref/ pin_tach5: pin_tach5 {
+		ball = <U5>;
+		sig_descs = <SIG_DESC(0x42c, 4, 1)>;
+	};
+	/omit-if-no-ref/ pin_dtach5: pin_dtach5 {
 		ball = <R12>;
 		sig_descs = <SIG_DESC(0x408, 20, 4)>;
 	};
@@ -166,7 +220,16 @@
 		ball = <N12>;
 		sig_descs = <SIG_DESC(0x408, 24, 3)>;
 	};
+	/*
+	 * Primary TACH6 path. The alternate path below (pin_dtach6,
+	 * ball N12) only takes effect while this ball's mux is not
+	 * selecting TACH6 (datasheet: SCU42C[10:08] not-equal 1).
+	 */
 	/omit-if-no-ref/ pin_tach6: pin_tach6 {
+		ball = <T5>;
+		sig_descs = <SIG_DESC(0x42c, 8, 1)>;
+	};
+	/omit-if-no-ref/ pin_dtach6: pin_dtach6 {
 		ball = <N12>;
 		sig_descs = <SIG_DESC(0x408, 24, 4)>;
 	};
@@ -178,7 +241,16 @@
 		ball = <P12>;
 		sig_descs = <SIG_DESC(0x408, 28, 3)>;
 	};
+	/*
+	 * Primary TACH7 path. The alternate path below (pin_dtach7,
+	 * ball P12) only takes effect while this ball's mux is not
+	 * selecting TACH7 (datasheet: SCU42C[14:12] not-equal 1).
+	 */
 	/omit-if-no-ref/ pin_tach7: pin_tach7 {
+		ball = <R5>;
+		sig_descs = <SIG_DESC(0x42c, 12, 1)>;
+	};
+	/omit-if-no-ref/ pin_dtach7: pin_dtach7 {
 		ball = <P12>;
 		sig_descs = <SIG_DESC(0x408, 28, 4)>;
 	};
@@ -186,7 +258,16 @@
 		ball = <U13>;
 		sig_descs = <SIG_DESC(0x40c, 0, 1)>;
 	};
+	/*
+	 * Primary PWM0 path. The alternate path below (pin_dpwm0,
+	 * ball U13) only takes effect while this ball's mux is not
+	 * selecting PWM0 (datasheet: SCU420[18:16] not-equal 1).
+	 */
 	/omit-if-no-ref/ pin_pwm0: pin_pwm0 {
+		ball = <C8>;
+		sig_descs = <SIG_DESC(0x420, 16, 1)>;
+	};
+	/omit-if-no-ref/ pin_dpwm0: pin_dpwm0 {
 		ball = <U13>;
 		sig_descs = <SIG_DESC(0x40c, 0, 2)>;
 	};
@@ -194,7 +275,16 @@
 		ball = <T13>;
 		sig_descs = <SIG_DESC(0x40c, 4, 1)>;
 	};
+	/*
+	 * Primary PWM1 path. The alternate path below (pin_dpwm1,
+	 * ball T13) only takes effect while this ball's mux is not
+	 * selecting PWM1 (datasheet: SCU420[22:20] not-equal 1).
+	 */
 	/omit-if-no-ref/ pin_pwm1: pin_pwm1 {
+		ball = <D8>;
+		sig_descs = <SIG_DESC(0x420, 20, 1)>;
+	};
+	/omit-if-no-ref/ pin_dpwm1: pin_dpwm1 {
 		ball = <T13>;
 		sig_descs = <SIG_DESC(0x40c, 4, 2)>;
 	};
@@ -202,7 +292,16 @@
 		ball = <R13>;
 		sig_descs = <SIG_DESC(0x40c, 8, 1)>;
 	};
+	/*
+	 * Primary PWM2 path. The alternate path below (pin_dpwm2,
+	 * ball R13) only takes effect while this ball's mux is not
+	 * selecting PWM2 (datasheet: SCU420[26:24] not-equal 1).
+	 */
 	/omit-if-no-ref/ pin_pwm2: pin_pwm2 {
+		ball = <A5>;
+		sig_descs = <SIG_DESC(0x420, 24, 1)>;
+	};
+	/omit-if-no-ref/ pin_dpwm2: pin_dpwm2 {
 		ball = <R13>;
 		sig_descs = <SIG_DESC(0x40c, 8, 2)>;
 	};
@@ -210,7 +309,16 @@
 		ball = <U14>;
 		sig_descs = <SIG_DESC(0x40c, 12, 1)>;
 	};
+	/*
+	 * Primary PWM3 path. The alternate path below (pin_dpwm3,
+	 * ball U14) only takes effect while this ball's mux is not
+	 * selecting PWM3 (datasheet: SCU420[30:28] not-equal 1).
+	 */
 	/omit-if-no-ref/ pin_pwm3: pin_pwm3 {
+		ball = <A4>;
+		sig_descs = <SIG_DESC(0x420, 28, 1)>;
+	};
+	/omit-if-no-ref/ pin_dpwm3: pin_dpwm3 {
 		ball = <U14>;
 		sig_descs = <SIG_DESC(0x40c, 12, 2)>;
 	};
@@ -218,7 +326,16 @@
 		ball = <T14>;
 		sig_descs = <SIG_DESC(0x40c, 16, 1)>;
 	};
+	/*
+	 * Primary TACH0 path. The alternate path below (pin_dtach0,
+	 * ball T14) only takes effect while this ball's mux is not
+	 * selecting TACH0 (datasheet: SCU428[18:16] not-equal 1).
+	 */
 	/omit-if-no-ref/ pin_tach0: pin_tach0 {
+		ball = <L4>;
+		sig_descs = <SIG_DESC(0x428, 16, 1)>;
+	};
+	/omit-if-no-ref/ pin_dtach0: pin_dtach0 {
 		ball = <T14>;
 		sig_descs = <SIG_DESC(0x40c, 16, 2)>;
 	};
@@ -226,7 +343,16 @@
 		ball = <R14>;
 		sig_descs = <SIG_DESC(0x40c, 20, 1)>;
 	};
+	/*
+	 * Primary TACH1 path. The alternate path below (pin_dtach1,
+	 * ball R14) only takes effect while this ball's mux is not
+	 * selecting TACH1 (datasheet: SCU428[22:20] not-equal 1).
+	 */
 	/omit-if-no-ref/ pin_tach1: pin_tach1 {
+		ball = <N2>;
+		sig_descs = <SIG_DESC(0x428, 20, 1)>;
+	};
+	/omit-if-no-ref/ pin_dtach1: pin_dtach1 {
 		ball = <R14>;
 		sig_descs = <SIG_DESC(0x40c, 20, 2)>;
 	};
@@ -234,7 +360,16 @@
 		ball = <U15>;
 		sig_descs = <SIG_DESC(0x40c, 24, 1)>;
 	};
+	/*
+	 * Primary TACH2 path. The alternate path below (pin_dtach2,
+	 * ball U15) only takes effect while this ball's mux is not
+	 * selecting TACH2 (datasheet: SCU428[26:24] not-equal 1).
+	 */
 	/omit-if-no-ref/ pin_tach2: pin_tach2 {
+		ball = <P2>;
+		sig_descs = <SIG_DESC(0x428, 24, 1)>;
+	};
+	/omit-if-no-ref/ pin_dtach2: pin_dtach2 {
 		ball = <U15>;
 		sig_descs = <SIG_DESC(0x40c, 24, 2)>;
 	};
@@ -242,7 +377,16 @@
 		ball = <P13>;
 		sig_descs = <SIG_DESC(0x40c, 28, 1)>;
 	};
+	/*
+	 * Primary TACH3 path. The alternate path below (pin_dtach3,
+	 * ball P13) only takes effect while this ball's mux is not
+	 * selecting TACH3 (datasheet: SCU428[30:28] not-equal 1).
+	 */
 	/omit-if-no-ref/ pin_tach3: pin_tach3 {
+		ball = <N4>;
+		sig_descs = <SIG_DESC(0x428, 28, 1)>;
+	};
+	/omit-if-no-ref/ pin_dtach3: pin_dtach3 {
 		ball = <P13>;
 		sig_descs = <SIG_DESC(0x40c, 28, 2)>;
 	};
@@ -486,7 +630,16 @@
 		ball = <M17>;
 		sig_descs = <SIG_DESC(0x41c, 16, 3)>;
 	};
+	/*
+	 * Primary PWM12 path. The alternate path below (pin_dpwm12,
+	 * ball M17) only takes effect while this ball's mux is not
+	 * selecting PWM12 (datasheet: SCU428[02:00] not-equal 1).
+	 */
 	/omit-if-no-ref/ pin_pwm12: pin_pwm12 {
+		ball = <N5>;
+		sig_descs = <SIG_DESC(0x428, 0, 1)>;
+	};
+	/omit-if-no-ref/ pin_dpwm12: pin_dpwm12 {
 		ball = <M17>;
 		sig_descs = <SIG_DESC(0x41c, 16, 4)>;
 	};
@@ -498,7 +651,16 @@
 		ball = <L14>;
 		sig_descs = <SIG_DESC(0x41c, 20, 3)>;
 	};
+	/*
+	 * Primary PWM13 path. The alternate path below (pin_dpwm13,
+	 * ball L14) only takes effect while this ball's mux is not
+	 * selecting PWM13 (datasheet: SCU428[06:04] not-equal 1).
+	 */
 	/omit-if-no-ref/ pin_pwm13: pin_pwm13 {
+		ball = <R1>;
+		sig_descs = <SIG_DESC(0x428, 4, 1)>;
+	};
+	/omit-if-no-ref/ pin_dpwm13: pin_dpwm13 {
 		ball = <L14>;
 		sig_descs = <SIG_DESC(0x41c, 20, 4)>;
 	};
@@ -510,7 +672,16 @@
 		ball = <L15>;
 		sig_descs = <SIG_DESC(0x41c, 24, 3)>;
 	};
+	/*
+	 * Primary PWM14 path. The alternate path below (pin_dpwm14,
+	 * ball L15) only takes effect while this ball's mux is not
+	 * selecting PWM14 (datasheet: SCU428[10:08] not-equal 1).
+	 */
 	/omit-if-no-ref/ pin_pwm14: pin_pwm14 {
+		ball = <L2>;
+		sig_descs = <SIG_DESC(0x428, 8, 1)>;
+	};
+	/omit-if-no-ref/ pin_dpwm14: pin_dpwm14 {
 		ball = <L15>;
 		sig_descs = <SIG_DESC(0x41c, 24, 4)>;
 	};
@@ -522,7 +693,16 @@
 		ball = <L16>;
 		sig_descs = <SIG_DESC(0x41c, 28, 3)>;
 	};
+	/*
+	 * Primary PWM15 path. The alternate path below (pin_dpwm15,
+	 * ball L16) only takes effect while this ball's mux is not
+	 * selecting PWM15 (datasheet: SCU428[14:12] not-equal 1).
+	 */
 	/omit-if-no-ref/ pin_pwm15: pin_pwm15 {
+		ball = <M2>;
+		sig_descs = <SIG_DESC(0x428, 12, 1)>;
+	};
+	/omit-if-no-ref/ pin_dpwm15: pin_dpwm15 {
 		ball = <L16>;
 		sig_descs = <SIG_DESC(0x41c, 28, 4)>;
 	};
@@ -530,7 +710,16 @@
 		ball = <L17>;
 		sig_descs = <SIG_DESC(0x420, 0, 1)>;
 	};
+	/*
+	 * Primary TACH12 path. The alternate path below (pin_dtach12,
+	 * ball L17) only takes effect while this ball's mux is not
+	 * selecting TACH12 (datasheet: SCU430[02:00] not-equal 1).
+	 */
 	/omit-if-no-ref/ pin_tach12: pin_tach12 {
+		ball = <G17>;
+		sig_descs = <SIG_DESC(0x430, 0, 1)>;
+	};
+	/omit-if-no-ref/ pin_dtach12: pin_dtach12 {
 		ball = <L17>;
 		sig_descs = <SIG_DESC(0x420, 0, 4)>;
 	};
@@ -538,7 +727,16 @@
 		ball = <K16>;
 		sig_descs = <SIG_DESC(0x420, 4, 1)>;
 	};
+	/*
+	 * Primary TACH13 path. The alternate path below (pin_dtach13,
+	 * ball K16) only takes effect while this ball's mux is not
+	 * selecting TACH13 (datasheet: SCU430[06:04] not-equal 1).
+	 */
 	/omit-if-no-ref/ pin_tach13: pin_tach13 {
+		ball = <H14>;
+		sig_descs = <SIG_DESC(0x430, 4, 1)>;
+	};
+	/omit-if-no-ref/ pin_dtach13: pin_dtach13 {
 		ball = <K16>;
 		sig_descs = <SIG_DESC(0x420, 4, 4)>;
 	};
@@ -546,7 +744,16 @@
 		ball = <K14>;
 		sig_descs = <SIG_DESC(0x420, 8, 1)>;
 	};
+	/*
+	 * Primary TACH14 path. The alternate path below (pin_dtach14,
+	 * ball K14) only takes effect while this ball's mux is not
+	 * selecting TACH14 (datasheet: SCU430[10:08] not-equal 1).
+	 */
 	/omit-if-no-ref/ pin_tach14: pin_tach14 {
+		ball = <G16>;
+		sig_descs = <SIG_DESC(0x430, 8, 1)>;
+	};
+	/omit-if-no-ref/ pin_dtach14: pin_dtach14 {
 		ball = <K14>;
 		sig_descs = <SIG_DESC(0x420, 8, 4)>;
 	};
@@ -554,7 +761,16 @@
 		ball = <K15>;
 		sig_descs = <SIG_DESC(0x420, 12, 1)>;
 	};
+	/*
+	 * Primary TACH15 path. The alternate path below (pin_dtach15,
+	 * ball K15) only takes effect while this ball's mux is not
+	 * selecting TACH15 (datasheet: SCU430[14:12] not-equal 1).
+	 */
 	/omit-if-no-ref/ pin_tach15: pin_tach15 {
+		ball = <F17>;
+		sig_descs = <SIG_DESC(0x430, 12, 1)>;
+	};
+	/omit-if-no-ref/ pin_dtach15: pin_dtach15 {
 		ball = <K15>;
 		sig_descs = <SIG_DESC(0x420, 12, 4)>;
 	};

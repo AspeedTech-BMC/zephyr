@@ -73,6 +73,20 @@
 #define pinctrl_pwm14_default  &pin_pwm14
 #define pinctrl_pwm15_default  &pin_pwm15
 
+/* PWM (alternate route, see pin_dpwmN comments in ast10x0-g2-pinctrl.dtsi) */
+#define pinctrl_dpwm0_default  &pin_dpwm0
+#define pinctrl_dpwm1_default  &pin_dpwm1
+#define pinctrl_dpwm2_default  &pin_dpwm2
+#define pinctrl_dpwm3_default  &pin_dpwm3
+#define pinctrl_dpwm4_default  &pin_dpwm4
+#define pinctrl_dpwm5_default  &pin_dpwm5
+#define pinctrl_dpwm6_default  &pin_dpwm6
+#define pinctrl_dpwm7_default  &pin_dpwm7
+#define pinctrl_dpwm12_default &pin_dpwm12
+#define pinctrl_dpwm13_default &pin_dpwm13
+#define pinctrl_dpwm14_default &pin_dpwm14
+#define pinctrl_dpwm15_default &pin_dpwm15
+
 /* TACH */
 #define pinctrl_tach0_default  &pin_tach0
 #define pinctrl_tach1_default  &pin_tach1
@@ -90,6 +104,20 @@
 #define pinctrl_tach13_default &pin_tach13
 #define pinctrl_tach14_default &pin_tach14
 #define pinctrl_tach15_default &pin_tach15
+
+/* TACH (alternate route, see pin_dtachN comments in ast10x0-g2-pinctrl.dtsi) */
+#define pinctrl_dtach0_default  &pin_dtach0
+#define pinctrl_dtach1_default  &pin_dtach1
+#define pinctrl_dtach2_default  &pin_dtach2
+#define pinctrl_dtach3_default  &pin_dtach3
+#define pinctrl_dtach4_default  &pin_dtach4
+#define pinctrl_dtach5_default  &pin_dtach5
+#define pinctrl_dtach6_default  &pin_dtach6
+#define pinctrl_dtach7_default  &pin_dtach7
+#define pinctrl_dtach12_default &pin_dtach12
+#define pinctrl_dtach13_default &pin_dtach13
+#define pinctrl_dtach14_default &pin_dtach14
+#define pinctrl_dtach15_default &pin_dtach15
 
 /* ADC */
 #define pinctrl_adc0_default   &pin_adc00
