@@ -26,6 +26,28 @@
 static const struct device *const espi_dev = DEVICE_DT_GET(DT_NODELABEL(espi0));
 static const uint32_t espi_base = DT_REG_ADDR(DT_NODELABEL(espi0));
 
+/*
+ * Set by test_espi_link(), which then posts ESPI_LINK_DONE below regardless
+ * of the result. In tests/boards/ast1040_evb/all, the espi_link/espi_perif/
+ * espi_oob/espi_safs testcases are independent threads all k_thread_start()
+ * at once with no ordering guarantee between them, so test_espi_perif() etc.
+ * can't just read espi_link_up directly - they wait on the event first, so
+ * they block until the link test has actually finished instead of racing it
+ * and reading a stale "not up yet" default.
+ */
+static bool espi_link_up;
+
+#define ESPI_LINK_DONE BIT(0)
+static K_EVENT_DEFINE(espi_link_event);
+
+/*
+ * Shared 5-minute budget for the tester-driven perif/oob/safs testcases,
+ * counted from once the link is confirmed up (not from process/setup start)
+ * so a slow link-up doesn't eat into the tester's window.
+ */
+#define ESPI_TESTCASE_TIMEOUT K_MINUTES(5)
+static k_timepoint_t espi_testcase_deadline;
+
 /* The eSPI host may take a while to bring the link up after power-on. */
 #define ESPI_LINK_TIMEOUT   K_MINUTES(1)
 #define ESPI_LINK_POLL_SLEEP K_MSEC(100)
@@ -93,7 +115,15 @@ int test_espi_link(void)
 	ast_zassert_true(espi_cap_ch_enabled(ESPI_CAP_CH2),
 			 "eSPI CAP_CH2 bit0 not set within timeout");
 
-	return ast_ztest_result();
+	int result = ast_ztest_result();
+
+	espi_link_up = (result == AST_TEST_PASS);
+	if (espi_link_up) {
+		espi_testcase_deadline = sys_timepoint_calc(ESPI_TESTCASE_TIMEOUT);
+	}
+	k_event_post(&espi_link_event, ESPI_LINK_DONE);
+
+	return result;
 }
 
 int test_espi(void)
@@ -102,6 +132,16 @@ int test_espi(void)
 
 	return ast_ztest_result();
 }
+
+/*
+ * Everything below (perif/oob/safs channel service, the vuart tester
+ * control link, and test_espi_perif()/test_espi_oob()/test_espi_safs())
+ * compiles unconditionally so tests/boards/ast1040_evb/all can reuse it too
+ * - that image's overlay/prj.conf now provide the same perif-mcyc-*,
+ * flash-edaf-mode, CONFIG_ESPI_TAF, and &vuart0 this test needs. Only the
+ * ZTEST_SUITE(espi, ...) registration at the bottom is standalone-image-only
+ * (AST1040_CONCURRENT_ALL already has its own ZTEST_SUITE(all, ...)).
+ */
 
 /*
  * Services the host's memory cycle accesses into the peripheral channel's
@@ -465,22 +505,33 @@ static void vuart_thread_entry(void *p1, void *p2, void *p3)
 
 /*
  * perif_thread, oob_thread and the safs TAF handler are attached up front,
- * in the suite setup below, rather than from inside whichever ZTEST used to
- * kick them off - waiting for test_espi_link_up to pass first meant packets
- * the tester sent right as the link came up could already be missed by the
- * time the listener got created.
- *
- * Each of the perif/oob/safs testcases below is tester-driven over vuart0
- * and shares one 30-minute budget, counted from that same setup point: if
- * the tester's "<name> start" or its "<name> pass"/"<name> fail" doesn't
- * arrive before the budget runs out, the testcase fails.
+ * via espi_ensure_setup() below, rather than from inside whichever testcase
+ * used to kick them off - waiting for the link test to pass first meant
+ * packets the tester sent right as the link came up could already be missed
+ * by the time the listener got created. (espi_testcase_deadline itself is
+ * still only set once test_espi_link() confirms the link is up - see above.)
  */
-#define ESPI_TESTCASE_TIMEOUT K_MINUTES(30)
 
-static k_timepoint_t espi_testcase_deadline;
+/*
+ * Both the standalone image (one setup call per ZTEST_SUITE) and the "all"
+ * image (test_espi_perif/oob/safs are independent int test_func_t(void)
+ * entries, each run in its own concurrently-started thread, with no shared
+ * suite-setup hook) need this to run exactly once no matter which of them
+ * gets there first. atomic_cas() elects a single thread to do the work;
+ * everyone else waits on the event instead of busy-polling for it.
+ */
+static atomic_t espi_setup_started;
 
-static void *espi_suite_setup(void)
+#define ESPI_SETUP_DONE BIT(0)
+static K_EVENT_DEFINE(espi_setup_event);
+
+static void espi_ensure_setup(void)
 {
+	if (!atomic_cas(&espi_setup_started, 0, 1)) {
+		k_event_wait(&espi_setup_event, ESPI_SETUP_DONE, false, K_FOREVER);
+		return;
+	}
+
 	k_thread_create(&perif_thread_data, perif_thread_stack,
 			K_THREAD_STACK_SIZEOF(perif_thread_stack), perif_thread_entry,
 			NULL, NULL, NULL, K_PRIO_PREEMPT(7), 0, K_NO_WAIT);
@@ -498,9 +549,7 @@ static void *espi_suite_setup(void)
 			NULL, NULL, K_PRIO_PREEMPT(7), 0, K_NO_WAIT);
 	k_thread_name_set(&vuart_thread_data, "vuart_thread");
 
-	espi_testcase_deadline = sys_timepoint_calc(ESPI_TESTCASE_TIMEOUT);
-
-	return NULL;
+	k_event_post(&espi_setup_event, ESPI_SETUP_DONE);
 }
 
 /*
@@ -551,10 +600,68 @@ static int espi_wait_testcase(struct k_msgq *cmdq, const char *name)
 }
 
 /*
+ * Runs espi_ensure_setup() (idempotent - safe no matter which of
+ * perif/oob/safs gets there first), then waits for the link test to
+ * actually finish (ESPI_LINK_DONE) before checking espi_link_up - in
+ * tests/boards/ast1040_evb/all, this testcase's thread and the link test's
+ * thread start concurrently with no ordering guarantee, so reading
+ * espi_link_up without waiting could see its "not up yet" default and fail
+ * immediately even though the link test hasn't run yet. Fails without
+ * waiting out the tester-driven result if the link never came up.
+ */
+static int espi_run_testcase(struct k_msgq *cmdq, const char *name)
+{
+	espi_ensure_setup();
+
+	/* test_espi_link() itself gives up after ESPI_LINK_TIMEOUT; double
+	 * that here as a backstop in case it never runs at all.
+	 */
+	if (!k_event_wait(&espi_link_event, ESPI_LINK_DONE, false, K_MINUTES(2))) {
+		printk("[%s] eSPI link test did not finish in time\n", name);
+		return -1;
+	}
+
+	if (!espi_link_up) {
+		printk("[%s] eSPI link is not up, failing immediately\n", name);
+		return -1;
+	}
+
+	return espi_wait_testcase(cmdq, name);
+}
+
+int test_espi_perif(void)
+{
+	return espi_run_testcase(&perif_cmdq, "perif");
+}
+
+int test_espi_oob(void)
+{
+	return espi_run_testcase(&oob_cmdq, "oob");
+}
+
+int test_espi_safs(void)
+{
+	return espi_run_testcase(&safs_cmdq, "safs");
+}
+
+/*
+ * ZTEST_SUITE(espi, ...) below is standalone-image-only:
+ * AST1040_CONCURRENT_ALL already has its own ZTEST_SUITE(all, ...) in
+ * tests/boards/ast1040_evb/all/src/main.c, which calls test_espi_link()/
+ * test_espi_perif()/test_espi_oob()/test_espi_safs() above directly instead.
+ */
+#if !defined(AST1040_CONCURRENT_ALL)
+
+static void *espi_suite_setup(void)
+{
+	espi_ensure_setup();
+	return NULL;
+}
+
+/*
  * Numbered so ztest's (alphabetical, not source-order) default test
  * ordering still runs these in the intended sequence.
  */
-#if !defined(AST1040_CONCURRENT_ALL)
 ZTEST(espi, test_espi_0_ready)
 {
 	zassert_equal(test_espi(), AST_TEST_PASS, "espi test failed");
@@ -567,20 +674,20 @@ ZTEST(espi, test_espi_1_link_up)
 
 ZTEST(espi, test_espi_2_perif_mcyc)
 {
-	zassert_equal(espi_wait_testcase(&perif_cmdq, "perif"), 0,
-		     "perif memory cycle r/w test did not start/finish within 30 minutes");
+	zassert_equal(test_espi_perif(), 0,
+		     "perif memory cycle r/w test did not start/finish within the testcase budget");
 }
 
 ZTEST(espi, test_espi_3_oob)
 {
-	zassert_equal(espi_wait_testcase(&oob_cmdq, "oob"), 0,
-		     "oob loopback test did not start/finish within 30 minutes");
+	zassert_equal(test_espi_oob(), 0,
+		     "oob loopback test did not start/finish within the testcase budget");
 }
 
 ZTEST(espi, test_espi_4_safs)
 {
-	zassert_equal(espi_wait_testcase(&safs_cmdq, "safs"), 0,
-		     "safs loopback test did not start/finish within 30 minutes");
+	zassert_equal(test_espi_safs(), 0,
+		     "safs loopback test did not start/finish within the testcase budget");
 }
 
 ZTEST_SUITE(espi, NULL, espi_suite_setup, NULL, NULL, NULL);
