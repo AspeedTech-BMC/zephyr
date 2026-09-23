@@ -19,6 +19,7 @@ target_sources(app PRIVATE
   ${PERIPH_DIR}/otp/src/main.c
   ${PERIPH_DIR}/uart/src/main.c
   ${PERIPH_DIR}/spi/src/main.c
+  ${PERIPH_DIR}/espi/src/main.c
 )
 
 target_include_directories(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../common)

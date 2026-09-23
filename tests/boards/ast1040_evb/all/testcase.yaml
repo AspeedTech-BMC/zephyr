@@ -9,3 +9,4 @@ common:
 tests:
   boards.ast1040_evb.all:
     platform_allow: ast1040_evb/ast1040/cm4
+    timeout: 360

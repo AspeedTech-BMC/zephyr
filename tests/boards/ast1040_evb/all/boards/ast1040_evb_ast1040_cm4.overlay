@@ -3,7 +3,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  *
- * GPIO, I2C, UART and SPI nodes required by the combined test image.
+ * GPIO, I2C, UART, SPI, and eSPI nodes required by the combined test image.
  */
 
 /* GPIO loopback */
@@ -149,4 +149,21 @@
 &spi1_cs1 {
 	spi-max-buswidth = <4>;
 	spi-max-frequency = <50000000>;
+};
+
+/* eSPI auto-test (perif mcyc/oob/safs) */
+
+&espi0 {
+	status = "okay";
+	perif-mcyc-enable;
+	perif-mcyc-src-addr = <0x0 0x98000000>;
+	perif-mcyc-size = <0x0 0x10000>;
+	flash-edaf-mode = <1>;
+};
+
+&vuart0 {
+	virtual,port = <0x3f8>;
+	virtual,sirq = <4>;
+	virtual,sirq-polarity = <0>;
+	status = "okay";
 };

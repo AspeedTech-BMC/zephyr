@@ -16,6 +16,10 @@ extern int test_i2c(void);
 extern int test_otp(void);
 extern int test_uart(void);
 extern int test_spi(void);
+extern int test_espi_link(void);
+extern int test_espi_perif(void);
+extern int test_espi_oob(void);
+extern int test_espi_safs(void);
 
 typedef int (*test_func_t)(void);
 
@@ -32,11 +36,15 @@ static struct aspeed_tests aspeed_testcase[] = {
 	{"otp", test_otp, -1},
 	{"uart", test_uart, -1},
 	{"spi", test_spi, -1},
+	{"espi_link", test_espi_link, -1},
+	{"espi_perif", test_espi_perif, -1},
+	{"espi_oob", test_espi_oob, -1},
+	{"espi_safs", test_espi_safs, -1},
 };
 
 #define TEST_MODULE_CNT ARRAY_SIZE(aspeed_testcase)
 #define TEST_STACKSIZE  4096
-#define TEST_CI_TIMEOUT 40
+#define TEST_CI_TIMEOUT (5 * 60)
 
 K_THREAD_STACK_ARRAY_DEFINE(test_thread_stack, TEST_MODULE_CNT, TEST_STACKSIZE);
 static struct k_thread ztest_thread[TEST_MODULE_CNT];
