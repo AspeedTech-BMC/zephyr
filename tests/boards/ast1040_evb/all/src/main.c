@@ -44,7 +44,16 @@ static struct aspeed_tests aspeed_testcase[] = {
 
 #define TEST_MODULE_CNT ARRAY_SIZE(aspeed_testcase)
 #define TEST_STACKSIZE  4096
-#define TEST_CI_TIMEOUT (5 * 60)
+/*
+ * espi_perif/espi_oob/espi_safs can each legitimately take up to
+ * ESPI_LINK_TIMEOUT (1 minute, waiting for the link) plus
+ * ESPI_TESTCASE_TIMEOUT (5 minutes, waiting for the tester over vuart0) -
+ * see tests/boards/ast1040_evb/espi/src/main.c. This must stay comfortably
+ * above that ~6-minute worst case, or a slow-but-correct link-up/tester
+ * response gets force-aborted here and reported as FAILED. Matches the
+ * standalone espi test's own testcase.yaml timeout (630s) for consistency.
+ */
+#define TEST_CI_TIMEOUT (10 * 60 + 30)
 
 K_THREAD_STACK_ARRAY_DEFINE(test_thread_stack, TEST_MODULE_CNT, TEST_STACKSIZE);
 static struct k_thread ztest_thread[TEST_MODULE_CNT];

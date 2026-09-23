@@ -9,4 +9,6 @@ common:
 tests:
   boards.ast1040_evb.all:
     platform_allow: ast1040_evb/ast1040/cm4
-    timeout: 360
+    # Must stay above TEST_CI_TIMEOUT (all/src/main.c) plus flashing/boot
+    # overhead, or twister kills the run before the internal watchdog does.
+    timeout: 660
