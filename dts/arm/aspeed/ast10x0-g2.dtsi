@@ -147,14 +147,13 @@
 		};
 
 		uart4: serial@74c33400 {
-			compatible = "ns16550";
+			compatible = "aspeed,uart";
 			reg = <0x74c33400 0x100>;
 			interrupts = <INTR_UART4 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk SCU1_CLK_UART4>;
 			pinctrl-0 = <pinctrl_uart4_default>;
 			pinctrl-names = "default";
 			status = "disabled";
-			reg-shift = <2>;
 		};
 
 		uart5: serial@74c33500 {
