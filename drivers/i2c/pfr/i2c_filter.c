@@ -46,6 +46,8 @@ struct ast_i2c_filter_child_config {
 	const struct device *parent; /* Parent device handler */
 	uint8_t	index; /* i2c filter index */
 	uint32_t	clock; /* i2c filter clock select */
+	uint32_t	manual_low_timeout; /* manual scl low timeout counter */
+	uint32_t	manual_block_timeout; /* manual timeout counter */
 };
 
 struct ast_i2c_filter_child_data {
@@ -281,7 +283,8 @@ int ast_i2c_filter_init(const struct device *dev)
 	const struct ast_i2c_filter_child_config *cfg = DEV_C_CFG(dev);
 	struct ast_i2c_filter_child_data *data = DEV_C_DATA(dev);
 	const struct ast_i2c_filter_config *gcfg = DEV_CFG(cfg->parent);
-	uint32_t ginten, timeout_count = 0;
+	uint32_t ginten, timeout_count = sys_read32(data->filter_dev_base + AST_I2C_F_TIMING);
+	uint32_t cal_timeout = 0;
 	uint32_t clk_src;
 	int error = 0;
 
@@ -299,12 +302,24 @@ int ast_i2c_filter_init(const struct device *dev)
 
 	/* calculation timeout term */
 	if (cfg->clock == 100 || cfg->clock == 400) {
-		/* obtain the pclk value */
-		clock_control_get_rate(gcfg->clock_dev, gcfg->clk_id, &clk_src);
-		LOG_INF("i2c flt pclk : %d MHz", clk_src / 1000000);
+		timeout_count &= 0xFFFF0000;
 
-		timeout_count = clk_src / (cfg->clock * 3 * 1000);
-		timeout_count |= (timeout_count) << 16;
+		if (cfg->manual_block_timeout != 0){
+			timeout_count |= cfg->manual_block_timeout;
+		} else {
+			/* obtain the pclk value */
+			clock_control_get_rate(gcfg->clock_dev, gcfg->clk_id, &clk_src);
+			LOG_INF("i2c flt pclk : %d MHz", clk_src / 1000000);
+
+			cal_timeout = clk_src / (cfg->clock * 3 * 1000);
+			timeout_count |= cal_timeout;
+		}
+
+		if (cfg->manual_low_timeout != 0) {
+			timeout_count &= 0x0000FFFF;
+			timeout_count |= (cfg->manual_low_timeout) << 16;
+		}
+
 		LOG_INF("i2c timeout tick : %x", timeout_count);
 
 		I2C_W_R(timeout_count,
@@ -383,6 +398,8 @@ struct filter_info {
 #define ASPEED_FILTER_CHILD_CFG(node_id) {			\
 		.index = DT_PROP(node_id, index),	\
 		.clock = DT_PROP(node_id, clock),	\
+		.manual_low_timeout =  DT_PROP_OR(node_id, manual_scl_low_timeout, 0),	\
+		.manual_block_timeout = DT_PROP_OR(node_id, manual_block_timeout, 0),	\
 		.parent = DEVICE_DT_GET(DT_PARENT(node_id)),	\
 },
 #define ASPEED_FILTER_CHILD_DEFINE(node_id)				\

@@ -33,3 +33,10 @@ child-binding:
       required: true
       description: i2c filter device clock
 
+    manual-scl-low-timeout:
+      type: int
+      description: i2c filter manual scl low timeout setting.
+
+    manual-block-timeout:
+      type: int
+      description: i2c filter manual block timeout setting.
