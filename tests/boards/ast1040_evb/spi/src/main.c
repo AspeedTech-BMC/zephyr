@@ -17,6 +17,8 @@
 #define TEST_ROUNDS 10
 
 static uint8_t __aligned(4) test_arr[TEST_ARR_SIZE];
+static uint8_t __aligned(4) op_buf[TEST_ARR_SIZE];
+static uint8_t __aligned(4) read_back_buf[TEST_ARR_SIZE];
 
 struct flash_test_dev {
 	const struct device *dev;
@@ -72,7 +74,7 @@ static int do_update(const struct device *dev, off_t offset, uint8_t *buf, size_
 	size_t sector_sz = flash_get_write_block_size(dev);
 	uint32_t flash_offset = (uint32_t)offset;
 	uint32_t remain, op_addr, end_sector_addr;
-	uint8_t *update_ptr = buf, *op_buf = NULL, *read_back_buf = NULL;
+	uint8_t *update_ptr = buf;
 	bool update_it = false;
 
 	if (flash_sz < flash_offset + len) {
@@ -81,12 +83,10 @@ static int do_update(const struct device *dev, off_t offset, uint8_t *buf, size_
 		return -EINVAL;
 	}
 
-	op_buf = k_malloc(sector_sz);
-	read_back_buf = k_malloc(sector_sz);
-	if (op_buf == NULL || read_back_buf == NULL) {
-		printk("%s: k_malloc(%zu) failed\n", dev->name, sector_sz);
-		ret = -ENOMEM;
-		goto end;
+	if (sector_sz > sizeof(op_buf)) {
+		printk("%s: sector_sz=%zu exceeds buffer size %zu\n", dev->name, sector_sz,
+		       sizeof(op_buf));
+		return -ENOMEM;
 	}
 
 	/* initial op_addr */
@@ -152,9 +152,6 @@ static int do_update(const struct device *dev, off_t offset, uint8_t *buf, size_
 	}
 
 end:
-	k_free(op_buf);
-	k_free(read_back_buf);
-
 	return ret;
 }
 
