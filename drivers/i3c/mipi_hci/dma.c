@@ -1209,17 +1209,17 @@ static void hci_dma_process_ibi(struct i3c_hci *hci, struct i3c_hci_dma_ring *rh
 {
 	uint32_t op1_val;
 	uint32_t op2_val;
-	uint32_t last_status = 0U;
-	uint32_t ibi_status_error = 0U;
+	uint32_t last_status;
+	uint32_t ibi_status_error;
 	unsigned int start_chunk;
 	unsigned int deq_ptr;
 	unsigned int enq_ptr;
 	unsigned int ptr;
-	unsigned int ibi_chunks = 0U;
-	unsigned int ibi_size = 0U;
-	int ibi_addr = -1;
-	int last_ptr = -1;
-	bool ibi_rnw = false;
+	unsigned int ibi_chunks;
+	unsigned int ibi_size;
+	int ibi_addr;
+	int last_ptr;
+	bool ibi_rnw;
 	k_spinlock_key_t key;
 
 	if (!rh->has_ibi) {
@@ -1231,93 +1231,119 @@ static void hci_dma_process_ibi(struct i3c_hci *hci, struct i3c_hci_dma_ring *rh
 	deq_ptr = FIELD_GET(RING_OP1_IBI_DEQ_PTR, op1_val);
 	op2_val = rh_reg_read(rh, RING_OPERATION2);
 	enq_ptr = FIELD_GET(RING_OP2_IBI_ENQ_PTR, op2_val);
-	start_chunk = rh->ibi_chunk_ptr;
+	k_spin_unlock(&hci->lock, key);
 
-	for (ptr = deq_ptr; ptr != enq_ptr; ptr = (ptr + 1U) % rh->ibi_status_entries) {
-		uint8_t *entry = hci_dma_ring_entry(rh->ibi_status_ring,
-						    rh->ibi_status_sz, ptr);
-		uint32_t status;
-		unsigned int chunks;
+	LOG_DBG("%s RING_OP1_IBI_DEQ_PTR = %x, RING_OP2_IBI_ENQ_PTR = %x",
+		hci->dev->name, deq_ptr, enq_ptr);
 
-		hci_dma_cache_invd(entry, rh->ibi_status_sz);
-		status = *(uint32_t *)entry;
-		last_status = status;
+	/*
+	 * enq_ptr is sampled once here. A single edge-triggered IBI_READY
+	 * interrupt can correspond to more than one already-completed IBI
+	 * sitting in the status ring (e.g. a hot-join immediately followed
+	 * by a normal IBI), each ending in its own IBI_LAST_STATUS entry.
+	 * Drain all of them now instead of processing only the first and
+	 * leaving the rest stranded until some later, unrelated IBI happens
+	 * to re-arm the interrupt. Anything enqueued after this snapshot
+	 * raises its own IBI_READY interrupt and is handled on a later call.
+	 */
+	while (deq_ptr != enq_ptr) {
+		last_status = 0U;
+		ibi_status_error = 0U;
+		ibi_chunks = 0U;
+		ibi_size = 0U;
+		ibi_addr = -1;
+		last_ptr = -1;
+		ibi_rnw = false;
 
-		if (hci->is_target) {
-			unsigned int nbytes = TARGET_RESP_DATA_LENGTH(status);
+		key = k_spin_lock(&hci->lock);
+		start_chunk = rh->ibi_chunk_ptr;
 
-			/*
-			 * TARGET_RESP_XFER_TYPE is target-centric: TYPE_R means
-			 * the target received data from the controller (so we
-			 * need to account for the incoming RX chunks).
-			 */
-			if (TARGET_RESP_XFER_TYPE(status) == TARGET_RESP_XFER_TYPE_R) {
-				chunks = DIV_ROUND_UP(nbytes, rh->ibi_chunk_sz);
-				ibi_chunks += chunks;
-				ibi_size += nbytes;
+		for (ptr = deq_ptr; ptr != enq_ptr; ptr = (ptr + 1U) % rh->ibi_status_entries) {
+			uint8_t *entry = hci_dma_ring_entry(rh->ibi_status_ring,
+							    rh->ibi_status_sz, ptr);
+			uint32_t status;
+			unsigned int chunks;
+
+			hci_dma_cache_invd(entry, rh->ibi_status_sz);
+			status = *(uint32_t *)entry;
+			last_status = status;
+
+			if (hci->is_target) {
+				unsigned int nbytes = TARGET_RESP_DATA_LENGTH(status);
+
+				/*
+				 * TARGET_RESP_XFER_TYPE is target-centric: TYPE_R means
+				 * the target received data from the controller (so we
+				 * need to account for the incoming RX chunks).
+				 */
+				if (TARGET_RESP_XFER_TYPE(status) == TARGET_RESP_XFER_TYPE_R) {
+					chunks = DIV_ROUND_UP(nbytes, rh->ibi_chunk_sz);
+					ibi_chunks += chunks;
+					ibi_size += nbytes;
+				}
+				last_ptr = (int)ptr;
+				break;
+			}
+
+			if (ibi_status_error != 0U) {
+				/* Keep consuming descriptors until LAST_STATUS. */
+			} else if (status & IBI_ERROR) {
+				ibi_status_error = status;
+			} else if (ibi_addr == -1) {
+				ibi_addr = FIELD_GET(IBI_TARGET_ADDR, status);
+			} else if (ibi_addr != (int)FIELD_GET(IBI_TARGET_ADDR, status)) {
+				ibi_status_error = status;
+			}
+
+			ibi_rnw = FIELD_GET(IBI_TARGET_RNW, status) != 0U;
+			chunks = FIELD_GET(IBI_CHUNKS, status);
+			ibi_chunks += chunks;
+
+			if ((status & IBI_LAST_STATUS) == 0U) {
+				ibi_size += chunks * rh->ibi_chunk_sz;
+				continue;
+			}
+
+			if (chunks != 0U) {
+				ibi_size += (chunks - 1U) * rh->ibi_chunk_sz;
+				ibi_size += FIELD_GET(IBI_DATA_LENGTH, status);
 			}
 			last_ptr = (int)ptr;
 			break;
 		}
 
-		if (ibi_status_error != 0U) {
-			/* Keep consuming descriptors until LAST_STATUS. */
-		} else if (status & IBI_ERROR) {
-			ibi_status_error = status;
-		} else if (ibi_addr == -1) {
-			ibi_addr = FIELD_GET(IBI_TARGET_ADDR, status);
-		} else if (ibi_addr != (int)FIELD_GET(IBI_TARGET_ADDR, status)) {
-			ibi_status_error = status;
+		if (last_ptr < 0) {
+			k_spin_unlock(&hci->lock, key);
+			break;
 		}
 
-		ibi_rnw = FIELD_GET(IBI_TARGET_RNW, status) != 0U;
-		chunks = FIELD_GET(IBI_CHUNKS, status);
-		ibi_chunks += chunks;
-
-		if ((status & IBI_LAST_STATUS) == 0U) {
-			ibi_size += chunks * rh->ibi_chunk_sz;
-			continue;
-		}
-
-		if (chunks != 0U) {
-			ibi_size += (chunks - 1U) * rh->ibi_chunk_sz;
-			ibi_size += FIELD_GET(IBI_DATA_LENGTH, status);
-		}
-		last_ptr = (int)ptr;
-		break;
-	}
-
-	if (last_ptr < 0) {
+		deq_ptr = ((unsigned int)last_ptr + 1U) % rh->ibi_status_entries;
+		op1_val = rh_reg_read(rh, RING_OPERATION1);
+		op1_val &= ~RING_OP1_IBI_DEQ_PTR;
+		op1_val |= FIELD_PREP(RING_OP1_IBI_DEQ_PTR, deq_ptr);
+		rh_reg_write(rh, RING_OPERATION1, op1_val);
+		rh->ibi_chunk_ptr = (rh->ibi_chunk_ptr + ibi_chunks) % rh->ibi_chunks_total;
 		k_spin_unlock(&hci->lock, key);
-		return;
-	}
 
-	deq_ptr = ((unsigned int)last_ptr + 1U) % rh->ibi_status_entries;
-	op1_val = rh_reg_read(rh, RING_OPERATION1);
-	op1_val &= ~RING_OP1_IBI_DEQ_PTR;
-	op1_val |= FIELD_PREP(RING_OP1_IBI_DEQ_PTR, deq_ptr);
-	rh_reg_write(rh, RING_OPERATION1, op1_val);
-	rh->ibi_chunk_ptr = (rh->ibi_chunk_ptr + ibi_chunks) % rh->ibi_chunks_total;
-	k_spin_unlock(&hci->lock, key);
-
-	if (hci->is_target) {
-		hci_dma_process_target_rx(hci, rh, start_chunk, last_status, ibi_size);
-	} else if (ibi_status_error != 0U) {
-		LOG_ERR("%s IBI error from %#x: %#x", hci->dev->name,
-			ibi_addr, ibi_status_error);
-	} else if (IBI_TYPE_HJ(ibi_addr, ibi_rnw)) {
-		if (!hci_dma_submit_hotjoin(hci)) {
-			LOG_ERR("%s failed to enqueue hot-join work", hci->dev->name);
+		if (hci->is_target) {
+			hci_dma_process_target_rx(hci, rh, start_chunk, last_status, ibi_size);
+		} else if (ibi_status_error != 0U) {
+			LOG_ERR("%s IBI error from %#x: %#x", hci->dev->name,
+				ibi_addr, ibi_status_error);
+		} else if (IBI_TYPE_HJ(ibi_addr, ibi_rnw)) {
+			if (!hci_dma_submit_hotjoin(hci)) {
+				LOG_ERR("%s failed to enqueue hot-join work", hci->dev->name);
+			}
+		} else if (IBI_TYPE_CR(ibi_addr, ibi_rnw)) {
+			hci_dma_deliver_controller_role_request(hci, ibi_addr);
+		} else {
+			(void)hci_dma_deliver_sir(hci, rh, start_chunk, ibi_addr, ibi_size);
 		}
-	} else if (IBI_TYPE_CR(ibi_addr, ibi_rnw)) {
-		hci_dma_deliver_controller_role_request(hci, ibi_addr);
-	} else {
-		(void)hci_dma_deliver_sir(hci, rh, start_chunk, ibi_addr, ibi_size);
-	}
 
-	if (ibi_chunks != 0U) {
-		rh_reg_write(rh, CHUNK_CONTROL,
-			     rh_reg_read(rh, CHUNK_CONTROL) + ibi_chunks);
+		if (ibi_chunks != 0U) {
+			rh_reg_write(rh, CHUNK_CONTROL,
+				     rh_reg_read(rh, CHUNK_CONTROL) + ibi_chunks);
+		}
 	}
 }
 
