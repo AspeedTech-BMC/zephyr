@@ -17,8 +17,19 @@ config PINCTRL_ASPEED_G7
 	help
 	  Enable pin controller driver for Aspeed SOCs
 
+config PINCTRL_ASPEED_G7_CONFLICT_CHECK
+	bool "Check for Aspeed G7 pin conflicts"
+	depends on PINCTRL_ASPEED_G7
+	default y if SOC_SERIES_AST10x0_G2
+	help
+	  Track the signal assigned to each ball and reject conflicting pin
+	  configurations. Leave disabled to save the RAM used by the ball
+	  ownership table. When disabled, later configurations can overwrite
+	  an earlier pinmux selection for the same ball.
+
 config PINCTRL_ASPEED_STRING_NAME
 	bool "Store the pin name in a string"
+	default y if SOC_SERIES_AST10x0_G2
 	default n
 	depends on PINCTRL_ASPEED || PINCTRL_ASPEED_G7
 	help

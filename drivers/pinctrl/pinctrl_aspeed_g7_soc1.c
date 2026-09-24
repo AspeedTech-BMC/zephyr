@@ -31,6 +31,7 @@ LOG_MODULE_REGISTER(pinctrl_aspeed_g7_soc1, LOG_LEVEL_INF);
 
 static const struct device *syscon = DEVICE_DT_GET(DT_INST_PARENT(0));
 
+#ifdef CONFIG_PINCTRL_ASPEED_G7_CONFLICT_CHECK
 static struct {
 	bool requested;
 	uint32_t sig_descs;
@@ -41,11 +42,6 @@ static struct {
 
 static int pinctrl_request_ball(const pinctrl_soc_pin_t *pin)
 {
-	if (pin->ball < 0 || pin->ball >= ARRAY_SIZE(ball_owner)) {
-		LOG_ERR("Invalid ball %d", pin->ball);
-		return -EINVAL;
-	}
-
 	if (ball_owner[pin->ball].requested &&
 	    ball_owner[pin->ball].sig_descs != pin->sig_descs) {
 #ifdef CONFIG_PINCTRL_ASPEED_STRING_NAME
@@ -66,6 +62,7 @@ static int pinctrl_request_ball(const pinctrl_soc_pin_t *pin)
 
 	return 0;
 }
+#endif
 
 /*
  * Apply one PINCFG_DESC()-located attribute (drive strength, bias/pull
@@ -130,10 +127,17 @@ static int pinctrl_configure_pin(const pinctrl_soc_pin_t *pin)
 	LOG_DBG("ball %d sig_descs %x", pin->ball, pin->sig_descs);
 #endif
 
+	if (pin->ball < 0 || pin->ball >= ASPEED_PINCTRL_BALL_NUM) {
+		LOG_ERR("Invalid ball %d", pin->ball);
+		return -EINVAL;
+	}
+
+#ifdef CONFIG_PINCTRL_ASPEED_G7_CONFLICT_CHECK
 	ret = pinctrl_request_ball(pin);
 	if (ret) {
 		return ret;
 	}
+#endif
 
 	/*
 	 * A pin with no sig_descs has no pinmux to select (e.g. a pin that
