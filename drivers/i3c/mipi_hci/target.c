@@ -804,29 +804,47 @@ void mipi_i3c_hci_target_rx_data(struct i3c_hci *hci, void *buf, unsigned int le
 	int ret = 0;
 
 	if (!hci || !hci->target_cb || !bytes || len == 0U) {
+		LOG_DBG("%s target rx_data: dropped (hci=%p target_cb=%p buf=%p len=%u)",
+			hci ? hci->dev->name : "?", (void *)hci,
+			hci ? (void *)hci->target_cb : NULL, (void *)bytes, len);
 		return;
 	}
 
+	LOG_DBG("%s target rx_data: dispatching %u bytes to target callbacks",
+		hci->dev->name, len);
+
 	cbs = hci->target_cb->callbacks;
 	if (!cbs) {
+		LOG_DBG("%s target rx_data: no callbacks registered", hci->dev->name);
 		return;
 	}
 
 	if (cbs->write_requested_cb) {
 		ret = cbs->write_requested_cb(hci->target_cb);
+		LOG_DBG("%s target rx_data: write_requested_cb ret=%d", hci->dev->name, ret);
 	}
 
 	if (ret == 0 && cbs->write_received_cb) {
-		for (unsigned int i = 0; i < len; i++) {
+		unsigned int i;
+
+		for (i = 0; i < len; i++) {
 			ret = cbs->write_received_cb(hci->target_cb, bytes[i]);
 			if (ret != 0) {
+				LOG_DBG("%s target rx_data: write_received_cb NACKed byte %u/%u "
+					"ret=%d",
+					hci->dev->name, i, len, ret);
 				break;
 			}
+		}
+		if (ret == 0) {
+			LOG_DBG("%s target rx_data: write_received_cb consumed all %u bytes",
+				hci->dev->name, len);
 		}
 	}
 
 	if (cbs->stop_cb) {
 		(void)cbs->stop_cb(hci->target_cb);
+		LOG_DBG("%s target rx_data: stop_cb done", hci->dev->name);
 	}
 }
 

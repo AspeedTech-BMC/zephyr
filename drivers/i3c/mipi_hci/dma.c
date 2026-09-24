@@ -1183,6 +1183,9 @@ static void hci_dma_process_target_rx(struct i3c_hci *hci, struct i3c_hci_dma_ri
 {
 	int ret;
 
+	LOG_DBG("%s target rx: processing status=%#x ibi_size=%u start_chunk=%u",
+		hci->dev->name, status, ibi_size, start_chunk);
+
 	if (ibi_size > hci->target_rx.max_len) {
 		LOG_ERR("%s target private write too large: %u", hci->dev->name, ibi_size);
 		return;
@@ -1201,6 +1204,8 @@ static void hci_dma_process_target_rx(struct i3c_hci *hci, struct i3c_hci_dma_ri
 			hci->vendor->ccc_handler(hci, TARGET_RESP_CCC_HDR(status));
 		}
 	} else if (ibi_size != 0U) {
+		LOG_DBG("%s target rx: master write target received %u bytes", hci->dev->name,
+			ibi_size);
 		mipi_i3c_hci_target_rx_data(hci, hci->target_rx.buf, ibi_size);
 	}
 }
@@ -1271,6 +1276,9 @@ static void hci_dma_process_ibi(struct i3c_hci *hci, struct i3c_hci_dma_ring *rh
 			if (hci->is_target) {
 				unsigned int nbytes = TARGET_RESP_DATA_LENGTH(status);
 
+				LOG_DBG("%s target ibi status=%#x type=%u len=%u", hci->dev->name,
+					status, (unsigned int)TARGET_RESP_XFER_TYPE(status),
+					nbytes);
 				/*
 				 * TARGET_RESP_XFER_TYPE is target-centric: TYPE_R means
 				 * the target received data from the controller (so we
@@ -1486,6 +1494,10 @@ static bool hci_dma_irq_handler(struct i3c_hci *hci)
 		rh_reg_write(rh, INTR_STATUS, status);
 
 		if (status & INTR_IBI_READY) {
+			if (hci->is_target) {
+				LOG_DBG("%s target ibi ready irq: ring %u intr_status=%#x",
+					hci->dev->name, i, status);
+			}
 			hci_dma_process_ibi(hci, rh);
 		}
 

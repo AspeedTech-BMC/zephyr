@@ -237,6 +237,9 @@ static void hci_pio_target_read_rx_fifo(struct i3c_hci *hci, unsigned int count)
 	if (!buf || hci->target_rx.max_len == 0U) {
 		copy_len = 0U;
 	}
+
+	LOG_DBG("%s target rx: draining %u bytes from FIFO (copy_len=%u, buf=%p, max_len=%u)",
+		hci->dev->name, count, copy_len, (void *)buf, hci->target_rx.max_len);
 	while (remaining >= 4U) {
 		uint32_t word = hci_pio_read(hci, PIO_XFER_DATA_PORT);
 
@@ -445,11 +448,16 @@ static void hci_pio_target_handle_response(struct i3c_hci *hci,
 		} else {
 			hci_pio_target_read_rx_fifo(hci, nbytes);
 			if (ccc) {
+				LOG_DBG("%s target rx: CCC 0x%02x received (%u bytes payload)",
+					hci->dev->name,
+					(unsigned int)TARGET_RESP_CCC_HDR(resp), nbytes);
 				if (hci->vendor && hci->vendor->ccc_handler) {
 					hci->vendor->ccc_handler(hci,
 								 TARGET_RESP_CCC_HDR(resp));
 				}
 			} else {
+				LOG_DBG("%s target rx: master write target received %u bytes",
+					hci->dev->name, nbytes);
 				mipi_i3c_hci_target_rx_data(hci, hci->target_rx.buf,
 							    nbytes);
 			}
