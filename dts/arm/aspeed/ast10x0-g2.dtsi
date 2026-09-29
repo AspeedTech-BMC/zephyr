@@ -341,6 +341,7 @@
 			resets = <&sysrst SCU1_RESET_PECI>;
 			#address-cells = <1>;
 			#size-cells = <0>;
+			status = "disabled";
 		};
 
 		i2cfilter: i2c-filter@74c14000 {
