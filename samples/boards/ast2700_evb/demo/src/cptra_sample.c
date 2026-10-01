@@ -4,6 +4,7 @@
  * Copyright (c) 2024 ASPEED Technology Inc.
  */
 
+#include <stdlib.h>
 #include <zephyr/drivers/cptra.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/drivers/flash.h>
@@ -1058,23 +1059,30 @@ end:
 static void cptra_test_certify_key_extended(void)
 {
 	struct cptra_certify_key_extended_ia input;
-	struct cptra_certify_key_extended_oa output;
+	struct cptra_certify_key_extended_oa *output;
 	int ret;
 
 	LOG_INF("Test caliptra_certify_key_extended...");
 
+	/* Too large for the 6KB shell stack */
+	output = malloc(sizeof(*output));
+	if (!output) {
+		LOG_ERR("Failed to allocate certify_key_extended output");
+		goto end;
+	}
+
 	memset(&input, 0, sizeof(struct cptra_certify_key_extended_ia));
-	memset(&output, 0, sizeof(struct cptra_certify_key_extended_oa));
+	memset(output, 0, sizeof(struct cptra_certify_key_extended_oa));
 
 #if CONFIG_CPTRA_SAMPLE_BOOTMCU
 	const struct device *dev = device_get_binding(CPTRA_DICE_DRV_NAME);
 
-	ret = caliptra_certify_key_extended(dev, &input, &output);
+	ret = caliptra_certify_key_extended(dev, &input, output);
 #elif CONFIG_CPTRA_SAMPLE_SSP
 	ret = cptra_ipc_transfer(CPTRA_IPCCMD_CERTIFY_KEY_EXTENDED,
 				 (uint32_t *)&input, sizeof(input),
 				 CPTRA_IPC_RX_TYPE_EXTERNAL,
-				 (uint32_t *)&output, sizeof(output));
+				 (uint32_t *)output, sizeof(*output));
 #endif
 
 	if (ret) {
@@ -1084,13 +1092,15 @@ static void cptra_test_certify_key_extended(void)
 		LOG_DBG("caliptra_certify_key_extended is successful");
 
 	LOG_DBG("output: chksum:0x%x, fips_status:0x%x",
-		output.chksum, output.fips_status);
-	LOG_HEXDUMP_DBG(output.certify_key_resp, sizeof(output.certify_key_resp),
+		output->chksum, output->fips_status);
+	LOG_HEXDUMP_DBG(output->certify_key_resp, sizeof(output->certify_key_resp),
 			"certify_key_resp:");
 
+	free(output);
 	LOG_INF("%s: Pass", __func__);
 	return;
 end:
+	free(output);
 	LOG_INF("%s: Failed", __func__);
 }
 

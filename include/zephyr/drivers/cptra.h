@@ -348,10 +348,14 @@ struct cptra_certify_key_extended_ia {
 	uint32_t flags;
 };
 
+/*
+ * certify_key_resp holds a struct dpe_certify_key_o: a 128-byte header followed
+ * by a DER certificate of up to DPE MAX_CERT_SIZE (6144) bytes.
+ */
 struct cptra_certify_key_extended_oa {
 	uint32_t chksum;
 	uint32_t fips_status;
-	uint8_t certify_key_resp[2176];
+	uint8_t certify_key_resp[6272];
 };
 
 struct cptra_disable_attestation_ia {
