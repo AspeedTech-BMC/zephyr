@@ -457,6 +457,7 @@ struct cptra_fw_info_oa {
 	uint32_t fmc_sha384_digest[12];
 	uint32_t runtime_sha384_digest[12];
 	uint32_t owner_pub_key_hash[12];
+	uint32_t authman_sha384_digest[12]; /* rt-1.3.0+ */
 };
 
 struct cptra_capabilities_ia {
