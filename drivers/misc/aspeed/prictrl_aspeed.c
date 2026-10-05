@@ -323,7 +323,7 @@ static void prictrl_mpu_cfg_dbg_dump(struct prictrl_mpu_cfg *mpu, int num)
 	int j = 0;
 
 	for (i = 0; i < num; i++) {
-		LOG_DBG("MPU config: start: 0x%08lx, end: 0x%08lx", mpu[i].start, mpu[i].end);
+		LOG_DBG("MPU config: start: 0x%016llx, end: 0x%016llx", mpu[i].start, mpu[i].end);
 
 		for (j = 0; j < mpu[i].l1_num; j++)
 			LOG_DBG("  Level1 MPU device[%d]: 0x%08x", j, mpu[i].l1_dev[j]);
@@ -379,7 +379,7 @@ static int prictrl_mpu_build_sli_region(struct prictrl_mpu_cfg *sli_mpu,
 	    (mpu_cfg->end & PRICTRL_MPU_ADDR_ALIGN_MASK))
 		return -EFAULT;
 
-	if (mpu_cfg->end > 0xF0000000 || mpu_cfg->start > mpu_cfg->end)
+	if (mpu_cfg->end > 0x200000000 || mpu_cfg->start > mpu_cfg->end)
 		return -EFAULT;
 
 	memset(sli_mpu, 0, sizeof(struct prictrl_mpu_cfg) * PRICTRL_MPU_MAX_NUM);
@@ -392,7 +392,7 @@ static int prictrl_mpu_build_sli_region(struct prictrl_mpu_cfg *sli_mpu,
 
 	/* Region 2, used to ensure other master can pass through */
 	sli_mpu[2].start = mpu_cfg->end;
-	sli_mpu[2].end = 0xF0000000;
+	sli_mpu[2].end = 0x200000000;
 
 	/* Region 3, used to configure sli mpu */
 	memcpy(&sli_mpu[3], mpu_cfg, sizeof(struct prictrl_mpu_cfg));
@@ -459,6 +459,10 @@ static int prictrl_mpu_region_en(const struct prictrl_aspeed_config *cfg,
 
 	if ((mpu_cfg->start & PRICTRL_MPU_ADDR_ALIGN_MASK) ||
 	    (mpu_cfg->end & PRICTRL_MPU_ADDR_ALIGN_MASK))
+		return -EFAULT;
+
+	if (mpu_cfg->start > PRICTRL_MPU_MAX_ADDR ||
+	    mpu_cfg->end > PRICTRL_MPU_MAX_ADDR)
 		return -EFAULT;
 
 	if (cfg_mask != PRICTRL_MPU_SLI_MASK && cfg_mask != PRICTRL_MPU_H2M0_MASK &&

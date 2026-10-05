@@ -88,9 +88,11 @@
 
 /* Privilege control mpu hardware definition */
 #define PRICTRL_MPU_ADDR_ALIGN     (12)
+#define PRICTRL_MPU_MAX_BIT        (36)
 #define PRICTRL_MPU_BANK            (4)
 #define PRICTRL_MPU_MAX_NUM         (4)
 #define PRICTRL_MPU_SLI_NUM         (1)
+#define PRICTRL_MPU_MAX_ADDR        (BIT64(PRICTRL_MPU_MAX_BIT) - 1)
 #define PRICTRL_MPU_ADDR_ALIGN_MASK (BIT(PRICTRL_MPU_ADDR_ALIGN) - 1)
 #define PRICTRL_MPU_DEFAULT_GRP     GENMASK(7, 2)
 #define PRICTRL_MPU_ADDR(_addr)     (((_addr) >> PRICTRL_MPU_ADDR_ALIGN) << 8)
@@ -138,8 +140,8 @@ struct prictrl_dev_list {
 
 struct prictrl_mpu_cfg {
 	/* Region start and end address */
-	uintptr_t start;
-	uintptr_t end;
+	uint64_t start;
+	uint64_t end;
 
 	/* Level1 mpu config, dramc protection is level1 mpu. */
 	uint8_t l1_num;
