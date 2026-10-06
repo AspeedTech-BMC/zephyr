@@ -144,6 +144,10 @@
 	status = "okay";
 };
 
+&psp_reset_notify {
+	status = "okay";
+};
+
 &intc1_0 {
 	status = "okay";
 };

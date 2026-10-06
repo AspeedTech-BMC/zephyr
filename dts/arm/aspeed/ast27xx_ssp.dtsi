@@ -44,6 +44,14 @@
 			status = "disabled";
 		};
 
+		psp_reset_notify: psp-reset-notify@0 {
+			compatible = "aspeed,ast2700-ssp-psp-reset-notify";
+			reg = <0x0 0x1>;
+			interrupt-parent = <&intc_sw>;
+			interrupts = <7 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			status = "disabled";
+		};
+
 		intc0_11: interrupt-controller@72102b00 {
 			compatible = "aspeed,ast2700-intc-ic";
 			reg = <0x72102b00 0x10>;

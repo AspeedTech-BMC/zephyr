@@ -58,6 +58,15 @@ config OTP_ASPEED
 	help
 	  This option enables the OTP Utility for ASPEED SoCs.
 
+config PSP_RESET_NOTIFY_ASPEED
+	bool "ASPEED SSP PSP reset interrupt notify driver"
+	depends on SOC_AST2700_SSP || SOC_AST2700_A1_SSP
+	default DT_HAS_ASPEED_AST2700_SSP_PSP_RESET_NOTIFY_ENABLED
+	help
+	  This option enables a driver that requests the PSP reset
+	  notification interrupt (intc_sw bit 7 on AST27xx SSP) and logs
+	  a message when it is received.
+
 config OTP_ASPEED_DRV_NAME
 	string "Device name for ASPEED OTP device"
 	default "OTP_ASPEED"
