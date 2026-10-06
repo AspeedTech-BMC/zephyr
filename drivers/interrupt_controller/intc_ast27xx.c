@@ -20,7 +20,6 @@
 LOG_MODULE_REGISTER(intc_ast2700_ic, LOG_LEVEL_ERR);
 
 #define MAX_INTC_NUMBER       (CONFIG_MAX_IRQ_PER_AGGREGATOR * CONFIG_NUM_3RD_LEVEL_AGGREGATORS)
-#define INTC_2ND_LEVEL_NUMBER 11
 
 /* Each bit in the register represents an IPC ID */
 #define INTC_IER 0x0
@@ -34,6 +33,8 @@ struct intc_ast2700_config {
 	uintptr_t base;
 	/* IRQ number from device tree. */
 	uint32_t irqn;
+	/* Base offset into _sw_isr_table for this instance's children. */
+	uint32_t offset;
 	/* level of Aspeed INTC. */
 	uint8_t level;
 	/* number IRQ of Aspeed INTC. */
@@ -44,49 +45,25 @@ static int intc_ast2700_isr(const void *dev)
 {
 	const struct intc_ast2700_config *config = ((const struct device *)dev)->config;
 	uintptr_t base = config->base;
-	int irqn = config->irqn;
 	int level = config->level;
+	unsigned int offset = config->offset;
 	unsigned int enable;
 	unsigned int status;
 	unsigned int i;
-	unsigned int intc_num = 0;
-	unsigned int irqn_from_intc = 0;
-	unsigned int offset = 0;
 
 	enable = sys_read32(base + INTC_IER);
 	status = sys_read32(base + INTC_RAW);
 	LOG_DBG("level %d interrupt, base 0x%lx", level, base);
 	LOG_DBG("enable 0x%x, status 0x%x", enable, status);
 
-	if (level == 1) {
-		intc_num = INTC_2ND_LEVEL_NUMBER; /* INTC0_11 in NVIC */
-		irqn_from_intc = irqn;            /* IRQN of INTC0_11 is NVIC#160~NVIC#165 */
-		offset = CONFIG_2ND_LVL_ISR_TBL_OFFSET;
-	} else if (level == 2) {
-		/*
-		 * INTC1_x in INTC0_11, which shifts 2rd level interrupt bits.
-		 * x begin from 0, such as INTC1_0
-		 */
-		intc_num = (irqn >> CONFIG_2ND_LEVEL_INTERRUPT_BITS) - 1;
-
-		/*
-		 * INTC1_x registered ISR in IRQN calculated with INTC number(from INTC0).
-		 * Table offset is in CONFIG_3RD_LVL_ISR_TBL_OFFSET +
-		 * intc_num * CONFIG_MAX_IRQ_PER_AGGREGATOR.
-		 */
-		irqn_from_intc = irqn + (intc_num * CONFIG_MAX_IRQ_PER_AGGREGATOR);
-		offset = CONFIG_3RD_LVL_ISR_TBL_OFFSET + (intc_num * CONFIG_MAX_IRQ_PER_AGGREGATOR);
-	}
-
 	for (i = 0; i < CONFIG_MAX_IRQ_PER_AGGREGATOR; i++) {
 		/* Read INTC0_11 or INTC1_x status back to check bit as INTC number. */
 		if (IS_BIT_SET(enable, i) && IS_BIT_SET(status, i)) {
-			LOG_DBG("INTC %d: irqn %d, bit %lx", intc_num, irqn_from_intc + i, BIT(i));
-			LOG_DBG("offset at %d", offset + i);
+			LOG_DBG("sw_isr_table[%u], bit %lx", offset + i, BIT(i));
 			if (_sw_isr_table[offset + i].isr) {
 				_sw_isr_table[offset + i].isr(_sw_isr_table[offset + i].arg);
 			} else {
-				LOG_ERR("IRQ %u has not been requested", irqn_from_intc + i);
+				LOG_ERR("no ISR registered for sw_isr_table[%u]", offset + i);
 			}
 
 			/* Clear INTC0_11 or INTC1_x status bit */
@@ -222,6 +199,7 @@ static const struct intc_driver_api intc_ast2700_driver_api = {
 		.base = DT_INST_REG_ADDR(n),                                                       \
 		.level = DT_INST_IRQ_LEVEL(n),                                                     \
 		.irqn = DT_INST_IRQN(n),                                                           \
+		.offset = ASPEED_INTC_OFFSET(n),                                                   \
 		.num_irqs = DT_NUM_IRQS(DT_DRV_INST(n)),                                           \
 	};                                                                                         \
 	DEVICE_DT_INST_DEFINE(n, &intc_ast2700_config_func_##n, NULL, NULL,                        \
