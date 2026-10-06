@@ -10,6 +10,7 @@
 #include <zephyr/irq.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/drivers/misc/aspeed/psp_reset_notify.h>
+#include <soc.h>
 
 LOG_MODULE_REGISTER(psp_reset_notify, CONFIG_MISC_ASPEED_LOG_LEVEL);
 
@@ -63,6 +64,13 @@ void psp_reset_notify_irq_enable(const struct device *dev)
 {
 	const struct psp_reset_notify_config *config = dev->config;
 
+	/*
+	 * intc_sw's RAW status bit can re-latch while masked if PSP reset is
+	 * held/bounces, so clear it right before unmasking: otherwise
+	 * irq_enable() would immediately refire on a stale, already-handled
+	 * condition instead of the next genuinely new one.
+	 */
+	aspeed_intc_clear_pending_irq(config->irqn);
 	irq_enable(config->irqn);
 }
 

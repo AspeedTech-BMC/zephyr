@@ -155,10 +155,27 @@ static int intc_ast2700_init(const struct device *dev)
 	return ret;
 }
 
+static int intc_ast2700_irq_clear_pending(const struct device *dev, int intc_bit)
+{
+	const struct intc_ast2700_config *config = dev->config;
+	uintptr_t base = config->base;
+
+	if (intc_bit > CONFIG_MAX_IRQ_PER_AGGREGATOR - 1) {
+		LOG_ERR("No such intc bit %d", intc_bit);
+		return -EINVAL;
+	}
+
+	/* Write-1-to-clear the latched status bit, independent of IER. */
+	sys_write32(BIT(intc_bit), base + INTC_RAW);
+
+	return 0;
+}
+
 static const struct intc_driver_api intc_ast2700_driver_api = {
 	.disable_irq = intc_ast2700_irq_mask,
 	.enable_irq = intc_ast2700_irq_unmask,
 	.irq_enabled = intc_ast2700_irq_is_enabled,
+	.clear_pending_irq = intc_ast2700_irq_clear_pending,
 };
 
 /**

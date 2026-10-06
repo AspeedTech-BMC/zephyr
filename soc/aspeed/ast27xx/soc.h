@@ -17,4 +17,11 @@ uint64_t ast27xx_soc_virt_addr_to_phy_addr(uintptr_t addr);
 #define TO_PHY_ADDR(addr)		ast27xx_soc_virt_addr_to_phy_addr(addr)
 #define TO_VIR_ADDR(addr)		ast27xx_soc_phy_addr_to_virt_addr(addr)
 
+/*
+ * Clear a pending (latched) encoded multi-level IRQ without touching its
+ * enable/mask state. See the definition in irq_manage.c for why a caller
+ * may need this right before irq_enable().
+ */
+int aspeed_intc_clear_pending_irq(unsigned int irq);
+
 #endif /* ZEPHYR_SOC_ASPEED_AST27XX_SOC_H_*/

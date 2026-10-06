@@ -332,6 +332,34 @@ static int intc_aspeed_irq_is_enabled(unsigned int irq)
 	return intc_irq_is_enabled(dev, local_irq);
 }
 
+/**
+ * @brief Clear a pending (latched) encoded multi-level IRQ without touching
+ * its enable/mask state.
+ *
+ * A level-triggered source can re-latch a stale pending bit in its
+ * aggregator's status register while the IRQ is masked. If a caller
+ * re-enables such an IRQ (via irq_enable()) without clearing that stale bit
+ * first, it refires immediately even though the condition it originally
+ * reported no longer holds. Call this right before irq_enable() in that
+ * situation.
+ */
+int aspeed_intc_clear_pending_irq(unsigned int irq)
+{
+	const struct device *dev;
+	unsigned int level = irq_get_level(irq);
+	unsigned int local_irq = irq_from_level(irq, level);
+
+	LOG_DBG("%s, %d: irq=%d, level=%d, local_irq=%d", __func__, __LINE__, irq, level,
+		local_irq);
+	dev = aspeed_get_sw_isr_device_from_irq(irq);
+	if (!dev) {
+		LOG_ERR("%s, %d: Failed to get device for irq %d", __func__, __LINE__, irq);
+		return -ENOSYS;
+	}
+
+	return intc_clear_pending_irq(dev, local_irq);
+}
+
 void z_soc_irq_enable(unsigned int irq)
 {
 	unsigned int level = irq_get_level(irq);

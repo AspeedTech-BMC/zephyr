@@ -59,12 +59,14 @@ typedef int (*intc_api_request_irq)(const struct device *port, intc_callback_t c
 typedef int (*intc_api_disable_irq)(const struct device *intcdev, int index);
 typedef int (*intc_api_enable_irq)(const struct device *intcdev, int index);
 typedef int (*intc_api_irq_is_enabled)(const struct device *intcdev, int index);
+typedef int (*intc_api_clear_pending_irq)(const struct device *intcdev, int index);
 
 __subsystem struct intc_driver_api {
 	intc_api_request_irq request_irq;
 	intc_api_disable_irq disable_irq;
 	intc_api_enable_irq enable_irq;
 	intc_api_irq_is_enabled irq_enabled;
+	intc_api_clear_pending_irq clear_pending_irq;
 };
 
 /**
@@ -108,6 +110,23 @@ static inline int intc_irq_is_enabled(const struct device *intcdev, int intc_bit
 	const struct intc_driver_api *api = (const struct intc_driver_api *)intcdev->api;
 
 	return api->irq_enabled(intcdev, intc_bit);
+}
+
+/**
+ * @brief Clear a latched/pending interrupt without touching its mask state.
+ *
+ * Use before re-enabling an interrupt whose level-triggered source may have
+ * re-latched a stale pending bit while it was masked, so re-enabling does not
+ * immediately refire on a condition that no longer holds.
+ *
+ * @param intcdev Driver instance pointer.
+ * @param intc_bit Bit to clear.
+ */
+static inline int intc_clear_pending_irq(const struct device *intcdev, int intc_bit)
+{
+	const struct intc_driver_api *api = (const struct intc_driver_api *)intcdev->api;
+
+	return api->clear_pending_irq(intcdev, intc_bit);
 }
 
 #ifdef __cplusplus
