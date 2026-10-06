@@ -64,8 +64,17 @@ config PSP_RESET_NOTIFY_ASPEED
 	default DT_HAS_ASPEED_AST2700_SSP_PSP_RESET_NOTIFY_ENABLED
 	help
 	  This option enables a driver that requests the PSP reset
-	  notification interrupt (intc_sw bit 7 on AST27xx SSP) and logs
-	  a message when it is received.
+	  notification interrupt (intc_sw bit 7 on AST27xx SSP). An
+	  application registers a callback via psp_reset_notify_set_callback()
+	  to be notified when it fires.
+
+config PSP_RESET_NOTIFY_SHELL
+	bool "ASPEED SSP PSP reset notify shell commands"
+	default y
+	depends on SHELL && PSP_RESET_NOTIFY_ASPEED
+	help
+	  Shell commands demonstrating the psp_reset_notify driver API:
+	  register a log-only callback, then arm/disarm the interrupt.
 
 config OTP_ASPEED_DRV_NAME
 	string "Device name for ASPEED OTP device"
