@@ -140,6 +140,10 @@
 	status = "okay";
 };
 
+&intc_sw {
+	status = "okay";
+};
+
 &intc1_0 {
 	status = "okay";
 };

@@ -166,23 +166,49 @@ static const struct intc_driver_api intc_ast2700_driver_api = {
  *
  * In Zephyr's multi-level interrupt architecture:
  * - A 1st level aggregator (DT_INST_IRQ_LEVEL == 1) handles 2nd level IRQs.
- *   Its base offset starts at CONFIG_2ND_LVL_ISR_TBL_OFFSET.
+ *   Its base offset starts at CONFIG_2ND_LVL_ISR_TBL_OFFSET plus the devicetree
+ *   aspeed,l1-aggregator-index value times CONFIG_MAX_IRQ_PER_AGGREGATOR.
  * - A 2nd level aggregator (DT_INST_IRQ_LEVEL == 2) handles 3rd level IRQs.
- *   Its base offset starts at CONFIG_3RD_LVL_ISR_TBL_OFFSET.
+ *   Its base offset starts at CONFIG_3RD_LVL_ISR_TBL_OFFSET plus its interrupt
+ *   bit position in the parent aggregator times CONFIG_MAX_IRQ_PER_AGGREGATOR.
  *
- * Example: intc1_3 (a Level 2 aggregator node in DTS)
+ * Examples:
+ * - intc_sw (a Level 1 aggregator node in DTS)
+ * - aspeed,l1-aggregator-index = <1>;
+ * - INTC_BASE_ISR_TBL_OFFSET = 240 (CONFIG_2ND_LVL_ISR_TBL_OFFSET)
+ * - Calculation: 240 + (1 * 32) = 272
+ *
+ * - intc1_3 (a Level 2 aggregator node in DTS)
  * - parent: intc0_11 (Level 1 aggregator)
  * - interrupts = <3 ...>; (connected to bit 3 of its parent)
  * - DT_INST_IRQ_LEVEL(n) = 2 (indicates it is a 2nd level aggregator)
- * - INTC_BASE_ISR_TBL_OFFSET = 224 (CONFIG_3RD_LVL_ISR_TBL_OFFSET, UTIL_INC(2) = 3)
- * - Calculation: 224 + (3 * 32) = 320
+ * - INTC_BASE_ISR_TBL_OFFSET = 304 (CONFIG_3RD_LVL_ISR_TBL_OFFSET)
+ * - Calculation: 304 + (3 * 32) = 400
  *
- * Result: All IRQs managed by intc1_3 will have their ISRs stored starting
- *         from _sw_isr_table[320].
+ * Result: All IRQs managed by each aggregator will have their ISRs stored
+ *         starting from its calculated _sw_isr_table[] base offset.
+ *
+ * Current ast27xx_ssp.dtsi instances (with this SoC's current Kconfig:
+ * CONFIG_2ND_LVL_ISR_TBL_OFFSET=240, CONFIG_3RD_LVL_ISR_TBL_OFFSET=304,
+ * CONFIG_MAX_IRQ_PER_AGGREGATOR=32):
+ *
+ *   | node     | level | index source          | offset calc      | sw_isr_table idx |
+ *   +----------+-------+-----------------------+------------------+------------------+
+ *   | intc0_11 | 1     | l1-aggregator-index=0 | 240 + 0*32 = 240 | 240 .. 271       |
+ *   | intc_sw  | 1     | l1-aggregator-index=1 | 240 + 1*32 = 272 | 272 .. 303       |
+ *   | intc1_0  | 2     | bit 0 of intc0_11     | 304 + 0*32 = 304 | 304 .. 335       |
+ *   | intc1_1  | 2     | bit 1 of intc0_11     | 304 + 1*32 = 336 | 336 .. 367       |
+ *   | intc1_2  | 2     | bit 2 of intc0_11     | 304 + 2*32 = 368 | 368 .. 399       |
+ *   | intc1_3  | 2     | bit 3 of intc0_11     | 304 + 3*32 = 400 | 400 .. 431       |
+ *   | intc1_4  | 2     | bit 4 of intc0_11     | 304 + 4*32 = 432 | 432 .. 463       |
+ *   | intc1_5  | 2     | bit 5 of intc0_11     | 304 + 5*32 = 464 | 464 .. 495       |
+ *   | (none)   | 2     | bit 6, reserved       | 304 + 6*32 = 496 | 496 .. 527       |
+ *   | (none)   | 2     | bit 7, reserved       | 304 + 7*32 = 528 | 528 .. 559       |
  */
 #define ASPEED_INTC_OFFSET(n)                                                                      \
 	(INTC_BASE_ISR_TBL_OFFSET(DT_DRV_INST(n)) +                                                \
-	 (DT_INST_IRQ_LEVEL(n) == 1 ? 0 : DT_INST_IRQ_BY_IDX(n, 0, irq)) *                         \
+	 (DT_INST_IRQ_LEVEL(n) == 1 ? DT_INST_PROP(n, aspeed_l1_aggregator_index)                  \
+				    : DT_INST_IRQ_BY_IDX(n, 0, irq)) *                             \
 	 CONFIG_MAX_IRQ_PER_AGGREGATOR)
 
 #define INTC_AST2700_IRQ_CONNECT(index, inst)                                                      \

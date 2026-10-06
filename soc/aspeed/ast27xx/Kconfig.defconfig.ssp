@@ -39,50 +39,101 @@ config 2ND_LEVEL_INTERRUPTS
 
 if SOC_AST2700_A1_SSP
 
+# First _sw_isr_table[] index available for level-1 (NVIC-attached)
+# aggregators' own children (see ASPEED_INTC_OFFSET() in intc_ast27xx.c).
+# Must be greater than every raw/level-1 NVIC irqn actually wired on this
+# SoC, so a plain peripheral interrupt can never alias a computed
+# aggregator-child slot. Set to 240, the Cortex-M4 NVIC's architectural
+# max external IRQ count, rather than the current SSP routing's actual
+# high-water mark (169): any raw interrupt this hardware could ever wire
+# directly to NVIC is guaranteed to fit below it, so this never needs
+# revisiting again on this or any other SoC variant sharing this file.
 config 2ND_LVL_ISR_TBL_OFFSET
-	default 192
+	default 240
 
+# Number of level-1 (NVIC-attached) INTC aggregators in this build. Each
+# one claims its own CONFIG_MAX_IRQ_PER_AGGREGATOR-sized region starting
+# at 2ND_LVL_ISR_TBL_OFFSET, selected by its own devicetree
+# aspeed,l1-aggregator-index. Currently INTC0_11 (index 0) and intc_sw
+# (index 1).
 config NUM_2ND_LEVEL_AGGREGATORS
-	default 1
+	default 2
 
+# Raw NVIC irqn of level-1 aggregator #0 (INTC0_11). gen_isr_tables.py
+# matches this list against the level-1 field of an encoded level-2/3
+# irq (get_irq_index() in scripts/build/gen_isr_tables.py) to find which
+# aggregator's _sw_isr_table region that irq belongs to.
 config 2ND_LVL_INTR_00_OFFSET
 	default 160
+
+# Raw NVIC irqn of level-1 aggregator #1 (intc_sw). Same role as
+# 2ND_LVL_INTR_00_OFFSET above.
+config 2ND_LVL_INTR_01_OFFSET
+	default 144
 
 config 3RD_LEVEL_INTERRUPTS
 	default y
 
+# First _sw_isr_table[] index for level-2 (INTC1_x) aggregators' own
+# children. Must start after every level-1 aggregator's reserved region:
+# 2ND_LVL_ISR_TBL_OFFSET + NUM_2ND_LEVEL_AGGREGATORS * MAX_IRQ_PER_AGGREGATOR
+# = 240 + 2*32 = 304.
 config 3RD_LVL_ISR_TBL_OFFSET
-	default 224
+	default 304
 
+# Length of the 3RD_LVL_INTR_XX_OFFSET list below, and the number of
+# CONFIG_MAX_IRQ_PER_AGGREGATOR-sized regions reserved after
+# 3RD_LVL_ISR_TBL_OFFSET. INTC0_11's status register is 32 bits wide
+# (intc_ast2700_isr() scans CONFIG_MAX_IRQ_PER_AGGREGATOR bits of it), so
+# up to 32 level-2 (INTC1_x) aggregators are architecturally possible;
+# only INTC1_0..5 exist in devicetree today, so 8 is headroom for the
+# near term, not the hardware limit.
 config NUM_3RD_LEVEL_AGGREGATORS
 	default 8
 
+# Bit position of level-2 aggregator #00 within its parent (INTC0_11)'s
+# 32-bit status register; must match that INTC1_x node's devicetree
+# `interrupts = <bit ...>` cell. gen_isr_tables.py matches this list
+# against the level-2 field of an encoded irq the same way
+# 2ND_LVL_INTR_XX_OFFSET matches against the raw NVIC irqn. INTC1_0..5
+# (bits 0-5) exist in devicetree today; 06/07 (bits 6-7) are pre-reserved
+# with no node yet.
 config 3RD_LVL_INTR_00_OFFSET
 	default 0
 
+# Bit 1 of INTC0_11 (intc1_1). Same role as 3RD_LVL_INTR_00_OFFSET above.
 config 3RD_LVL_INTR_01_OFFSET
 	default 1
 
+# Bit 2 of INTC0_11 (intc1_2).
 config 3RD_LVL_INTR_02_OFFSET
 	default 2
 
+# Bit 3 of INTC0_11 (intc1_3).
 config 3RD_LVL_INTR_03_OFFSET
 	default 3
 
+# Bit 4 of INTC0_11 (intc1_4).
 config 3RD_LVL_INTR_04_OFFSET
 	default 4
 
+# Bit 5 of INTC0_11 (intc1_5).
 config 3RD_LVL_INTR_05_OFFSET
 	default 5
 
+# Bit 6 of INTC0_11 - reserved, no intc1_6 devicetree node yet.
 config 3RD_LVL_INTR_06_OFFSET
 	default 6
 
+# Bit 7 of INTC0_11 - reserved, no intc1_7 devicetree node yet.
 config 3RD_LVL_INTR_07_OFFSET
 	default 7
 
+# Total _sw_isr_table[] size: must be at least
+# 3RD_LVL_ISR_TBL_OFFSET + NUM_3RD_LEVEL_AGGREGATORS * MAX_IRQ_PER_AGGREGATOR
+# = 304 + 8*32 = 560.
 config NUM_IRQS
-	default 480
+	default 560
 
 config PINCTRL
 	default y
@@ -94,20 +145,25 @@ endif # SOC_AST2700_A1_SSP
 
 if SOC_AST2700_SSP || SOC_AST2705_SSP
 
+# Every define in this block mirrors SOC_AST2700_A1_SSP's block above,
+# value-for-value; see each define's comment there for rationale.
 config 2ND_LVL_ISR_TBL_OFFSET
-	default 192
+	default 240
 
 config NUM_2ND_LEVEL_AGGREGATORS
-	default 1
+	default 2
 
 config 2ND_LVL_INTR_00_OFFSET
 	default 160
+
+config 2ND_LVL_INTR_01_OFFSET
+	default 144
 
 config 3RD_LEVEL_INTERRUPTS
 	default y
 
 config 3RD_LVL_ISR_TBL_OFFSET
-	default 224
+	default 304
 
 config NUM_3RD_LEVEL_AGGREGATORS
 	default 8
@@ -137,7 +193,7 @@ config 3RD_LVL_INTR_07_OFFSET
 	default 7
 
 config NUM_IRQS
-	default 480
+	default 560
 
 config PINCTRL
 	default y

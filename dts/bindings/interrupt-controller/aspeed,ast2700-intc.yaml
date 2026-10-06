@@ -17,6 +17,18 @@ properties:
   "#interrupt-cells":
     const: 2
 
+  aspeed,l1-aggregator-index:
+    type: int
+    default: 0
+    description: |
+      Zero-based index of this node among sibling level-1 (NVIC-attached)
+      INTC aggregators that share this compatible. Used to give each
+      level-1 aggregator instance a unique, non-overlapping base offset
+      into the software ISR table so their child interrupts' sw_isr_table
+      slots cannot collide. Leave at the default (0) when there is only
+      one level-1 aggregator in the build; give each additional sibling
+      level-1 aggregator the next integer (1, 2, ...).
+
 interrupt-cells:
   - irq
   - priority

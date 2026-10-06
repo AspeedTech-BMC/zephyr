@@ -17,6 +17,33 @@
 			status = "disabled";
 		};
 
+		intc_sw: interrupt-controller@72100020 {
+			compatible = "aspeed,ast2700-intc-ic";
+			reg = <0x72100020 0x8>;
+			#address-cells = <1>;
+			#interrupt-cells = <2>;
+			interrupt-controller;
+			aspeed,l1-aggregator-index = <1>;
+			interrupt-parent = <&nvic>;
+			interrupts = <144 AST10X0_IRQ_DEFAULT_PRIORITY>,
+				     <145 AST10X0_IRQ_DEFAULT_PRIORITY>,
+				     <146 AST10X0_IRQ_DEFAULT_PRIORITY>,
+				     <147 AST10X0_IRQ_DEFAULT_PRIORITY>,
+				     <148 AST10X0_IRQ_DEFAULT_PRIORITY>,
+				     <149 AST10X0_IRQ_DEFAULT_PRIORITY>,
+				     <150 AST10X0_IRQ_DEFAULT_PRIORITY>,
+				     <151 AST10X0_IRQ_DEFAULT_PRIORITY>,
+				     <152 AST10X0_IRQ_DEFAULT_PRIORITY>,
+				     <153 AST10X0_IRQ_DEFAULT_PRIORITY>,
+				     <154 AST10X0_IRQ_DEFAULT_PRIORITY>,
+				     <155 AST10X0_IRQ_DEFAULT_PRIORITY>,
+				     <156 AST10X0_IRQ_DEFAULT_PRIORITY>,
+				     <157 AST10X0_IRQ_DEFAULT_PRIORITY>,
+				     <158 AST10X0_IRQ_DEFAULT_PRIORITY>,
+				     <159 AST10X0_IRQ_DEFAULT_PRIORITY>;
+			status = "disabled";
+		};
+
 		intc0_11: interrupt-controller@72102b00 {
 			compatible = "aspeed,ast2700-intc-ic";
 			reg = <0x72102b00 0x10>;
