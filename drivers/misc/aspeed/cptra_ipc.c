@@ -188,7 +188,7 @@ static int cptra_ipc_lms_verify(const struct device *dev, void *arg1, void *arg2
 		LOG_ERR("lms verify failed\n");
 		rc = -1;
 	} else {
-		LOG_INF("lms verify pass\n");
+		LOG_DBG("lms verify pass\n");
 		rc = 0;
 	}
 

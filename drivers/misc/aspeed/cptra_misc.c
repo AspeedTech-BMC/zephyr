@@ -58,7 +58,7 @@ static int aspeed_cptra_set_auth_manifest(const struct device *dev,
 		return -EBUSY;
 	}
 
-	LOG_INF("Start doing set_auth_manifest");
+	LOG_DBG("Start doing set_auth_manifest");
 	state->in_use = true;
 
 	while (cptra_mbox_lock())
@@ -84,7 +84,7 @@ static int aspeed_cptra_set_auth_manifest(const struct device *dev,
 	while (cptra_mbox_unlock())
 		;
 
-	LOG_INF("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
+	LOG_DBG("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
 
 	state->in_use = false;
 
@@ -104,7 +104,7 @@ static int aspeed_cptra_shutdown(const struct device *dev, struct cptra_shutdown
 		return -EBUSY;
 	}
 
-	LOG_INF("Start doing shutdown");
+	LOG_DBG("Start doing shutdown");
 	state->in_use = true;
 
 	while (cptra_mbox_lock())
@@ -129,7 +129,7 @@ static int aspeed_cptra_shutdown(const struct device *dev, struct cptra_shutdown
 	while (cptra_mbox_unlock())
 		;
 
-	LOG_INF("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
+	LOG_DBG("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
 
 	state->in_use = false;
 
@@ -150,7 +150,7 @@ static int aspeed_cptra_self_test_get_results(const struct device *dev,
 		return -EBUSY;
 	}
 
-	LOG_INF("Start doing self_test_get_results");
+	LOG_DBG("Start doing self_test_get_results");
 	state->in_use = true;
 
 	while (cptra_mbox_lock())
@@ -176,7 +176,7 @@ static int aspeed_cptra_self_test_get_results(const struct device *dev,
 	while (cptra_mbox_unlock())
 		;
 
-	LOG_INF("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
+	LOG_DBG("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
 
 	state->in_use = false;
 
@@ -197,7 +197,7 @@ static int aspeed_cptra_self_test_start(const struct device *dev,
 		return -EBUSY;
 	}
 
-	LOG_INF("Start doing self_test_start");
+	LOG_DBG("Start doing self_test_start");
 	state->in_use = true;
 
 	while (cptra_mbox_lock())
@@ -222,7 +222,7 @@ static int aspeed_cptra_self_test_start(const struct device *dev,
 	while (cptra_mbox_unlock())
 		;
 
-	LOG_INF("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
+	LOG_DBG("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
 
 	state->in_use = false;
 
@@ -242,7 +242,7 @@ static int aspeed_cptra_version(const struct device *dev, struct cptra_version_i
 		return -EBUSY;
 	}
 
-	LOG_INF("Start doing version");
+	LOG_DBG("Start doing version");
 	state->in_use = true;
 
 	while (cptra_mbox_lock())
@@ -267,10 +267,10 @@ static int aspeed_cptra_version(const struct device *dev, struct cptra_version_i
 	while (cptra_mbox_unlock())
 		;
 
-	LOG_INF("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
-	LOG_INF("mode: 0x%x", output->mode);
-	LOG_HEXDUMP_INF(output->fips_rev, sizeof(output->fips_rev), "fips_rev:");
-	LOG_INF("name: %.12s", output->name);
+	LOG_DBG("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
+	LOG_DBG("mode: 0x%x", output->mode);
+	LOG_HEXDUMP_DBG(output->fips_rev, sizeof(output->fips_rev), "fips_rev:");
+	LOG_DBG("name: %.12s", output->name);
 
 	state->in_use = false;
 
@@ -290,7 +290,7 @@ static int aspeed_cptra_capabilities(const struct device *dev, struct cptra_capa
 		return -EBUSY;
 	}
 
-	LOG_INF("Start doing capabilities");
+	LOG_DBG("Start doing capabilities");
 	state->in_use = true;
 
 	while (cptra_mbox_lock())
@@ -315,8 +315,8 @@ static int aspeed_cptra_capabilities(const struct device *dev, struct cptra_capa
 	while (cptra_mbox_unlock())
 		;
 
-	LOG_INF("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
-	LOG_HEXDUMP_INF(output->capabilities, sizeof(output->capabilities), "capabilities:");
+	LOG_DBG("chksum: 0x%x, fips_status: 0x%x", output->chksum, output->fips_status);
+	LOG_HEXDUMP_DBG(output->capabilities, sizeof(output->capabilities), "capabilities:");
 
 	state->in_use = false;
 
@@ -397,7 +397,7 @@ static int aspeed_cptra_authorize_and_stash(const struct device *dev,
 		return -EBUSY;
 	}
 
-	LOG_INF("Start doing authorize_and_stash");
+	LOG_DBG("Start doing authorize_and_stash");
 	state->in_use = true;
 
 	while (cptra_mbox_lock())
@@ -422,7 +422,7 @@ static int aspeed_cptra_authorize_and_stash(const struct device *dev,
 	while (cptra_mbox_unlock())
 		;
 
-	LOG_INF("chksum: 0x%x, fips_status: 0x%x, auth_req_result: 0x%x",
+	LOG_DBG("chksum: 0x%x, fips_status: 0x%x, auth_req_result: 0x%x",
 		output->chksum, output->fips_status, output->auth_req_result);
 
 	state->in_use = false;
@@ -448,7 +448,7 @@ int cptra_misc_init(const struct device *dev)
 	    sys_read32(cfg->ifc_base + CPTRA_FW_ERROR_NONFATAL))
 		aspeed_cptra_ifc_error(dev);
 
-	LOG_INF("\t0x%x: Caliptra misc driver initialized", (uint32_t)cfg->base);
+	LOG_DBG("0x%x: Caliptra misc driver initialized", (uint32_t)cfg->base);
 
 	return 0;
 }

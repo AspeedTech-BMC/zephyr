@@ -109,7 +109,7 @@ static int aspeed_cptra_fw_upload_final(const struct device *dev, int size)
 	while (count++ < CPTRA_UPD_RST_TIMEOUT) {
 		sts = sys_read32(cfg->ifc_base + CPTRA_RST_REASON);
 		if (sts & CPTRA_FW_UPD_RESET) {
-			LOG_INF("FW Update Reset !!!");
+			LOG_DBG("FW Update Reset !!!");
 			break;
 		}
 	}
