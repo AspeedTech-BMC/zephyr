@@ -42,6 +42,7 @@ LOG_MODULE_REGISTER(soc, LOG_LEVEL_ERR);
 /*
  * sirq_csel: intcg_base + INTCG_IRQ_ROUTE_REG0
  * sirq_csel1: intcg_base + INTCG_IRQ_ROUTE_REG1
+ * sirq_csel2: intcg_base + INTCG_IRQ_ROUTE_REG2
  */
 #define INTCG_DEV           DT_ALIAS(intc)
 #define INTCG_BASE          (DT_REG_ADDR(INTCG_DEV))
@@ -62,6 +63,20 @@ LOG_MODULE_REGISTER(soc, LOG_LEVEL_ERR);
 #define INTC1G_IRQ_ROUTE_REG0 0x80
 #define INTC1G_IRQ_ROUTE_REG1 0xa0
 #define INTC1G_IRQ_ROUTE_REG2 0xc0
+
+/*
+ * Per AST2750 ch.24.3, INTC1's route-select registers address real
+ * silicon sources (INTn) starting at 128, independent of software's
+ * _sw_isr_table layout (CONFIG_3RD_LVL_ISR_TBL_OFFSET).
+ */
+#define INTC1G_ROUTE_BASE_IRQ 128
+
+/*
+ * Per AST2750 ch.7, raw NVIC irqn >= 138 is no longer an individually
+ * routable INTn on this SoC (reserved range, or intc_sw's own
+ * software-signaling lines) - this boundary may differ on other SoCs.
+ */
+#define INTCG_ROUTE_MAX_IRQ 138
 
 /*
  * INTC1 (intc1_global) reset-deassert status register. The INTC1 interrupt
@@ -100,103 +115,6 @@ static void intc1g_wait_reset_deassert(void)
 	}
 
 	LOG_ERR("INTC1 still in reset (reg 0x%lx, bit 0x%x); registers inaccessible", reg, bit);
-}
-
-/* 1-1 INTC: INTC0_0~INTC0_10 NVIC128~138 */
-/* 1-1 INTC: INTC0_11 bit0~bit9 NVIC160~192 */
-/* 6-1 INTC: INTC1_0~INTC1_5 which's parent is INTC0_11 bit0~bit5 */
-#define NUM_OF_INTC             10
-#define NUM_OF_2ND_3RD_LVL_IRQS (NUM_IRQS_PER_REG * NUM_OF_INTC)
-/*
- * | irq_raw  | level 1 |level 2 | level 3 |
- * |          | irqn    | irqn   | irqn    |
- * ---------- + ------- + ------ + ---------
- * | 0        | 0       | N/A    | N/A     |
- * | m        | m       | N/A    | N/A     |
- * | 127      | 127     | N/A    | N/A     |
- * ---------- + ------- + ------ + ---------
- * | 128 + 0  | 128     | N/A    | 0       | INTC0_0
- * | 128 + 1  | 129     | N/A    | 1       | INTC0_1
- * | ...      | ...     | N/A    | ...     | ...
- * | 128 + i  | ...     | N/A    | i       | INTC0_i
- * | ...      | ...     | N/A    | ...     | ...
- * | 128 + 10 | 138     | N/A    | 10      | INTC0_10
- * ---------- + ------- + ------ + ---------
- * | ...      | ...     | ...    | ...     |  Reserved
- * ---------- + ------- + ------ + ---------
- * | ...      | 144     | N/A    | N/A     |\
- * | ...      | 145     | N/A    | N/A     | \
- * | ...      | ...     | ...    | ...     |  Inter-processor interrupts, no interrupt routing
- * | ...      | 158     | N/A    | N/A     | /
- * | ...      | 159     | N/A    | N/A     |/
- * ---------- + ------- + ------ + ---------
- * | 160 + 0  | 160     | 192    | 0       | INTC0_11 bit 0
- * | 160 + 1  | 161     | 193    | 1       | INTC0_11 bit 1
- * | ...      | ...     | ...    | ...     | ...
- * | 160 + j  | ...     | ...    | j       | INTC0_11 bit j
- * | ...      | ...     | ...    | ...     | ...
- * | 160 + 7  | 167     | 199    | 199     | INTC0_11 bit 5
- * ---------- + ------- + ------ + ---------
- * | 224 + 0  | 160     | 192    | 0       |\
- * | 224 + 1  | 160     | 192    | 1       | \
- * | ...      | 160     | 192    | ...     |  \
- * | 224 + n  | 160     | 192    | n       |  INTC1_0
- * | ...      | 160     | 192    | ...     | /
- * | 224 + 31 | 160     | 192    | 31      |/
- * ---------- + ------- + ------ + ---------
- * | 256 + 0  | 161     | 193    | 0       |\
- * | 256 + 1  | 161     | 193    | 1       | \
- * | ...      | ...     | ...    | ...     |  \
- * | 256 + k  | 161     | 193    | k       |  INTC1_1
- * | ...      | ...     | ...    | ...     | /
- * | 256 + 31 | 161     | 193    | 31      |/
- * ---------- + ------- + ------ + ---------
- * | ...      | ...     | ...    | ...     | INTC1_2
- * | ...      | ...     | ...    | ...     | INTC1_3
- * | ...      | ...     | ...    | ...     | INTC1_4
- * ---------- + ------- + ------ + ---------
- * | 384 + 0  | 165     | 197    | 0       |\
- * | 384 + 1  | 165     | 197    | 1       | \
- * | ...      | ...     | ...    | ...     |  \
- * | 384 + p  | 165     | 197    | p       |  INTC1_5
- * | ...      | ...     | ...    | ...     | /
- * | 384 + 31 | 165     | 197    | 31      |/
- * ---------- + ------- + ------ + ---------
- * | 416      | 166     | 198    | N/A     |\
- * | 417      | 166     | 198    | N/A     | \
- * | ...      | ...     | ...    | ...     |  Reserved, INTC1_6/7 in 1700_0, INTC1_8/9 in 1700_1
- * | 478      | 167     | 199    | N/A     | /
- * | 479      | 166     | 199    | N/A     |/
- * ---------- + ------- + ------ + ---------
- */
-static unsigned int irq_to_raw_irq(unsigned int irq)
-{
-	unsigned int level = irq_get_level(irq);
-	unsigned int irq_raw;
-
-	if (level == 1) {
-		/* irq_raw = nvic number. All nvic interrupt number is smaller than INTC */
-		irq_raw = irq;
-	} else if (level == 2) {
-		unsigned int lvl1_irq = irq_parent_level_2(irq);
-		unsigned int lvl2_irq = irq_from_level_2(irq);
-
-		/* irq_raw = lvl1_irq(160) + 1 INTC of INTC0_11 + its irqn */
-		irq_raw = lvl1_irq + NUM_IRQS_PER_REG + lvl2_irq;
-	} else {
-		unsigned int lvl1_irq = irq_parent_level_2(irq);
-		unsigned int lvl2_irq = irq_from_level_2(irq);
-		unsigned int lvl3_irq = irq_from_level_3(irq);
-		unsigned int offset = (lvl2_irq + 1) * NUM_IRQS_PER_REG;
-
-		/* irq_raw = lvl1_irq(160) + 1 INTC(INTC0_11) +
-		 *           (INTCx + 1) * 32 + its level 3 interrut number
-		 */
-		irq_raw = lvl1_irq + NUM_IRQS_PER_REG + offset + lvl3_irq;
-	}
-	LOG_DBG("level=%d, irq_raw=0x%x\n", level, irq_raw);
-
-	return irq_raw;
 }
 
 /*
@@ -252,7 +170,7 @@ static void intcg_set_irq_route(unsigned int irq_raw, int select)
  * • The bit number of the required group modifier bit in this register is m MOD 32.
  *
  * "Combined {sirqio_csel2[n], sirqio_csel1[n], sirqio_csel0[n]}.
- * The 'n' is from 0 to 191 and i=n+224.
+ * The 'n' is from 0 to 191 and i=n+128.
  * 000: Route interrupt INTi(irq_raw) to PSP GICINT192 (default)
  * 001: Route interrupt INTi(irq_raw) to INTC controller
  * 010: Route interrupt INTi(irq_raw) to SSPINT160
@@ -270,7 +188,7 @@ static void intc1g_set_irq_route(unsigned int irq_raw, int select)
 
 	intc1g_wait_reset_deassert();
 
-	irq_raw = irq_raw - CONFIG_3RD_LVL_ISR_TBL_OFFSET;
+	irq_raw = irq_raw - INTC1G_ROUTE_BASE_IRQ;
 	byte_offset = (irq_raw >> 5) * 4;
 
 	if (sys_test_bit((mem_addr_t)&select, 0)) {
@@ -320,7 +238,7 @@ static const struct _irq_parent_entry *get_intc_entry_for_irq(unsigned int irq)
 
 	/*
 	 * Get device by its parent level irqn. For example, the interrupt assert sequence
-	 * IPC -> INTC1_5(level 3) bit 19 -> INTC1_11(level 2) bit 5 -> NVIC 160(level 1)
+	 * IPC -> INTC1_5(level 3) bit 19 -> INTC0_11(level 2) bit 5 -> NVIC 160(level 1)
 	 * After DT_MACRO, irq_enable((IRQ_TO_L3(19) | IRQ_TO_L2(5) | 160));
 	 * in intc_table, ._intc_table.static.intc_l3_5_ section only registered by L2 irqn(5)
 	 * Get parent device by its irqn of  L2 irqn(5
@@ -416,19 +334,38 @@ static int intc_aspeed_irq_is_enabled(unsigned int irq)
 
 void z_soc_irq_enable(unsigned int irq)
 {
-	unsigned int irq_raw;
+	unsigned int level = irq_get_level(irq);
 
 	LOG_DBG("%s, %d: irq=%d", __func__, __LINE__, irq);
-	irq_raw = irq_to_raw_irq(irq);
-	if (irq_raw < CONFIG_2ND_LVL_INTR_00_OFFSET) {
-		/* level 1 nvic irqn selection*/
-		intcg_set_irq_route(irq_raw, INTCG_IRQ_ROUTE_SEL);
-	} else if (irq_raw >= CONFIG_3RD_LVL_ISR_TBL_OFFSET + CONFIG_3RD_LVL_INTR_00_OFFSET) {
-		/* level 3 nvic irqn selection*/
+	if (level == 1) {
+		/*
+		 * irq here is just this core's NVIC line, not necessarily a
+		 * real INTn. Only raw < INTCG_ROUTE_MAX_IRQ is individually
+		 * routable; above that is reserved or an aggregator's own
+		 * internal signaling.
+		 */
+		if (irq < INTCG_ROUTE_MAX_IRQ) {
+			intcg_set_irq_route(irq, INTCG_IRQ_ROUTE_SEL);
+		}
+	} else if (level == 3) {
+		/*
+		 * A level-3 leaf is always a real peripheral under some
+		 * INTC1_x, rooted at INTC0_11 (ch.24.1/24.3). intc_sw's own
+		 * lines are pure software signaling with no further levels,
+		 * and the other 1-1 INTC aggregators ch.7 documents at raw
+		 * NVIC 128..137 (INTC0_0..INTC0_10) have no devicetree node
+		 * on this SoC, so INTC0_11 is the only level-1 aggregator
+		 * that can ever produce a level-3 irq here.
+		 */
+		unsigned int lvl2_irq = irq_from_level_2(irq);
+		unsigned int lvl3_irq = irq_from_level_3(irq);
+		unsigned int irq_raw = INTC1G_ROUTE_BASE_IRQ +
+					NUM_IRQS_PER_REG * lvl2_irq + lvl3_irq;
+
 		intc1g_set_irq_route(irq_raw, INTC1G_IRQ_ROUTE_SEL);
 	}
 
-	if (irq_get_level(irq) == 1) {
+	if (level == 1) {
 		NVIC_EnableIRQ((IRQn_Type)irq);
 	} else {
 		intc_aspeed_enable_irq(irq);
