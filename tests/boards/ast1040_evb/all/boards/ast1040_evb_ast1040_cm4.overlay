@@ -167,3 +167,11 @@
 	virtual,sirq-polarity = <0>;
 	status = "okay";
 };
+
+&dram_ro_region {
+	reg = <0x0 DT_SIZE_K(1024)>;
+};
+
+&dram_rw_region {
+	reg = <0x100000 DT_SIZE_K(14336 - 1024 - 512)>;
+};
