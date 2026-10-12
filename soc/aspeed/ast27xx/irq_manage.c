@@ -75,6 +75,32 @@ LOG_MODULE_REGISTER(soc, LOG_LEVEL_ERR);
  */
 #define INTC1G_RESET_STATUS_REG 0x14
 #define INTC1G_RESET_POLL_MAX   100000
+/*
+ * Wait for the external master to deassert this processor's INTC1 reset.
+ * Until INTC1G_RESET_STATUS_REG's bit is cleared the INTC1 interrupt
+ * registers are inaccessible, so this must run before any INTC1 access.
+ */
+static void intc1g_wait_reset_deassert(void)
+{
+	uintptr_t reg = INTC1G_BASE + INTC1G_RESET_STATUS_REG;
+	uint32_t bit;
+
+	if (INTC1G_IRQ_ROUTE_SEL == 0x2) {
+		bit = BIT(1); /* routed to SSP */
+	} else if (INTC1G_IRQ_ROUTE_SEL == 0x3) {
+		bit = BIT(2); /* routed to TSP */
+	} else {
+		return;
+	}
+
+	for (int i = 0; i < INTC1G_RESET_POLL_MAX; i++) {
+		if (!(sys_read32(reg) & bit)) {
+			return;
+		}
+	}
+
+	LOG_ERR("INTC1 still in reset (reg 0x%lx, bit 0x%x); registers inaccessible", reg, bit);
+}
 
 /* 1-1 INTC: INTC0_0~INTC0_10 NVIC128~138 */
 /* 1-1 INTC: INTC0_11 bit0~bit9 NVIC160~192 */
@@ -236,33 +262,6 @@ static void intcg_set_irq_route(unsigned int irq_raw, int select)
  * 110: Route interrupt INTi(irq_raw) to MCU0
  * others: reserved"
  */
-/*
- * Wait for the external master to deassert this processor's INTC1 reset.
- * Until INTC1G_RESET_STATUS_REG's bit is cleared the INTC1 interrupt
- * registers are inaccessible, so this must run before any INTC1 access.
- */
-static void intc1g_wait_reset_deassert(void)
-{
-	uintptr_t reg = INTC1G_BASE + INTC1G_RESET_STATUS_REG;
-	uint32_t bit;
-
-	if (INTC1G_IRQ_ROUTE_SEL == 0x2) {
-		bit = BIT(1); /* routed to SSP */
-	} else if (INTC1G_IRQ_ROUTE_SEL == 0x3) {
-		bit = BIT(2); /* routed to TSP */
-	} else {
-		return;
-	}
-
-	for (int i = 0; i < INTC1G_RESET_POLL_MAX; i++) {
-		if (!(sys_read32(reg) & bit)) {
-			return;
-		}
-	}
-
-	LOG_ERR("INTC1 still in reset (reg 0x%lx, bit 0x%x); registers inaccessible", reg, bit);
-}
-
 static void intc1g_set_irq_route(unsigned int irq_raw, int select)
 {
 	uintptr_t base = INTC1G_BASE;
