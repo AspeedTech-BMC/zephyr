@@ -29,6 +29,20 @@ properties:
       one level-1 aggregator in the build; give each additional sibling
       level-1 aggregator the next integer (1, 2, ...).
 
+  aspeed,init-ignore-pending-mask:
+    type: int
+    default: 0
+    description: |
+      Bitmask of this aggregator's status-register bits that are allowed
+      to already be set at driver init time without being flagged as an
+      error. Leave at the default (0) for a real 1:1 hardware crossbar
+      aggregator (e.g. INTC0_11, INTC1_x), where any pending bit at init
+      genuinely means an interrupt fired before anything could handle it.
+      Set it on a software-signaling aggregator (e.g. intc_sw) for bits
+      that reflect a level-triggered, possibly-already-true condition
+      rather than a latched one-shot event, such as a reset line that is
+      expected to still be asserted at boot.
+
 interrupt-cells:
   - irq
   - priority

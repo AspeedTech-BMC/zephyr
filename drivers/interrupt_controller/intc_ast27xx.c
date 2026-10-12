@@ -39,6 +39,8 @@ struct intc_ast2700_config {
 	uint8_t level;
 	/* number IRQ of Aspeed INTC. */
 	uint32_t num_irqs;
+	/* Status bits allowed to already be set at init (see devicetree binding). */
+	uint32_t init_ignore_pending_mask;
 };
 
 static int intc_ast2700_isr(const void *dev)
@@ -133,6 +135,7 @@ static int intc_ast2700_init(const struct device *dev)
 	int shift = 0;
 	int intc_num = 0;
 	int ret = 0;
+	uint32_t unexpected_pending;
 
 	LOG_DBG("interrupt level: %d", level);
 	if (level == 2) {
@@ -145,11 +148,16 @@ static int intc_ast2700_init(const struct device *dev)
 	LOG_DBG("INTC%d(0x%x) init: ", intc_num, intc_num);
 	LOG_DBG("register base=%lx, irqn=0x%x", base, irqn);
 
-	/* Check initial value to 0. */
-	if (sys_read32(base + INTC_RAW)) {
+	/*
+	 * Check initial value to 0, other than bits the devicetree says are
+	 * allowed to already be pending (e.g. intc_sw's level-triggered
+	 * reset-line signaling, see aspeed,init-ignore-pending-mask).
+	 */
+	unexpected_pending = sys_read32(base + INTC_RAW) & ~config->init_ignore_pending_mask;
+	if (unexpected_pending) {
 		LOG_ERR("init isr incorrect INTC%d ", intc_num);
 		LOG_ERR("%lx:", base + INTC_RAW);
-		LOG_ERR("%x", sys_read32(base + INTC_RAW));
+		LOG_ERR("%x", unexpected_pending);
 		ret = 1;
 	}
 	return ret;
@@ -244,6 +252,8 @@ static const struct intc_driver_api intc_ast2700_driver_api = {
 		.irqn = DT_INST_IRQN(n),                                                           \
 		.offset = ASPEED_INTC_OFFSET(n),                                                   \
 		.num_irqs = DT_NUM_IRQS(DT_DRV_INST(n)),                                           \
+		.init_ignore_pending_mask =                                                        \
+			DT_INST_PROP(n, aspeed_init_ignore_pending_mask),                          \
 	};                                                                                         \
 	DEVICE_DT_INST_DEFINE(n, &intc_ast2700_config_func_##n, NULL, NULL,                        \
 			      &intc_ast2700_config_##n, PRE_KERNEL_1, CONFIG_INTC_INIT_PRIORITY,   \

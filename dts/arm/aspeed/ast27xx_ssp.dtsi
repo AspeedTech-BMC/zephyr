@@ -24,6 +24,12 @@
 			#interrupt-cells = <2>;
 			interrupt-controller;
 			aspeed,l1-aggregator-index = <1>;
+			/*
+			 * Bits 7 (PSP reset) and 15 (TSP reset) are level-triggered
+			 * reset-line signaling and are expected to already read
+			 * asserted at boot while those cores are held in reset.
+			 */
+			aspeed,init-ignore-pending-mask = <0x8080>;
 			interrupt-parent = <&nvic>;
 			interrupts = <144 AST10X0_IRQ_DEFAULT_PRIORITY>,
 				     <145 AST10X0_IRQ_DEFAULT_PRIORITY>,
