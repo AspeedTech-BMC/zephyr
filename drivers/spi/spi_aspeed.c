@@ -92,8 +92,9 @@ LOG_MODULE_REGISTER(spi_aspeed, CONFIG_SPI_LOG_LEVEL);
 
 #define ASPEED_DRAM_PHY_BASE        0x400000000
 #define ASPEED_HPRAM_PHY_BASE		0xF0000000
+#define ASPEED_HPRAM_SIZE           0x1000000
 #define ASPEED_IO_SRAM_PHY_BASE     0x14b80000
-#define ASPEED_IO_SRAM_SIZE         0x40000
+#define ASPEED_IO_SRAM_SIZE         0x80000
 
 
 #define ASPEED_SPI_CTRL_VAL(io_mode, opcode, dummy_cycle) \
@@ -939,11 +940,22 @@ static bool ast2700_spi_dma_xfer_eligible(const struct device *dev,
 	return ast2700_aspeed_spi_dram_region((uintptr_t)op_info->buf);
 }
 
-static bool ast10x0_g2_aspeed_spi_dram_region(uintptr_t virt_addr)
+static bool ast10x0_g2_aspeed_spi_ram_region(uintptr_t virt_addr, size_t len)
 {
-	uint64_t phy_addr = TO_PHY_ADDR(virt_addr);
+	uint64_t start = TO_PHY_ADDR(virt_addr);
+	uint64_t end = start + len;
 
-	return phy_addr >= ASPEED_HPRAM_PHY_BASE;
+	/* HyperRAM */
+	if (start >= ASPEED_HPRAM_PHY_BASE &&
+	    end <= ASPEED_HPRAM_PHY_BASE + ASPEED_HPRAM_SIZE)
+		return true;
+
+	/* IO SRAM */
+	if (start >= ASPEED_IO_SRAM_PHY_BASE &&
+	    end <= ASPEED_IO_SRAM_PHY_BASE + ASPEED_IO_SRAM_SIZE)
+		return true;
+
+	return false;
 }
 
 static bool ast10x0_g2_spi_dma_xfer_eligible(const struct device *dev,
@@ -952,7 +964,8 @@ static bool ast10x0_g2_spi_dma_xfer_eligible(const struct device *dev,
 	if (!aspeed_spi_dma_xfer_eligible(dev, op_info))
 		return false;
 
-	return ast10x0_g2_aspeed_spi_dram_region((uintptr_t)op_info->buf);
+	return ast10x0_g2_aspeed_spi_ram_region((uintptr_t)op_info->buf,
+						op_info->data_len);
 }
 #endif
 
