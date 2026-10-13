@@ -28,7 +28,7 @@
 #include <zephyr/pm/pm.h>
 
 #define LOG_LEVEL CONFIG_SOC_LOG_LEVEL
-LOG_MODULE_REGISTER(soc, LOG_LEVEL_ERR);
+LOG_MODULE_REGISTER(soc);
 
 #define NUM_IRQS_PER_REG  32
 #define REG_FROM_IRQ(irq) ((irq) / NUM_IRQS_PER_REG)
@@ -253,8 +253,8 @@ static const struct _irq_parent_entry *get_intc_entry_for_irq(unsigned int irq)
 		}
 	}
 
-	LOG_ERR("%s, %d: No aggregator found for irq %d, level %d, intc_irq %d", __func__, __LINE__,
-		irq, level, intc_irq);
+	LOG_ERR("%s, %d: No aggregator found for irq 0x%x, level %d, intc_irq %d", __func__,
+		__LINE__, irq, level, intc_irq);
 	return NULL;
 }
 
@@ -280,11 +280,11 @@ static int intc_aspeed_enable_irq(unsigned int irq)
 	unsigned int level = irq_get_level(irq);
 	unsigned int local_irq = irq_from_level(irq, level);
 
-	LOG_DBG("%s, %d: irq=%d, level=%d, local_irq=%d", __func__, __LINE__, irq, level,
+	LOG_DBG("%s, %d: irq=0x%x, level=%d, local_irq=%d", __func__, __LINE__, irq, level,
 		local_irq);
 	dev = aspeed_get_sw_isr_device_from_irq(irq);
 	if (!dev) {
-		LOG_ERR("%s, %d: Failed to get device for irq %d", __func__, __LINE__, irq);
+		LOG_ERR("%s, %d: Failed to get device for irq 0x%x", __func__, __LINE__, irq);
 		return -ENOSYS;
 	}
 
@@ -300,11 +300,11 @@ static int intc_aspeed_disable_irq(unsigned int irq)
 	unsigned int level = irq_get_level(irq);
 	unsigned int local_irq = irq_from_level(irq, level);
 
-	LOG_DBG("%s, %d: irq=%d, level=%d, local_irq=%d", __func__, __LINE__, irq, level,
+	LOG_DBG("%s, %d: irq=0x%x, level=%d, local_irq=%d", __func__, __LINE__, irq, level,
 		local_irq);
 	dev = aspeed_get_sw_isr_device_from_irq(irq);
 	if (!dev) {
-		LOG_ERR("%s, %d: Failed to get device for irq %d", __func__, __LINE__, irq);
+		LOG_ERR("%s, %d: Failed to get device for irq 0x%x", __func__, __LINE__, irq);
 		return -ENOSYS;
 	}
 
@@ -320,11 +320,11 @@ static int intc_aspeed_irq_is_enabled(unsigned int irq)
 	unsigned int level = irq_get_level(irq);
 	unsigned int local_irq = irq_from_level(irq, level);
 
-	LOG_DBG("%s, %d: irq=%d, level=%d, local_irq=%d", __func__, __LINE__, irq, level,
+	LOG_DBG("%s, %d: irq=0x%x, level=%d, local_irq=%d", __func__, __LINE__, irq, level,
 		local_irq);
 	dev = aspeed_get_sw_isr_device_from_irq(irq);
 	if (!dev) {
-		LOG_ERR("%s, %d: Failed to get device for irq %d", __func__, __LINE__, irq);
+		LOG_ERR("%s, %d: Failed to get device for irq 0x%x", __func__, __LINE__, irq);
 		return -ENOSYS;
 	}
 
@@ -349,11 +349,11 @@ int aspeed_intc_clear_pending_irq(unsigned int irq)
 	unsigned int level = irq_get_level(irq);
 	unsigned int local_irq = irq_from_level(irq, level);
 
-	LOG_DBG("%s, %d: irq=%d, level=%d, local_irq=%d", __func__, __LINE__, irq, level,
+	LOG_DBG("%s, %d: irq=0x%x, level=%d, local_irq=%d", __func__, __LINE__, irq, level,
 		local_irq);
 	dev = aspeed_get_sw_isr_device_from_irq(irq);
 	if (!dev) {
-		LOG_ERR("%s, %d: Failed to get device for irq %d", __func__, __LINE__, irq);
+		LOG_ERR("%s, %d: Failed to get device for irq 0x%x", __func__, __LINE__, irq);
 		return -ENOSYS;
 	}
 
@@ -363,8 +363,10 @@ int aspeed_intc_clear_pending_irq(unsigned int irq)
 void z_soc_irq_enable(unsigned int irq)
 {
 	unsigned int level = irq_get_level(irq);
+	unsigned int local_irq = irq_from_level(irq, level);
 
-	LOG_DBG("%s, %d: irq=%d", __func__, __LINE__, irq);
+	LOG_DBG("%s, %d: irq=0x%x, level=%d, local_irq=%d", __func__, __LINE__, irq, level,
+		local_irq);
 	if (level == 1) {
 		/*
 		 * irq here is just this core's NVIC line, not necessarily a
@@ -390,6 +392,8 @@ void z_soc_irq_enable(unsigned int irq)
 		unsigned int irq_raw = INTC1G_ROUTE_BASE_IRQ +
 					NUM_IRQS_PER_REG * lvl2_irq + lvl3_irq;
 
+		LOG_DBG("%s, %d: lvl2_irq=%d, lvl3_irq=%d, irq_raw=%d", __func__, __LINE__,
+			lvl2_irq, lvl3_irq, irq_raw);
 		intc1g_set_irq_route(irq_raw, INTC1G_IRQ_ROUTE_SEL);
 	}
 
@@ -402,8 +406,12 @@ void z_soc_irq_enable(unsigned int irq)
 
 void z_soc_irq_disable(unsigned int irq)
 {
-	LOG_DBG("%s, %d: irq=%d", __func__, __LINE__, irq);
-	if (irq_get_level(irq) == 1) {
+	unsigned int level = irq_get_level(irq);
+	unsigned int local_irq = irq_from_level(irq, level);
+
+	LOG_DBG("%s, %d: irq=0x%x, level=%d, local_irq=%d", __func__, __LINE__, irq, level,
+		local_irq);
+	if (level == 1) {
 		NVIC_DisableIRQ((IRQn_Type)irq);
 	} else {
 		intc_aspeed_disable_irq(irq);
@@ -412,8 +420,12 @@ void z_soc_irq_disable(unsigned int irq)
 
 int z_soc_irq_is_enabled(unsigned int irq)
 {
-	LOG_DBG("%s, %d: irq=%d", __func__, __LINE__, irq);
-	if (irq_get_level(irq) == 1) {
+	unsigned int level = irq_get_level(irq);
+	unsigned int local_irq = irq_from_level(irq, level);
+
+	LOG_DBG("%s, %d: irq=0x%x, level=%d, local_irq=%d", __func__, __LINE__, irq, level,
+		local_irq);
+	if (level == 1) {
 		return NVIC->ISER[REG_FROM_IRQ(irq)] & BIT(BIT_FROM_IRQ(irq));
 	} else {
 		return intc_aspeed_irq_is_enabled(irq);

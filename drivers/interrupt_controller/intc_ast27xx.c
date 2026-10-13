@@ -17,7 +17,7 @@
 #include <zephyr/devicetree/interrupt_controller.h>
 
 #define LOG_LEVEL CONFIG_INTC_LOG_LEVEL
-LOG_MODULE_REGISTER(intc_ast2700_ic, LOG_LEVEL_ERR);
+LOG_MODULE_REGISTER(intc_ast2700_ic);
 
 #define MAX_INTC_NUMBER       (CONFIG_MAX_IRQ_PER_AGGREGATOR * CONFIG_NUM_3RD_LEVEL_AGGREGATORS)
 
@@ -155,9 +155,8 @@ static int intc_ast2700_init(const struct device *dev)
 	 */
 	unexpected_pending = sys_read32(base + INTC_RAW) & ~config->init_ignore_pending_mask;
 	if (unexpected_pending) {
-		LOG_ERR("init isr incorrect INTC%d ", intc_num);
-		LOG_ERR("%lx:", base + INTC_RAW);
-		LOG_ERR("%x", unexpected_pending);
+		LOG_ERR("init isr incorrect INTC%d (reg 0x%lx): unexpected pending 0x%x", intc_num,
+			base + INTC_RAW, unexpected_pending);
 		ret = 1;
 	}
 	return ret;
