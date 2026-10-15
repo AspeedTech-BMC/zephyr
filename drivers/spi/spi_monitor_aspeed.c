@@ -1152,11 +1152,6 @@ static void ast2700_spi_decoding_win_config_common(const struct device *dev, boo
 	release_spim_device(dev);
 }
 
-static void ast2700_spi_decoding_win_config(const struct device *dev)
-{
-	ast2700_spi_decoding_win_config_common(dev, true);
-}
-
 static void ast10x0_g2_spi_decoding_win_config(const struct device *dev)
 {
 	ast2700_spi_decoding_win_config_common(dev, false);
@@ -1334,7 +1329,8 @@ static void ast2700_elec_char_init(const struct device *dev)
 {
 	spim_sw_rst(dev);
 	ast2700_push_pull_mode_config(dev);
-	ast2700_spi_decoding_win_config(dev);
+	/* lock is deferred to ast2700_spim_decode_lock_init() */
+	ast2700_spi_decoding_win_config_common(dev, false);
 	ast2700_blocked_cs_config(dev);
 	ast2700_blocked_fifo_init(dev);
 	ast2700_spim_access_prot_init(dev);
@@ -2603,6 +2599,34 @@ DT_INST_FOREACH_STATUS_OKAY(ASPEED_AST1080_SPIM_INIT)
 #undef DT_DRV_COMPAT
 #define DT_DRV_COMPAT aspeed_ast2700_spi_monitor_controller
 DT_INST_FOREACH_STATUS_OKAY(ASPEED_AST2700_SPIM_INIT)
+
+#if DT_HAS_COMPAT_STATUS_OKAY(aspeed_ast2700_spi_monitor_controller)
+/*
+ * SPI NOR re-sizes the controller decode windows during its probe, so the
+ * windows can only be snapshotted and locked after every SPI NOR is done.
+ */
+#define AST2700_SPIM_DECODE_LOCK_PRIO 81
+
+#ifdef CONFIG_SPI_NOR_INIT_PRIORITY
+BUILD_ASSERT(AST2700_SPIM_DECODE_LOCK_PRIO > CONFIG_SPI_NOR_INIT_PRIORITY,
+	     "SPI monitor decode lock must run after SPI NOR probe");
+#endif
+
+#define AST2700_SPIM_DECODE_LOCK(node_id)				\
+	ast2700_spi_decoding_win_config_common(DEVICE_DT_GET(node_id), true);
+
+#define AST2700_SPIM_DECODE_LOCK_INST(n)				\
+	DT_FOREACH_CHILD_STATUS_OKAY(DT_DRV_INST(n), AST2700_SPIM_DECODE_LOCK)
+
+static int ast2700_spim_decode_lock_init(void)
+{
+	DT_INST_FOREACH_STATUS_OKAY(AST2700_SPIM_DECODE_LOCK_INST)
+
+	return 0;
+}
+
+SYS_INIT(ast2700_spim_decode_lock_init, POST_KERNEL, AST2700_SPIM_DECODE_LOCK_PRIO);
+#endif
 #undef DT_DRV_COMPAT
 
 /* ===== AST10X0-G2 SPI Filter ===== */
