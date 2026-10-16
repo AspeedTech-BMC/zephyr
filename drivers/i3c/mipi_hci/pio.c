@@ -319,7 +319,22 @@ static void hci_pio_move_extra_rx(struct i3c_hci *hci, struct hci_xfer *xfer,
 		next = next->next_data;
 	}
 	if (extra != 0U) {
-		LOG_ERR("%s dropping %u RX bytes after short read", hci->dev->name, extra);
+		/*
+		 * hci_pio_do_rx() only advances data_left in whole 4-byte
+		 * words, so received is always a multiple of 4 and extra
+		 * (< 4) here is just the trailing padding PIO_XFER_DATA_PORT
+		 * returns when the real transfer ends mid-word and there is
+		 * no next_data to shift it into. extra >= 4 means a whole
+		 * extra word is unaccounted for, which this alignment
+		 * artifact cannot produce, so keep that case at error level.
+		 */
+		if (extra < 4U) {
+			LOG_DBG("%s dropping %u RX padding byte(s) after short read",
+				hci->dev->name, extra);
+		} else {
+			LOG_ERR("%s dropping %u RX bytes after short read", hci->dev->name,
+				extra);
+		}
 	}
 }
 
