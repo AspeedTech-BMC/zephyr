@@ -21,3 +21,11 @@ config LTPI_AST10X0_G2
 	help
 	  This option enables the LTPI driver for ASPEED AST10X0-G2 SOCs
 	  (e.g. AST1040) operating in the HPM role.
+
+config LTPI_SHELL
+	bool "ASPEED LTPI shell commands"
+	default y
+	depends on SHELL
+	help
+	  This option enables the "ltpi" shell command, usable against any
+	  LTPI backend.

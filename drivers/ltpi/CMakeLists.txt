@@ -15,3 +15,8 @@ zephyr_library_sources_ifdef(
   CONFIG_LTPI_AST10X0_G2
   ltpi_ast10x0_g2.c
 )
+
+zephyr_library_sources_ifdef(
+  CONFIG_LTPI_SHELL
+  ltpi_shell.c
+)
