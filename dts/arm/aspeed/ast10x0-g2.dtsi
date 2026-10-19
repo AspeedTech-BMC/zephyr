@@ -1030,6 +1030,17 @@
 			};
 		};
 
+		ltpi0: ltpi@74c0e000 {
+			compatible = "aspeed,ast10x0-g2-ltpi";
+			reg = <0x74c0e000 0xc00>;
+			clocks = <&sysclk SCU1_CLK_GATE_LTPI_AHBCLK>,
+				 <&sysclk SCU1_CLK_GATE_LTPI_TXCLK>;
+			clock-names = "ahb", "phy";
+			resets = <&sysrst SCU1_RESET_LTPI0>;
+			aspeed,scu = <&syscon>;
+			status = "disabled";
+		};
+
 		fmc: spi@74000000 {
 			compatible = "aspeed,ast10x0-g2-spi-controller";
 			reg = <0x74000000 0x300>, <0x80000000 0x10000000>;

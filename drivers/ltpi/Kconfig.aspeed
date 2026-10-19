@@ -15,3 +15,13 @@ config LTPI_AST27XX
 	select CLOCK_CONTROL
 	help
 	  This option enables the LTPI driver for ASPEED AST27xx SOCs.
+
+config LTPI_AST10X0_G2
+	bool "ASPEED AST10X0-G2 LTPI driver"
+	default y
+	depends on SOC_FAMILY_ASPEED && DT_HAS_ASPEED_AST10X0_G2_LTPI_ENABLED
+	select RESET
+	select CLOCK_CONTROL
+	help
+	  This option enables the LTPI driver for ASPEED AST10X0-G2 SOCs
+	  (e.g. AST1040) operating in the HPM role.

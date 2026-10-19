@@ -1,0 +1,14 @@
+# Copyright (c) 2026, Aspeed Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+description: Aspeed AST10X0-G2 LTPI controller operating in the HPM role
+
+compatible: "aspeed,ast10x0-g2-ltpi"
+
+include: [base.yaml, reset-device.yaml]
+
+properties:
+    aspeed,scu:
+      type: phandle
+      required: true
+      description: phandle to SCU device tree node
