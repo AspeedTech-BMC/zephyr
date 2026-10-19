@@ -513,6 +513,13 @@ static int ltpi_poll_link_mng_state(struct ast27xx_ltpi_data *ltpi, uint32_t exp
 			ret = LTPI_ERR_TIMEOUT;
 			break;
 		}
+
+		/*
+		 * This loop can legitimately run for seconds. Yield instead of
+		 * busy-spinning so other threads (e.g. a shell command thread
+		 * calling ltpi_do_link()) still get scheduled.
+		 */
+		k_usleep(100);
 	} while (1);
 
 	return ret;
