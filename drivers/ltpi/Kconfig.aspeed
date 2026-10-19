@@ -3,10 +3,6 @@
 # Copyright (c) 2025 ASPEED Technology Inc.
 # SPDX-License-Identifier: Apache-2.0
 
-module = LTPI_ASPEED
-module-str = ltpi-aspeed
-source "subsys/logging/Kconfig.template.log_config"
-
 config LTPI_AST27XX
 	bool "ASPEED AST27XX LTPI driver"
 	default y
