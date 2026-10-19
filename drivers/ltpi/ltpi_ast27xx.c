@@ -406,7 +406,7 @@ static int ltpi_phy_get_mode(struct ast27xx_ltpi_data *ltpi)
 
 static void ltpi_phy_set_mode(struct ast27xx_ltpi_data *ltpi, int mode)
 {
-	__ASSERT_NO_MSG(mode > 0 && mode <= LTPI_PHY_MODE_DDR);
+	__ASSERT_NO_MSG(mode >= LTPI_PHY_MODE_OFF && mode <= LTPI_PHY_MODE_DDR);
 
 	clrsetbits_le32(ltpi->config->phy_base + LTPI_PHY_CTRL, REG_LTPI_PHY_MODE,
 			FIELD_PREP(REG_LTPI_PHY_MODE, mode));
