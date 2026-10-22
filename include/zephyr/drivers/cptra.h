@@ -353,8 +353,8 @@ struct cptra_add_subject_alt_name_oa {
 };
 
 struct cptra_certify_key_extended_ia {
-	uint8_t certify_key_req[72];
 	uint32_t flags;
+	uint8_t certify_key_req[72];
 };
 
 /*
@@ -364,6 +364,7 @@ struct cptra_certify_key_extended_ia {
 struct cptra_certify_key_extended_oa {
 	uint32_t chksum;
 	uint32_t fips_status;
+	uint32_t size;		/* resp length (rt-1.3.0) */
 	uint8_t certify_key_resp[6272];
 };
 
@@ -729,8 +730,8 @@ struct cptra_set_pq_seed_oa {
 
 /* CERTIFY_KEY_EXTENDED_MLDSA87 */
 struct cptra_certify_key_extended_mldsa87_ia {
-	uint8_t certify_key_req[72];
 	uint32_t flags;
+	uint8_t certify_key_req[72];
 };
 
 struct cptra_certify_key_extended_mldsa87_oa {
@@ -777,6 +778,7 @@ enum dpe_command {
 enum dpe_profile {
 	P256Sha256 = 3,
 	P384Sha384 = 4,
+	Mldsa87 = 5,
 };
 
 /* TODO: DPE command */
