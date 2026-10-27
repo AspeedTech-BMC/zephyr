@@ -786,6 +786,7 @@ static int spi_nor_qe_config(const struct device *dev, uint32_t qer)
 		ret = spi_nor_sr1_bit6_config(dev);
 		break;
 	case JESD216_DW15_QER_S2B1v4: /* Winbond */
+	case JESD216_DW15_QER_S2B1v6: /* JESD216F: SR2 read by 35h, written by 31h */
 		ret = spi_nor_sr2_bit1_config(dev);
 		break;
 	case JESD216_DW15_QER_S2B1v5: /* Cypress */
