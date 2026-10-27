@@ -765,12 +765,8 @@ end:
 	return ret;
 }
 
-#define SPI_NOR_QE_NO_NEED        0x0 /* Micron, Gigadevice */
-#define SPI_NOR_QE_SR_CR_BIT1     0x1
+/* QER 111b is reserved in JESD216, so it has no jesd216_dw15_qer_type value */
 #define SPI_NOR_QE_NOT_SUPPORTED  0x7 /* GigaDevice */
-#define SPI_NOR_QE_SR1_BIT6       0x2 /* MXIC, ISSI */
-#define SPI_NOR_QE_SR2_BIT1       0x4 /* Winbond */
-#define SPI_NOR_QE_CF1_BIT1       0x5 /* Cypress */
 
 static int spi_nor_qe_config(const struct device *dev, uint32_t qer)
 {
@@ -780,19 +776,19 @@ static int spi_nor_qe_config(const struct device *dev, uint32_t qer)
 	acquire_device(dev);
 
 	switch (qer) {
-	case SPI_NOR_QE_NO_NEED:
+	case JESD216_DW15_QER_NONE: /* Micron, GigaDevice */
 	case SPI_NOR_QE_NOT_SUPPORTED:
 		break;
-	case SPI_NOR_QE_SR_CR_BIT1:
+	case JESD216_DW15_QER_S2B1v1:
 		ret = spi_nor_sr_cr_bit1_config(dev);
 		break;
-	case SPI_NOR_QE_SR1_BIT6:
+	case JESD216_DW15_QER_S1B6: /* MXIC, ISSI */
 		ret = spi_nor_sr1_bit6_config(dev);
 		break;
-	case SPI_NOR_QE_SR2_BIT1:
+	case JESD216_DW15_QER_S2B1v4: /* Winbond */
 		ret = spi_nor_sr2_bit1_config(dev);
 		break;
-	case SPI_NOR_QE_CF1_BIT1:
+	case JESD216_DW15_QER_S2B1v5: /* Cypress */
 		ret = spi_nor_cf1_bit1_config(dev);
 		break;
 	default:
