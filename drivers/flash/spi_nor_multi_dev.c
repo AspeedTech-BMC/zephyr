@@ -662,6 +662,9 @@ static int spi_nor_sr2_bit1_config(const struct device *dev)
 		return sr;
 
 	sr = spi_nor_rdsr2(dev);
+	if (sr < 0)
+		return sr;
+
 	if ((sr & BIT(1)) == 0) {
 		LOG_ERR("Fail to set SR2[1]");
 		return -ENOTSUP;
