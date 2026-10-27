@@ -12,7 +12,6 @@
 #include <zephyr/cache.h>
 #include <string.h>
 #include <soc.h>
-#include "scu1_clk_lock.h"
 
 #define SCU0_REG		DT_REG_ADDR(DT_NODELABEL(syscon0))
 #define SCU1_REG		DT_REG_ADDR(DT_NODELABEL(syscon1))
@@ -168,15 +167,4 @@ FUNC_NO_STACK_PROTECTOR void z_arm_platform_init(void)
 	/* clear non-cached .bss */
 	(void)memset(__RAM_NC_start, 0, __RAM_NC_end - __RAM_NC_start);
 }
-#endif
-
-#if defined(CONFIG_RISCV)
-static int soc_init(void)
-{
-	ast27xx_scu1_clk_lock();
-
-	return 0;
-}
-
-SYS_INIT(soc_init, PRE_KERNEL_1, 0);
 #endif

@@ -23,6 +23,18 @@ LOG_MODULE_REGISTER(clock_control_ast27xx_scu1);
 #define CLK_STOP_CTRL1_SET		0x260
 #define CLK_STOP_CTRL1_CLEAR		0x264
 
+/* Clock stop lock 1 register: locks the SCU1_240 clock-stop control bits */
+#define CLK_STOP_LOCK1			0x250
+#define   CLK_STOP_LOCK1_OTP_BIT	6
+
+/* Clock select lock 1 register: locks the SCU1_280 clock division fields */
+#define CLK_SEL_LOCK1			0x2a0
+#define   CLK_SEL_LOCK1_CALIPTRA_BIT	18
+
+/* Clock select lock 2 register: locks the SCU1_284 clock division fields */
+#define CLK_SEL_LOCK2			0x2b0
+#define   CLK_SEL_LOCK2_IO_BOOTMCU_BIT	20
+
 struct ast2700_scu1 {
 	uint32_t chip_id1;		/* 0x000 */
 	uint32_t rsv_0x04[3];		/* 0x004 ~ 0x00C */
@@ -440,9 +452,25 @@ static const struct clock_control_driver_api aspeed_clk_scu1_api = {
 	.get_rate = ast27xx_scu1_clock_control_get_rate,
 };
 
+static int ast27xx_scu1_clock_init(const struct device *dev)
+{
+	const struct clock_ast27xx_scu1_config *config = dev->config;
+
+	/* OTP (REFCLK 25M) clock-stop control: lock SCU1_240[6] */
+	sys_set_bit(config->base + CLK_STOP_LOCK1, CLK_STOP_LOCK1_OTP_BIT);
+
+	/* Caliptra (PCLK) clock division: lock SCU1_280[20:18] */
+	sys_set_bit(config->base + CLK_SEL_LOCK1, CLK_SEL_LOCK1_CALIPTRA_BIT);
+
+	/* IO_SRAM/IO_AHB/BootMCU (HCLK) clock division: lock SCU1_284[22:20] */
+	sys_set_bit(config->base + CLK_SEL_LOCK2, CLK_SEL_LOCK2_IO_BOOTMCU_BIT);
+
+	return 0;
+}
+
 static const struct clock_ast27xx_scu1_config clock_scu1_config = {
 	.base = DT_REG_ADDR(DT_INST_PARENT(0)),
 };
 
-DEVICE_DT_INST_DEFINE(0, NULL, NULL, NULL, &clock_scu1_config, PRE_KERNEL_1,
-		      CONFIG_CLOCK_CONTROL_INIT_PRIORITY, &aspeed_clk_scu1_api);
+DEVICE_DT_INST_DEFINE(0, ast27xx_scu1_clock_init, NULL, NULL, &clock_scu1_config,
+		      PRE_KERNEL_1, CONFIG_CLOCK_CONTROL_INIT_PRIORITY, &aspeed_clk_scu1_api);
