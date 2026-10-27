@@ -20,6 +20,7 @@ LOG_MODULE_REGISTER(ipm_ast2700, LOG_LEVEL_ERR);
 
 #define IPC_NUM_OF_ID	4
 #define IPC_MAX_MSG_SIZE 0x20
+#define IPC_TX_WAIT_TIMEOUT_MS 100
 
 /* Each bit in the register represents an IPC ID */
 #define IPCR_TRIG	0x0
@@ -179,23 +180,21 @@ static int ipm_ast2700_send(const struct device *dev, int wait, uint32_t id, con
 {
 	const struct ipm_ast2700_config *config = ((const struct device *)dev)->config;
 	uintptr_t base  = config->base + config->reg_tx_offset;
-	uint32_t status = sys_read32(base + IPCR_STATUS);
-	uint32_t ret = 0;
+	uint32_t status = 0;
 	uint32_t i;
 
-	if (status & BIT(id)) {
-		ret = -EBUSY;
-		goto finish;
-	}
-
 	if (id >= IPC_NUM_OF_ID) {
-		ret = -EINVAL;
-		goto finish;
+		return -EINVAL;
 	}
 
-	if (size > IPC_MAX_MSG_SIZE) {
-		ret = -EMSGSIZE;
-		goto finish;
+	if (size < 0 || size > IPC_MAX_MSG_SIZE) {
+		return -EMSGSIZE;
+	}
+
+	status = sys_read32(base + IPCR_STATUS);
+	if (status & BIT(id)) {
+		LOG_DBG("IPC TX channel %u busy before trigger (status 0x%08x)", id, status);
+		return -EBUSY;
 	}
 
 	/* Copy message data to IPC Data registers. */
@@ -207,14 +206,26 @@ static int ipm_ast2700_send(const struct device *dev, int wait, uint32_t id, con
 	/* Trigger IPC TX. */
 	sys_write32(BIT(id), base + IPCR_TRIG);
 	if (wait) {
-		do {
-			/* busy-wait for the status clean */
+		/* wait for the status clean */
+		for (i = 0; i < IPC_TX_WAIT_TIMEOUT_MS; i++) {
+			/* check isr situation */
+			if (k_is_in_isr()) {
+				k_busy_wait(1000);
+			} else {
+				k_sleep(K_MSEC(1));
+			}
+
 			status = sys_read32(base + IPCR_STATUS);
-		} while (status & BIT(id));
+			if (!(status & BIT(id))) {
+				return 0;
+			}
+		}
+	} else {
+		return 0;
 	}
 
-finish:
-	return ret;
+	LOG_ERR("IPC TX channel %u timed out after trigger (status 0x%08x)", id, status);
+	return -ETIMEDOUT;
 }
 
 static void ipm_ast2700_register_id_callback(const struct device *dev, uint32_t id,
