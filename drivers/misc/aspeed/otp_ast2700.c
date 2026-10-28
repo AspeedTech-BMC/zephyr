@@ -5,6 +5,7 @@
  */
 
 #include <stdint.h>
+#include <string.h>
 #define DT_DRV_COMPAT		aspeed_ast27xx_otp
 
 #include <soc.h>
@@ -80,6 +81,19 @@ LOG_MODULE_REGISTER(otp_ast2700, CONFIG_LOG_DEFAULT_LEVEL);
 #define OTP_MID_NONE                0x3F
 
 #define OTP_DAP_CFG_RQ			0x538
+
+/*
+ * DAP timing register: controls the cell read reference current (IREF).
+ * Writing a value here before OTP_CMD_READ selects normal/margin read.
+ * Normal read: IREF=0x01 (bits[4:0]), VRR=0xe (bits[11:8]).
+ * Margin read: IREF adjusted to OTP_SCREEN_IREF; change to tune margin level.
+ * Must stay in lockstep with aspeed_app's OTP_DAP_RQ_OFFSET/OTP_*_TIMING
+ * (otp/otp_ast2700.h) - same physical register, same offset.
+ */
+#define OTP_DAP_RQ			0x530
+#define OTP_NORMAL_TIMING		0x04096e01u
+#define OTP_SCREEN_IREF			0x0f
+#define OTP_MARGIN_TIMING		((OTP_NORMAL_TIMING & ~0x1Fu) | OTP_SCREEN_IREF)
 
 /* OTP status: [0] */
 #define OTP_STS_IDLE			0x0
@@ -200,9 +214,11 @@ struct otp_ast27xx_config {
 	uint8_t gran_bits;
 };
 
-struct otp_ast27xx_drv_state {
-	bool in_use;
-	int gbl_ecc_en;
+struct otp_region_ecc {
+	uint32_t start;
+	uint32_t end;
+	bool ecc_supported;
+	bool ecc_en;
 };
 
 enum otp_region_id {
@@ -218,20 +234,20 @@ enum otp_region_id {
 	OTP_REGION_MAX,
 };
 
-struct otp_region_ecc {
-	uint32_t start;
-	uint32_t end;
-	bool ecc_supported;
-	bool ecc_en;
+struct otp_ast27xx_drv_state {
+	bool in_use;
+	int gbl_ecc_en;
+	struct otp_region_ecc region_ecc_tbl[OTP_REGION_MAX];
 };
 
 #if !defined(CONFIG_SOC_SERIES_AST10x0_G2)
 /*
- * Per-region ECC default, consulted when state->gbl_ecc_en (force ECC) is
- * off. OTPRBP/OTPSTRAP don't support ECC in hardware, so ecc_supported is
- * false and ECC stays off for them even under the global force.
+ * Per-region ECC default, copied into each device's state->region_ecc_tbl
+ * at init time and consulted when state->gbl_ecc_en (force ECC) is off.
+ * OTPRBP/OTPSTRAP don't support ECC in hardware, so ecc_supported is false
+ * and ECC stays off for them even under the global force.
  */
-static const struct otp_region_ecc otp_region_ecc_tbl[OTP_REGION_MAX] = {
+static const struct otp_region_ecc otp_region_ecc_defaults[OTP_REGION_MAX] = {
 	[OTP_REGION_ROM] = {
 		ROM_REGION_START_ADDR, ROM_REGION_END_ADDR, true, true
 	},
@@ -271,7 +287,7 @@ static bool otp_region_ecc_active(const struct device *dev, uint32_t offset)
 	return state->gbl_ecc_en;
 #else
 	for (int i = 0; i < OTP_REGION_MAX; i++) {
-		const struct otp_region_ecc *region = &otp_region_ecc_tbl[i];
+		const struct otp_region_ecc *region = &state->region_ecc_tbl[i];
 
 		if (offset < region->start || offset >= region->end)
 			continue;
@@ -512,6 +528,8 @@ static int aspeed_otp_ecc_init(const struct device *dev)
 	else
 		state->gbl_ecc_en = 0x0;
 
+	memcpy(state->region_ecc_tbl, otp_region_ecc_defaults, sizeof(state->region_ecc_tbl));
+
 	return 0;
 #endif
 }
@@ -547,6 +565,53 @@ static int aspeed_chip_version(const struct device *dev, uint32_t *chip_version)
 	} else {
 		*chip_version = -1;
 	}
+
+	return 0;
+#endif
+}
+
+/*
+ * Raw, undecoded SCU0/SCU1 revision ID registers - lets a caller (e.g. the
+ * CA35-side otp_ipc client) run its own ID0/ID1 comparison table instead of
+ * trusting this driver's own aspeed_chip_version() decode, so the two
+ * stay a single source of truth instead of two decode tables that could
+ * silently drift apart.
+ */
+static int aspeed_chip_revid(const struct device *dev, uint32_t *revid0, uint32_t *revid1)
+{
+	ARG_UNUSED(dev);
+
+#if defined(CONFIG_SOC_SERIES_AST10x0_G2)
+	*revid0 = 0;
+	*revid1 = 0;
+
+	return -ENOTSUP;
+#else
+	*revid0 = sys_read32(SCU0_REVISION_ID);
+	*revid1 = sys_read32(SCU1_REVISION_ID);
+
+	return 0;
+#endif
+}
+
+static int aspeed_otp_set_read_mode(const struct device *dev, uint32_t mode)
+{
+#if defined(CONFIG_SOC_SERIES_AST10x0_G2)
+	ARG_UNUSED(dev);
+	ARG_UNUSED(mode);
+
+	return -ENOTSUP;
+#else
+	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
+	uint32_t ver;
+
+	/* DAP timing values below are only characterized for AST2700-A2 */
+	aspeed_chip_version(dev, &ver);
+	if (ver != OTP_AST2700_A2)
+		return -ENOTSUP;
+
+	sys_write32(mode == OTP_READ_MODE_MARGIN ? OTP_MARGIN_TIMING : OTP_NORMAL_TIMING,
+		    cfg->base + OTP_DAP_RQ);
 
 	return 0;
 #endif
@@ -698,10 +763,85 @@ static int otp_ast27xx_init(const struct device *dev)
 	return rc;
 }
 
+static int aspeed_otp_ecc_get_status(const struct device *dev, int *ecc_en)
+{
+	struct otp_ast27xx_drv_state *state = (struct otp_ast27xx_drv_state *)dev->data;
+
+	*ecc_en = state->gbl_ecc_en;
+
+	return 0;
+}
+
+static int aspeed_otp_ecc_set_enable(const struct device *dev, bool enable)
+{
+	struct otp_ast27xx_drv_state *state = (struct otp_ast27xx_drv_state *)dev->data;
+
+	state->gbl_ecc_en = enable ? 1 : 0;
+
+	return 0;
+}
+
+#if !defined(CONFIG_SOC_SERIES_AST10x0_G2)
+static int aspeed_otp_ecc_get_policy(const struct device *dev, uint32_t region,
+				     bool *ecc_en, bool *ecc_supported)
+{
+	struct otp_ast27xx_drv_state *state = (struct otp_ast27xx_drv_state *)dev->data;
+
+	if (region >= OTP_REGION_MAX)
+		return -EINVAL;
+
+	*ecc_en = state->region_ecc_tbl[region].ecc_en;
+	*ecc_supported = state->region_ecc_tbl[region].ecc_supported;
+
+	return 0;
+}
+
+static int aspeed_otp_ecc_set_policy(const struct device *dev, uint32_t region, bool ecc_en)
+{
+	struct otp_ast27xx_drv_state *state = (struct otp_ast27xx_drv_state *)dev->data;
+
+	if (region >= OTP_REGION_MAX)
+		return -EINVAL;
+	if (ecc_en && !state->region_ecc_tbl[region].ecc_supported)
+		return -EINVAL;
+
+	state->region_ecc_tbl[region].ecc_en = ecc_en;
+
+	return 0;
+}
+#else
+static int aspeed_otp_ecc_get_policy(const struct device *dev, uint32_t region,
+				     bool *ecc_en, bool *ecc_supported)
+{
+	ARG_UNUSED(dev);
+	ARG_UNUSED(region);
+
+	*ecc_en = false;
+	*ecc_supported = false;
+
+	return -ENOTSUP;
+}
+
+static int aspeed_otp_ecc_set_policy(const struct device *dev, uint32_t region, bool ecc_en)
+{
+	ARG_UNUSED(dev);
+	ARG_UNUSED(region);
+	ARG_UNUSED(ecc_en);
+
+	return -ENOTSUP;
+}
+#endif /* !CONFIG_SOC_SERIES_AST10x0_G2 */
+
 static struct otp_driver_api otp_funcs = {
 	.otp_read_multi = aspeed_otp_read,
 	.otp_program_multi = aspeed_otp_write,
 	.get_chip_version = aspeed_chip_version,
+	.get_chip_revid = aspeed_chip_revid,
+	.ecc_get_status = aspeed_otp_ecc_get_status,
+	.ecc_set_enable = aspeed_otp_ecc_set_enable,
+	.ecc_get_policy = aspeed_otp_ecc_get_policy,
+	.ecc_set_policy = aspeed_otp_ecc_set_policy,
+	.set_read_mode = aspeed_otp_set_read_mode,
 };
 
 static const struct otp_ast27xx_config otp_ast27xx_config = {

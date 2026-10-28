@@ -16,6 +16,8 @@
 #include <zephyr/sys/util.h>
 #include <zephyr/sys/__assert.h>
 
+struct otp_info_cb;
+
 /* The API a otp driver should implement */
 __subsystem struct otp_driver_api {
 	/* Setup a OTP session */
@@ -36,6 +38,9 @@ __subsystem struct otp_driver_api {
 	/* Get SoC chip revision ID */
 	int (*get_chip_version)(const struct device *dev, uint32_t *chip_version);
 
+	/* Get raw, undecoded SCU0/SCU1 revision ID registers */
+	int (*get_chip_revid)(const struct device *dev, uint32_t *revid0, uint32_t *revid1);
+
 	/* Set OTP soak */
 	int (*set_soak)(const struct device *dev, int soak);
 
@@ -50,6 +55,32 @@ __subsystem struct otp_driver_api {
 
 	/* Program multiple OTP memory */
 	int (*otp_program_multi)(const struct device *dev, uint32_t otp_addr, void *data, int size);
+
+	/* Get global ECC force-enable status */
+	int (*ecc_get_status)(const struct device *dev, int *ecc_en);
+
+	/* Force ECC on/off globally, overriding per-region policy */
+	int (*ecc_set_enable)(const struct device *dev, bool enable);
+
+	/* Get per-region ECC policy */
+	int (*ecc_get_policy)(const struct device *dev, uint32_t region,
+			      bool *ecc_en, bool *ecc_supported);
+
+	/* Set per-region ECC policy */
+	int (*ecc_set_policy)(const struct device *dev, uint32_t region, bool ecc_en);
+
+	/*
+	 * Switch the OTP cell read reference current (DAP timing register)
+	 * between normal and margin mode, for margin-screening diagnostics.
+	 * Affects every otp_read()/otp_read_multi() call until switched back.
+	 */
+	int (*set_read_mode)(const struct device *dev, uint32_t mode);
+};
+
+/* Values for set_read_mode()/otp_set_read_mode() */
+enum otp_read_mode {
+	OTP_READ_MODE_NORMAL = 0,
+	OTP_READ_MODE_MARGIN = 1,
 };
 
 /**
@@ -161,6 +192,25 @@ static inline int otp_get_chip_version(const struct device *dev, uint32_t *chip_
 }
 
 /**
+ * @brief Get raw, undecoded SCU0/SCU1 revision ID registers
+ *
+ * @param  dev           Pointer to the device structure for the driver instance.
+ * @param  revid0        SCU0 revision ID register value.
+ * @param  revid1        SCU1 revision ID register value.
+ *
+ * @return 0 on success, negative errno code on fail.
+ */
+static inline int otp_get_chip_revid(const struct device *dev, uint32_t *revid0,
+				     uint32_t *revid1)
+{
+	struct otp_driver_api *api;
+
+	api = (struct otp_driver_api *)dev->api;
+
+	return api->get_chip_revid(dev, revid0, revid1);
+}
+
+/**
  * @brief Perform otp soak set
  *
  * @param  dev           Pointer to the device structure for the driver instance.
@@ -253,6 +303,96 @@ static inline int otp_program_multi(const struct device *dev, uint32_t otp_addr,
 	api = (struct otp_driver_api *)dev->api;
 
 	return api->otp_program_multi(dev, otp_addr, data, size);
+}
+
+/**
+ * @brief Get the global ECC force-enable status
+ *
+ * @param  dev           Pointer to the device structure for the driver instance.
+ * @param  ecc_en        Set to 1 if ECC is forced on for every capable region, else 0.
+ *
+ * @return 0 on success, negative errno code on fail.
+ */
+static inline int otp_ecc_get_status(const struct device *dev, int *ecc_en)
+{
+	struct otp_driver_api *api;
+
+	api = (struct otp_driver_api *)dev->api;
+
+	return api->ecc_get_status(dev, ecc_en);
+}
+
+/**
+ * @brief Force ECC on/off globally, overriding each region's own policy
+ *
+ * @param  dev           Pointer to the device structure for the driver instance.
+ * @param  enable        true to force ECC on, false to fall back to per-region policy.
+ *
+ * @return 0 on success, negative errno code on fail.
+ */
+static inline int otp_ecc_set_enable(const struct device *dev, bool enable)
+{
+	struct otp_driver_api *api;
+
+	api = (struct otp_driver_api *)dev->api;
+
+	return api->ecc_set_enable(dev, enable);
+}
+
+/**
+ * @brief Get a region's ECC policy
+ *
+ * @param  dev           Pointer to the device structure for the driver instance.
+ * @param  region        Region id (enum otp_region_id).
+ * @param  ecc_en        Set to the region's current ECC enable state.
+ * @param  ecc_supported Set to whether the region supports ECC in hardware.
+ *
+ * @return 0 on success, negative errno code on fail.
+ */
+static inline int otp_ecc_get_policy(const struct device *dev, uint32_t region,
+				     bool *ecc_en, bool *ecc_supported)
+{
+	struct otp_driver_api *api;
+
+	api = (struct otp_driver_api *)dev->api;
+
+	return api->ecc_get_policy(dev, region, ecc_en, ecc_supported);
+}
+
+/**
+ * @brief Set a region's ECC policy
+ *
+ * @param  dev           Pointer to the device structure for the driver instance.
+ * @param  region        Region id (enum otp_region_id).
+ * @param  ecc_en        ECC enable state to set for this region.
+ *
+ * @return 0 on success, negative errno code on fail (e.g. region doesn't support ECC).
+ */
+static inline int otp_ecc_set_policy(const struct device *dev, uint32_t region, bool ecc_en)
+{
+	struct otp_driver_api *api;
+
+	api = (struct otp_driver_api *)dev->api;
+
+	return api->ecc_set_policy(dev, region, ecc_en);
+}
+
+/**
+ * @brief Switch the OTP cell read reference current between normal and
+ *        margin mode (enum otp_read_mode), for margin-screening diagnostics
+ *
+ * @param  dev           Pointer to the device structure for the driver instance.
+ * @param  mode          enum otp_read_mode.
+ *
+ * @return 0 on success, negative errno code on fail.
+ */
+static inline int otp_set_read_mode(const struct device *dev, uint32_t mode)
+{
+	struct otp_driver_api *api;
+
+	api = (struct otp_driver_api *)dev->api;
+
+	return api->set_read_mode(dev, mode);
 }
 
 #endif /* ZEPHYR_INCLUDE_DRIVERS_MISC_ASPEED_OTP_H_ */

@@ -144,6 +144,15 @@ config LTPI_IPC
 	help
 	  This option enables the ltpi read / write ipc driver for ASPEED SoCs.
 
+config OTP_IPC
+	bool "ASPEED OTP IPC driver"
+	depends on OTP_AST27XX
+	depends on SOC_AST2700_BOOTMCU
+	help
+	  This option enables letting SSP/CA35 read and program OTP over the
+	  bootmcu IPC mailbox. Standalone of the Caliptra IPC driver; carries
+	  its own command channel and never touches Caliptra state.
+
 config CPTRA_IPC_SSP
 	bool "ASPEED CPTRA IPC driver in SSP"
 	depends on SOC_AST2700_SSP || SOC_AST2700_A1_SSP || SOC_AST2705_SSP
