@@ -127,6 +127,10 @@
 #define INTR_AATSENSE			173
 #define INTR_IPC0			174
 #define INTR_IPC1			175
+#define INTR_IPC2			176
+#define INTR_IPC3			177
+#define INTR_IPC4			178
+#define INTR_IPC5			179
 #define INTR_LPCHOST			182
 #define INTR_SPI_F0			183
 #define INTR_SPI_F1			184
