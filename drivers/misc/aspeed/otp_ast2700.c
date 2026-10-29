@@ -95,6 +95,10 @@ LOG_MODULE_REGISTER(otp_ast2700, CONFIG_LOG_DEFAULT_LEVEL);
 #define OTP_SCREEN_IREF			0x0f
 #define OTP_MARGIN_TIMING		((OTP_NORMAL_TIMING & ~0x1Fu) | OTP_SCREEN_IREF)
 
+/* OTP_DAP_RQ bits[11:8]: VRR level. Default 0xe selects VRR = 2.0V. */
+#define OTP_DAP_VRR_MASK		GENMASK(11, 8)
+#define OTP_DAP_VRR_DEFAULT		0xeu
+
 /* OTP status: [0] */
 #define OTP_STS_IDLE			0x0
 #define OTP_STS_BUSY			0x1
@@ -390,11 +394,68 @@ static void otp_ecc_cfg(const struct device *dev, bool ecc_en, bool auto_cfg)
 		sys_write32(0x40008, cfg->base + OTP_DAP_CFG_RQ);
 }
 
+static int aspeed_chip_version(const struct device *dev, uint32_t *chip_version)
+{
+#if defined(CONFIG_SOC_SERIES_AST10x0_G2)
+	/*
+	 * AST1040 is single-die and its chip-ID revision values aren't known
+	 * yet, so don't touch AST2700's dual-die SCU0/SCU1 addresses here.
+	 */
+	*chip_version = -1;
+
+	return 0;
+#else
+	uint32_t revid0, revid1;
+
+	revid0 = sys_read32(SCU0_REVISION_ID);
+	revid1 = sys_read32(SCU1_REVISION_ID);
+
+	if (revid0 == ID0_AST2700A0 && revid1 == ID1_AST2700A0) {
+		/* AST2700-A0 */
+		*chip_version = OTP_AST2700_A0;
+	} else if ((revid0 == ID0_AST2700A1 && revid1 == ID1_AST2700A1) ||
+		   (revid0 == ID0_AST2750A1 && revid1 == ID1_AST2750A1)) {
+		/* AST2700-A1 */
+		*chip_version = OTP_AST2700_A1;
+	}  else if ((revid0 == ID0_AST2700A2 && revid1 == ID1_AST2700A2) ||
+		   (revid0 == ID0_AST2750A2 && revid1 == ID1_AST2750A2) ||
+		   (revid0 == ID0_AST2720A2 && revid1 == ID1_AST2720A2)) {
+		/* AST2700-A2 */
+		*chip_version = OTP_AST2700_A2;
+	} else {
+		*chip_version = -1;
+	}
+
+	return 0;
+#endif
+}
+
+static void aspeed_otp_set_dap_vrr_default(const struct device *dev)
+{
+#if defined(CONFIG_SOC_SERIES_AST10x0_G2)
+	ARG_UNUSED(dev);
+#else
+	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
+	uint32_t val, ver;
+
+	/* VRR=0xe is only characterized for AST2700-A2, same as aspeed_otp_set_read_mode() */
+	aspeed_chip_version(dev, &ver);
+	if (ver != OTP_AST2700_A2)
+		return;
+
+	val = sys_read32(cfg->base + OTP_DAP_RQ);
+	val = (val & ~OTP_DAP_VRR_MASK) | FIELD_PREP(OTP_DAP_VRR_MASK, OTP_DAP_VRR_DEFAULT);
+	sys_write32(val, cfg->base + OTP_DAP_RQ);
+#endif
+}
+
 static int otp_read_data(const struct device *dev, uint32_t offset, uint32_t *data)
 {
 	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
 	int ret;
 	bool ecc_en = otp_region_ecc_active(dev, offset);
+
+	aspeed_otp_set_dap_vrr_default(dev);
 
 	sys_write32(offset, cfg->base + OTP_ADDR);
 	otp_ecc_cfg(dev, ecc_en, false);
@@ -416,6 +477,7 @@ static int otp_read_data(const struct device *dev, uint32_t offset, uint32_t *da
 int otp_prog_data(const struct device *dev, uint32_t offset, uint32_t data)
 {
 	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
+	int ret;
 
 	sys_write32(otp_region_ecc_active(dev, offset), cfg->base + OTP_ECC_EN);
 	/* OTP_PMC_CQ doesn't exist on AST1040 */
@@ -426,12 +488,16 @@ int otp_prog_data(const struct device *dev, uint32_t offset, uint32_t data)
 	sys_write32(data, cfg->base + OTP_WDATA_0);
 	sys_write32(OTP_CMD_PROG, cfg->base + OTP_CMD);
 
-	return wait_complete(dev);
+	ret = wait_complete(dev);
+	aspeed_otp_set_dap_vrr_default(dev);
+
+	return ret;
 }
 
 int otp_prog_multi_data(const struct device *dev, uint32_t offset, uint32_t *data, int count)
 {
 	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
+	int ret;
 
 	/* Only 4 WDATA registers (WDATA_0..WDATA_3) exist per OTP_CMD_PROG_MULTI */
 	if (count > 4)
@@ -448,7 +514,10 @@ int otp_prog_multi_data(const struct device *dev, uint32_t offset, uint32_t *dat
 
 	sys_write32(OTP_CMD_PROG_MULTI, cfg->base + OTP_CMD);
 
-	return wait_complete(dev);
+	ret = wait_complete(dev);
+	aspeed_otp_set_dap_vrr_default(dev);
+
+	return ret;
 }
 
 static int aspeed_otp_read(const struct device *dev, uint32_t offset, void *buf, int size)
@@ -515,6 +584,7 @@ static int aspeed_otp_ecc_init(const struct device *dev)
 	uint32_t val;
 
 	/* Check cfg_ecc_en */
+	aspeed_otp_set_dap_vrr_default(dev);
 	sys_write32(0, cfg->base + OTP_ECC_EN);
 	sys_write32(OTPSTRAP14_ADDR, cfg->base + OTP_ADDR);
 	sys_write32(OTP_CMD_READ, cfg->base + OTP_CMD);
@@ -529,42 +599,6 @@ static int aspeed_otp_ecc_init(const struct device *dev)
 		state->gbl_ecc_en = 0x0;
 
 	memcpy(state->region_ecc_tbl, otp_region_ecc_defaults, sizeof(state->region_ecc_tbl));
-
-	return 0;
-#endif
-}
-
-static int aspeed_chip_version(const struct device *dev, uint32_t *chip_version)
-{
-#if defined(CONFIG_SOC_SERIES_AST10x0_G2)
-	/*
-	 * AST1040 is single-die and its chip-ID revision values aren't known
-	 * yet, so don't touch AST2700's dual-die SCU0/SCU1 addresses here.
-	 */
-	*chip_version = -1;
-
-	return 0;
-#else
-	uint32_t revid0, revid1;
-
-	revid0 = sys_read32(SCU0_REVISION_ID);
-	revid1 = sys_read32(SCU1_REVISION_ID);
-
-	if (revid0 == ID0_AST2700A0 && revid1 == ID1_AST2700A0) {
-		/* AST2700-A0 */
-		*chip_version = OTP_AST2700_A0;
-	} else if ((revid0 == ID0_AST2700A1 && revid1 == ID1_AST2700A1) ||
-		   (revid0 == ID0_AST2750A1 && revid1 == ID1_AST2750A1)) {
-		/* AST2700-A1 */
-		*chip_version = OTP_AST2700_A1;
-	}  else if ((revid0 == ID0_AST2700A2 && revid1 == ID1_AST2700A2) ||
-		   (revid0 == ID0_AST2750A2 && revid1 == ID1_AST2750A2) ||
-		   (revid0 == ID0_AST2720A2 && revid1 == ID1_AST2720A2)) {
-		/* AST2700-A2 */
-		*chip_version = OTP_AST2700_A2;
-	} else {
-		*chip_version = -1;
-	}
 
 	return 0;
 #endif
