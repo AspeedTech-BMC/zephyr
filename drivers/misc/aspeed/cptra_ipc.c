@@ -371,6 +371,12 @@ static void cptra_ipc_cb(const struct device *ipmdev, void *user_data,
 			LOG_DBG("buf[1]:0x%x", (uint32_t)input);
 			LOG_DBG("buf[2]:0x%x", (uint32_t)output);
 			dev = device_get_binding(cptra_ipc_list[i].dev);
+			if (!dev) {
+				LOG_ERR("Device %s unavailable for cmd 0x%x",
+					cptra_ipc_list[i].dev, cmd);
+				ret = -ENODEV;
+				break;
+			}
 			if (cptra_ipc_list[i].cptra_cb)
 				ret = cptra_ipc_list[i].cptra_cb(dev, (void *)input,
 								 (void *)output);
