@@ -21,6 +21,8 @@ LOG_MODULE_REGISTER(ipc, CONFIG_LOG_DEFAULT_LEVEL);
 
 #define IPC_MAX_MSG_SIZE 0x20
 #define IPC_NUM_OF_ID	4
+#define IPC_POLL_BUSY_WAIT_US	50
+#define IPC_MAX_CONSECUTIVE_BUSY_POLLS	200
 enum {
 	IPC_ID_0 = 0,
 	IPC_ID_1,
@@ -163,19 +165,53 @@ static void ipc_thread(const void *dev)
 	const struct bootmcu_ipc_config *config = ((const struct device *)dev)->config;
 	uintptr_t base = config->base + config->reg_rx_offset;
 	uint32_t status, msg_base;
-	int i, ret;
+	uint32_t busy_polls = 0;
+	int i;
+	bool handled;
 
 	while (1) {
+		handled = false;
+
 		status = sys_read32(base + IPCR_STATUS);
 		for (i = 0; i < IPC_NUM_OF_ID; i++) {
 			if ((status & BIT(i)) && data->callback[i]) {
 				msg_base = base + IPCR_DATA0 + IPC_MAX_MSG_SIZE * i;
 				data->callback[i](dev, data->user_data[i], i, (void *)msg_base);
 				sys_write32(BIT(i), base + IPCR_STATUS);
+				handled = true;
 			}
 		}
 
-		ret = k_msleep(1);
+		/*
+		 * SYS_CLOCK_TICKS_PER_SEC is 100 here (TICKLESS_KERNEL can't
+		 * be enabled - the bootmcu timer never selects
+		 * TICKLESS_CAPABLE), so k_msleep() can't sleep for less than
+		 * one 10ms tick no matter what duration is requested. Only
+		 * pay that tick when idle; while actively draining, use
+		 * k_busy_wait() instead so re-polling isn't bound by the
+		 * tick and the loop doesn't hammer IPCR_STATUS with zero
+		 * delay between reads.
+		 *
+		 * THREAD_PRIORITY is the highest preemptible priority, so
+		 * k_busy_wait() never yields it to same/lower-priority
+		 * threads. Cap how many consecutive rounds can busy-wait so
+		 * sustained back-to-back traffic can't starve them forever -
+		 * force a real k_msleep() yield at least once every
+		 * IPC_MAX_CONSECUTIVE_BUSY_POLLS rounds.
+		 */
+		if (handled && ++busy_polls < IPC_MAX_CONSECUTIVE_BUSY_POLLS) {
+			k_busy_wait(IPC_POLL_BUSY_WAIT_US);
+			continue;
+		}
+
+		busy_polls = 0;
+
+		/*
+		 * k_msleep(1) would actually sleep here too (see the comment
+		 * above), so spell out the real duration instead of implying
+		 * a 1ms sleep that this 100Hz tick can't deliver.
+		 */
+		k_msleep(10);
 	}
 }
 
