@@ -15,10 +15,18 @@
  *
  * No shared memory is used - request and response both fit in the IPM
  * mailbox's own 8x32-bit word message, with OTP's 16-bit words packed
- * two per 32-bit slot. All ops share one channel; word1 packs the op
- * into its upper 16 bits and a small op-specific value into its lower
- * 16 bits (see OTP_IPC_PACK_OP_COUNT()) so no op loses payload capacity
- * to another.
+ * two per 32-bit slot. All ops share one channel; word1 packs a per-call
+ * sequence number into its top 8 bits, the op into the next 8 bits, and
+ * a small op-specific value into its lower 16 bits (see
+ * OTP_IPC_PACK_OP_COUNT(), OTP_IPC_REQ_SEQ()) so no op loses payload
+ * capacity to another.
+ *
+ * The response's word0 echoes that same sequence number back in its top
+ * 8 bits alongside the status in its lower 16 bits (see
+ * OTP_IPC_PACK_RESP()). A caller whose call already timed out may still
+ * see a late reply land afterwards; echoing the sequence number lets it
+ * tell that stale reply apart from the answer to whatever it asks next,
+ * instead of silently accepting someone else's data or status.
  *
  * Read request:  word0 = addr, word1 = pack(OTP_IPC_OP_READ, count)
  * Read response: word0 = status, word1..word7 = up to OTP_IPC_READ_MAX_WORDS
@@ -65,13 +73,27 @@ enum otp_ipc_op {
 	OTP_IPC_OP_SET_READ_MODE,
 };
 
+#define OTP_IPC_SEQ_SHIFT		24
+#define OTP_IPC_SEQ_MASK		0xFF
 #define OTP_IPC_OP_SHIFT		16
+#define OTP_IPC_OP_MASK			0xFF
 #define OTP_IPC_COUNT_MASK		0xFFFF
 
 #define OTP_IPC_PACK_OP_COUNT(op, count) \
-	(((uint32_t)(op) << OTP_IPC_OP_SHIFT) | ((uint32_t)(count) & OTP_IPC_COUNT_MASK))
-#define OTP_IPC_UNPACK_OP(word)		((word) >> OTP_IPC_OP_SHIFT)
+	((((uint32_t)(op) & OTP_IPC_OP_MASK) << OTP_IPC_OP_SHIFT) | \
+	 ((uint32_t)(count) & OTP_IPC_COUNT_MASK))
+#define OTP_IPC_UNPACK_OP(word)		(((word) >> OTP_IPC_OP_SHIFT) & OTP_IPC_OP_MASK)
 #define OTP_IPC_UNPACK_COUNT(word)	((word) & OTP_IPC_COUNT_MASK)
+#define OTP_IPC_REQ_SEQ(word)		(((word) >> OTP_IPC_SEQ_SHIFT) & OTP_IPC_SEQ_MASK)
+
+/* Response word0: seq echoed back in the top 8 bits, status (sign-extended,
+ * every status value here fits in int16_t) in the lower 16 bits.
+ */
+#define OTP_IPC_PACK_RESP(seq, status) \
+	((((uint32_t)(seq) & OTP_IPC_SEQ_MASK) << OTP_IPC_SEQ_SHIFT) | \
+	 ((uint32_t)(status) & 0xFFFF))
+#define OTP_IPC_RESP_SEQ(word)		(((word) >> OTP_IPC_SEQ_SHIFT) & OTP_IPC_SEQ_MASK)
+#define OTP_IPC_RESP_STATUS(word)	((int16_t)((word) & 0xFFFF))
 
 #define OTP_IPC_READ_MAX_WORDS		14	/* 7 msg words x 2 */
 /* 6 msg words x 2; HW already caps a single otp_program_multi() call at 8 */

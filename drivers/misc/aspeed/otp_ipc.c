@@ -21,28 +21,28 @@ static void otp_ipc_cb(const struct device *ipmdev, void *user_data,
 {
 	uint32_t *buf = (uint32_t *)msg_data;
 	uint32_t addr = buf[0];
+	uint32_t seq = OTP_IPC_REQ_SEQ(buf[1]);
 	uint32_t op = OTP_IPC_UNPACK_OP(buf[1]);
 	uint32_t count = OTP_IPC_UNPACK_COUNT(buf[1]);
 	uint32_t resp[8] = {0};
 	const struct device *dev = OTP_DEV;
+	int status;
 
 	if (!device_is_ready(dev)) {
-		resp[0] = (uint32_t)-ENODEV;
+		status = -ENODEV;
 		goto done;
 	}
 
 	switch (op) {
 	case OTP_IPC_OP_READ: {
 		uint16_t data[OTP_IPC_READ_MAX_WORDS];
-		int status;
 
 		if (count > OTP_IPC_READ_MAX_WORDS) {
-			resp[0] = (uint32_t)-EINVAL;
+			status = -EINVAL;
 			break;
 		}
 
 		status = otp_read_multi(dev, addr, data, count);
-		resp[0] = (uint32_t)status;
 		if (status == 0) {
 			for (uint32_t i = 0; i < count; i++)
 				((uint16_t *)&resp[1])[i] = data[i];
@@ -53,65 +53,67 @@ static void otp_ipc_cb(const struct device *ipmdev, void *user_data,
 		uint16_t data[OTP_IPC_PROGRAM_MAX_WORDS];
 
 		if (count > OTP_IPC_PROGRAM_MAX_WORDS) {
-			resp[0] = (uint32_t)-EINVAL;
+			status = -EINVAL;
 			break;
 		}
 
 		for (uint32_t i = 0; i < count; i++)
 			data[i] = ((uint16_t *)&buf[2])[i];
 
-		resp[0] = (uint32_t)otp_program_multi(dev, addr, data, count);
+		status = otp_program_multi(dev, addr, data, count);
 		break;
 	}
 	case OTP_IPC_OP_ECC_GET_STATUS: {
 		int ecc_en = 0;
 
-		resp[0] = (uint32_t)otp_ecc_get_status(dev, &ecc_en);
-		if (resp[0] == 0)
+		status = otp_ecc_get_status(dev, &ecc_en);
+		if (status == 0)
 			resp[1] = (uint32_t)ecc_en;
 		break;
 	}
 	case OTP_IPC_OP_ECC_SET_ENABLE: {
-		resp[0] = (uint32_t)otp_ecc_set_enable(dev, count != 0);
+		status = otp_ecc_set_enable(dev, count != 0);
 		break;
 	}
 	case OTP_IPC_OP_ECC_GET_POLICY: {
 		bool ecc_en = false;
 		bool ecc_supported = false;
 
-		resp[0] = (uint32_t)otp_ecc_get_policy(dev, count, &ecc_en, &ecc_supported);
-		if (resp[0] == 0) {
+		status = otp_ecc_get_policy(dev, count, &ecc_en, &ecc_supported);
+		if (status == 0) {
 			resp[1] = (uint32_t)ecc_en;
 			resp[2] = (uint32_t)ecc_supported;
 		}
 		break;
 	}
 	case OTP_IPC_OP_ECC_SET_POLICY: {
-		resp[0] = (uint32_t)otp_ecc_set_policy(dev, count, buf[2] != 0);
+		status = otp_ecc_set_policy(dev, count, buf[2] != 0);
 		break;
 	}
 	case OTP_IPC_OP_GET_REVID: {
 		uint32_t revid0 = 0, revid1 = 0;
 
-		resp[0] = (uint32_t)otp_get_chip_revid(dev, &revid0, &revid1);
-		if (resp[0] == 0) {
+		status = otp_get_chip_revid(dev, &revid0, &revid1);
+		if (status == 0) {
 			resp[1] = revid0;
 			resp[2] = revid1;
 		}
 		break;
 	}
 	case OTP_IPC_OP_SET_READ_MODE: {
-		resp[0] = (uint32_t)otp_set_read_mode(dev, count);
+		status = otp_set_read_mode(dev, count);
 		break;
 	}
 	default:
-		resp[0] = (uint32_t)-EINVAL;
+		status = -EINVAL;
 		break;
 	}
 
 done:
-	LOG_DBG("otp_ipc: dev=%s op=%u addr=0x%x count=%u status=%d",
-		ipmdev->name, op, addr, count, (int32_t)resp[0]);
+	resp[0] = OTP_IPC_PACK_RESP(seq, status);
+
+	LOG_DBG("otp_ipc: dev=%s seq=%u op=%u addr=0x%x count=%u status=%d",
+		ipmdev->name, seq, op, addr, count, status);
 
 	ipm_send(ipmdev, 0, IPC_CHANNEL_ID_OTP, resp, sizeof(resp));
 }
