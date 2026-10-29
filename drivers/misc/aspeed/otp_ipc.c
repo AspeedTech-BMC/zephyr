@@ -14,7 +14,7 @@ LOG_MODULE_REGISTER(otp_ipc, CONFIG_MISC_ASPEED_LOG_LEVEL);
 
 #define IPC_DEV_SSP_BOOTMCU		"ipc1@400"
 #define IPC_DEV_NS_CA35_BOOTMCU		"ipc1@200"
-#define OTP_DRV_NAME			DEVICE_DT_NAME(DT_INST(0, aspeed_ast27xx_otp))
+#define OTP_DEV				DEVICE_DT_GET(DT_INST(0, aspeed_ast27xx_otp))
 
 static void otp_ipc_cb(const struct device *ipmdev, void *user_data,
 		       uint32_t id, volatile void *msg_data)
@@ -24,7 +24,12 @@ static void otp_ipc_cb(const struct device *ipmdev, void *user_data,
 	uint32_t op = OTP_IPC_UNPACK_OP(buf[1]);
 	uint32_t count = OTP_IPC_UNPACK_COUNT(buf[1]);
 	uint32_t resp[8] = {0};
-	const struct device *dev;
+	const struct device *dev = OTP_DEV;
+
+	if (!device_is_ready(dev)) {
+		resp[0] = (uint32_t)-ENODEV;
+		goto done;
+	}
 
 	switch (op) {
 	case OTP_IPC_OP_READ: {
@@ -36,7 +41,6 @@ static void otp_ipc_cb(const struct device *ipmdev, void *user_data,
 			break;
 		}
 
-		dev = device_get_binding(OTP_DRV_NAME);
 		status = otp_read_multi(dev, addr, data, count);
 		resp[0] = (uint32_t)status;
 		if (status == 0) {
@@ -56,21 +60,18 @@ static void otp_ipc_cb(const struct device *ipmdev, void *user_data,
 		for (uint32_t i = 0; i < count; i++)
 			data[i] = ((uint16_t *)&buf[2])[i];
 
-		dev = device_get_binding(OTP_DRV_NAME);
 		resp[0] = (uint32_t)otp_program_multi(dev, addr, data, count);
 		break;
 	}
 	case OTP_IPC_OP_ECC_GET_STATUS: {
 		int ecc_en = 0;
 
-		dev = device_get_binding(OTP_DRV_NAME);
 		resp[0] = (uint32_t)otp_ecc_get_status(dev, &ecc_en);
 		if (resp[0] == 0)
 			resp[1] = (uint32_t)ecc_en;
 		break;
 	}
 	case OTP_IPC_OP_ECC_SET_ENABLE: {
-		dev = device_get_binding(OTP_DRV_NAME);
 		resp[0] = (uint32_t)otp_ecc_set_enable(dev, count != 0);
 		break;
 	}
@@ -78,7 +79,6 @@ static void otp_ipc_cb(const struct device *ipmdev, void *user_data,
 		bool ecc_en = false;
 		bool ecc_supported = false;
 
-		dev = device_get_binding(OTP_DRV_NAME);
 		resp[0] = (uint32_t)otp_ecc_get_policy(dev, count, &ecc_en, &ecc_supported);
 		if (resp[0] == 0) {
 			resp[1] = (uint32_t)ecc_en;
@@ -87,14 +87,12 @@ static void otp_ipc_cb(const struct device *ipmdev, void *user_data,
 		break;
 	}
 	case OTP_IPC_OP_ECC_SET_POLICY: {
-		dev = device_get_binding(OTP_DRV_NAME);
 		resp[0] = (uint32_t)otp_ecc_set_policy(dev, count, buf[2] != 0);
 		break;
 	}
 	case OTP_IPC_OP_GET_REVID: {
 		uint32_t revid0 = 0, revid1 = 0;
 
-		dev = device_get_binding(OTP_DRV_NAME);
 		resp[0] = (uint32_t)otp_get_chip_revid(dev, &revid0, &revid1);
 		if (resp[0] == 0) {
 			resp[1] = revid0;
@@ -103,7 +101,6 @@ static void otp_ipc_cb(const struct device *ipmdev, void *user_data,
 		break;
 	}
 	case OTP_IPC_OP_SET_READ_MODE: {
-		dev = device_get_binding(OTP_DRV_NAME);
 		resp[0] = (uint32_t)otp_set_read_mode(dev, count);
 		break;
 	}
@@ -112,6 +109,7 @@ static void otp_ipc_cb(const struct device *ipmdev, void *user_data,
 		break;
 	}
 
+done:
 	LOG_DBG("otp_ipc: dev=%s op=%u addr=0x%x count=%u status=%d",
 		ipmdev->name, op, addr, count, (int32_t)resp[0]);
 
