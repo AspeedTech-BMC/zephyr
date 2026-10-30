@@ -220,6 +220,11 @@
 	};
 };
 
+&ipc0_cm4_ssmcu {
+	status = "okay";
+	shmem_ch0 = <0xd7e000 0xd7f000 0x1000 0x1000>;
+};
+
 &i2cfilter {
 	status = "okay";
 };
