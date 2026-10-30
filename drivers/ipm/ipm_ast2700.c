@@ -19,7 +19,12 @@
 LOG_MODULE_REGISTER(ipm_ast2700, LOG_LEVEL_ERR);
 
 #define IPC_NUM_OF_ID	4
-#define IPC_MAX_MSG_SIZE 0x20
+#if defined(CONFIG_SOC_AST1040_CM4) || \
+	defined(CONFIG_SOC_AST1080_CM4)
+	#define IPC_MAX_MSG_SIZE 0x1c
+#else
+	#define IPC_MAX_MSG_SIZE 0x20
+#endif
 #define IPC_TX_WAIT_TIMEOUT_MS 100
 
 /* Each bit in the register represents an IPC ID */
@@ -28,9 +33,6 @@ LOG_MODULE_REGISTER(ipm_ast2700, LOG_LEVEL_ERR);
 #define IPCR_STATUS	0x8
 
 #define IPCR_DATA0	0x10
-#define IPCR_DATA1	0x30
-#define IPCR_DATA2	0x50
-#define IPCR_DATA3	0x70
 
 struct ipm_ast2700_config {
 	unsigned int irqn;
