@@ -56,8 +56,13 @@ __subsystem struct otp_driver_api {
 	/* Program multiple OTP memory */
 	int (*otp_program_multi)(const struct device *dev, uint32_t otp_addr, void *data, int size);
 
-	/* Get global ECC force-enable status */
-	int (*ecc_get_status)(const struct device *dev, int *ecc_en);
+	/*
+	 * Get global ECC status (enum otp_ecc_global_status): distinguishes
+	 * ECC being off from the two ways it can be forced on - temporarily
+	 * by software, or latched by a hardware strap that can't be turned
+	 * back off for the life of the session.
+	 */
+	int (*ecc_get_status)(const struct device *dev, int *ecc_status);
 
 	/* Force ECC on/off globally, overriding per-region policy */
 	int (*ecc_set_enable)(const struct device *dev, bool enable);
@@ -81,6 +86,13 @@ __subsystem struct otp_driver_api {
 enum otp_read_mode {
 	OTP_READ_MODE_NORMAL = 0,
 	OTP_READ_MODE_MARGIN = 1,
+};
+
+/* Values for ecc_get_status()/otp_ecc_get_status() */
+enum otp_ecc_global_status {
+	OTP_ECC_GLOBAL_DISABLED = 0,
+	OTP_ECC_GLOBAL_SW_ENABLED,
+	OTP_ECC_GLOBAL_HW_ENABLED,
 };
 
 /**
@@ -306,20 +318,20 @@ static inline int otp_program_multi(const struct device *dev, uint32_t otp_addr,
 }
 
 /**
- * @brief Get the global ECC force-enable status
+ * @brief Get the global ECC status
  *
  * @param  dev           Pointer to the device structure for the driver instance.
- * @param  ecc_en        Set to 1 if ECC is forced on for every capable region, else 0.
+ * @param  ecc_status    Set to enum otp_ecc_global_status.
  *
  * @return 0 on success, negative errno code on fail.
  */
-static inline int otp_ecc_get_status(const struct device *dev, int *ecc_en)
+static inline int otp_ecc_get_status(const struct device *dev, int *ecc_status)
 {
 	struct otp_driver_api *api;
 
 	api = (struct otp_driver_api *)dev->api;
 
-	return api->ecc_get_status(dev, ecc_en);
+	return api->ecc_get_status(dev, ecc_status);
 }
 
 /**

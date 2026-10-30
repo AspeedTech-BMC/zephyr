@@ -81,6 +81,8 @@ LOG_MODULE_REGISTER(otp_ast2700, CONFIG_LOG_DEFAULT_LEVEL);
 #define OTP_MID_NONE                0x3F
 
 #define OTP_DAP_CFG_RQ			0x538
+/* OTP_DAP_CFG_RQ self-config value: read back the corrected value with its ECC syndrome */
+#define OTP_DAP_CFG_CORRECTED_ECC_SYNDROME	0x40008
 
 /*
  * DAP timing register: controls the cell read reference current (IREF).
@@ -240,7 +242,13 @@ enum otp_region_id {
 
 struct otp_ast27xx_drv_state {
 	bool in_use;
-	int gbl_ecc_en;
+	/* Hardware-latched ECC strap read at init; never changes afterward. */
+	int otp_hw_gbl_ecc_effect;
+	/*
+	 * Starts equal to otp_hw_gbl_ecc_effect. Software may still turn it on, but
+	 * once otp_hw_gbl_ecc_effect latched as 1, it can never be turned back off.
+	 */
+	int sw_gbl_ecc_en;
 #if !defined(CONFIG_SOC_SERIES_AST10x0_G2) && !defined(CONFIG_BOARD_AST2700_EVB_AST2700_A1_BOOTMCU)
 	struct otp_region_ecc region_ecc_tbl[OTP_REGION_MAX];
 #endif
@@ -249,7 +257,7 @@ struct otp_ast27xx_drv_state {
 #if !defined(CONFIG_SOC_SERIES_AST10x0_G2) && !defined(CONFIG_BOARD_AST2700_EVB_AST2700_A1_BOOTMCU)
 /*
  * Per-region ECC default, copied into each device's state->region_ecc_tbl
- * at init time and consulted when state->gbl_ecc_en (force ECC) is off.
+ * at init time and consulted when state->sw_gbl_ecc_en (force ECC) is off.
  * OTPRBP/OTPSTRAP don't support ECC in hardware, so ecc_supported is false
  * and ECC stays off for them even under the global force. Characterized
  * for AST2700-A2 only - the A1 bootmcu build skips this table entirely to
@@ -293,7 +301,7 @@ static bool otp_region_ecc_active(const struct device *dev, uint32_t offset)
 
 #if defined(CONFIG_SOC_SERIES_AST10x0_G2) || defined(CONFIG_BOARD_AST2700_EVB_AST2700_A1_BOOTMCU)
 	/* Region layout/ECC table above is AST2700-A2-specific; TBD on AST1040, skipped on A1 */
-	return state->gbl_ecc_en;
+	return state->sw_gbl_ecc_en;
 #else
 	for (int i = 0; i < OTP_REGION_MAX; i++) {
 		const struct otp_region_ecc *region = &state->region_ecc_tbl[i];
@@ -304,7 +312,7 @@ static bool otp_region_ecc_active(const struct device *dev, uint32_t offset)
 		if (!region->ecc_supported)
 			return false;
 
-		return state->gbl_ecc_en || region->ecc_en;
+		return state->sw_gbl_ecc_en || region->ecc_en;
 	}
 
 	return false;
@@ -396,7 +404,7 @@ static void otp_ecc_cfg(const struct device *dev, bool ecc_en, bool auto_cfg)
 	sys_write32(self_cfg ? 0x4 : 0x0, cfg->base + OTP_PMC_CQ);
 	/* Clearing OTP_PMC_CQ auto-reverts OTP_DAP_CFG_RQ, no explicit write needed to disable */
 	if (self_cfg)
-		sys_write32(0x40008, cfg->base + OTP_DAP_CFG_RQ);
+		sys_write32(OTP_DAP_CFG_CORRECTED_ECC_SYNDROME, cfg->base + OTP_DAP_CFG_RQ);
 }
 
 static int aspeed_chip_version(const struct device *dev, uint32_t *chip_version)
@@ -580,7 +588,8 @@ static int aspeed_otp_ecc_init(const struct device *dev)
 
 #if defined(CONFIG_SOC_SERIES_AST10x0_G2)
 	/* OTPSTRAP14 location is AST2700-specific; region layout is TBD on AST1040 */
-	state->gbl_ecc_en = 0x0;
+	state->otp_hw_gbl_ecc_effect = 0x0;
+	state->sw_gbl_ecc_en = 0x0;
 
 	return 0;
 #else
@@ -598,10 +607,8 @@ static int aspeed_otp_ecc_init(const struct device *dev)
 		return ret;
 
 	val = sys_read32(cfg->base + OTP_RDATA);
-	if (val & 0x1)
-		state->gbl_ecc_en = 0x1;
-	else
-		state->gbl_ecc_en = 0x0;
+	state->otp_hw_gbl_ecc_effect = (val & 0x1) ? 0x1 : 0x0;
+	state->sw_gbl_ecc_en = state->otp_hw_gbl_ecc_effect;
 
 #if !defined(CONFIG_BOARD_AST2700_EVB_AST2700_A1_BOOTMCU)
 	memcpy(state->region_ecc_tbl, otp_region_ecc_defaults, sizeof(state->region_ecc_tbl));
@@ -804,11 +811,16 @@ static int otp_ast27xx_init(const struct device *dev)
 	return rc;
 }
 
-static int aspeed_otp_ecc_get_status(const struct device *dev, int *ecc_en)
+static int aspeed_otp_ecc_get_status(const struct device *dev, int *ecc_status)
 {
 	struct otp_ast27xx_drv_state *state = (struct otp_ast27xx_drv_state *)dev->data;
 
-	*ecc_en = state->gbl_ecc_en;
+	if (state->otp_hw_gbl_ecc_effect)
+		*ecc_status = OTP_ECC_GLOBAL_HW_ENABLED;
+	else if (state->sw_gbl_ecc_en)
+		*ecc_status = OTP_ECC_GLOBAL_SW_ENABLED;
+	else
+		*ecc_status = OTP_ECC_GLOBAL_DISABLED;
 
 	return 0;
 }
@@ -817,7 +829,10 @@ static int aspeed_otp_ecc_set_enable(const struct device *dev, bool enable)
 {
 	struct otp_ast27xx_drv_state *state = (struct otp_ast27xx_drv_state *)dev->data;
 
-	state->gbl_ecc_en = enable ? 1 : 0;
+	if (!enable && state->otp_hw_gbl_ecc_effect)
+		return -EACCES;
+
+	state->sw_gbl_ecc_en = enable ? 1 : 0;
 
 	return 0;
 }

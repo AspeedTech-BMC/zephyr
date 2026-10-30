@@ -38,7 +38,9 @@
  * Program response: word0 = status
  *
  * ECC_GET_STATUS request:  word1 = pack(OTP_IPC_OP_ECC_GET_STATUS, 0)
- * ECC_GET_STATUS response: word0 = status, word1 = ecc_en
+ * ECC_GET_STATUS response: word0 = status, word1 = enum otp_ecc_global_status
+ * (0=disabled, 1=on because software temporarily enabled it, 2=on because
+ * the hardware strap forces it - can't be turned off this session)
  *
  * ECC_SET_ENABLE request:  word1 = pack(OTP_IPC_OP_ECC_SET_ENABLE, enable)
  * ECC_SET_ENABLE response: word0 = status

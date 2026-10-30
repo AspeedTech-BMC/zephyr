@@ -64,11 +64,11 @@ static void otp_ipc_cb(const struct device *ipmdev, void *user_data,
 		break;
 	}
 	case OTP_IPC_OP_ECC_GET_STATUS: {
-		int ecc_en = 0;
+		int ecc_status = 0;
 
-		status = otp_ecc_get_status(dev, &ecc_en);
+		status = otp_ecc_get_status(dev, &ecc_status);
 		if (status == 0)
-			resp[1] = (uint32_t)ecc_en;
+			resp[1] = (uint32_t)ecc_status;
 		break;
 	}
 	case OTP_IPC_OP_ECC_SET_ENABLE: {
