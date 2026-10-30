@@ -58,6 +58,13 @@
 			};
 		};
 
+		ipc0: bus@74c39000 {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "simple-bus";
+			ranges = <0 0x74c39000 0x1000>;
+		};
+
 		otp: otp@74c07000 {
 			compatible = "aspeed,ast27xx-otp";
 			reg = <0x74c07000 0x1000>;

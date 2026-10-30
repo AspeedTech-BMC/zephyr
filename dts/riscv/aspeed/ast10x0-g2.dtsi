@@ -78,6 +78,13 @@
 			reg = <0x14c020f0 0x8>;
 		};
 
+		ipc0: bus@14c39000 {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "simple-bus";
+			ranges = <0 0x14c39000 0x1000>;
+		};
+
 		otp: otp@14c07000 {
 			compatible = "aspeed,ast27xx-otp";
 			reg = <0x14c07000 0x1000>;
