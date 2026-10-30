@@ -20,7 +20,21 @@
 
 	dram_rw_region: memory@40000 {
 		device_type = "memory";
-		reg = <0x40000 DT_SIZE_K(14336 - 256 - 512)>;
+		reg = <0x40000 DT_SIZE_K(14336 - 256 - 512 - 8)>;
+	};
+
+	ipc_cm4_ss_data: memory@d7e000 {
+		compatible = "zephyr,memory-region";
+		device_type = "memory";
+		reg = <0xd7e000 DT_SIZE_K(4)>;
+		zephyr,memory-region = "IPC_SHARE_MEM_LOCAL_CM4_SS_DATA";
+	};
+
+	ipc_ss_cm4_data: memory@d7f000 {
+		compatible = "zephyr,memory-region";
+		device_type = "memory";
+		reg = <0xd7f000 DT_SIZE_K(4)>;
+		zephyr,memory-region = "IPC_SHARE_MEM_LOCAL_SS_CM4_DATA";
 	};
 
 	sram1: memory@d80000 {
