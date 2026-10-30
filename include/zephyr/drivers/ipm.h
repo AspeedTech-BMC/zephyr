@@ -43,6 +43,10 @@ extern "C" {
 	__attribute__((__section__("IPC_SHARE_MEM_LOCAL_BOOTMCU_DATA")))
 #define IPC_SHARE_MEM_LOCAL_BOOTMCU_CALIPTRA                                                       \
 	__attribute__((__section__("IPC_SHARE_MEM_LOCAL_BOOTMCU_CALIPTRA")))
+#define IPC_SHARE_MEM_LOCAL_CM4_SS                                                       \
+		__attribute__((__section__("IPC_SHARE_MEM_LOCAL_CM4_SS_DATA")))
+#define IPC_SHARE_MEM_LOCAL_SS_CM4                                                       \
+		__attribute__((__section__("IPC_SHARE_MEM_LOCAL_SS_CM4_DATA")))
 
 #define IPC_CHANNEL_ID_CH0			0
 #define IPC_CHANNEL_0_SSP_IN_ADDR		(0x70004000)
