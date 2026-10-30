@@ -608,7 +608,6 @@ aspeed_i2c_recover_bus(const struct device *dev)
 	uint32_t i2c_base = DEV_BASE(dev);
 
 	uint32_t ctrl, state;
-	int r;
 	int ret = 0;
 
 	ctrl = sys_read32(i2c_base + AST_I2CC_FUN_CTRL);
@@ -628,8 +627,7 @@ aspeed_i2c_recover_bus(const struct device *dev)
 	state = sys_read32(i2c_base + AST_I2CC_STS_AND_BUFF);
 	if (!(state & AST_I2CC_SDA_LINE_STS) && (state & AST_I2CC_SCL_LINE_STS)) {
 		sys_write32(AST_I2CM_RECOVER_CMD_EN, i2c_base + AST_I2CM_CMD_STS);
-		r = i2c_wait_completion(dev);
-		if (r == 0) {
+		if (i2c_wait_completion(dev)) {
 			LOG_DBG("recovery timed out\n");
 			ret = -ETIMEDOUT;
 		} else {
