@@ -62,7 +62,25 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 			compatible = "simple-bus";
-			ranges = <0 0x74c39000 0x1000>;
+			ranges = <0 0x74c39000 0x300>;
+
+			ipc0_cm4_mcu: ipc0@0 {
+				compatible = "aspeed,ast2700-ipc";
+				reg = <0x0 0x100>;
+				reg-tx-offset = <0x0>;
+				reg-rx-offset = <0x80>;
+				interrupts = <INTR_IPC0 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+				status = "disabled";
+			};
+
+			ipc0_cm4_ssmcu: ipc0@200 {
+				compatible = "aspeed,ast2700-ipc";
+				reg = <0x200 0x100>;
+				reg-tx-offset = <0x0>;
+				reg-rx-offset = <0x80>;
+				interrupts = <INTR_IPC4 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+				status = "disabled";
+			};
 		};
 
 		otp: otp@74c07000 {
