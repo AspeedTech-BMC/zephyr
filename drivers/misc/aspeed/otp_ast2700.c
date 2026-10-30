@@ -241,15 +241,20 @@ enum otp_region_id {
 struct otp_ast27xx_drv_state {
 	bool in_use;
 	int gbl_ecc_en;
+#if !defined(CONFIG_SOC_SERIES_AST10x0_G2) && !defined(CONFIG_BOARD_AST2700_EVB_AST2700_A1_BOOTMCU)
 	struct otp_region_ecc region_ecc_tbl[OTP_REGION_MAX];
+#endif
 };
 
-#if !defined(CONFIG_SOC_SERIES_AST10x0_G2)
+#if !defined(CONFIG_SOC_SERIES_AST10x0_G2) && !defined(CONFIG_BOARD_AST2700_EVB_AST2700_A1_BOOTMCU)
 /*
  * Per-region ECC default, copied into each device's state->region_ecc_tbl
  * at init time and consulted when state->gbl_ecc_en (force ECC) is off.
  * OTPRBP/OTPSTRAP don't support ECC in hardware, so ecc_supported is false
- * and ECC stays off for them even under the global force.
+ * and ECC stays off for them even under the global force. Characterized
+ * for AST2700-A2 only - the A1 bootmcu build skips this table entirely to
+ * save the RAM, and otp_region_ecc_active()/aspeed_otp_ecc_get_policy()/
+ * aspeed_otp_ecc_set_policy() fall back to the global flag or -ENOTSUP.
  */
 static const struct otp_region_ecc otp_region_ecc_defaults[OTP_REGION_MAX] = {
 	[OTP_REGION_ROM] = {
@@ -280,14 +285,14 @@ static const struct otp_region_ecc otp_region_ecc_defaults[OTP_REGION_MAX] = {
 		SW_PUF_REGION_START_ADDR, HW_PUF_REGION_END_ADDR, true, true
 	},
 };
-#endif /* !CONFIG_SOC_SERIES_AST10x0_G2 */
+#endif /* !CONFIG_SOC_SERIES_AST10x0_G2 && !CONFIG_BOARD_AST2700_EVB_AST2700_A1_BOOTMCU */
 
 static bool otp_region_ecc_active(const struct device *dev, uint32_t offset)
 {
 	struct otp_ast27xx_drv_state *state = (struct otp_ast27xx_drv_state *)dev->data;
 
-#if defined(CONFIG_SOC_SERIES_AST10x0_G2)
-	/* Region layout/ECC table below is AST2700-specific; TBD on AST1040 */
+#if defined(CONFIG_SOC_SERIES_AST10x0_G2) || defined(CONFIG_BOARD_AST2700_EVB_AST2700_A1_BOOTMCU)
+	/* Region layout/ECC table above is AST2700-A2-specific; TBD on AST1040, skipped on A1 */
 	return state->gbl_ecc_en;
 #else
 	for (int i = 0; i < OTP_REGION_MAX; i++) {
@@ -598,7 +603,9 @@ static int aspeed_otp_ecc_init(const struct device *dev)
 	else
 		state->gbl_ecc_en = 0x0;
 
+#if !defined(CONFIG_BOARD_AST2700_EVB_AST2700_A1_BOOTMCU)
 	memcpy(state->region_ecc_tbl, otp_region_ecc_defaults, sizeof(state->region_ecc_tbl));
+#endif
 
 	return 0;
 #endif
@@ -815,7 +822,7 @@ static int aspeed_otp_ecc_set_enable(const struct device *dev, bool enable)
 	return 0;
 }
 
-#if !defined(CONFIG_SOC_SERIES_AST10x0_G2)
+#if !defined(CONFIG_SOC_SERIES_AST10x0_G2) && !defined(CONFIG_BOARD_AST2700_EVB_AST2700_A1_BOOTMCU)
 static int aspeed_otp_ecc_get_policy(const struct device *dev, uint32_t region,
 				     bool *ecc_en, bool *ecc_supported)
 {
@@ -864,7 +871,7 @@ static int aspeed_otp_ecc_set_policy(const struct device *dev, uint32_t region, 
 
 	return -ENOTSUP;
 }
-#endif /* !CONFIG_SOC_SERIES_AST10x0_G2 */
+#endif /* !CONFIG_SOC_SERIES_AST10x0_G2 && !CONFIG_BOARD_AST2700_EVB_AST2700_A1_BOOTMCU */
 
 static struct otp_driver_api otp_funcs = {
 	.otp_read_multi = aspeed_otp_read,
