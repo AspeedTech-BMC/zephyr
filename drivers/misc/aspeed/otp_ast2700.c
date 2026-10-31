@@ -227,19 +227,6 @@ struct otp_region_ecc {
 	bool ecc_en;
 };
 
-enum otp_region_id {
-	OTP_REGION_ROM = 0,
-	OTP_REGION_RBP,
-	OTP_REGION_CFG,
-	OTP_REGION_STRAP,
-	OTP_REGION_STRAPEXT,
-	OTP_REGION_USR,
-	OTP_REGION_SEC,
-	OTP_REGION_CAL,
-	OTP_REGION_PUF,
-	OTP_REGION_MAX,
-};
-
 struct otp_ast27xx_drv_state {
 	bool in_use;
 	/* Hardware-latched ECC strap read at init; never changes afterward. */
@@ -250,7 +237,7 @@ struct otp_ast27xx_drv_state {
 	 */
 	int sw_gbl_ecc_en;
 #if !defined(CONFIG_SOC_SERIES_AST10x0_G2) && !defined(CONFIG_BOARD_AST2700_EVB_AST2700_A1_BOOTMCU)
-	struct otp_region_ecc region_ecc_tbl[OTP_REGION_MAX];
+	struct otp_region_ecc region_ecc_tbl[OTP_REGION_ID_MAX];
 #endif
 };
 
@@ -264,32 +251,32 @@ struct otp_ast27xx_drv_state {
  * save the RAM, and otp_region_ecc_active()/aspeed_otp_ecc_get_policy()/
  * aspeed_otp_ecc_set_policy() fall back to the global flag or -ENOTSUP.
  */
-static const struct otp_region_ecc otp_region_ecc_defaults[OTP_REGION_MAX] = {
-	[OTP_REGION_ROM] = {
+static const struct otp_region_ecc otp_region_ecc_defaults[OTP_REGION_ID_MAX] = {
+	[OTP_REGION_ID_ROM] = {
 		ROM_REGION_START_ADDR, ROM_REGION_END_ADDR, true, true
 	},
-	[OTP_REGION_RBP] = {
+	[OTP_REGION_ID_RBP] = {
 		RBP_REGION_START_ADDR, RBP_REGION_END_ADDR, false, false
 	},
-	[OTP_REGION_CFG] = {
+	[OTP_REGION_ID_CFG] = {
 		CONF_REGION_START_ADDR, CONF_REGION_END_ADDR, true, false
 	},
-	[OTP_REGION_STRAP] = {
+	[OTP_REGION_ID_STRAP] = {
 		STRAP_REGION_START_ADDR, STRAP_REGION_END_ADDR, false, false
 	},
-	[OTP_REGION_STRAPEXT] = {
+	[OTP_REGION_ID_STRAPEXT] = {
 		STRAPEXT_REGION_START_ADDR, STRAPEXT_REGION_END_ADDR, true, false
 	},
-	[OTP_REGION_USR] = {
+	[OTP_REGION_ID_USR] = {
 		USER_REGION_START_ADDR, USER_REGION_END_ADDR, true, false
 	},
-	[OTP_REGION_SEC] = {
+	[OTP_REGION_ID_SEC] = {
 		SEC_REGION_START_ADDR, SEC_REGION_END_ADDR, true, false
 	},
-	[OTP_REGION_CAL] = {
+	[OTP_REGION_ID_CAL] = {
 		CAL_REGION_START_ADDR, CAL_REGION_END_ADDR, true, false
 	},
-	[OTP_REGION_PUF] = {
+	[OTP_REGION_ID_PUF] = {
 		SW_PUF_REGION_START_ADDR, HW_PUF_REGION_END_ADDR, true, true
 	},
 };
@@ -303,7 +290,7 @@ static bool otp_region_ecc_active(const struct device *dev, uint32_t offset)
 	/* Region layout/ECC table above is AST2700-A2-specific; TBD on AST1040, skipped on A1 */
 	return state->sw_gbl_ecc_en;
 #else
-	for (int i = 0; i < OTP_REGION_MAX; i++) {
+	for (int i = 0; i < OTP_REGION_ID_MAX; i++) {
 		const struct otp_region_ecc *region = &state->region_ecc_tbl[i];
 
 		if (offset < region->start || offset >= region->end)
@@ -318,6 +305,33 @@ static bool otp_region_ecc_active(const struct device *dev, uint32_t offset)
 	return false;
 #endif
 }
+
+#if !defined(CONFIG_SOC_SERIES_AST10x0_G2) && !defined(CONFIG_BOARD_AST2700_EVB_AST2700_A1_BOOTMCU)
+static int aspeed_otp_addr_to_region(const struct device *dev, uint32_t addr, uint32_t *region)
+{
+	ARG_UNUSED(dev);
+
+	for (int i = 0; i < OTP_REGION_ID_MAX; i++) {
+		const struct otp_region_ecc *r = &otp_region_ecc_defaults[i];
+
+		if (addr >= r->start && addr < r->end) {
+			*region = i;
+			return 0;
+		}
+	}
+
+	return -EINVAL;
+}
+#else
+static int aspeed_otp_addr_to_region(const struct device *dev, uint32_t addr, uint32_t *region)
+{
+	ARG_UNUSED(dev);
+	ARG_UNUSED(addr);
+	ARG_UNUSED(region);
+
+	return -ENOTSUP;
+}
+#endif
 
 static void otp_unlock(const struct device *dev)
 {
@@ -843,7 +857,7 @@ static int aspeed_otp_ecc_get_policy(const struct device *dev, uint32_t region,
 {
 	struct otp_ast27xx_drv_state *state = (struct otp_ast27xx_drv_state *)dev->data;
 
-	if (region >= OTP_REGION_MAX)
+	if (region >= OTP_REGION_ID_MAX)
 		return -EINVAL;
 
 	*ecc_en = state->region_ecc_tbl[region].ecc_en;
@@ -856,7 +870,7 @@ static int aspeed_otp_ecc_set_policy(const struct device *dev, uint32_t region, 
 {
 	struct otp_ast27xx_drv_state *state = (struct otp_ast27xx_drv_state *)dev->data;
 
-	if (region >= OTP_REGION_MAX)
+	if (region >= OTP_REGION_ID_MAX)
 		return -EINVAL;
 	if (ecc_en && !state->region_ecc_tbl[region].ecc_supported)
 		return -EINVAL;
@@ -898,6 +912,7 @@ static struct otp_driver_api otp_funcs = {
 	.ecc_get_policy = aspeed_otp_ecc_get_policy,
 	.ecc_set_policy = aspeed_otp_ecc_set_policy,
 	.set_read_mode = aspeed_otp_set_read_mode,
+	.addr_to_region = aspeed_otp_addr_to_region,
 };
 
 static const struct otp_ast27xx_config otp_ast27xx_config = {

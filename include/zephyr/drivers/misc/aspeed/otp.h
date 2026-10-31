@@ -80,6 +80,12 @@ __subsystem struct otp_driver_api {
 	 * Affects every otp_read()/otp_read_multi() call until switched back.
 	 */
 	int (*set_read_mode)(const struct device *dev, uint32_t mode);
+
+	/*
+	 * Classify an OTP address into its region (enum otp_region_id).
+	 * -ENOTSUP on targets with no region table (e.g. AST1040).
+	 */
+	int (*addr_to_region)(const struct device *dev, uint32_t addr, uint32_t *region);
 };
 
 /* Values for set_read_mode()/otp_set_read_mode() */
@@ -93,6 +99,27 @@ enum otp_ecc_global_status {
 	OTP_ECC_GLOBAL_DISABLED = 0,
 	OTP_ECC_GLOBAL_SW_ENABLED,
 	OTP_ECC_GLOBAL_HW_ENABLED,
+};
+
+/*
+ * OTP region ids, shared by ecc_get_policy()/ecc_set_policy()'s region
+ * parameter and addr_to_region()'s output. Order is part of the ABI other
+ * OTP IPC clients (CA35/SSP) rely on - never reorder or insert. Named
+ * OTP_REGION_ID_* (not OTP_REGION_*) to avoid colliding with the unrelated,
+ * differently-sized enum otp_region in lib_otp_ast2700.c, which C's flat
+ * enumerator namespace would otherwise reject as a redefinition.
+ */
+enum otp_region_id {
+	OTP_REGION_ID_ROM = 0,
+	OTP_REGION_ID_RBP,
+	OTP_REGION_ID_CFG,
+	OTP_REGION_ID_STRAP,
+	OTP_REGION_ID_STRAPEXT,
+	OTP_REGION_ID_USR,
+	OTP_REGION_ID_SEC,
+	OTP_REGION_ID_CAL,
+	OTP_REGION_ID_PUF,
+	OTP_REGION_ID_MAX,
 };
 
 /**
@@ -405,6 +432,25 @@ static inline int otp_set_read_mode(const struct device *dev, uint32_t mode)
 	api = (struct otp_driver_api *)dev->api;
 
 	return api->set_read_mode(dev, mode);
+}
+
+/**
+ * @brief Classify an OTP address into its region
+ *
+ * @param  dev           Pointer to the device structure for the driver instance.
+ * @param  addr          Address of OTP memory.
+ * @param  region        Set to the region id (enum otp_region_id) addr falls in.
+ *
+ * @return 0 on success, negative errno code on fail (e.g. -ENOTSUP if this
+ *         target has no region table, or -EINVAL if addr is out of range).
+ */
+static inline int otp_addr_to_region(const struct device *dev, uint32_t addr, uint32_t *region)
+{
+	struct otp_driver_api *api;
+
+	api = (struct otp_driver_api *)dev->api;
+
+	return api->addr_to_region(dev, addr, region);
 }
 
 #endif /* ZEPHYR_INCLUDE_DRIVERS_MISC_ASPEED_OTP_H_ */
