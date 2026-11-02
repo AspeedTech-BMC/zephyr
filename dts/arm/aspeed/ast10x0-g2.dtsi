@@ -69,7 +69,7 @@
 				reg = <0x0 0x100>;
 				reg-tx-offset = <0x0>;
 				reg-rx-offset = <0x80>;
-				interrupts = <INTR_IPC0 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+				interrupts = <INTR_IPC1 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
 				status = "disabled";
 			};
 
@@ -78,7 +78,7 @@
 				reg = <0x200 0x100>;
 				reg-tx-offset = <0x0>;
 				reg-rx-offset = <0x80>;
-				interrupts = <INTR_IPC4 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
+				interrupts = <INTR_IPC5 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
 				status = "disabled";
 			};
 		};
