@@ -42,9 +42,13 @@
 
 /* UART */
 #define pinctrl_uart0_default  &pin_txd0 &pin_rxd0
+#define pinctrl_duart0_default &pin_dtxd0 &pin_drxd0
 #define pinctrl_uart1_default  &pin_txd1 &pin_rxd1
+#define pinctrl_duart1_default &pin_dtxd1 &pin_drxd1
 #define pinctrl_uart2_default  &pin_txd2 &pin_rxd2
+#define pinctrl_duart2_default &pin_dtxd2 &pin_drxd2
 #define pinctrl_uart3_default  &pin_txd3 &pin_rxd3
+#define pinctrl_duart3_default &pin_dtxd3 &pin_drxd3
 #define pinctrl_uart4_default  &pin_txd4 &pin_rxd4
 #define pinctrl_uart5_default  &pin_txd5 &pin_rxd5
 #define pinctrl_uart6_default  &pin_txd6 &pin_rxd6

@@ -90,7 +90,16 @@
 		ball = <R10>;
 		sig_descs = <SIG_DESC(0x408, 0, 1)>;
 	};
+	/*
+	 * Primary TXD0 path. The alternate path below (pin_dtxd0,
+	 * ball R10) only takes effect while this ball's mux is not
+	 * selecting TXD0 (datasheet: SCU414[18:16] not-equal 1).
+	 */
 	/omit-if-no-ref/ pin_txd0: pin_txd0 {
+		ball = <F3>;
+		sig_descs = <SIG_DESC(0x414, 16, 1)>;
+	};
+	/omit-if-no-ref/ pin_dtxd0: pin_dtxd0 {
 		ball = <R10>;
 		sig_descs = <SIG_DESC(0x408, 0, 3)>;
 	};
@@ -111,7 +120,16 @@
 		ball = <P11>;
 		sig_descs = <SIG_DESC(0x408, 4, 1)>;
 	};
+	/*
+	 * Primary RXD0 path. The alternate path below (pin_drxd0,
+	 * ball P11) only takes effect while this ball's mux is not
+	 * selecting RXD0 (datasheet: SCU414[22:20] not-equal 1).
+	 */
 	/omit-if-no-ref/ pin_rxd0: pin_rxd0 {
+		ball = <G5>;
+		sig_descs = <SIG_DESC(0x414, 20, 1)>;
+	};
+	/omit-if-no-ref/ pin_drxd0: pin_drxd0 {
 		ball = <P11>;
 		sig_descs = <SIG_DESC(0x408, 4, 3)>;
 	};
@@ -132,7 +150,16 @@
 		ball = <R11>;
 		sig_descs = <SIG_DESC(0x408, 8, 1)>;
 	};
+	/*
+	 * Primary TXD1 path. The alternate path below (pin_dtxd1,
+	 * ball R11) only takes effect while this ball's mux is not
+	 * selecting TXD1 (datasheet: SCU414[26:24] not-equal 1).
+	 */
 	/omit-if-no-ref/ pin_txd1: pin_txd1 {
+		ball = <G4>;
+		sig_descs = <SIG_DESC(0x414, 24, 1)>;
+	};
+	/omit-if-no-ref/ pin_dtxd1: pin_dtxd1 {
 		ball = <R11>;
 		sig_descs = <SIG_DESC(0x408, 8, 3)>;
 	};
@@ -153,7 +180,16 @@
 		ball = <U12>;
 		sig_descs = <SIG_DESC(0x408, 12, 1)>;
 	};
+	/*
+	 * Primary RXD1 path. The alternate path below (pin_drxd1,
+	 * ball U12) only takes effect while this ball's mux is not
+	 * selecting RXD1 (datasheet: SCU414[30:28] not-equal 1).
+	 */
 	/omit-if-no-ref/ pin_rxd1: pin_rxd1 {
+		ball = <H4>;
+		sig_descs = <SIG_DESC(0x414, 28, 1)>;
+	};
+	/omit-if-no-ref/ pin_drxd1: pin_drxd1 {
 		ball = <U12>;
 		sig_descs = <SIG_DESC(0x408, 12, 3)>;
 	};
@@ -174,7 +210,16 @@
 		ball = <T12>;
 		sig_descs = <SIG_DESC(0x408, 16, 1)>;
 	};
+	/*
+	 * Primary TXD2 path. The alternate path below (pin_dtxd2,
+	 * ball T12) only takes effect while this ball's mux is not
+	 * selecting TXD2 (datasheet: SCU418[02:00] not-equal 1).
+	 */
 	/omit-if-no-ref/ pin_txd2: pin_txd2 {
+		ball = <H5>;
+		sig_descs = <SIG_DESC(0x418, 0, 1)>;
+	};
+	/omit-if-no-ref/ pin_dtxd2: pin_dtxd2 {
 		ball = <T12>;
 		sig_descs = <SIG_DESC(0x408, 16, 3)>;
 	};
@@ -195,7 +240,16 @@
 		ball = <R12>;
 		sig_descs = <SIG_DESC(0x408, 20, 1)>;
 	};
+	/*
+	 * Primary RXD2 path. The alternate path below (pin_drxd2,
+	 * ball R12) only takes effect while this ball's mux is not
+	 * selecting RXD2 (datasheet: SCU418[06:04] not-equal 1).
+	 */
 	/omit-if-no-ref/ pin_rxd2: pin_rxd2 {
+		ball = <J3>;
+		sig_descs = <SIG_DESC(0x418, 4, 1)>;
+	};
+	/omit-if-no-ref/ pin_drxd2: pin_drxd2 {
 		ball = <R12>;
 		sig_descs = <SIG_DESC(0x408, 20, 3)>;
 	};
@@ -216,7 +270,16 @@
 		ball = <N12>;
 		sig_descs = <SIG_DESC(0x408, 24, 1)>;
 	};
+	/*
+	 * Primary TXD3 path. The alternate path below (pin_dtxd3,
+	 * ball N12) only takes effect while this ball's mux is not
+	 * selecting TXD3 (datasheet: SCU418[10:08] not-equal 1).
+	 */
 	/omit-if-no-ref/ pin_txd3: pin_txd3 {
+		ball = <K3>;
+		sig_descs = <SIG_DESC(0x418, 8, 1)>;
+	};
+	/omit-if-no-ref/ pin_dtxd3: pin_dtxd3 {
 		ball = <N12>;
 		sig_descs = <SIG_DESC(0x408, 24, 3)>;
 	};
@@ -237,7 +300,16 @@
 		ball = <P12>;
 		sig_descs = <SIG_DESC(0x408, 28, 1)>;
 	};
+	/*
+	 * Primary RXD3 path. The alternate path below (pin_drxd3,
+	 * ball P12) only takes effect while this ball's mux is not
+	 * selecting RXD3 (datasheet: SCU418[14:12] not-equal 1).
+	 */
 	/omit-if-no-ref/ pin_rxd3: pin_rxd3 {
+		ball = <F4>;
+		sig_descs = <SIG_DESC(0x418, 12, 1)>;
+	};
+	/omit-if-no-ref/ pin_drxd3: pin_drxd3 {
 		ball = <P12>;
 		sig_descs = <SIG_DESC(0x408, 28, 3)>;
 	};
