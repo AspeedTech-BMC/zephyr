@@ -781,8 +781,19 @@ static void aspeed_otp_dump_info(const struct device *dev)
 		return;
 	}
 
-	LOG_INF("\tVendor key hash: %04x%04x...",
-		sys_be16_to_cpu(hash[0]), sys_be16_to_cpu(hash[1]));
+	uint32_t hash_prefix = ((uint32_t)sys_be16_to_cpu(hash[0]) << 16) |
+			       sys_be16_to_cpu(hash[1]);
+	const char *hsm_solution;
+
+	if (hash_prefix == 0xddd4b37b)
+		hsm_solution = "Dual-HSM";
+	else if (hash_prefix == 0x428d18b0)
+		hsm_solution = "Single-HSM";
+	else
+		hsm_solution = "unknown";
+
+	LOG_INF("\tVendor key hash: %04x%04x... (%s)",
+		sys_be16_to_cpu(hash[0]), sys_be16_to_cpu(hash[1]), hsm_solution);
 #endif
 }
 
@@ -835,6 +846,10 @@ static int otp_ast27xx_init(const struct device *dev)
 	}
 
 	aspeed_otp_dump_info(dev);
+
+	struct otp_ast27xx_drv_state *state = (struct otp_ast27xx_drv_state *)dev->data;
+
+	LOG_INF("\tGlobal ECC: %s", state->otp_hw_gbl_ecc_effect ? "enabled" : "disabled");
 
 #if defined(CONFIG_SOC_AST2700_BOOTMCU)
 	otp_lock_master_access(dev);
