@@ -56,6 +56,7 @@ static const uint8_t otp_ipc_op_allowed_masters[] = {
 	[OTP_IPC_OP_GET_REVID] = OTP_IPC_MASTERS_ALL,
 	/* Test/bring-up only - see SECURITY note above before shipping this as-is */
 	[OTP_IPC_OP_SET_READ_MODE] = OTP_IPC_MASTER_BIT(OTP_IPC_MASTER_NS_CA35),
+	[OTP_IPC_OP_GET_ROM_PATCH_VERSION] = OTP_IPC_MASTERS_ALL,
 };
 
 /*
@@ -252,6 +253,14 @@ static void otp_ipc_cb(const struct device *ipmdev, void *user_data,
 	}
 	case OTP_IPC_OP_SET_READ_MODE: {
 		status = otp_set_read_mode(dev, count);
+		break;
+	}
+	case OTP_IPC_OP_GET_ROM_PATCH_VERSION: {
+		uint32_t version = 0;
+
+		status = otp_get_rom_patch_version(dev, &version);
+		if (status == 0)
+			resp[1] = version;
 		break;
 	}
 	default:

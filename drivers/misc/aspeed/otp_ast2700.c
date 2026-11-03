@@ -656,6 +656,28 @@ static int aspeed_chip_revid(const struct device *dev, uint32_t *revid0, uint32_
 #endif
 }
 
+/*
+ * Raw, undecoded SCU1 ROM patch version register - decoding differs between
+ * A1 and A2 (see aspeed_otp_rom_info_a1()/a2() below), so this hands the raw
+ * value to the caller (e.g. the CA35-side otp_ipc client) rather than
+ * picking a decode scheme here.
+ */
+static int aspeed_otp_get_rom_patch_version(const struct device *dev, uint32_t *version)
+{
+#if defined(CONFIG_SOC_SERIES_AST10x0_G2)
+	ARG_UNUSED(dev);
+	*version = 0;
+
+	return -ENOTSUP;
+#else
+	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
+
+	*version = sys_read32(cfg->scu_base + SCU1_ROM_PATCH_OFFSET);
+
+	return 0;
+#endif
+}
+
 static int aspeed_otp_set_read_mode(const struct device *dev, uint32_t mode)
 {
 #if defined(CONFIG_SOC_SERIES_AST10x0_G2)
@@ -907,6 +929,7 @@ static struct otp_driver_api otp_funcs = {
 	.otp_program_multi = aspeed_otp_write,
 	.get_chip_version = aspeed_chip_version,
 	.get_chip_revid = aspeed_chip_revid,
+	.get_rom_patch_version = aspeed_otp_get_rom_patch_version,
 	.ecc_get_status = aspeed_otp_ecc_get_status,
 	.ecc_set_enable = aspeed_otp_ecc_set_enable,
 	.ecc_get_policy = aspeed_otp_ecc_get_policy,

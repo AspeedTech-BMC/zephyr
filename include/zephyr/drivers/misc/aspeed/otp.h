@@ -41,6 +41,12 @@ __subsystem struct otp_driver_api {
 	/* Get raw, undecoded SCU0/SCU1 revision ID registers */
 	int (*get_chip_revid)(const struct device *dev, uint32_t *revid0, uint32_t *revid1);
 
+	/*
+	 * Get the raw, undecoded SCU1 ROM patch version register. Decoding
+	 * differs between A1 and A2, so the caller decodes it, not this API.
+	 */
+	int (*get_rom_patch_version)(const struct device *dev, uint32_t *version);
+
 	/* Set OTP soak */
 	int (*set_soak)(const struct device *dev, int soak);
 
@@ -247,6 +253,23 @@ static inline int otp_get_chip_revid(const struct device *dev, uint32_t *revid0,
 	api = (struct otp_driver_api *)dev->api;
 
 	return api->get_chip_revid(dev, revid0, revid1);
+}
+
+/**
+ * @brief Get the raw, undecoded SCU1 ROM patch version register
+ *
+ * @param  dev           Pointer to the device structure for the driver instance.
+ * @param  version       SCU1 ROM patch version register value.
+ *
+ * @return 0 on success, negative errno code on fail.
+ */
+static inline int otp_get_rom_patch_version(const struct device *dev, uint32_t *version)
+{
+	struct otp_driver_api *api;
+
+	api = (struct otp_driver_api *)dev->api;
+
+	return api->get_rom_patch_version(dev, version);
 }
 
 /**
