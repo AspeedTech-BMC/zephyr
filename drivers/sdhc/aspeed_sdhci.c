@@ -1120,17 +1120,19 @@ static int sdhci_set_io(const struct device *dev, struct sdhc_io *ios)
 
 	/* Set data width */
 	if (host_io->bus_width != ios->bus_width) {
-		LOG_DBG("bus_width: %d", host_io->bus_width);
+		LOG_DBG("bus_width: 0x%x", host_io->bus_width);
 
-		if (ios->bus_width == SDHC_BUS_WIDTH4BIT) {
-			SET_BITS(regs->host_ctrl1, SDHCI_HOST_CTRL1_EXT_DAT_WIDTH_LOC,
-				 SDHCI_HOST_CTRL1_EXT_DAT_WIDTH_MASK,
-				 ios->bus_width == SDHC_BUS_WIDTH8BIT ? 1 : 0);
-		} else {
-			SET_BITS(regs->host_ctrl1, SDHCI_HOST_CTRL1_DAT_WIDTH_LOC,
-				 SDHCI_HOST_CTRL1_DAT_WIDTH_MASK,
-				 ios->bus_width == SDHC_BUS_WIDTH4BIT ? 1 : 0);
-		}
+		/*
+		 * Host Control 1: bit 5 (EXT_DAT_WIDTH) selects 8-bit and
+		 * takes precedence; otherwise bit 1 (DAT_WIDTH) selects
+		 * 4-bit (1) or 1-bit (0). Program both on every change.
+		 */
+		SET_BITS(regs->host_ctrl1, SDHCI_HOST_CTRL1_EXT_DAT_WIDTH_LOC,
+			 SDHCI_HOST_CTRL1_EXT_DAT_WIDTH_MASK,
+			 ios->bus_width == SDHC_BUS_WIDTH8BIT ? 1 : 0);
+		SET_BITS(regs->host_ctrl1, SDHCI_HOST_CTRL1_DAT_WIDTH_LOC,
+			 SDHCI_HOST_CTRL1_DAT_WIDTH_MASK,
+			 ios->bus_width == SDHC_BUS_WIDTH4BIT ? 1 : 0);
 		host_io->bus_width = ios->bus_width;
 	}
 
