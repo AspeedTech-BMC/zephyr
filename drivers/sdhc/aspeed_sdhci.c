@@ -1045,14 +1045,16 @@ static int sdhci_get_host_props(const struct device *dev,
 	memset(props, 0, sizeof(struct sdhc_host_props));
 	props->f_min = SDMMC_CLOCK_400KHZ;
 	/*
-	 * default max speed is 25MHZ, as per SCR register
-	 * it will switch accordingly
+	 * Run eMMC in HS (High Speed SDR) mode: the MMC stack requests
+	 * MMC_CLOCK_52MHZ after the HS_TIMING switch, which sdhci_clock_set()
+	 * maps to a 50MHz SD clock. HS200 is disabled so the stack never
+	 * selects the 200MHz timing (which also needs tuning).
 	 */
-	props->f_max = MMC_CLOCK_HS200;
+	props->f_max = MMC_CLOCK_52MHZ;
 	props->power_delay = 0;
 	props->host_caps.vol_330_support = false;
 	props->host_caps.vol_180_support = true;
-	props->host_caps.hs200_support = true;
+	props->host_caps.hs200_support = false;
 	props->is_spi = false;
 
 	sdhci->props = *props;
