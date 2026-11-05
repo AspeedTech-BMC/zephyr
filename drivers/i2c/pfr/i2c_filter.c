@@ -99,7 +99,7 @@ void ast_i2c_filter_isr(const struct device *dev)
 	for (index = 0; index < AST_I2C_F_COUNT; index++) {
 		/* local filter */
 		if (stsg & (1 << index)) {
-			LOG_INF("%d flt block occur!", index);
+			LOG_DBG("%d flt block occur!", index);
 			filter_dev_base = (dev_base + (index * AST_I2C_F_D_OFFSET));
 			stsl = sys_read32(filter_dev_base + AST_I2C_F_INT_STS);
 
@@ -118,7 +118,7 @@ void ast_i2c_filter_isr(const struct device *dev)
 				/* read back from  */
 				for (i = 0; i < count; i++) {
 					value = sys_read32(filter_dev_base + AST_I2C_F_INFO);
-					LOG_INF(" flt block %d info %x", i, value);
+					LOG_DBG(" flt block %d info %x", i, value);
 				}
 
 				/* clear status */
@@ -309,7 +309,7 @@ int ast_i2c_filter_init(const struct device *dev)
 		} else {
 			/* obtain the pclk value */
 			clock_control_get_rate(gcfg->clock_dev, gcfg->clk_id, &clk_src);
-			LOG_INF("i2c flt pclk : %d MHz", clk_src / 1000000);
+			LOG_DBG("i2c flt pclk : %d MHz", clk_src / 1000000);
 
 			cal_timeout = clk_src / (cfg->clock * 3 * 1000);
 			timeout_count |= cal_timeout;
@@ -320,7 +320,7 @@ int ast_i2c_filter_init(const struct device *dev)
 			timeout_count |= (cfg->manual_low_timeout) << 16;
 		}
 
-		LOG_INF("i2c timeout tick : %x", timeout_count);
+		LOG_DBG("i2c timeout tick : %x", timeout_count);
 
 		I2C_W_R(timeout_count,
 		(data->filter_dev_base + AST_I2C_F_TIMING));
