@@ -1234,103 +1234,246 @@ static int cmd_mbx_f_access(const struct shell *shell,
 
 #endif
 
-#ifdef CONFIG_I2C_PFR
-uint8_t EEPROM_COUNT = 8;
-uint8_t EEPROM_PASS_TBL[] = {0, 0, 0, 1, 1, 4, 4, 5};
+#if defined(CONFIG_I2C_PFR_FILTER) && defined(CONFIG_I2C_TARGET)
 
-static int cmd_i2c_pfr_demo(const struct shell *shell,
-			      size_t argc, char **argv)
+#define FLT_LOOP_ADDR_COUNT	0x100
+#define FLT_LOOP_BUF_SIZE	8
+#define FLT_LOOP_INDEX_COUNT	AST_I2C_F_REMAP_SIZE
+
+static const uint32_t flt_loop_tbl[AST_I2C_F_ELEMENT_SIZE] = {
+	0x55aaaa55, 0xa5a5a5a5, 0x5a5a5a5a, 0xaa5555aa,
+	0xaa5555aa, 0x5a5a5a5a, 0xa5a5a5a5, 0x55aaaa55,
+};
+
+struct flt_loop_cfg {
+	const char *i2cdev;
+	const char *targetdev;
+	const char *fltdev;
+	uint8_t dev_addr;
+};
+
+/* Default board layout: i2c bus, EEPROM target and filter on the same bus */
+static const struct flt_loop_cfg flt_loop_cfgs[] = {
+	{ "i2c@74c0f100", "eeprom@41", "i2cfilter0", 0x41 },
+	{ "i2c@74c0f300", "eeprom@43", "i2cfilter1", 0x43 },
+};
+
+/* Write every command byte to dev_addr and count accepted / blocked writes */
+static void flt_loop_scan(const struct device *dev, uint8_t *buf,
+			  uint8_t dev_addr, int *pass_count, int *block_count)
 {
-	int ret = 0;
+	uint32_t i;
 
-#ifdef CONFIG_I2C_PFR_FILTER
-	const struct device *pfr_flt_dev = NULL;
-	int i = 0;
-	/* initial flt */
-	pfr_flt_dev = device_get_binding("I2C_FILTER_0");
+	*pass_count = 0;
+	*block_count = 0;
+
+	for (i = 0; i < FLT_LOOP_ADDR_COUNT; i++) {
+		buf[0] = (uint8_t)i;
+		if (i2c_write(dev, buf, 2, dev_addr) < 0) {
+			(*block_count)++;
+		} else {
+			(*pass_count)++;
+		}
+	}
+}
+
+static int flt_loop_check(const struct shell *shell, const char *fltdev,
+			  uint8_t dev_addr, int exp_pass, int exp_block,
+			  int pass_count, int block_count)
+{
+	if (exp_pass == pass_count && exp_block == block_count) {
+		return 0;
+	}
+
+	shell_error(shell, "%s: access dev 0x%x expect pass 0x%x / block 0x%x",
+		    fltdev, dev_addr, exp_pass, exp_block);
+	shell_error(shell, "%s: access dev 0x%x got pass 0x%x / block 0x%x",
+		    fltdev, dev_addr, pass_count, block_count);
+
+	return -EIO;
+}
+
+static int flt_loop(const struct shell *shell, const struct flt_loop_cfg *cfg)
+{
+	struct ast_i2c_f_bitmap clr_flt = { 0 };
+	struct ast_i2c_f_bitmap loop_flt = { 0 };
+	const struct device *dev;
+	const struct device *target_dev;
+	const struct device *pfr_flt_dev;
+	bool target_registered = false;
+	bool flt_enabled = false;
+	int exp_pass, exp_block;
+	int pass_count, block_count;
+	uint8_t *buf;
+	uint32_t i, l;
+	int ret;
+
+	dev = device_get_binding(cfg->i2cdev);
+	if (!dev) {
+		shell_error(shell, "I2C: Device driver %s not found.", cfg->i2cdev);
+		return -ENODEV;
+	}
+
+	target_dev = device_get_binding(cfg->targetdev);
+	if (!target_dev) {
+		shell_error(shell, "I2C: Target device driver %s not found.",
+			    cfg->targetdev);
+		return -ENODEV;
+	}
+
+	pfr_flt_dev = device_get_binding(cfg->fltdev);
 	if (!pfr_flt_dev) {
-		shell_error(shell, "xx I2C: PFR FLT Device driver %s not found.",
-			    argv[1]);
+		shell_error(shell, "I2C: PFR FLT Device driver %s not found.",
+			    cfg->fltdev);
 		return -ENODEV;
 	}
 
-	if (pfr_flt_dev) {
-		ret = ast_i2c_filter_init(pfr_flt_dev);
-		if (ret) {
-			shell_error(shell, "xx I2C: PFR FLT Initial failed.");
-			return ret;
-		}
-
-		ret = ast_i2c_filter_en(pfr_flt_dev, 1, 1, 0, 0);
-		if (ret) {
-			shell_error(shell, "xx I2C: PFR FLT Enable / Disable failed.");
-			return ret;
-		}
-
-		ret = ast_i2c_filter_default(pfr_flt_dev, 0);
-		if (ret) {
-			shell_error(shell, "xx I2C: PFR FLT Set Default failed.");
-			return ret;
-		}
-
-		for (i = 0x0; i < EEPROM_COUNT; i++) {
-			ret = ast_i2c_filter_update(pfr_flt_dev, (uint8_t)(i),
-			(uint8_t)(0x50 + i), &data_flt[EEPROM_PASS_TBL[i]]);
-			if (ret) {
-				shell_error(shell, "xx I2C: PFR FLT Update failed.");
-				return ret;
-			}
-		}
-	}
-#endif
-
-#ifdef CONFIG_I2C_PFR_MAILBOX
-	const struct device *pfr_mbx_dev = NULL;
-
-	pfr_mbx_dev = device_get_binding("I2C_MBX");
-
-	if (!pfr_mbx_dev) {
-		shell_error(shell, "xx I2C: PFR MBX Device driver %s not found.",
-			    argv[1]);
-		return -ENODEV;
+	/* keep the transfer buffer off the stack for DMA-capable controllers */
+	buf = k_malloc(FLT_LOOP_BUF_SIZE);
+	if (!buf) {
+		shell_error(shell, "I2C: Can't allocate transfer buffer.");
+		return -ENOMEM;
 	}
 
-	if (pfr_mbx_dev) {
-		ret = ast_i2c_mbx_init(pfr_mbx_dev);
+	for (i = 0; i < FLT_LOOP_BUF_SIZE; i++) {
+		buf[i] = (uint8_t)i;
+	}
+
+	/* expected result of the filter table is fixed, count it once */
+	exp_pass = 0;
+	for (i = 0; i < AST_I2C_F_ELEMENT_SIZE; i++) {
+		loop_flt.element[i] = flt_loop_tbl[i];
+		exp_pass += __builtin_popcount(flt_loop_tbl[i]);
+	}
+	exp_block = FLT_LOOP_ADDR_COUNT - exp_pass;
+
+	ret = i2c_target_driver_register(target_dev);
+	if (ret) {
+		shell_error(shell, "I2C: Target device %s register failed (%d).",
+			    target_dev->name, ret);
+		goto out;
+	}
+	target_registered = true;
+
+	ret = ast_i2c_filter_init(pfr_flt_dev);
+	if (ret) {
+		shell_error(shell, "I2C: PFR FLT Initial failed.");
+		goto out;
+	}
+
+	ret = ast_i2c_filter_en(pfr_flt_dev, true, true, false, false);
+	if (ret) {
+		shell_error(shell, "I2C: PFR FLT Enable failed.");
+		goto out;
+	}
+	flt_enabled = true;
+
+	/* default index value: 0 = block all, 1 = pass all */
+	for (l = 0; l < 2; l++) {
+		ret = ast_i2c_filter_default(pfr_flt_dev, (uint8_t)l);
 		if (ret) {
-			shell_error(shell, "xx I2C: PFR MBX Initial failed.");
-			return ret;
+			shell_error(shell, "I2C: PFR FLT Set Default failed.");
+			goto out;
 		}
 
-		ret = ast_i2c_mbx_addr(pfr_mbx_dev, 0x0, 0x0, 0x1, 0x29, 0x1);
-		if (ret) {
-			shell_error(shell, "xx I2C: PFR MBX Set address failed.");
-			return ret;
-		}
+		k_sleep(K_MSEC(10));
 
-		ret = ast_i2c_mbx_en(pfr_mbx_dev, 0x0, 0x1);
+		flt_loop_scan(dev, buf, cfg->dev_addr, &pass_count, &block_count);
+		ret = flt_loop_check(shell, cfg->fltdev, cfg->dev_addr,
+				     l ? FLT_LOOP_ADDR_COUNT : 0,
+				     l ? 0 : FLT_LOOP_ADDR_COUNT,
+				     pass_count, block_count);
 		if (ret) {
-			shell_error(shell, "xx I2C: PFR MBX Enable / Disable failed.");
-			return ret;
-		}
-
-		ret = ast_i2c_mbx_addr(pfr_mbx_dev, 0x1, 0x0, 0x1, 0x39, 0x1);
-		if (ret) {
-			shell_error(shell, "xx I2C: PFR MBX Set address failed.");
-			return ret;
-		}
-
-		ret = ast_i2c_mbx_en(pfr_mbx_dev, 0x1, 0x1);
-		if (ret) {
-			shell_error(shell, "xx I2C: PFR MBX Enable / Disable failed.");
-			return ret;
+			shell_error(shell, "%s: default %s check failed",
+				    cfg->fltdev, l ? "pass" : "block");
+			goto out;
 		}
 	}
-#endif
+
+	/* program the table into every filter index in turn */
+	for (l = 0; l < FLT_LOOP_INDEX_COUNT; l++) {
+		ret = ast_i2c_filter_update(pfr_flt_dev, (uint8_t)l,
+					    cfg->dev_addr, &loop_flt);
+		if (ret) {
+			shell_error(shell, "I2C: PFR FLT Update failed.");
+			goto out;
+		}
+
+		k_sleep(K_MSEC(10));
+
+		flt_loop_scan(dev, buf, cfg->dev_addr, &pass_count, &block_count);
+		ret = flt_loop_check(shell, cfg->fltdev, cfg->dev_addr,
+				     exp_pass, exp_block, pass_count, block_count);
+		if (ret) {
+			shell_error(shell, "%s: index 0x%x check failed",
+				    cfg->fltdev, l);
+			goto out;
+		}
+
+		ret = ast_i2c_filter_update(pfr_flt_dev, (uint8_t)l, 0x0, &clr_flt);
+		if (ret) {
+			shell_error(shell, "I2C: PFR FLT Update failed.");
+			goto out;
+		}
+
+		k_sleep(K_MSEC(10));
+	}
+
+out:
+	if (flt_enabled) {
+		int err = ast_i2c_filter_en(pfr_flt_dev, false, false, true, true);
+
+		if (err) {
+			shell_error(shell, "I2C: PFR FLT Disable failed.");
+			ret = ret ? ret : err;
+		}
+	}
+
+	if (target_registered) {
+		int err = i2c_target_driver_unregister(target_dev);
+
+		if (err) {
+			shell_error(shell, "I2C: Target device %s unregister failed (%d).",
+				    target_dev->name, err);
+			ret = ret ? ret : err;
+		}
+	}
+
+	k_free(buf);
 
 	return ret;
 }
-#endif
+
+static void show_result(const struct shell *shell, int idx, bool is_fail)
+{
+	if (is_fail) {
+		shell_print(shell, "I2C: PFR FLT %d : \x1b[;31;1mFAIL\x1b[0;m", idx);
+	} else {
+		shell_print(shell, "I2C: PFR FLT %d : \x1b[;32;1mPASS\x1b[0;m", idx);
+	}
+}
+
+static int cmd_smbus_flt_verify(const struct shell *shell,
+			      size_t argc, char **argv)
+{
+	int ret = 0;
+	int err;
+	size_t i;
+
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	for (i = 0; i < ARRAY_SIZE(flt_loop_cfgs); i++) {
+		err = flt_loop(shell, &flt_loop_cfgs[i]);
+		show_result(shell, (int)i, err != 0);
+		if (err && !ret) {
+			ret = err;
+		}
+	}
+
+	return ret;
+}
+#endif /* CONFIG_I2C_PFR_FILTER && CONFIG_I2C_TARGET */
 
 #ifdef CONFIG_I2C_TARGET
 #ifdef CONFIG_I2C_EEPROM_TARGET
@@ -1476,10 +1619,10 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_iic_cmds,
 					      cmd_i2c_ipmb_read, 0, 1),
 #endif
 #endif
-#ifdef CONFIG_I2C_PFR
-				SHELL_CMD_ARG(pfr_demo, &dsub_device_name,
-					  "pfr demo default",
-					   cmd_i2c_pfr_demo, 0, 0),
+#if defined(CONFIG_I2C_PFR_FILTER) && defined(CONFIG_I2C_TARGET)
+				SHELL_CMD_ARG(flt_verify, NULL,
+					      "Verify PFR SMBus filters",
+					      cmd_smbus_flt_verify, 1, 0),
 #endif
 #ifdef CONFIG_I2C_SWMBX_TARGET
 				SHELL_CMD_ARG(slave_swmbx, &dsub_device_name,
