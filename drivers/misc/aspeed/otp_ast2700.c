@@ -463,7 +463,7 @@ static void aspeed_otp_set_dap_vrr_default(const struct device *dev)
 	ARG_UNUSED(dev);
 #else
 	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
-	uint32_t val, ver;
+	uint32_t val, new_val, ver;
 
 	/* VRR=0xe is only characterized for AST2700-A2, same as aspeed_otp_set_read_mode() */
 	aspeed_chip_version(dev, &ver);
@@ -471,8 +471,14 @@ static void aspeed_otp_set_dap_vrr_default(const struct device *dev)
 		return;
 
 	val = sys_read32(cfg->base + OTP_DAP_RQ);
-	val = (val & ~OTP_DAP_VRR_MASK) | FIELD_PREP(OTP_DAP_VRR_MASK, OTP_DAP_VRR_DEFAULT);
-	sys_write32(val, cfg->base + OTP_DAP_RQ);
+	new_val = (val & ~OTP_DAP_VRR_MASK) | FIELD_PREP(OTP_DAP_VRR_MASK, OTP_DAP_VRR_DEFAULT);
+	if (new_val == val)
+		return;
+
+	sys_write32(new_val, cfg->base + OTP_DAP_RQ);
+
+	/* Wait for VRR to settle before issuing the next OTP command */
+	k_busy_wait(7);
 #endif
 }
 
