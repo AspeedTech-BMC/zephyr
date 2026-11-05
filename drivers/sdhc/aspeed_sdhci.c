@@ -1055,6 +1055,9 @@ static int sdhci_get_host_props(const struct device *dev,
 	props->host_caps.vol_330_support = false;
 	props->host_caps.vol_180_support = true;
 	props->host_caps.hs200_support = false;
+	/* Only CLK/CMD/DAT0-3 are pinned out for eMMC: 4-bit max */
+	props->host_caps.bus_4_bit_support = true;
+	props->host_caps.bus_8_bit_support = false;
 	props->is_spi = false;
 
 	sdhci->props = *props;
