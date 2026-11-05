@@ -445,7 +445,7 @@ static bool sdhci_clock_set(const struct device *dev, enum sdhc_clock_speed spee
 		return false;
 	}
 
-	base_freq = 100;
+	base_freq = 200;
 	LOG_DBG("base freq=0x%x", base_freq);
 
 	clock_divider = (int)(base_freq / (freq * 2));
