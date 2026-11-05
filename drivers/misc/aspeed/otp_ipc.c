@@ -57,6 +57,7 @@ static const uint8_t otp_ipc_op_allowed_masters[] = {
 	/* Test/bring-up only - see SECURITY note above before shipping this as-is */
 	[OTP_IPC_OP_SET_READ_MODE] = OTP_IPC_MASTER_BIT(OTP_IPC_MASTER_NS_CA35),
 	[OTP_IPC_OP_GET_ROM_PATCH_VERSION] = OTP_IPC_MASTERS_ALL,
+	[OTP_IPC_OP_READ_ECC_CODE] = OTP_IPC_MASTERS_ALL,
 };
 
 /*
@@ -261,6 +262,23 @@ static void otp_ipc_cb(const struct device *ipmdev, void *user_data,
 		status = otp_get_rom_patch_version(dev, &version);
 		if (status == 0)
 			resp[1] = version;
+		break;
+	}
+	case OTP_IPC_OP_READ_ECC_CODE: {
+		uint32_t data = 0, ecc_code = 0;
+
+		if (!otp_ipc_region_allowed(dev, master, addr, 1)) {
+			LOG_WRN("otp_ipc: dev=%s op=%u addr=0x%x region denied",
+				ipmdev->name, op, addr);
+			status = -EACCES;
+			break;
+		}
+
+		status = otp_read_ecc_code(dev, addr, &data, &ecc_code);
+		if (status == 0) {
+			resp[1] = data;
+			resp[2] = ecc_code;
+		}
 		break;
 	}
 	default:

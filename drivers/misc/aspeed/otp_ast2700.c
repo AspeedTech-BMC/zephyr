@@ -507,6 +507,34 @@ static int otp_read_data(const struct device *dev, uint32_t offset, uint32_t *da
 	return ret;
 }
 
+/*
+ * Raw (non-ECC) read used to probe a word's hardware ECC code directly,
+ * independent of the addressed region's own ECC policy. No restore-to-
+ * default call afterward - unlike otp_read_data(), this is a standalone
+ * diagnostic read, not part of the normal read path other code relies on
+ * being left in its default ECC config.
+ */
+static int aspeed_otp_read_ecc_code(const struct device *dev, uint32_t offset,
+				    uint32_t *data, uint32_t *ecc_code)
+{
+	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
+	int ret;
+
+	aspeed_otp_set_dap_vrr_default(dev);
+
+	sys_write32(offset, cfg->base + OTP_ADDR);
+	otp_ecc_cfg(dev, false, true);
+
+	sys_write32(OTP_CMD_READ, cfg->base + OTP_CMD);
+	ret = wait_complete(dev);
+	if (!ret) {
+		*data = sys_read32(cfg->base + OTP_RDATA);
+		*ecc_code = sys_read32(cfg->base + OTP_DBG01) & GENMASK(5, 0);
+	}
+
+	return ret;
+}
+
 int otp_prog_data(const struct device *dev, uint32_t offset, uint32_t data)
 {
 	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
@@ -957,6 +985,7 @@ static struct otp_driver_api otp_funcs = {
 	.ecc_set_policy = aspeed_otp_ecc_set_policy,
 	.set_read_mode = aspeed_otp_set_read_mode,
 	.addr_to_region = aspeed_otp_addr_to_region,
+	.read_ecc_code = aspeed_otp_read_ecc_code,
 };
 
 static const struct otp_ast27xx_config otp_ast27xx_config = {

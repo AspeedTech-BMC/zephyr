@@ -65,6 +65,13 @@
  * GET_ROM_PATCH_VERSION response: word0 = status, word1 = raw SCU1 ROM patch
  * version register value. Decoding differs between A1 and A2, so the raw
  * value is returned as-is - the caller (CA35 side) decodes it.
+ *
+ * READ_ECC_CODE request:  word0 = addr, word1 = pack(OTP_IPC_OP_READ_ECC_CODE, 0)
+ * READ_ECC_CODE response: word0 = status, word1 = raw 16-bit data, word2 =
+ * OTP_DBG01[5:0] (ECC code) captured by the same read. ECC decode is forced
+ * off for this read regardless of addr's region's own ECC policy, so data
+ * and code reflect exactly what's burned there - used to tell whether a word
+ * was already programmed with ECC parity without disturbing any ECC state.
  */
 
 #define IPC_CHANNEL_ID_OTP		2
@@ -79,6 +86,7 @@ enum otp_ipc_op {
 	OTP_IPC_OP_GET_REVID,
 	OTP_IPC_OP_SET_READ_MODE,
 	OTP_IPC_OP_GET_ROM_PATCH_VERSION,
+	OTP_IPC_OP_READ_ECC_CODE,
 };
 
 #define OTP_IPC_SEQ_SHIFT		24

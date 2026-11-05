@@ -92,6 +92,17 @@ __subsystem struct otp_driver_api {
 	 * -ENOTSUP on targets with no region table (e.g. AST1040).
 	 */
 	int (*addr_to_region)(const struct device *dev, uint32_t addr, uint32_t *region);
+
+	/*
+	 * Read one OTP word raw (ECC decode forced off, regardless of the
+	 * addressed region's own ECC policy) and return the hardware ECC
+	 * code (OTP_DBG01[5:0]) captured by that same read. A non-zero code
+	 * on a word means it was already burned with ECC parity - used to
+	 * detect that without otherwise disturbing global/per-region ECC
+	 * state.
+	 */
+	int (*read_ecc_code)(const struct device *dev, uint32_t offset,
+			     uint32_t *data, uint32_t *ecc_code);
 };
 
 /* Values for set_read_mode()/otp_set_read_mode() */
@@ -474,6 +485,26 @@ static inline int otp_addr_to_region(const struct device *dev, uint32_t addr, ui
 	api = (struct otp_driver_api *)dev->api;
 
 	return api->addr_to_region(dev, addr, region);
+}
+
+/**
+ * @brief Read one OTP word raw (ECC decode forced off) and its hardware ECC code
+ *
+ * @param  dev           Pointer to the device structure for the driver instance.
+ * @param  offset        Address of OTP memory.
+ * @param  data          Set to the raw 16-bit word value.
+ * @param  ecc_code      Set to OTP_DBG01[5:0] captured by the same read.
+ *
+ * @return 0 on success, negative errno code on fail.
+ */
+static inline int otp_read_ecc_code(const struct device *dev, uint32_t offset,
+				    uint32_t *data, uint32_t *ecc_code)
+{
+	struct otp_driver_api *api;
+
+	api = (struct otp_driver_api *)dev->api;
+
+	return api->read_ecc_code(dev, offset, data, ecc_code);
 }
 
 #endif /* ZEPHYR_INCLUDE_DRIVERS_MISC_ASPEED_OTP_H_ */
