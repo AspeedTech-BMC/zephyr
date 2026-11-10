@@ -38,6 +38,7 @@
 
 #define SCU_CLKSEL1_PCLK_DIV_MASK	GENMASK(20, 18)
 #define SCU_CLKSEL1_MEMCLK_DIV_MASK	GENMASK(16, 14)
+#define SCU_CLKSEL1_UART_SRC_MASK	GENMASK(12, 0)
 #define SCU_CLKSEL2_SPIS1CLK_DIV_MASK	GENMASK(31, 29)
 #define SCU_CLKSEL2_SPIS0CLK_DIV_MASK	GENMASK(28, 26)
 #define SCU_CLKSEL2_I3CCLK_DIV_MASK	GENMASK(25, 23)
@@ -140,6 +141,17 @@ static void ast10x0_g2_configure_i3c_clk(uintptr_t base)
 	clk_sel2 |= FIELD_PREP(SCU_CLKSEL2_I3CCLK_DIV_MASK, 7U);
 	sys_write32(clk_sel2, base + SCU_CLK_SEL2);
 }
+
+#if DT_INST_NODE_HAS_PROP(0, uart_clk_source)
+static void ast10x0_g2_configure_uart_clk_source(uintptr_t base, uint32_t val)
+{
+	uint32_t clk_sel1 = sys_read32(base + SCU_CLK_SEL1);
+
+	clk_sel1 &= ~SCU_CLKSEL1_UART_SRC_MASK;
+	clk_sel1 |= val & SCU_CLKSEL1_UART_SRC_MASK;
+	sys_write32(clk_sel1, base + SCU_CLK_SEL1);
+}
+#endif /* DT_INST_NODE_HAS_PROP(0, uart_clk_source) */
 
 static uint32_t ast10x0_g2_get_hclk_rate(uintptr_t base)
 {
@@ -379,6 +391,10 @@ static int ast10x0_g2_clock_control_init(const struct device *dev)
 	const struct clock_ast10x0_g2_config *config = dev->config;
 
 	ast10x0_g2_configure_i3c_clk(config->base);
+
+#if DT_INST_NODE_HAS_PROP(0, uart_clk_source)
+	ast10x0_g2_configure_uart_clk_source(config->base, DT_INST_PROP(0, uart_clk_source));
+#endif
 
 	return 0;
 }

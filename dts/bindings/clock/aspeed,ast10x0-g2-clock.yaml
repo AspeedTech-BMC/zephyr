@@ -45,6 +45,10 @@ properties:
     required: false
     description: |
       Program clock access permission for bootmcu
-
+  uart-clk-source:
+    type: int
+    required: false
+    description: |
+      Clock source of each UART.
 clock-cells:
   - clk_id
