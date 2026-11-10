@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: Apache-2.0
+
+mainmenu "Aspeed UART baud rate test shell"
+
+config UART_BAUDRATE_TEST_MAX_LEN
+	int "Maximum bytes per direction"
+	default 65536
+	range 1 1048576
+	help
+	  Upper limit of the length argument of the uart_baud command.
+
+source "Kconfig.zephyr"

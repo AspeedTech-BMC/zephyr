@@ -1,0 +1,91 @@
+/*
+ * uart_routing is not touched.
+ *
+ * UART_UDMA_MODE: 0 = UART FIFO, 1 = UDMA ring buffers. Edit the value
+ * below to switch. The shell UART always uses the FIFO, and uart4 has no UDMA
+ * support, so it always uses the FIFO too.
+ */
+
+#define UART_UDMA_MODE 0
+
+&uart0 {
+	status = "okay";
+#if UART_UDMA_MODE
+	dma = <1>;
+#endif
+};
+
+&uart1 {
+	status = "okay";
+#if UART_UDMA_MODE
+	dma = <1>;
+#endif
+};
+
+&uart2 {
+	status = "okay";
+#if UART_UDMA_MODE
+	dma = <1>;
+#endif
+};
+
+&uart3 {
+	status = "okay";
+#if UART_UDMA_MODE
+	dma = <1>;
+#endif
+};
+
+&uart4 {
+	status = "okay";
+	/* uart4 has no UDMA support, so it always uses the FIFO. */
+};
+
+&uart5 {
+	status = "okay";
+#if UART_UDMA_MODE
+	dma = <1>;
+#endif
+};
+
+&uart6 {
+	status = "okay";
+#if UART_UDMA_MODE
+	dma = <1>;
+#endif
+};
+
+&uart7 {
+	status = "okay";
+#if UART_UDMA_MODE
+	dma = <1>;
+#endif
+};
+
+&uart8 {
+	status = "okay";
+#if UART_UDMA_MODE
+	dma = <1>;
+#endif
+};
+
+&uart9 {
+	status = "okay";
+#if UART_UDMA_MODE
+	dma = <1>;
+#endif
+};
+
+&uart10 {
+	status = "okay";
+#if UART_UDMA_MODE
+	dma = <1>;
+#endif
+};
+
+&uart11 {
+	status = "okay";
+#if UART_UDMA_MODE
+	dma = <1>;
+#endif
+};

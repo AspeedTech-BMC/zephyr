@@ -1,0 +1,7 @@
+sample:
+  name: Aspeed UART baud rate loopback test shell
+tests:
+  sample.board.ast1040_evb_ast1040_cm4:
+    platform_allow: ast1040_evb/ast1040/cm4
+    # Needs external wires between two UARTs, so only build it in twister.
+    build_only: true
