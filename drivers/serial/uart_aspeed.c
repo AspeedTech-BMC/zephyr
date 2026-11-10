@@ -340,8 +340,8 @@ static int uart_aspeed_configure(const struct device *dev,
 	reg |= UART_LCR_DLAB;
 	sys_write32(reg, dev_cfg->base + UART_LCR);
 
-	sys_write32(divisor & 0xf, dev_cfg->base + UART_DLL);
-	sys_write32(divisor >> 8, dev_cfg->base + UART_DLH);
+	sys_write32(divisor & 0xff, dev_cfg->base + UART_DLL);
+	sys_write32((divisor >> 8) & 0xff, dev_cfg->base + UART_DLH);
 
 	reg &= ~(UART_LCR_DLAB | UART_LCR_CLS_MASK | UART_LCR_STOP);
 
