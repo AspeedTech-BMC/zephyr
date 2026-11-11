@@ -17,6 +17,7 @@
 #include <zephyr/sys/__assert.h>
 
 struct otp_info_cb;
+struct otp_region_protect;
 
 /* The API a otp driver should implement */
 __subsystem struct otp_driver_api {
@@ -103,6 +104,61 @@ __subsystem struct otp_driver_api {
 	 */
 	int (*read_ecc_code)(const struct device *dev, uint32_t offset,
 			     uint32_t *data, uint32_t *ecc_code);
+
+	/*
+	 * Snapshot every OTPMISCREG region-protect register (lock/wen/ren,
+	 * raw, undecoded) in one call. See struct otp_region_protect.
+	 */
+	int (*get_region_protect)(const struct device *dev, struct otp_region_protect *prot);
+};
+
+/*
+ * Used with get_region_protect()/otp_get_region_protect(). Each field is a
+ * raw OTPMISCREG value - bit31=LOCK, bits15:8=WEN, bits7:0=REN - except
+ * .puf, which has its own 4-bit lock-only layout (bit8=sw_puf_rlock,
+ * bit4=hw_puf_rlock, bit1=hw_puf_wlock, bit0=sw_puf_wlock). secure/usr/
+ * caliptra additionally have a *_range field: bits31:16=size, bits15:0=
+ * start offset, both in OTP words.
+ *
+ * Must stay in lockstep with the identically-shaped struct
+ * otp_region_protect in u-boot/CA35's cmd/aspeed/otp_ast2700.c - over IPC,
+ * otp_ipc.c slices this into OTP_IPC_OP_GET_REGION_PROTECT groups by
+ * field order, and the CA35 client reassembles them in that same order.
+ */
+struct otp_region_protect {
+	uint32_t rom_patch;
+	uint32_t otpcfg;
+	uint32_t otpstrap;
+	uint32_t strap_ext;
+	uint32_t secure0;
+	uint32_t secure0_range;
+	uint32_t secure1;
+	uint32_t secure1_range;
+	uint32_t secure2;
+	uint32_t secure2_range;
+	uint32_t secure3;
+	uint32_t secure3_range;
+	uint32_t usr0;
+	uint32_t usr0_range;
+	uint32_t usr1;
+	uint32_t usr1_range;
+	uint32_t usr2;
+	uint32_t usr2_range;
+	uint32_t usr3;
+	uint32_t usr3_range;
+	uint32_t caliptra0;
+	uint32_t caliptra0_range;
+	uint32_t caliptra1;
+	uint32_t caliptra1_range;
+	uint32_t caliptra2;
+	uint32_t caliptra2_range;
+	uint32_t caliptra3;
+	uint32_t caliptra3_range;
+	uint32_t rbp_soc_svn;
+	uint32_t rbp_soc_keyretire;
+	uint32_t rbp_calip_svn;
+	uint32_t rbp_calip_keyretire;
+	uint32_t puf;
 };
 
 /* Values for set_read_mode()/otp_set_read_mode() */
@@ -505,6 +561,23 @@ static inline int otp_read_ecc_code(const struct device *dev, uint32_t offset,
 	api = (struct otp_driver_api *)dev->api;
 
 	return api->read_ecc_code(dev, offset, data, ecc_code);
+}
+
+/**
+ * @brief Snapshot every OTPMISCREG region-protect register
+ *
+ * @param  dev   Pointer to the device structure for the driver instance.
+ * @param  prot  Filled in with every region's raw lock/wen/ren register.
+ *
+ * @return 0 on success, negative errno code on fail.
+ */
+static inline int otp_get_region_protect(const struct device *dev, struct otp_region_protect *prot)
+{
+	struct otp_driver_api *api;
+
+	api = (struct otp_driver_api *)dev->api;
+
+	return api->get_region_protect(dev, prot);
 }
 
 #endif /* ZEPHYR_INCLUDE_DRIVERS_MISC_ASPEED_OTP_H_ */

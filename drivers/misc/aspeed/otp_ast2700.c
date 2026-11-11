@@ -150,6 +150,45 @@ LOG_MODULE_REGISTER(otp_ast2700, CONFIG_LOG_DEFAULT_LEVEL);
 #define HW_PUF_REGION_START_ADDR	SW_PUF_REGION_END_ADDR
 #define HW_PUF_REGION_END_ADDR		0x2000
 
+/*
+ * OTPMISCREG dynamic region-protect registers - lock/wen/ren for each
+ * region, settable at runtime until locked, as opposed to the fuse-based
+ * static protect in OTPCFG. See struct otp_region_protect.
+ */
+#define OTP_REGION_ROM_PATCH		0x100
+#define OTP_REGION_OTPCFG		0x104
+#define OTP_REGION_OTPSTRAP		0x108
+#define OTP_REGION_OTPSTRAP_EXT		0x10C
+#define OTP_REGION_SECURE0		0x120
+#define OTP_REGION_SECURE0_RANGE	0x124
+#define OTP_REGION_SECURE1		0x128
+#define OTP_REGION_SECURE1_RANGE	0x12C
+#define OTP_REGION_SECURE2		0x130
+#define OTP_REGION_SECURE2_RANGE	0x134
+#define OTP_REGION_SECURE3		0x138
+#define OTP_REGION_SECURE3_RANGE	0x13C
+#define OTP_REGION_USR0			0x140
+#define OTP_REGION_USR0_RANGE		0x144
+#define OTP_REGION_USR1			0x148
+#define OTP_REGION_USR1_RANGE		0x14C
+#define OTP_REGION_USR2			0x150
+#define OTP_REGION_USR2_RANGE		0x154
+#define OTP_REGION_USR3			0x158
+#define OTP_REGION_USR3_RANGE		0x15C
+#define OTP_REGION_CALIPTRA_0		0x160
+#define OTP_REGION_CALIPTRA_0_RANGE	0x164
+#define OTP_REGION_CALIPTRA_1		0x168
+#define OTP_REGION_CALIPTRA_1_RANGE	0x16C
+#define OTP_REGION_CALIPTRA_2		0x170
+#define OTP_REGION_CALIPTRA_2_RANGE	0x174
+#define OTP_REGION_CALIPTRA_3		0x178
+#define OTP_REGION_CALIPTRA_3_RANGE	0x17C
+#define OTP_RBP_SOC_SVN			0x180
+#define OTP_RBP_SOC_KEYRETIRE		0x184
+#define OTP_RBP_CALIP_SVN		0x188
+#define OTP_RBP_CALIP_KEYRETIRE		0x18C
+#define OTP_PUF				0x1A0
+
 #define OTP_TIMEOUT_US			10000
 
 /* OTPSTRAP */
@@ -533,6 +572,53 @@ static int aspeed_otp_read_ecc_code(const struct device *dev, uint32_t offset,
 	}
 
 	return ret;
+}
+
+/*
+ * Assumes the AST2700 OTPMISCREG layout (see the #defines above). This file
+ * is also built for CONFIG_SOC_AST1040_CM4 (see the OTP_MASTER #if near the
+ * top) - revisit whether that target's OTP macro has the same region-
+ * protect registers at these offsets before relying on this there.
+ */
+static int aspeed_otp_get_region_protect(const struct device *dev, struct otp_region_protect *prot)
+{
+	struct otp_ast27xx_config *cfg = (struct otp_ast27xx_config *)dev->config;
+
+	prot->rom_patch = sys_read32(cfg->base + OTP_REGION_ROM_PATCH);
+	prot->otpcfg = sys_read32(cfg->base + OTP_REGION_OTPCFG);
+	prot->otpstrap = sys_read32(cfg->base + OTP_REGION_OTPSTRAP);
+	prot->strap_ext = sys_read32(cfg->base + OTP_REGION_OTPSTRAP_EXT);
+	prot->secure0 = sys_read32(cfg->base + OTP_REGION_SECURE0);
+	prot->secure0_range = sys_read32(cfg->base + OTP_REGION_SECURE0_RANGE);
+	prot->secure1 = sys_read32(cfg->base + OTP_REGION_SECURE1);
+	prot->secure1_range = sys_read32(cfg->base + OTP_REGION_SECURE1_RANGE);
+	prot->secure2 = sys_read32(cfg->base + OTP_REGION_SECURE2);
+	prot->secure2_range = sys_read32(cfg->base + OTP_REGION_SECURE2_RANGE);
+	prot->secure3 = sys_read32(cfg->base + OTP_REGION_SECURE3);
+	prot->secure3_range = sys_read32(cfg->base + OTP_REGION_SECURE3_RANGE);
+	prot->usr0 = sys_read32(cfg->base + OTP_REGION_USR0);
+	prot->usr0_range = sys_read32(cfg->base + OTP_REGION_USR0_RANGE);
+	prot->usr1 = sys_read32(cfg->base + OTP_REGION_USR1);
+	prot->usr1_range = sys_read32(cfg->base + OTP_REGION_USR1_RANGE);
+	prot->usr2 = sys_read32(cfg->base + OTP_REGION_USR2);
+	prot->usr2_range = sys_read32(cfg->base + OTP_REGION_USR2_RANGE);
+	prot->usr3 = sys_read32(cfg->base + OTP_REGION_USR3);
+	prot->usr3_range = sys_read32(cfg->base + OTP_REGION_USR3_RANGE);
+	prot->caliptra0 = sys_read32(cfg->base + OTP_REGION_CALIPTRA_0);
+	prot->caliptra0_range = sys_read32(cfg->base + OTP_REGION_CALIPTRA_0_RANGE);
+	prot->caliptra1 = sys_read32(cfg->base + OTP_REGION_CALIPTRA_1);
+	prot->caliptra1_range = sys_read32(cfg->base + OTP_REGION_CALIPTRA_1_RANGE);
+	prot->caliptra2 = sys_read32(cfg->base + OTP_REGION_CALIPTRA_2);
+	prot->caliptra2_range = sys_read32(cfg->base + OTP_REGION_CALIPTRA_2_RANGE);
+	prot->caliptra3 = sys_read32(cfg->base + OTP_REGION_CALIPTRA_3);
+	prot->caliptra3_range = sys_read32(cfg->base + OTP_REGION_CALIPTRA_3_RANGE);
+	prot->rbp_soc_svn = sys_read32(cfg->base + OTP_RBP_SOC_SVN);
+	prot->rbp_soc_keyretire = sys_read32(cfg->base + OTP_RBP_SOC_KEYRETIRE);
+	prot->rbp_calip_svn = sys_read32(cfg->base + OTP_RBP_CALIP_SVN);
+	prot->rbp_calip_keyretire = sys_read32(cfg->base + OTP_RBP_CALIP_KEYRETIRE);
+	prot->puf = sys_read32(cfg->base + OTP_PUF);
+
+	return 0;
 }
 
 int otp_prog_data(const struct device *dev, uint32_t offset, uint32_t data)
@@ -986,6 +1072,7 @@ static struct otp_driver_api otp_funcs = {
 	.set_read_mode = aspeed_otp_set_read_mode,
 	.addr_to_region = aspeed_otp_addr_to_region,
 	.read_ecc_code = aspeed_otp_read_ecc_code,
+	.get_region_protect = aspeed_otp_get_region_protect,
 };
 
 static const struct otp_ast27xx_config otp_ast27xx_config = {

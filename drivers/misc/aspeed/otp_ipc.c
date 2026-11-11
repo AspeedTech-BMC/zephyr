@@ -58,6 +58,7 @@ static const uint8_t otp_ipc_op_allowed_masters[] = {
 	[OTP_IPC_OP_SET_READ_MODE] = OTP_IPC_MASTER_BIT(OTP_IPC_MASTER_NS_CA35),
 	[OTP_IPC_OP_GET_ROM_PATCH_VERSION] = OTP_IPC_MASTERS_ALL,
 	[OTP_IPC_OP_READ_ECC_CODE] = OTP_IPC_MASTERS_ALL,
+	[OTP_IPC_OP_GET_REGION_PROTECT] = OTP_IPC_MASTERS_ALL,
 };
 
 /*
@@ -145,6 +146,82 @@ static bool otp_ipc_region_allowed(const struct device *dev, int master,
 		return false;
 
 	return otp_ipc_region_allowed_masters[last_region] & BIT(master);
+}
+
+/*
+ * Picks out one group's fields from an already-fetched struct
+ * otp_region_protect, field order matching enum otp_region_protect_group's
+ * declaration comments. *count is how many of out[0..3] were filled in.
+ */
+static int otp_region_protect_group_slice(const struct otp_region_protect *prot, uint32_t group,
+					  uint32_t *out, uint32_t *count)
+{
+	switch (group) {
+	case OTP_PROT_GROUP_FIXED:
+		out[0] = prot->rom_patch;
+		out[1] = prot->otpcfg;
+		out[2] = prot->otpstrap;
+		out[3] = prot->strap_ext;
+		*count = 4;
+		break;
+	case OTP_PROT_GROUP_RBP:
+		out[0] = prot->rbp_soc_svn;
+		out[1] = prot->rbp_soc_keyretire;
+		out[2] = prot->rbp_calip_svn;
+		out[3] = prot->rbp_calip_keyretire;
+		*count = 4;
+		break;
+	case OTP_PROT_GROUP_SECURE_VAL:
+		out[0] = prot->secure0;
+		out[1] = prot->secure1;
+		out[2] = prot->secure2;
+		out[3] = prot->secure3;
+		*count = 4;
+		break;
+	case OTP_PROT_GROUP_SECURE_RANGE:
+		out[0] = prot->secure0_range;
+		out[1] = prot->secure1_range;
+		out[2] = prot->secure2_range;
+		out[3] = prot->secure3_range;
+		*count = 4;
+		break;
+	case OTP_PROT_GROUP_USR_VAL:
+		out[0] = prot->usr0;
+		out[1] = prot->usr1;
+		out[2] = prot->usr2;
+		out[3] = prot->usr3;
+		*count = 4;
+		break;
+	case OTP_PROT_GROUP_USR_RANGE:
+		out[0] = prot->usr0_range;
+		out[1] = prot->usr1_range;
+		out[2] = prot->usr2_range;
+		out[3] = prot->usr3_range;
+		*count = 4;
+		break;
+	case OTP_PROT_GROUP_CALIPTRA_VAL:
+		out[0] = prot->caliptra0;
+		out[1] = prot->caliptra1;
+		out[2] = prot->caliptra2;
+		out[3] = prot->caliptra3;
+		*count = 4;
+		break;
+	case OTP_PROT_GROUP_CALIPTRA_RANGE:
+		out[0] = prot->caliptra0_range;
+		out[1] = prot->caliptra1_range;
+		out[2] = prot->caliptra2_range;
+		out[3] = prot->caliptra3_range;
+		*count = 4;
+		break;
+	case OTP_PROT_GROUP_PUF:
+		out[0] = prot->puf;
+		*count = 1;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
 }
 
 static void otp_ipc_cb(const struct device *ipmdev, void *user_data,
@@ -279,6 +356,18 @@ static void otp_ipc_cb(const struct device *ipmdev, void *user_data,
 			resp[1] = data;
 			resp[2] = ecc_code;
 		}
+		break;
+	}
+	case OTP_IPC_OP_GET_REGION_PROTECT: {
+		struct otp_region_protect prot;
+		uint32_t vals[4] = {0};
+		uint32_t n = 0;
+
+		status = otp_get_region_protect(dev, &prot);
+		if (status == 0)
+			status = otp_region_protect_group_slice(&prot, count, vals, &n);
+		if (status == 0)
+			memcpy(&resp[1], vals, n * sizeof(uint32_t));
 		break;
 	}
 	default:

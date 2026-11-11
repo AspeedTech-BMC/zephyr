@@ -72,6 +72,12 @@
  * off for this read regardless of addr's region's own ECC policy, so data
  * and code reflect exactly what's burned there - used to tell whether a word
  * was already programmed with ECC parity without disturbing any ECC state.
+ *
+ * GET_REGION_PROTECT request:  word1 = pack(OTP_IPC_OP_GET_REGION_PROTECT, group)
+ * GET_REGION_PROTECT response: word0 = status, word1..word4 = up to 4 raw
+ * OTPMISCREG region-protect register values (struct otp_region_protect has
+ * 33 fields - too many for one 8-word message - so the CA35 client fetches
+ * it one group at a time; see enum otp_region_protect_group).
  */
 
 #define IPC_CHANNEL_ID_OTP		2
@@ -87,6 +93,25 @@ enum otp_ipc_op {
 	OTP_IPC_OP_SET_READ_MODE,
 	OTP_IPC_OP_GET_ROM_PATCH_VERSION,
 	OTP_IPC_OP_READ_ECC_CODE,
+	OTP_IPC_OP_GET_REGION_PROTECT,
+};
+
+/*
+ * Groups for OTP_IPC_OP_GET_REGION_PROTECT, each at most 4 raw OTPMISCREG
+ * values. Field order within each group matches struct
+ * otp_region_protect's declaration order. Must stay in lockstep with the
+ * identically-named enum in u-boot/CA35's include/u-boot/otp_ipc.h.
+ */
+enum otp_region_protect_group {
+	OTP_PROT_GROUP_FIXED = 0,	/* rom_patch, otpcfg, otpstrap, strap_ext */
+	OTP_PROT_GROUP_RBP,		/* soc_svn, soc_keyretire, calip_svn, calip_keyretire */
+	OTP_PROT_GROUP_SECURE_VAL,	/* secure0, secure1, secure2, secure3 */
+	OTP_PROT_GROUP_SECURE_RANGE,	/* secure0_range..secure3_range */
+	OTP_PROT_GROUP_USR_VAL,		/* usr0, usr1, usr2, usr3 */
+	OTP_PROT_GROUP_USR_RANGE,	/* usr0_range, usr1_range, usr2_range, usr3_range */
+	OTP_PROT_GROUP_CALIPTRA_VAL,	/* caliptra0, caliptra1, caliptra2, caliptra3 */
+	OTP_PROT_GROUP_CALIPTRA_RANGE,	/* caliptra0_range..caliptra3_range */
+	OTP_PROT_GROUP_PUF,		/* puf (word1 only) */
 };
 
 #define OTP_IPC_SEQ_SHIFT		24
