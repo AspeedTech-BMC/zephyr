@@ -654,17 +654,33 @@
 		ball = <G3>;
 		sig_descs = <SIG_DESC(0x418, 20, 4)>;
 	};
+	/omit-if-no-ref/ pin_txd5_g2: pin_txd5_g2 {
+		ball = <G2>;
+		sig_descs = <SIG_DESC(0x418, 24, 1)>;
+	};
 	/omit-if-no-ref/ pin_spif1dq0_i: pin_spif1dq0_i {
 		ball = <G2>;
 		sig_descs = <SIG_DESC(0x418, 24, 2)>;
+	};
+	/omit-if-no-ref/ pin_rxd5_h1: pin_rxd5_h1 {
+		ball = <H1>;
+		sig_descs = <SIG_DESC(0x418, 28, 1)>;
 	};
 	/omit-if-no-ref/ pin_spif1dq1_i: pin_spif1dq1_i {
 		ball = <H1>;
 		sig_descs = <SIG_DESC(0x418, 28, 2)>;
 	};
+	/omit-if-no-ref/ pin_txd6_h3: pin_txd6_h3 {
+		ball = <H3>;
+		sig_descs = <SIG_DESC(0x41c, 0, 1)>;
+	};
 	/omit-if-no-ref/ pin_spif1dq2_i: pin_spif1dq2_i {
 		ball = <H3>;
 		sig_descs = <SIG_DESC(0x41c, 0, 2)>;
+	};
+	/omit-if-no-ref/ pin_rxd6_h2: pin_rxd6_h2 {
+		ball = <H2>;
+		sig_descs = <SIG_DESC(0x41c, 4, 1)>;
 	};
 	/omit-if-no-ref/ pin_spif1dq3_i: pin_spif1dq3_i {
 		ball = <H2>;
