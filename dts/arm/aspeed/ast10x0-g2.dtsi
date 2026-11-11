@@ -128,6 +128,8 @@
 			reg = <0x74c33000 0x100>;
 			interrupts = <INTR_UART0 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk SCU1_CLK_GATE_UART0CLK>;
+			pinctrl-0 = <pinctrl_uart0_default>;
+			pinctrl-names = "default";
 			aspeed,lsc = <&lsc>;
 			aspeed,reset-source = <4 0>;
 			dma,channel = <0>;
@@ -139,6 +141,8 @@
 			reg = <0x74c33100 0x100>;
 			interrupts = <INTR_UART1 AST10X0_G2_IRQ_DEFAULT_PRIORITY>;
 			clocks = <&sysclk SCU1_CLK_GATE_UART1CLK>;
+			pinctrl-0 = <pinctrl_uart1_default>;
+			pinctrl-names = "default";
 			aspeed,lsc = <&lsc>;
 			aspeed,reset-source = <5 0>;
 			dma,channel = <1>;
