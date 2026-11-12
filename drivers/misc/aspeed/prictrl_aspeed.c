@@ -20,6 +20,27 @@
 LOG_MODULE_REGISTER(prictrl_aspeed, LOG_LEVEL_INF);
 
 /**********************************************************************
+ * Privilege control common utility
+ **********************************************************************/
+static bool prictrl_init_rst_tol(const struct device *dev)
+{
+	const struct prictrl_aspeed_config *cfg = dev ? dev->config : NULL;
+	uint8_t gen_id = 0;
+	uint8_t rev_id = 0;
+
+	if (!cfg || !dev)
+		return false;
+
+	if (!cfg->scu)
+		return false;
+
+	gen_id = FIELD_GET(PRICTRL_SCU_GEN_MASK, sys_read32(cfg->scu));
+	rev_id = FIELD_GET(PRICTRL_SCU_REV_MASK, sys_read32(cfg->scu));
+
+	return rev_id != 0x1 || gen_id != 0x6 ? false : true;
+}
+
+/**********************************************************************
  * Get privilege control configuration register
  **********************************************************************/
 static uintptr_t prictrl_get_reg_base(const struct prictrl_aspeed_config *cfg, enum prictrl_ms ms,
@@ -253,21 +274,18 @@ static int prictrl_peri_group_init(const struct prictrl_aspeed_config *cfg,
 
 static int prictrl_hw_init(const struct device *dev)
 {
+	bool rst_tol = false;
 	int i = 0;
-	bool init = false;
 	const uint32_t init_val = 0x7F7F7F7F;
-	const uint32_t default_val = 0x3F3F3F3F;
-	const uint32_t magic = 0x7F7F7F7E;
 	const struct prictrl_aspeed_config *cfg = dev ? dev->config : NULL;
 
 	if (!dev || !cfg)
 		return -EINVAL;
 
-	sys_write32(magic, cfg->reg);
-	init = sys_read32(cfg->reg) != magic ? true : false;
-
 	/* Initialize privilege control configuration register */
-	if (init) {
+	rst_tol = prictrl_init_rst_tol(dev);
+	if (rst_tol) {
+		/* For AST2700a1 workaround */
 		for (i = 0; i < 8; i++)
 			sys_write32(init_val, (cfg->reg + i * 4));
 
@@ -279,11 +297,9 @@ static int prictrl_hw_init(const struct device *dev)
 
 		for (i = 0; i < 64; i++)
 			sys_write32(init_val, (cfg->reg + 0x300 + i * 4));
-	} else {
-		sys_write32(default_val, cfg->reg);
 	}
 
-	return init ? -EAGAIN : 0;
+	return rst_tol ? -EAGAIN : 0;
 }
 
 /**********************************************************************
@@ -683,6 +699,7 @@ static struct prictrl_dev_list prictrl_client[] = {
 #define PRICTRL_ASPEED_INIT(_n)                                                                    \
 	static struct prictrl_aspeed_config prictrl_aspeed_config_##_n = {                         \
 		.reg = DT_INST_REG_ADDR(_n),                                                       \
+		.scu = DT_REG_ADDR_BY_IDX(DT_INST_PHANDLE(_n, aspeed_scu), 0),                     \
 		.master_num = ARRAY_SIZE(prictrl_master_##_n),                                     \
 		.master_max = _n ? IO_M_LIST_END : C_M_LIST_END,                                   \
 		.client_num = ARRAY_SIZE(prictrl_client),                                          \

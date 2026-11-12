@@ -59,6 +59,8 @@
 #define INVALID_GROUP         (0xFF)
 #define PRICTRL_GROUP_MASK    GENMASK(5, 0)
 #define PRICTRL_GROUP_DEFAULT GENMASK(5, 0)
+#define PRICTRL_SCU_GEN_MASK  GENMASK(31, 24)
+#define PRICTRL_SCU_REV_MASK  GENMASK(23, 16)
 
 /* Privilege control reset definition */
 #define PRICTRL_RST BIT(6)
@@ -154,6 +156,7 @@ struct prictrl_mpu_cfg {
 
 struct prictrl_aspeed_config {
 	uintptr_t reg;
+	uintptr_t scu;
 	uint8_t master_num;
 	uint32_t master_max;
 	uint8_t client_num;
