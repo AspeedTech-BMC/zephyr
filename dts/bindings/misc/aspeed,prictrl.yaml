@@ -8,6 +8,12 @@ compatible: "aspeed,prictrl"
 include: base.yaml
 
 properties:
+  aspeed,scu:
+    type: phandle
+    required: true
+    description: |
+      Phandle to the SCU used to identify the SoC generation/revision.
+
   mlist0:
     type: array
     required: false
