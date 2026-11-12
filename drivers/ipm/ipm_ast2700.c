@@ -146,6 +146,40 @@ shmem_read_fail:
 	return -EINVAL;
 }
 
+/* Invalid the rx shmem */
+int ast_ipm_rx_shmem_invd(const struct device *dev, uint32_t channel,
+uint32_t offset, uint32_t size)
+{
+	const struct ipm_ast2700_data *data = ((const struct device *)dev)->data;
+
+	if (channel >= IPC_NUM_OF_ID) {
+		LOG_DBG("Invalid channel");
+		goto shmem_invd_fail;
+	}
+
+	if (data->shmem_info[channel].shmem_rx_base) {
+		if (data->shmem_info[channel].shmem_rx_size) {
+			if (size > data->shmem_info[channel].shmem_rx_size ||
+			   offset > data->shmem_info[channel].shmem_rx_size - size) {
+				LOG_DBG("Invalid rx range");
+				goto shmem_invd_fail;
+			} else {
+				void *rx_base =
+					 (void *)(data->shmem_info[channel].shmem_rx_base + offset);
+
+				sys_cache_data_invd_range(rx_base, size);
+			}
+		} else
+			goto shmem_invd_fail;
+	} else
+		goto shmem_invd_fail;
+
+	return size;
+
+shmem_invd_fail:
+	return -EINVAL;
+}
+
 static void ipm_ast2700_isr(const void *dev)
 {
 	const struct ipm_ast2700_data *data = ((const struct device *)dev)->data;

@@ -30,4 +30,8 @@ int ast_ipm_max_rx_shmem_size(const struct device *dev, uint32_t channel);
 int ast_ipm_shmem_read(const struct device *dev, uint32_t channel,
 uint32_t offset, void **buf, uint32_t size);
 
+/* Invalidate the rx shmem */
+int ast_ipm_rx_shmem_invd(const struct device *dev, uint32_t channel,
+uint32_t offset, uint32_t size);
+
 #endif /* ZEPHYR_INCLUDE_DRIVERS_IPM_H_ */
