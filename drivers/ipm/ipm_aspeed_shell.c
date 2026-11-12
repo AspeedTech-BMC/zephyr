@@ -63,6 +63,13 @@ static void stress_cb(const struct device *ipmdev, void *user_data,
 	LOG_DBG("test_pattern 0x%x\n", test_pattern);
 	LOG_DBG("rx_buff 0x%p\n", rx_buff);
 
+	/* invalidate the rx buffer */
+	cpy_size = ast_ipm_rx_shmem_invd(ipmdev, id, 0x0, size);
+	if (cpy_size != size) {
+		LOG_ERR("stress read rx buffer invalidate failed.");
+		goto stree_cb_fail;
+	}
+
 	/* read the rx buffer into buffer */
 	cpy_size = ast_ipm_shmem_read(ipmdev, id, 0x0, (void *)&rx_buff, size);
 	if (cpy_size != size) {
