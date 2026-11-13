@@ -456,8 +456,13 @@ static void otp_ecc_cfg(const struct device *dev, bool ecc_en, bool auto_cfg)
 	/* Self config or auto config */
 	sys_write32(self_cfg ? 0x4 : 0x0, cfg->base + OTP_PMC_CQ);
 	/* Clearing OTP_PMC_CQ auto-reverts OTP_DAP_CFG_RQ, no explicit write needed to disable */
-	if (self_cfg)
-		sys_write32(OTP_DAP_CFG_CORRECTED_ECC_SYNDROME, cfg->base + OTP_DAP_CFG_RQ);
+	if (self_cfg) {
+		/* HW requirement: OTP_DAP_CFG_RQ must be written 8 times; sys_write32() is
+		 * a volatile access so the compiler cannot merge/drop the repeated writes.
+		 */
+		for (int i = 0; i < 8; i++)
+			sys_write32(OTP_DAP_CFG_CORRECTED_ECC_SYNDROME, cfg->base + OTP_DAP_CFG_RQ);
+	}
 }
 
 static int aspeed_chip_version(const struct device *dev, uint32_t *chip_version)
@@ -509,12 +514,21 @@ static void aspeed_otp_set_dap_vrr_default(const struct device *dev)
 	if (ver != OTP_AST2700_A2)
 		return;
 
-	val = sys_read32(cfg->base + OTP_DAP_RQ);
+	/* HW requirement: OTP_DAP_RQ must be read 8 times; sys_read32() is a
+	 * volatile access so the compiler cannot merge/drop the repeated reads.
+	 */
+	for (int i = 0; i < 8; i++)
+		val = sys_read32(cfg->base + OTP_DAP_RQ);
+
 	new_val = (val & ~OTP_DAP_VRR_MASK) | FIELD_PREP(OTP_DAP_VRR_MASK, OTP_DAP_VRR_DEFAULT);
 	if (new_val == val)
 		return;
 
-	sys_write32(new_val, cfg->base + OTP_DAP_RQ);
+	/* HW requirement: OTP_DAP_RQ must be written 8 times; sys_write32() is a
+	 * volatile access so the compiler cannot merge/drop the repeated writes.
+	 */
+	for (int i = 0; i < 8; i++)
+		sys_write32(new_val, cfg->base + OTP_DAP_RQ);
 
 	/* Wait for VRR to settle before issuing the next OTP command */
 	k_busy_wait(7);
@@ -814,8 +828,12 @@ static int aspeed_otp_set_read_mode(const struct device *dev, uint32_t mode)
 	if (ver != OTP_AST2700_A2)
 		return -ENOTSUP;
 
-	sys_write32(mode == OTP_READ_MODE_MARGIN ? OTP_MARGIN_TIMING : OTP_NORMAL_TIMING,
-		    cfg->base + OTP_DAP_RQ);
+	/* HW requirement: OTP_DAP_RQ must be written 8 times; sys_write32() is a
+	 * volatile access so the compiler cannot merge/drop the repeated writes.
+	 */
+	for (int i = 0; i < 8; i++)
+		sys_write32(mode == OTP_READ_MODE_MARGIN ? OTP_MARGIN_TIMING : OTP_NORMAL_TIMING,
+			    cfg->base + OTP_DAP_RQ);
 
 	return 0;
 #endif
