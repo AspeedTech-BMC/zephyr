@@ -119,7 +119,6 @@
 		compatible = "aspeed,prictrl-prot";
 		protect-dev = <IO_S_I_PRICTRL WRITE_PROT>,
 			      <C_S_C_PRICTRL WRITE_PROT>,
-			      <IO_S_OTP RW_PROT>,
 			      <IO_S_I_SRAM_REG WRITE_PROT>;
 		status = "okay";
 	};
