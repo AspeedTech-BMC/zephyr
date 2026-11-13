@@ -261,13 +261,9 @@ static int prictrl_peri_group_init(const struct prictrl_aspeed_config *cfg,
 	if (!cfg)
 		return -EINVAL;
 
-	/* Configure the privilege control groups */
+	/* Configure privilege control groups without locking them by default. */
 	for (i = 0; i < num; i++)
 		ret |= prictrl_list_config_group(cfg, &list[i], false);
-
-	/* Lock the privilege control groups */
-	for (i = 0; i < num; i++)
-		ret |= prictrl_list_config_group(cfg, &list[i], true);
 
 	return 0;
 }
