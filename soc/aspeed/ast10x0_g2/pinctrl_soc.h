@@ -6,6 +6,8 @@
 #define Z_PINCTRL_STATE_PIN_PINCFG_INIT(node_id, prop, idx)                                        \
 	.bias_disable_desc = DT_PROP_OR(DT_PHANDLE_BY_IDX(node_id, prop, idx),                     \
 					 bias_disable_desc, 0),                                    \
+	.pull_up_disable_desc = DT_PROP_OR(DT_PHANDLE_BY_IDX(node_id, prop, idx),                  \
+					    pull_up_disable_desc, 0),                              \
 	.bias_disable = DT_PROP(DT_PHANDLE_BY_IDX(node_id, prop, idx), bias_disable),              \
 	.drive_strength_desc = DT_PROP_OR(DT_PHANDLE_BY_IDX(node_id, prop, idx),                   \
 					   drive_strength_desc, 0),                                \
@@ -40,8 +42,16 @@ typedef struct pinctrl_soc_pin {
 	char *name;
 #endif
 	uint32_t sig_descs;
-	/* Set via bias-disable-desc / bias-disable in the pin's devicetree node. */
+	/*
+	 * Set via bias-disable-desc / bias-disable in the pin's devicetree
+	 * node. pull_up_disable_desc locates a second, independent disable
+	 * bit for SoCs where pull-up and pull-down each have their own
+	 * disable control (e.g. AST10x0-G2's DIS_PU/DIS_PD); it is written
+	 * alongside bias_disable_desc whenever bias_disable is set, and is
+	 * left at 0 (no-op) on SoCs with a single combined disable bit.
+	 */
 	uint32_t bias_disable_desc;
+	uint32_t pull_up_disable_desc;
 	bool bias_disable;
 	/* Set via drive-strength-desc / drive-strength in the pin's devicetree node. */
 	uint32_t drive_strength_desc;

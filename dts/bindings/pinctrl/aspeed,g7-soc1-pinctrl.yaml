@@ -27,6 +27,14 @@ child-binding:
         PINCFG_DESC() location of the bias/pull-disable control bit for
         this ball. Combined with the generic "bias-disable" property
         (from pincfg-node.yaml) to decide whether to write it.
+    pull-up-disable-desc:
+      type: int
+      description: |
+        PINCFG_DESC() location of a second, independent pull-up disable
+        bit, for balls whose pull-up and pull-down each have their own
+        disable control (e.g. AST10x0-G2's DIS_PU/DIS_PD). Written
+        alongside bias-disable-desc whenever "bias-disable" is set; omit
+        on balls with a single combined disable bit.
     drive-strength-desc:
       type: int
       description: |

@@ -103,6 +103,11 @@ static int pinctrl_configure_pincfg(const pinctrl_soc_pin_t *pin)
 		if (ret) {
 			return ret;
 		}
+
+		ret = pinctrl_apply_pincfg_desc(pin->pull_up_disable_desc, 1);
+		if (ret) {
+			return ret;
+		}
 	}
 
 	if (pin->drive_strength_desc && pin->drive_strength_valid) {
