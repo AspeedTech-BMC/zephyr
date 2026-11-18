@@ -1693,6 +1693,9 @@ static int espi_ast2700_send_oob(const struct device *dev, struct espi_oob_packe
 	struct espi_aspeed_ioc ioc;
 	uint8_t pkt[sizeof(*oob_msg) + ESPI_PLD_LEN_MAX];
 
+	if (pckt->len > (ESPI_PLD_LEN_MAX - 1))
+		return -EINVAL;
+
 	ioc.pkt = pkt;
 	ioc.pkt_len = sizeof(*oob_msg) + pckt->len;
 
@@ -1713,6 +1716,7 @@ static int espi_ast2700_receive_oob(const struct device *dev, struct espi_oob_pa
 	struct espi_oob_msg *oob_msg;
 	struct espi_aspeed_ioc ioc;
 	uint8_t pkt[sizeof(*oob_msg) + ESPI_PLD_LEN_MAX];
+	uint32_t rx_len;
 
 	ioc.pkt = pkt;
 	ioc.pkt_len = sizeof(pkt);
@@ -1723,8 +1727,20 @@ static int espi_ast2700_receive_oob(const struct device *dev, struct espi_oob_pa
 
 	oob_msg = (struct espi_oob_msg *)ioc.pkt;
 
-	pckt->len = (oob_msg->len_h << 8) | (oob_msg->len_l & 0xff);
-	memcpy(pckt->buf, oob_msg + 1, pckt->len);
+	/* pkt_len covers the header; a hardware length of 0 means ESPI_PLD_LEN_MAX */
+	rx_len = ioc.pkt_len - sizeof(*oob_msg);
+
+	/*
+	 * pckt->len is the caller's buffer capacity on entry. If the received
+	 * packet does not fit it is dropped; report the actual length back.
+	 */
+	if (rx_len > pckt->len) {
+		pckt->len = rx_len;
+		return -EINVAL;
+	}
+
+	pckt->len = rx_len;
+	memcpy(pckt->buf, oob_msg + 1, rx_len);
 
 	return 0;
 }
@@ -1737,6 +1753,9 @@ static int espi_ast2700_flash_rwe(const struct device *dev, struct espi_flash_pa
 	uint8_t pkt[sizeof(*flash_rwe) + ESPI_PLD_LEN_MAX];
 	uint32_t len;
 	uint32_t payload_len;
+
+	if (pckt->len > (ESPI_PLD_LEN_MAX - 1))
+		return -EINVAL;
 
 	ioc.pkt = pkt;
 
