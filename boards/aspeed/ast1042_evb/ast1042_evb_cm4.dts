@@ -1,0 +1,587 @@
+/*
+ * Copyright (c) 2024 Aspeed Technology Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+#include <arm/aspeed/ast1042.dtsi>
+
+/ {
+	model = "Aspeed AST1042 Evaluation board";
+	compatible = "aspeed,ast1042-evb";
+
+	chosen {
+		zephyr,console = &uart12;
+		zephyr,shell-uart = &uart12;
+		zephyr,flash = &dram_ro_region;
+		zephyr,sram = &dram_rw_region;
+	};
+
+	dram_rw_region: memory@40000 {
+		device_type = "memory";
+		reg = <0x40000 DT_SIZE_K(14336 - 256 - 512)>;
+	};
+
+	sram1: memory@d80000 {
+		compatible = "zephyr,memory-region", "mmio-sram";
+		device_type = "memory";
+		reg = <0xd80000 DT_SIZE_K(512)>;
+		zephyr,memory-region = "RAM_NC";
+	};
+};
+
+&wdt0 {
+	status = "okay";
+};
+
+&uart12 {
+	clock-frequency = <1846153>;
+	current-speed = <115200>;
+	status = "okay";
+};
+
+&dram_ro_region {
+	reg = <0x0 DT_SIZE_K(256)>;
+};
+
+&nvic {
+	arm,num-irq-priority-bits = <3>;
+};
+
+&adc0 {
+	status = "okay";
+
+	pinctrl-names = "default";
+	pinctrl-0 = <pinctrl_adc0_default pinctrl_adc1_default
+		pinctrl_adc2_default pinctrl_adc3_default
+		pinctrl_adc4_default pinctrl_adc5_default
+		pinctrl_adc6_default pinctrl_adc7_default>;
+};
+
+&adc1 {
+	status = "okay";
+
+	pinctrl-names = "default";
+	pinctrl-0 = <pinctrl_adc8_default pinctrl_adc9_default
+		pinctrl_adc10_default pinctrl_adc11_default
+		pinctrl_adc12_default pinctrl_adc13_default
+		pinctrl_adc14_default pinctrl_adc15_default>;
+};
+
+&pwm {
+	status = "okay";
+
+	pinctrl-names = "default";
+	pinctrl-0 = <pinctrl_pwm0_default pinctrl_pwm1_default
+			pinctrl_pwm2_default pinctrl_pwm3_default
+			pinctrl_pwm4_default pinctrl_pwm5_default
+			pinctrl_pwm6_default pinctrl_pwm7_default
+			pinctrl_pwm8_default pinctrl_pwm9_default
+			pinctrl_pwm10_default pinctrl_pwm11_default
+			pinctrl_pwm12_default pinctrl_pwm13_default
+			pinctrl_pwm14_default pinctrl_pwm15_default>;
+
+};
+
+&tach {
+	status = "okay";
+
+	pinctrl-names = "default";
+	pinctrl-0 = <pinctrl_tach0_default pinctrl_tach1_default
+			pinctrl_tach2_default pinctrl_tach3_default
+			pinctrl_tach4_default pinctrl_tach5_default
+			pinctrl_tach6_default pinctrl_tach7_default
+			pinctrl_tach8_default pinctrl_tach9_default
+			pinctrl_tach10_default pinctrl_tach11_default
+			pinctrl_tach12_default pinctrl_tach13_default
+			pinctrl_tach14_default pinctrl_tach15_default>;
+
+	fan@0 {
+		reg = <0>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@1 {
+		reg = <1>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@2 {
+		reg = <2>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@3 {
+		reg = <3>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@4 {
+		reg = <4>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@5 {
+		reg = <5>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@6 {
+		reg = <6>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@7 {
+		reg = <7>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@8 {
+		reg = <8>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@9 {
+		reg = <9>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@a {
+		reg = <0xa>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@b {
+		reg = <0xb>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@c {
+		reg = <0xc>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@d {
+		reg = <0xd>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@e {
+		reg = <0xe>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+
+	fan@f {
+		reg = <0xf>;
+		pulse-pr = <2>;
+		min-rpm = <1000>;
+		tach-div = <5>;
+	};
+};
+
+&i2c0 {
+	status = "okay";
+
+	eeprom0: eeprom@40 {
+		compatible = "zephyr,i2c-target-eeprom";
+		reg = <0x40>;
+		size = <256>;
+	};
+
+	ipmb0: ipmb@60 {
+		compatible = "aspeed,ipmb";
+		reg = <0x60>;
+		size = <5>;
+	};
+};
+
+&i2c1 {
+	status = "okay";
+
+	eeprom1: eeprom@41 {
+		compatible = "zephyr,i2c-target-eeprom";
+		reg = <0x41>;
+		size = <256>;
+	};
+
+	ipmb1: ipmb@61 {
+		compatible = "aspeed,ipmb";
+		reg = <0x61>;
+		size = <5>;
+	};
+};
+
+&i2c2 {
+	status = "okay";
+
+	eeprom2: eeprom@42 {
+		compatible = "zephyr,i2c-target-eeprom";
+		reg = <0x42>;
+		size = <256>;
+	};
+
+	ipmb2: ipmb@62 {
+		compatible = "aspeed,ipmb";
+		reg = <0x62>;
+		size = <5>;
+	};
+};
+
+&i2c3 {
+	status = "okay";
+
+	eeprom3: eeprom@43 {
+		compatible = "zephyr,i2c-target-eeprom";
+		reg = <0x43>;
+		size = <256>;
+	};
+
+	ipmb3: ipmb@63 {
+		compatible = "aspeed,ipmb";
+		reg = <0x63>;
+		size = <5>;
+	};
+};
+
+&i2c4 {
+	status = "okay";
+
+	eeprom4: eeprom@44 {
+		compatible = "zephyr,i2c-target-eeprom";
+		reg = <0x44>;
+		size = <256>;
+	};
+
+	ipmb4: ipmb@64 {
+		compatible = "aspeed,ipmb";
+		reg = <0x64>;
+		size = <5>;
+	};
+};
+
+&i2c5 {
+	status = "okay";
+
+	eeprom5: eeprom@45 {
+		compatible = "zephyr,i2c-target-eeprom";
+		reg = <0x45>;
+		size = <256>;
+	};
+
+	ipmb5: ipmb@65 {
+		compatible = "aspeed,ipmb";
+		reg = <0x65>;
+		size = <5>;
+	};
+};
+
+&jtag1 {
+	status = "okay";
+};
+
+&i3c0 {
+	status = "okay";
+	secondary;
+	dcr = <0x00>;
+	pid-extra-info = <0x000>;
+	io-mode = "dma";
+
+	i3c-tmq@7ec80000000 {
+		compatible = "i3c-target-mqueue";
+		reg = <0x0 0x7ec 0x80000000>;
+		msg-size = <128>;
+		num-of-msgs = <4>;
+		mandatory-data-byte = <0xae>;
+		status = "okay";
+	};
+};
+
+&i3c1 {
+	status = "okay";
+	io-mode = "dma";
+
+	target@7ec80000000 {
+		compatible = "i3c-dummy-device";
+		reg = <0x0 0x7ec 0x80000000>;
+		zephyr,deferred-init;
+	};
+};
+
+&i3c2 {
+	status = "okay";
+	secondary;
+	dcr = <0x00>;
+	pid-extra-info = <0x002>;
+	io-mode = "dma";
+
+	i3c-tmq@7ec80000002 {
+		compatible = "i3c-target-mqueue";
+		reg = <0x0 0x7ec 0x80000002>;
+		msg-size = <128>;
+		num-of-msgs = <4>;
+		mandatory-data-byte = <0xae>;
+		status = "okay";
+	};
+};
+
+&i3c3 {
+	status = "okay";
+	io-mode = "dma";
+
+	target@7ec80000002 {
+		compatible = "i3c-dummy-device";
+		reg = <0x0 0x7ec 0x80000002>;
+		zephyr,deferred-init;
+	};
+};
+
+&i3c4 {
+	status = "okay";
+	secondary;
+	dcr = <0x00>;
+	pid-extra-info = <0x004>;
+	io-mode = "dma";
+
+	i3c-tmq@7ec80000004 {
+		compatible = "i3c-target-mqueue";
+		reg = <0x0 0x7ec 0x80000004>;
+		msg-size = <128>;
+		num-of-msgs = <4>;
+		mandatory-data-byte = <0xae>;
+		status = "okay";
+	};
+};
+
+&i3c5 {
+	status = "okay";
+	io-mode = "dma";
+
+	target@7ec80000004 {
+		compatible = "i3c-dummy-device";
+		reg = <0x0 0x7ec 0x80000004>;
+		zephyr,deferred-init;
+	};
+};
+
+&i3c6 {
+	status = "okay";
+	secondary;
+	dcr = <0x00>;
+	pid-extra-info = <0x006>;
+	io-mode = "dma";
+
+	i3c-tmq@7ec80000006 {
+		compatible = "i3c-target-mqueue";
+		reg = <0x0 0x7ec 0x80000006>;
+		msg-size = <128>;
+		num-of-msgs = <4>;
+		mandatory-data-byte = <0xae>;
+		status = "okay";
+	};
+};
+
+&i3c7 {
+	status = "okay";
+	io-mode = "dma";
+
+	target@7ec80000006 {
+		compatible = "i3c-dummy-device";
+		reg = <0x0 0x7ec 0x80000006>;
+		zephyr,deferred-init;
+	};
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&sgpiom0 {
+	status = "okay";
+	sgpiom0_0_31 {
+		status = "okay";
+	};
+	sgpiom0_32_63 {
+		status = "okay";
+	};
+	sgpiom0_64_95 {
+		status = "okay";
+	};
+	sgpiom0_96_127 {
+		status = "okay";
+	};
+	sgpiom0_128_159 {
+		status = "okay";
+	};
+	sgpiom0_160_191 {
+		status = "okay";
+	};
+	sgpiom0_192_223 {
+		status = "okay";
+	};
+	sgpiom0_224_255 {
+		status = "okay";
+	};
+};
+
+&sgpiom1 {
+	status = "okay";
+	sgpiom1_0_31 {
+		status = "okay";
+	};
+	sgpiom1_32_63 {
+		status = "okay";
+	};
+	sgpiom1_64_95 {
+		status = "okay";
+	};
+	sgpiom1_96_127 {
+		status = "okay";
+	};
+	sgpiom1_128_159 {
+		status = "okay";
+	};
+	sgpiom1_160_191 {
+		status = "okay";
+	};
+	sgpiom1_192_223 {
+		status = "okay";
+	};
+	sgpiom1_224_255 {
+		status = "okay";
+	};
+};
+
+&fmc {
+	status = "okay";
+};
+
+&spi0 {
+	status = "okay";
+};
+
+&spi0_cs0 {
+	status = "okay";
+};
+
+&spi0_cs1 {
+	status = "okay";
+};
+
+&spi1 {
+	status = "okay";
+};
+
+&spi1_cs0 {
+	status = "okay";
+};
+
+&spi1_cs1 {
+	status = "okay";
+};
+
+&fmc_filter {
+	status = "okay";
+};
+
+&fmc_spif {
+	status = "okay";
+	allow-cmds = [03 13 0b 0c 6b 6c 01 05 35 06 04 20 21 9f 5a b7 e9 32 34 d8 dc 02 12 3b 3c
+				  70 50 eb ec c2];
+};
+
+&spi0_filter {
+	status = "okay";
+};
+
+&spi0_spif {
+	status = "okay";
+	allow-cmds = [03 13 0b 0c 6b 6c 01 05 35 06 04 20 21 9f 5a b7 e9 32 34 d8 dc 02 12 3b 3c
+				  70 50 eb ec c2];
+};
+
+&spi1_filter {
+	status = "okay";
+};
+
+&spi1_spif {
+	status = "okay";
+	allow-cmds = [03 13 0b 0c 6b 6c 01 05 35 06 04 20 21 9f 5a b7 e9 32 34 d8 dc 02 12 3b 3c
+				  70 50 eb ec c2];
+};
+
+#if 1
+zephyr_udc0: &udc0 {
+	status = "okay";
+};
+#endif
+
+#if 0
+zephyr_udc0: &udc1 {
+	status = "okay";
+};
+#endif
+
+&cptra_mci_mbox {
+	status = "okay";
+};
+
+&cptra_mci_sha {
+	status = "okay";
+};
+
+&cptra_mci_sha_acc {
+	status = "okay";
+};
+
+&cptra_mci_ecdsa {
+	status = "okay";
+};
+
+&cptra_mci_lms {
+	status = "okay";
+};
+
+&cptra_mci_mldsa {
+	status = "okay";
+};
+
+&atc { status = "okay"; };
+
+&otp {
+	status = "okay";
+};
+
+&peci {
+	status = "okay";
+};

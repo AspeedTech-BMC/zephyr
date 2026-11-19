@@ -84,6 +84,7 @@ static int i2c_global_init(const struct device *dev)
 
 #if defined(CONFIG_SOC_AST2705_SSP) || \
 	defined(CONFIG_SOC_AST1040_CM4) || \
+	defined(CONFIG_SOC_AST1042_CM4) || \
 	defined(CONFIG_SOC_AST1080_CM4)
 	/* fill i2c SRAM setting */
 	sys_write32(ASPEED_I2CG_SRAM_SETTING, i2c_global_base + ASPEED_I2CG_SRAM_CTRL);

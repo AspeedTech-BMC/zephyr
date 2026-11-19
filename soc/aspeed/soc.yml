@@ -8,6 +8,7 @@ family:
       - name: ast10x0_g2
         socs:
           - name: ast1040
+          - name: ast1042
           - name: ast1080
       - name: ast26xx
         socs:

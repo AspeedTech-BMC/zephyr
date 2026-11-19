@@ -564,6 +564,7 @@ static int swmbx_ctrl_init(const struct device *dev)
 	uint32_t i, j;
 
 #if defined(CONFIG_SOC_AST1040_CM4) || \
+		defined(CONFIG_SOC_AST1042_CM4) || \
 		defined(CONFIG_SOC_AST1080_CM4)
 	/* malloc the buffer */
 	data->buffer = (uint8_t *)(k_malloc(sizeof(uint32_t) * SWMBX_SIZE));

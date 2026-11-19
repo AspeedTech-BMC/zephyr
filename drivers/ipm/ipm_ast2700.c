@@ -20,6 +20,7 @@ LOG_MODULE_REGISTER(ipm_ast2700, LOG_LEVEL_ERR);
 
 #define IPC_NUM_OF_ID	4
 #if defined(CONFIG_SOC_AST1040_CM4) || \
+	defined(CONFIG_SOC_AST1042_CM4) || \
 	defined(CONFIG_SOC_AST1080_CM4)
 	#define IPC_MAX_MSG_SIZE 0x1c
 #else

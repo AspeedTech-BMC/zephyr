@@ -39,8 +39,8 @@ LOG_MODULE_REGISTER(otp_ast2700, CONFIG_LOG_DEFAULT_LEVEL);
 #define OTP_MASTER			OTP_M2
 #elif defined(CONFIG_SOC_AST2700_TSP)
 #define OTP_MASTER			OTP_M3
-#elif defined(CONFIG_SOC_AST1040_CM4)
-/* AST1040 CM4 plays the CA35 role on this OTP macro */
+#elif defined(CONFIG_SOC_AST1040_CM4) || defined(CONFIG_SOC_AST1042_CM4)
+/* AST1040 and AST1042 CM4 play the CA35 role on this OTP macro */
 #define OTP_MASTER			OTP_M1
 #else
 /* bootmcu (AST2700 and AST1040 share OTP_M0 here) */
@@ -590,9 +590,8 @@ static int aspeed_otp_read_ecc_code(const struct device *dev, uint32_t offset,
 
 /*
  * Assumes the AST2700 OTPMISCREG layout (see the #defines above). This file
- * is also built for CONFIG_SOC_AST1040_CM4 (see the OTP_MASTER #if near the
- * top) - revisit whether that target's OTP macro has the same region-
- * protect registers at these offsets before relying on this there.
+ * is also built for AST1040 and AST1042 CM4 (see OTP_MASTER above). Verify
+ * the region-protect register offsets before using this on those SoCs.
  */
 static int aspeed_otp_get_region_protect(const struct device *dev, struct otp_region_protect *prot)
 {

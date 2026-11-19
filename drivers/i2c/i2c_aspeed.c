@@ -22,6 +22,7 @@ LOG_MODULE_REGISTER(i2c_aspeed);
 #include "i2c-priv.h"
 
 #if defined(CONFIG_SOC_AST1040_CM4) || \
+	defined(CONFIG_SOC_AST1042_CM4) || \
 	defined(CONFIG_SOC_AST1080_CM4)
 #define SLAVE_ADDR_SHIFT		9
 #define DMA_L_ADDR_MASK		0x0FFFFFFF
@@ -833,6 +834,7 @@ static uint32_t ast2600_i2c_setup_dma_rx(uint32_t cmd, const struct device *dev)
 	defined(CONFIG_SOC_AST2700_A1_SSP) || \
 	defined(CONFIG_SOC_AST2705_SSP) || \
 	defined(CONFIG_SOC_AST1040_CM4) || \
+	defined(CONFIG_SOC_AST1042_CM4) || \
 	defined(CONFIG_SOC_AST1080_CM4)
 
 static uint32_t ast2700_i2c_setup_buff_tx(uint32_t cmd, const struct device *dev)
@@ -3183,6 +3185,7 @@ static int i2c_aspeed_init(const struct device *dev)
 	defined(CONFIG_SOC_AST2700_A1_SSP) || \
 	defined(CONFIG_SOC_AST2705_SSP) || \
 	defined(CONFIG_SOC_AST1040_CM4) || \
+	defined(CONFIG_SOC_AST1042_CM4) || \
 	defined(CONFIG_SOC_AST1080_CM4)
 	uint32_t reg;
 
