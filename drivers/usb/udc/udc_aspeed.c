@@ -311,13 +311,13 @@ static int aspeed_udc_start_next(const struct device *dev, uint8_t ep)
 	}
 
 	ep_data = &priv->ep_data[hw_ep];
+	udc_ep_set_busy(dev, ep, true);
+
 	if (USB_EP_DIR_IS_IN(ep)) {
 		aspeed_udc_start_in(dev, ep_data, buf);
 	} else {
 		aspeed_udc_start_out(dev, ep_data, 0);
 	}
-
-	udc_ep_set_busy(dev, ep, true);
 
 	return 0;
 }
